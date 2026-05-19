@@ -14,10 +14,14 @@
 }
 
 .calc-editor .cm-editor {
-  position: absolute;
-  inset: 0;
-  height: auto;
-  width: auto;
+  /* CodeMirror's bundled theme sets `position: relative !important` and
+   * `display: flex` on `.cm-editor`. We need `!important` on position/inset
+   * to win and pin the editor to its wrapper's box. */
+  position: absolute !important;
+  inset: 0 !important;
+  height: auto !important;
+  max-height: 100% !important;
+  width: auto !important;
   font-family: var(--font-mono);
   font-size: 13px;
   background: var(--theme-bg);
