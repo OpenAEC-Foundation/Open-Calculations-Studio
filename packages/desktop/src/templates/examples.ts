@@ -309,39 +309,43 @@ UC_d = delta / delta_max
 ## Overzicht
 
 @svg
-<svg width="600" height="220" viewBox="0 0 600 220">
-  <!-- Ligger -->
-  <line x1="50" y1="100" x2="550" y2="100" stroke="#1e40af" stroke-width="3"/>
-  <!-- Oplegging links (scharnier) -->
-  <polygon points="50,100 35,130 65,130" fill="none" stroke="#374151" stroke-width="2"/>
-  <line x1="30" y1="133" x2="70" y2="133" stroke="#374151" stroke-width="2"/>
-  <!-- Oplegging rechts (rol) -->
-  <polygon points="550,100 535,130 565,130" fill="none" stroke="#374151" stroke-width="2"/>
-  <circle cx="542" cy="135" r="5" fill="none" stroke="#374151" stroke-width="2"/>
-  <circle cx="558" cy="135" r="5" fill="none" stroke="#374151" stroke-width="2"/>
-  <line x1="530" y1="143" x2="570" y2="143" stroke="#374151" stroke-width="2"/>
-  <!-- Verdeelde belasting -->
-  <line x1="50" y1="50" x2="550" y2="50" stroke="#dc2626" stroke-width="1.5"/>
-  <line x1="100" y1="50" x2="100" y2="95" stroke="#dc2626" stroke-width="1" marker-end="url(#arrowRed)"/>
-  <line x1="175" y1="50" x2="175" y2="95" stroke="#dc2626" stroke-width="1" marker-end="url(#arrowRed)"/>
-  <line x1="250" y1="50" x2="250" y2="95" stroke="#dc2626" stroke-width="1" marker-end="url(#arrowRed)"/>
-  <line x1="325" y1="50" x2="325" y2="95" stroke="#dc2626" stroke-width="1" marker-end="url(#arrowRed)"/>
-  <line x1="400" y1="50" x2="400" y2="95" stroke="#dc2626" stroke-width="1" marker-end="url(#arrowRed)"/>
-  <line x1="475" y1="50" x2="475" y2="95" stroke="#dc2626" stroke-width="1" marker-end="url(#arrowRed)"/>
+<svg width="600" height="260" viewBox="0 0 600 260">
   <defs>
-    <marker id="arrowRed" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto">
-      <polygon points="0 0, 8 3, 0 6" fill="#dc2626"/>
+    <marker id="arrowRed" markerWidth="12" markerHeight="9" refX="6" refY="4.5" orient="auto">
+      <polygon points="0 0, 12 4.5, 0 9" fill="#dc2626"/>
     </marker>
   </defs>
+  <!-- Ligger -->
+  <line x1="50" y1="140" x2="550" y2="140" stroke="#1e40af" stroke-width="3"/>
+  <!-- Oplegging links (scharnier) -->
+  <polygon points="50,140 35,170 65,170" fill="none" stroke="#374151" stroke-width="2"/>
+  <line x1="30" y1="173" x2="70" y2="173" stroke="#374151" stroke-width="2"/>
+  <!-- Oplegging rechts (rol) -->
+  <polygon points="550,140 535,170 565,170" fill="none" stroke="#374151" stroke-width="2"/>
+  <circle cx="542" cy="175" r="5" fill="none" stroke="#374151" stroke-width="2"/>
+  <circle cx="558" cy="175" r="5" fill="none" stroke="#374151" stroke-width="2"/>
+  <line x1="530" y1="183" x2="570" y2="183" stroke="#374151" stroke-width="2"/>
+  <!-- Verdeelde belasting (scaled-up: top bar at y=20, arrows reach down 115px) -->
+  <line x1="50" y1="20" x2="550" y2="20" stroke="#dc2626" stroke-width="2.5"/>
+  <line x1="75" y1="20" x2="75" y2="130" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrowRed)"/>
+  <line x1="125" y1="20" x2="125" y2="130" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrowRed)"/>
+  <line x1="175" y1="20" x2="175" y2="130" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrowRed)"/>
+  <line x1="225" y1="20" x2="225" y2="130" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrowRed)"/>
+  <line x1="275" y1="20" x2="275" y2="130" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrowRed)"/>
+  <line x1="325" y1="20" x2="325" y2="130" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrowRed)"/>
+  <line x1="375" y1="20" x2="375" y2="130" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrowRed)"/>
+  <line x1="425" y1="20" x2="425" y2="130" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrowRed)"/>
+  <line x1="475" y1="20" x2="475" y2="130" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrowRed)"/>
+  <line x1="525" y1="20" x2="525" y2="130" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arrowRed)"/>
   <!-- Label belasting -->
-  <text x="300" y="40" text-anchor="middle" font-size="13" fill="#dc2626" font-style="italic">q = 20 kN/m</text>
+  <text x="300" y="12" text-anchor="middle" font-size="16" fill="#dc2626" font-style="italic" font-weight="600">q = 20 kN/m</text>
   <!-- Maat overspanning -->
-  <line x1="50" y1="170" x2="550" y2="170" stroke="#6b7280" stroke-width="1" stroke-dasharray="4"/>
-  <line x1="50" y1="160" x2="50" y2="180" stroke="#6b7280" stroke-width="1"/>
-  <line x1="550" y1="160" x2="550" y2="180" stroke="#6b7280" stroke-width="1"/>
-  <text x="300" y="190" text-anchor="middle" font-size="13" fill="#6b7280" font-style="italic">L = {{L}} mm</text>
+  <line x1="50" y1="210" x2="550" y2="210" stroke="#6b7280" stroke-width="1" stroke-dasharray="4"/>
+  <line x1="50" y1="200" x2="50" y2="220" stroke="#6b7280" stroke-width="1"/>
+  <line x1="550" y1="200" x2="550" y2="220" stroke="#6b7280" stroke-width="1"/>
+  <text x="300" y="230" text-anchor="middle" font-size="13" fill="#6b7280" font-style="italic">L = {{L}} mm</text>
   <!-- Profielnaam -->
-  <text x="300" y="118" text-anchor="middle" font-size="12" fill="#1e40af" font-weight="bold">IPE 300</text>
+  <text x="300" y="158" text-anchor="middle" font-size="12" fill="#1e40af" font-weight="bold">IPE 300</text>
 </svg>
 @end
 `;
