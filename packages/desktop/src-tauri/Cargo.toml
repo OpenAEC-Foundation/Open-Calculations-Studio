@@ -1,12 +1,12 @@
 [package]
-name = "openaec-calc"
+name = "open-calculations-studio"
 version = "0.1.0"
-description = "OpenAEC Calc - lightweight CalcPAD alternative for Eurocode verifications"
+description = "Open Calculations Studio - lightweight CalcPAD alternative for Eurocode verifications"
 authors = ["OpenAEC Contributors"]
 edition = "2021"
 
 [lib]
-name = "openaec_calc_lib"
+name = "open_calculations_studio_lib"
 crate-type = ["staticlib", "rlib"]
 
 [build-dependencies]

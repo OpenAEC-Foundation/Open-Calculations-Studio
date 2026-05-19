@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "OpenAEC Calc",
+  "productName": "Open Calculations Studio",
   "version": "0.1.0",
-  "identifier": "org.openaec.calc",
+  "identifier": "studio.opencalculations.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:3021",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "OpenAEC Calc",
+        "title": "Open Calculations Studio",
         "width": 1280,
         "height": 800,
         "minWidth": 900,

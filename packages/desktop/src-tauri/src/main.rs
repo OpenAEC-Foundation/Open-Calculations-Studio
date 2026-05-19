@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    openaec_calc_lib::run()
+    open_calculations_studio_lib::run()
 }

@@ -15,8 +15,8 @@ FILE_NAME (
   '2026-05-19T13:55:00',
   ('Maarten Vroegindeweij'),
   ('OpenAEC Foundation'),
-  'OpenAEC Calc v0.1.0',
-  'OpenAEC Calc Exporter',
+  'Open Calculations Studio v0.1.0',
+  'Open Calculations Studio Exporter',
   '');
 FILE_SCHEMA (('IFC4X3_ADD2'));
 ENDSEC;
@@ -31,7 +31,7 @@ DATA;
 #7  = IFCSIUNIT(*,.FORCEUNIT.,.KILO.,.NEWTON.);
 #8  = IFCSIUNIT(*,.PRESSUREUNIT.,.MEGA.,.PASCAL.);
 
-/* Funderingspaal — toegevoegd door OpenAEC Calc na paaldraagvermogen toetsing */
+/* Funderingspaal — toegevoegd door Open Calculations Studio na paaldraagvermogen toetsing */
 #100 = IFCPILE('4mJ_ZkRPzAYwG3p1U2W5l8',$,'Paal P1',
         'Houten paal, geheid, D=150 mm, L=11 m','EN 1995 + NEN 9997',
         #101,#102,'P1',.COHESION.,.FRICTION.,$);
@@ -48,8 +48,8 @@ export const ifcxSample = `{
   "header": {
     "name": "fundering.ifcx",
     "description": "Funderingsadvies — woning Laageind 57",
-    "originatingSystem": "OpenAEC Calc v0.1.0",
-    "preprocessor": "OpenAEC Calc IFCX exporter",
+    "originatingSystem": "Open Calculations Studio v0.1.0",
+    "preprocessor": "Open Calculations Studio IFCX exporter",
     "timestamp": "2026-05-19T13:55:00Z",
     "schema": "ifcx:0.1",
     "author": "Maarten Vroegindeweij",
@@ -107,7 +107,7 @@ export const ifcxSample = `{
         "unityCheck": 0.84,
         "result": "PASS"
       },
-      "source": "OpenAEC Calc — paaldraagvermogen.ifc-calculation"
+      "source": "Open Calculations Studio — paaldraagvermogen.ifc-calculation"
     }
   ]
 }

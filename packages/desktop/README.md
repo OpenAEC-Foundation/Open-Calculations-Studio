@@ -1,6 +1,6 @@
 # @openaec/calc
 
-OpenAEC Calc — a Tauri v2 + React 19 + TypeScript desktop application built on the OpenAEC Foundation design system. Active migration target for the `@ifc-calc/web` rekenmodule (CalcPAD alternative for Eurocode verifications).
+Open Calculations Studio — a Tauri v2 + React 19 + TypeScript desktop application built on the OpenAEC Foundation design system. Active migration target for the `@ifc-calc/web` rekenmodule (CalcPAD alternative for Eurocode verifications).
 
 **Status:** Phase 1 — shell scaffold complete. Calc functionality not yet wired (comes in Phase 2-5).
 
@@ -46,7 +46,7 @@ npm run tauri dev --workspace=@openaec/calc
 
 ## Stripped from OpenAEC template
 
-Out of scope for OpenAEC Calc:
+Out of scope for Open Calculations Studio:
 
 - IFC viewer (`@thatopen/components`, `three`, `html2canvas`)
 - PDF generation engine (`pdf-writer`, `ttf-parser`, `lopdf` Rust crates + `tenants/` brand assets)

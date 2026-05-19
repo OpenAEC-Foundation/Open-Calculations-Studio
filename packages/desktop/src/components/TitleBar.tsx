@@ -62,34 +62,21 @@ function TitleBar({ onSettingsClick }: TitleBarProps) {
       <div className="titlebar-drag" data-tauri-drag-region />
 
       <div className="titlebar-left">
-        <div className="titlebar-icon">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 1024 1024"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <rect
-              x="40"
-              y="40"
-              width="944"
-              height="944"
-              rx="180"
-              fill="var(--theme-accent)"
-            />
-            <text
-              x="512"
-              y="580"
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill="var(--theme-accent-text)"
-              fontSize="340"
-              fontFamily="Arial, sans-serif"
-              fontWeight="400"
-            >
-              tmp
-            </text>
+        <div className="titlebar-icon" aria-label="Open Calculations Studio">
+          <svg width="18" height="18" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="60" height="60" rx="12" fill="var(--theme-bg-lighter, #36363E)" />
+            <rect x="2" y="2" width="60" height="4" rx="2" fill="var(--theme-accent, #D97706)" />
+            {/* top row — function keys (warm gold) */}
+            <rect x="13" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.95" />
+            <rect x="26.5" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.78" />
+            <rect x="40" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.95" />
+            {/* bottom row — operator keys (amber + signal) */}
+            <rect x="13" y="29.5" width="11" height="11" rx="2" fill="var(--theme-accent, #D97706)" />
+            <rect x="26.5" y="29.5" width="11" height="11" rx="2" fill="var(--theme-accent, #D97706)" />
+            <rect x="40" y="29.5" width="11" height="11" rx="2" fill="#EA580C" />
+            {/* output baseline */}
+            <line x1="13" y1="48" x2="51" y2="48" stroke="#FAFAF9" strokeWidth="1.2" opacity="0.5" />
+            <text x="48" y="58" fontFamily="JetBrains Mono, monospace" fontSize="7" fill="#FAFAF9" opacity="0.85" textAnchor="end" letterSpacing="0.05em">= 0</text>
           </svg>
         </div>
 

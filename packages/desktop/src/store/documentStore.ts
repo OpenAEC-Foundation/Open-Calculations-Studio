@@ -15,7 +15,7 @@ interface DocumentState {
 export const useDocumentStore = create<DocumentState>((set) => ({
   source: paalExample,
   selectValues: {},
-  filePath: null,
+  filePath: "Paaldraagvermogen",
   dirty: false,
   setSource: (src) => set({ source: src, dirty: true }),
   setSelectValue: (id, value) =>

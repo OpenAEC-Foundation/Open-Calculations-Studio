@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Open Calculations Studio">
+  <!-- Background: deep forge rounded square -->
+  <rect x="2" y="2" width="60" height="60" rx="12" fill="#36363E"/>
+
+  <!-- Top accent strip: brand gradient -->
+  <rect x="2" y="2" width="60" height="4" rx="2" fill="url(#brandGrad)"/>
+
+  <!-- Isometric calculator face: 2x3 grid of "keys" in amber/gold -->
+  <!-- Top row: function keys (warm-gold) -->
+  <rect x="13" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.95"/>
+  <rect x="26.5" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.8"/>
+  <rect x="40" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.95"/>
+
+  <!-- Bottom row: equals & operator (amber, larger emphasis) -->
+  <rect x="13" y="29.5" width="11" height="11" rx="2" fill="#D97706"/>
+  <rect x="26.5" y="29.5" width="11" height="11" rx="2" fill="#D97706"/>
+  <rect x="40" y="29.5" width="11" height="11" rx="2" fill="#EA580C"/>
+
+  <!-- Underline: monospace baseline suggesting code/output -->
+  <line x1="13" y1="48" x2="51" y2="48" stroke="#FAFAF9" stroke-width="1.2" opacity="0.5"/>
+
+  <!-- "= 0" output preview in JetBrains-Mono-like glyphs -->
+  <g transform="translate(13,52)" fill="#FAFAF9" opacity="0.85">
+    <!-- "Σ" sum sigma stylized in 6×6 grid -->
+    <path d="M0 1 H6 V2 H1.5 L3 4 L1.5 6 H6 V7 H0 V6 L2 4 L0 2 Z" transform="scale(0.9) translate(0,0)" fill="#D97706"/>
+  </g>
+  <text x="22" y="59" font-family="JetBrains Mono, monospace" font-size="6" font-weight="500" fill="#FAFAF9" opacity="0.8" letter-spacing="0.05em">= 0</text>
+
+  <defs>
+    <linearGradient id="brandGrad" x1="0" x2="1">
+      <stop offset="0%" stop-color="#D97706"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#EA580C"/>
+    </linearGradient>
+  </defs>
+</svg>
