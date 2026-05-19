@@ -5,7 +5,7 @@
   "identifier": "org.openaec.calc",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:3020",
+    "devUrl": "http://localhost:3021",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
