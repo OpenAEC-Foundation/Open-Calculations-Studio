@@ -4,6 +4,18 @@ import type { AstNode, ConditionalNode, EvaluatedNode } from './types.js';
 const math: MathJsInstance = create(all, {});
 
 // CalcPAD-style helper functions that mathjs doesn't ship with.
+
+// mathjs returns Matrix objects from `[…]` literals — Array.isArray(M) is
+// false, so our helpers must also handle the Matrix case. Normalize both
+// to a plain array of numbers (or array-of-arrays for 2D).
+function toArrayLike(v: unknown): unknown[] | null {
+  if (Array.isArray(v)) return v;
+  if (v && typeof (v as { toArray?: () => unknown[] }).toArray === 'function') {
+    return (v as { toArray: () => unknown[] }).toArray();
+  }
+  return null;
+}
+
 math.import(
   {
     // Inline ternary: `if(cond, t, f)`
@@ -16,12 +28,12 @@ math.import(
       // CalcPAD syntax is `take(idx, vec)`; after `;` → `,` normalization
       // the second arg is the vector. mathjs may pass either order; accept both.
       if (args.length === 1) {
-        const v = args[0];
-        return Array.isArray(v) ? v[0] : v;
+        const v = toArrayLike(args[0]);
+        return v ? v[0] : args[0];
       }
       const [a, b] = args;
       const idx = typeof a === 'number' ? a : typeof b === 'number' ? b : NaN;
-      const vec = Array.isArray(a) ? a : Array.isArray(b) ? b : null;
+      const vec = toArrayLike(a) ?? toArrayLike(b);
       if (!vec) return Number.NaN;
       const i = Math.max(1, Math.trunc(idx)) - 1;
       return vec[Math.min(i, vec.length - 1)];
@@ -37,7 +49,7 @@ math.import(
     // return the matching value (or 0 on miss). Far from a faithful Excel
     // impl but prevents whole-conditional cascades from failing.
     hlookup: function (...args: unknown[]) {
-      const arr = args.find((a) => Array.isArray(a)) as unknown[] | undefined;
+      const arr = args.map(toArrayLike).find((a) => a !== null);
       const target = args.find((a) => typeof a === 'number' || (a && typeof (a as object).valueOf === 'function')) ?? 0;
       if (!arr) return 0;
       const tNum = Number(target);
@@ -55,7 +67,7 @@ math.import(
     },
     // Variants of hlookup — closest-greater-or-equal, closest-less-or-equal
     hlookup_ge: function (...args: unknown[]) {
-      const arr = args.find((a) => Array.isArray(a)) as unknown[] | undefined;
+      const arr = args.map(toArrayLike).find((a) => a !== null);
       const target = Number(args.find((a) => typeof a === 'number') ?? 0);
       if (!arr || arr.length === 0) return 0;
       let candidate: unknown = arr[0];
@@ -67,7 +79,7 @@ math.import(
       return candidate;
     },
     hlookup_le: function (...args: unknown[]) {
-      const arr = args.find((a) => Array.isArray(a)) as unknown[] | undefined;
+      const arr = args.map(toArrayLike).find((a) => a !== null);
       const target = Number(args.find((a) => typeof a === 'number') ?? 0);
       if (!arr || arr.length === 0) return 0;
       let candidate: unknown = arr[arr.length - 1];
@@ -79,23 +91,26 @@ math.import(
       return candidate;
     },
     n_rows: function (v: unknown) {
-      if (Array.isArray(v)) return v.length;
-      return 1;
+      const a = toArrayLike(v);
+      return a ? a.length : 1;
     },
     n_cols: function (v: unknown) {
-      if (Array.isArray(v) && Array.isArray(v[0])) return v[0].length;
-      return 1;
+      const a = toArrayLike(v);
+      if (!a) return 1;
+      const row0 = toArrayLike(a[0]);
+      return row0 ? row0.length : 1;
     },
     // CalcPAD `get(row, col, matrix)` — fetch matrix element (1-based)
     get: function (...args: unknown[]) {
-      const mat = args.find((a) => Array.isArray(a)) as unknown[] | undefined;
+      const mat = args.map(toArrayLike).find((a) => a !== null);
       if (!mat) return 0;
       const nums = args.filter((a) => typeof a === 'number') as number[];
       const row = nums[0] ? Math.max(1, Math.trunc(nums[0])) - 1 : 0;
       const col = nums[1] ? Math.max(1, Math.trunc(nums[1])) - 1 : 0;
       const rowVal = mat[Math.min(row, mat.length - 1)];
-      if (Array.isArray(rowVal)) {
-        return rowVal[Math.min(col, rowVal.length - 1)];
+      const rowArr = toArrayLike(rowVal);
+      if (rowArr) {
+        return rowArr[Math.min(col, rowArr.length - 1)];
       }
       return rowVal;
     },

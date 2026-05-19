@@ -343,10 +343,19 @@ function foldIdentifierDots(source: string): string {
   // "http://www.w3.org/2000/svg" and dotted text inside SVG must survive.
   return source.split('"').map((seg, idx) => {
     if (idx % 2 === 1) return seg;
-    return seg.replace(
+    let out = seg;
+    // CalcPAD vector index `name.digit` (`cc.3`) → mathjs subscript `name[3]`.
+    // Must run BEFORE identifier-dot fold so `cc.3` isn't read as `cc_3`.
+    out = out.replace(
+      /(?<![\p{L}\p{N}_.])([\p{L}_][\p{L}\p{N}_]*)\.(\d+)(?![\p{L}\p{N}_.])/gu,
+      (_m, name, idx2) => `${name}[${idx2}]`,
+    );
+    // Identifier-cluster fold: `Cs.Cd`, `F_0.9G50%TotalWeight` → underscores.
+    out = out.replace(
       /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*(?:[.%][\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_])/gu,
       (match) => match.replace(/[.%]/g, '_'),
     );
+    return out;
   }).join('"');
 }
 
