@@ -1,21 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" width="320" height="64" role="img" aria-label="Open Calculations Studio">
-  <!-- Logo block (smaller version of ocs-logo) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 64" width="360" height="64" role="img" aria-label="Open Calculations Studio">
+  <!-- Logo block: scaled-down ocs-logo (48×48) -->
   <rect x="0" y="8" width="48" height="48" rx="10" fill="#36363E"/>
-  <rect x="0" y="8" width="48" height="3" rx="1.5" fill="url(#wmGrad)"/>
-  <!-- Mini 2x3 calc keys -->
-  <rect x="7" y="18" width="9" height="9" rx="1.5" fill="#F59E0B" opacity="0.95"/>
-  <rect x="19.5" y="18" width="9" height="9" rx="1.5" fill="#F59E0B" opacity="0.8"/>
-  <rect x="32" y="18" width="9" height="9" rx="1.5" fill="#F59E0B" opacity="0.95"/>
-  <rect x="7" y="30" width="9" height="9" rx="1.5" fill="#D97706"/>
-  <rect x="19.5" y="30" width="9" height="9" rx="1.5" fill="#D97706"/>
-  <rect x="32" y="30" width="9" height="9" rx="1.5" fill="#EA580C"/>
-  <line x1="7" y1="45" x2="41" y2="45" stroke="#FAFAF9" stroke-width="0.9" opacity="0.5"/>
+  <rect x="0" y="8" width="48" height="2.5" rx="1.25" fill="url(#wmGrad)"/>
 
-  <!-- Wordmark — "Open" in dark, "Calculator Studio" in amber -->
-  <text x="60" y="40" font-family="Space Grotesk, system-ui, sans-serif" font-size="22" font-weight="700" letter-spacing="-0.02em">
+  <g stroke="#D97706" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M9 23 L9 41 L18 45.5 L18 27.5 Z" opacity="0.95"/>
+    <path d="M9 23 L16.5 20 L25.5 24.5 L18 27.5" opacity="0.55"/>
+  </g>
+
+  <g stroke="#F59E0B" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M24 23 L37 23 L29.5 31.5 L37 40 L24 40" />
+  </g>
+
+  <g fill="#FAFAF9">
+    <circle cx="24" cy="23" r="1.05"/>
+    <circle cx="37" cy="23" r="1.05"/>
+    <circle cx="29.5" cy="31.5" r="1.05"/>
+    <circle cx="37" cy="40" r="1.05"/>
+    <circle cx="24" cy="40" r="1.05"/>
+  </g>
+
+  <!-- Wordmark — "Open" + "Calculations" (amber) + "Studio" -->
+  <text x="60" y="38" font-family="Space Grotesk, system-ui, sans-serif" font-size="20" font-weight="700" letter-spacing="-0.02em">
     <tspan fill="#36363E">Open </tspan><tspan fill="#D97706">Calculations</tspan> <tspan fill="#36363E">Studio</tspan>
   </text>
-  <text x="60" y="56" font-family="JetBrains Mono, monospace" font-size="9" fill="#A1A1AA" letter-spacing="0.12em" text-transform="uppercase">CALCPAD · EUROCODE · IFC</text>
+
+  <text x="60" y="54" font-family="JetBrains Mono, monospace" font-size="8.5" fill="#A1A1AA" letter-spacing="0.18em">CALCPAD · EUROCODE · IFC · PDF</text>
 
   <defs>
     <linearGradient id="wmGrad" x1="0" x2="1">

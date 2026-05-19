@@ -1,33 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Open Calculations Studio">
-  <!-- Background: deep forge rounded square -->
+  <!-- Forge rounded square base -->
   <rect x="2" y="2" width="60" height="60" rx="12" fill="#36363E"/>
 
-  <!-- Top accent strip: brand gradient -->
-  <rect x="2" y="2" width="60" height="4" rx="2" fill="url(#brandGrad)"/>
+  <!-- Top accent gradient strip (brandbook §2.1) -->
+  <rect x="2" y="2" width="60" height="3" rx="1.5" fill="url(#ocsGrad)"/>
 
-  <!-- Isometric calculator face: 2x3 grid of "keys" in amber/gold -->
-  <!-- Top row: function keys (warm-gold) -->
-  <rect x="13" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.95"/>
-  <rect x="26.5" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.8"/>
-  <rect x="40" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.95"/>
-
-  <!-- Bottom row: equals & operator (amber, larger emphasis) -->
-  <rect x="13" y="29.5" width="11" height="11" rx="2" fill="#D97706"/>
-  <rect x="26.5" y="29.5" width="11" height="11" rx="2" fill="#D97706"/>
-  <rect x="40" y="29.5" width="11" height="11" rx="2" fill="#EA580C"/>
-
-  <!-- Underline: monospace baseline suggesting code/output -->
-  <line x1="13" y1="48" x2="51" y2="48" stroke="#FAFAF9" stroke-width="1.2" opacity="0.5"/>
-
-  <!-- "= 0" output preview in JetBrains-Mono-like glyphs -->
-  <g transform="translate(13,52)" fill="#FAFAF9" opacity="0.85">
-    <!-- "Σ" sum sigma stylized in 6×6 grid -->
-    <path d="M0 1 H6 V2 H1.5 L3 4 L1.5 6 H6 V7 H0 V6 L2 4 L0 2 Z" transform="scale(0.9) translate(0,0)" fill="#D97706"/>
+  <!-- Isometric beam — left bracket of an open building cube, amber stroke -->
+  <g stroke="#D97706" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M14 22 L14 46 L26 52 L26 28 Z" opacity="0.95"/>
+    <!-- Faint back face suggesting depth -->
+    <path d="M14 22 L24 18 L36 24 L26 28" opacity="0.55"/>
   </g>
-  <text x="22" y="59" font-family="JetBrains Mono, monospace" font-size="6" font-weight="500" fill="#FAFAF9" opacity="0.8" letter-spacing="0.05em">= 0</text>
+
+  <!-- Sigma (Σ) — calculation summation, drawn as triangulated truss -->
+  <g stroke="#F59E0B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M34 22 L50 22 L40 33 L50 44 L34 44" />
+  </g>
+
+  <!-- Truss-joint nodes (small accents) -->
+  <g fill="#FAFAF9">
+    <circle cx="34" cy="22" r="1.4"/>
+    <circle cx="50" cy="22" r="1.4"/>
+    <circle cx="40" cy="33" r="1.4"/>
+    <circle cx="50" cy="44" r="1.4"/>
+    <circle cx="34" cy="44" r="1.4"/>
+  </g>
+
+  <!-- Result baseline + small "= " hint -->
+  <line x1="14" y1="54" x2="50" y2="54" stroke="#FAFAF9" stroke-width="0.9" opacity="0.45"/>
+  <text x="50" y="60" font-family="JetBrains Mono, monospace" font-size="6.5" font-weight="500" fill="#FAFAF9" opacity="0.85" text-anchor="end" letter-spacing="0.05em">= Σ</text>
 
   <defs>
-    <linearGradient id="brandGrad" x1="0" x2="1">
+    <linearGradient id="ocsGrad" x1="0" x2="1">
       <stop offset="0%" stop-color="#D97706"/>
       <stop offset="50%" stop-color="#F59E0B"/>
       <stop offset="100%" stop-color="#EA580C"/>

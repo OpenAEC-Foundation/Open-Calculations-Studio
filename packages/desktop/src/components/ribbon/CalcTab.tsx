@@ -4,21 +4,23 @@ import RibbonGroup from "./RibbonGroup";
 import RibbonButton from "./RibbonButton";
 import RibbonButtonStack from "./RibbonButtonStack";
 import {
-  reportNewIcon,
-  ifcImportIcon,
-  ifcExportIcon,
+  newDocIcon,
+  openFolderIcon,
+  saveDiskIcon,
   undoIcon,
   redoIcon,
-  reportPreviewIcon,
-  reportGenerateIcon,
-  boldIcon,
-  italicIcon,
-  reportTemplateIcon,
+  headingIcon,
+  formulaIcon,
+  selectListIcon,
   imageIcon,
-  rectangleIcon,
-  tableIcon,
-  pencilIcon,
-} from "./icons";
+  svgShapeIcon,
+  viewSplitIcon,
+  viewEditorIcon,
+  viewPreviewIcon,
+  pdfPreviewIcon,
+  pdfIcon,
+  ifcExportIcon,
+} from "./calcIcons";
 import { parse, evaluate } from "@ifc-calc/core";
 import { useDocumentStore } from "../../store/documentStore";
 import { useLoadCaseStore } from "../../store/loadCaseStore";
@@ -84,9 +86,9 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
     <div className="ribbon-content">
       <div className="ribbon-groups">
         <RibbonGroup label={t("calc.file", "Bestand")}>
-          <RibbonButton icon={reportNewIcon} label={t("calc.new", "Nieuw")} size="large" onClick={() => {}} />
-          <RibbonButton icon={ifcImportIcon} label={t("calc.open", "Openen")} size="large" onClick={handleOpen} />
-          <RibbonButton icon={ifcExportIcon} label={t("calc.save", "Opslaan")} size="large" onClick={() => {}} />
+          <RibbonButton icon={newDocIcon} label={t("calc.new", "Nieuw")} size="large" onClick={() => {}} />
+          <RibbonButton icon={openFolderIcon} label={t("calc.open", "Openen")} size="large" onClick={handleOpen} />
+          <RibbonButton icon={saveDiskIcon} label={t("calc.save", "Opslaan")} size="large" onClick={() => {}} />
         </RibbonGroup>
 
         <RibbonGroup label={t("calc.edit", "Bewerken")}>
@@ -97,36 +99,36 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
         </RibbonGroup>
 
         <RibbonGroup label={t("insert.elements", "Invoegen")}>
-          <RibbonButton icon={boldIcon} label={t("insert.heading", "Kop")} size="large" onClick={() => {}} />
-          <RibbonButton icon={italicIcon} label={t("insert.formula", "Formule")} size="large" onClick={() => {}} />
-          <RibbonButton icon={reportTemplateIcon} label={t("insert.select", "Keuzelijst")} size="large" onClick={() => {}} />
+          <RibbonButton icon={headingIcon} label={t("insert.heading", "Kop")} size="large" onClick={() => {}} />
+          <RibbonButton icon={formulaIcon} label={t("insert.formula", "Formule")} size="large" onClick={() => {}} />
+          <RibbonButton icon={selectListIcon} label={t("insert.select", "Keuzelijst")} size="large" onClick={() => {}} />
         </RibbonGroup>
 
         <RibbonGroup label={t("insert.media", "Media")}>
           <RibbonButton icon={imageIcon} label={t("insert.image", "Afbeelding")} size="large" onClick={() => {}} />
-          <RibbonButton icon={rectangleIcon} label={t("insert.svg", "SVG")} size="large" onClick={() => {}} />
+          <RibbonButton icon={svgShapeIcon} label={t("insert.svg", "SVG")} size="large" onClick={() => {}} />
         </RibbonGroup>
 
         <RibbonGroup label={t("view.layout", "Weergave")}>
-          <RibbonButton icon={tableIcon} label={t("view.split", "Splitsen")} size="large" onClick={() => {}} />
-          <RibbonButton icon={pencilIcon} label={t("view.editor", "Editor")} size="large" onClick={() => {}} />
-          <RibbonButton icon={reportPreviewIcon} label={t("view.preview", "Preview")} size="large" onClick={() => {}} />
+          <RibbonButton icon={viewSplitIcon} label={t("view.split", "Splitsen")} size="large" onClick={() => {}} />
+          <RibbonButton icon={viewEditorIcon} label={t("view.editor", "Editor")} size="large" onClick={() => {}} />
+          <RibbonButton icon={viewPreviewIcon} label={t("view.preview", "Preview")} size="large" onClick={() => {}} />
         </RibbonGroup>
 
         <RibbonGroup label={t("calc.export", "Exporteren")}>
           <RibbonButton
-            icon={reportPreviewIcon}
+            icon={pdfPreviewIcon}
             label={t("calc.pdfPreview", "PDF voorvertonen")}
             size="large"
             onClick={handlePreviewPdf}
           />
           <RibbonButton
-            icon={ifcExportIcon}
+            icon={pdfIcon}
             label={t("calc.pdfSave", "PDF opslaan")}
             size="large"
             onClick={handleSavePdf}
           />
-          <RibbonButton icon={reportGenerateIcon} label={t("calc.ifcExport", "IFC")} size="large" onClick={() => {}} />
+          <RibbonButton icon={ifcExportIcon} label={t("calc.ifcExport", "IFC")} size="large" onClick={() => {}} />
         </RibbonGroup>
       </div>
 

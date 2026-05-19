@@ -63,20 +63,28 @@ function TitleBar({ onSettingsClick }: TitleBarProps) {
 
       <div className="titlebar-left">
         <div className="titlebar-icon" aria-label="Open Calculations Studio">
-          <svg width="18" height="18" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <svg width="20" height="20" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
             <rect x="2" y="2" width="60" height="60" rx="12" fill="var(--theme-bg-lighter, #36363E)" />
-            <rect x="2" y="2" width="60" height="4" rx="2" fill="var(--theme-accent, #D97706)" />
-            {/* top row — function keys (warm gold) */}
-            <rect x="13" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.95" />
-            <rect x="26.5" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.78" />
-            <rect x="40" y="16" width="11" height="11" rx="2" fill="#F59E0B" opacity="0.95" />
-            {/* bottom row — operator keys (amber + signal) */}
-            <rect x="13" y="29.5" width="11" height="11" rx="2" fill="var(--theme-accent, #D97706)" />
-            <rect x="26.5" y="29.5" width="11" height="11" rx="2" fill="var(--theme-accent, #D97706)" />
-            <rect x="40" y="29.5" width="11" height="11" rx="2" fill="#EA580C" />
-            {/* output baseline */}
-            <line x1="13" y1="48" x2="51" y2="48" stroke="#FAFAF9" strokeWidth="1.2" opacity="0.5" />
-            <text x="48" y="58" fontFamily="JetBrains Mono, monospace" fontSize="7" fill="#FAFAF9" opacity="0.85" textAnchor="end" letterSpacing="0.05em">= 0</text>
+            <rect x="2" y="2" width="60" height="3" rx="1.5" fill="var(--theme-accent, #D97706)" />
+            {/* Isometric open building block — echoes OpenAEC parent brand */}
+            <g stroke="var(--theme-accent, #D97706)" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" fill="none">
+              <path d="M14 22 L14 46 L26 52 L26 28 Z" opacity="0.95" />
+              <path d="M14 22 L24 18 L36 24 L26 28" opacity="0.55" />
+            </g>
+            {/* Sigma (Σ) as triangulated truss — calculation summation */}
+            <g stroke="#F59E0B" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" fill="none">
+              <path d="M34 22 L50 22 L40 33 L50 44 L34 44" />
+            </g>
+            {/* Truss joint nodes */}
+            <g fill="#FAFAF9">
+              <circle cx="34" cy="22" r="1.4" />
+              <circle cx="50" cy="22" r="1.4" />
+              <circle cx="40" cy="33" r="1.4" />
+              <circle cx="50" cy="44" r="1.4" />
+              <circle cx="34" cy="44" r="1.4" />
+            </g>
+            <line x1="14" y1="54" x2="50" y2="54" stroke="#FAFAF9" strokeWidth="0.9" opacity="0.45" />
+            <text x="50" y="60" fontFamily="JetBrains Mono, monospace" fontSize="6.5" fontWeight="500" fill="#FAFAF9" opacity="0.85" textAnchor="end" letterSpacing="0.05em">= Σ</text>
           </svg>
         </div>
 

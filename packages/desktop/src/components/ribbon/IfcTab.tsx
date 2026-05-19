@@ -5,9 +5,11 @@ import {
   ifcImportIcon,
   ifcExportIcon,
   ifcTreeIcon,
+  ifcPropertiesIcon,
   ifcValidateIcon,
-  infoIcon,
-} from "./icons";
+  gefIcon,
+  broIcon,
+} from "./calcIcons";
 
 export default function IfcTab() {
   const { t } = useTranslation("ribbon");
@@ -21,13 +23,13 @@ export default function IfcTab() {
 
         <RibbonGroup label={t("ifc.view", "Bekijken")}>
           <RibbonButton icon={ifcTreeIcon} label={t("ifc.tree", "Spatial Tree")} size="large" onClick={() => {}} />
-          <RibbonButton icon={infoIcon} label={t("ifc.props", "Properties")} size="large" onClick={() => {}} />
+          <RibbonButton icon={ifcPropertiesIcon} label={t("ifc.props", "Properties")} size="large" onClick={() => {}} />
           <RibbonButton icon={ifcValidateIcon} label={t("ifc.validate", "Validate")} size="large" onClick={() => {}} />
         </RibbonGroup>
 
         <RibbonGroup label={t("ifc.convert", "Converteren")}>
-          <RibbonButton icon={ifcImportIcon} label={t("ifc.gefToIfc", "GEF naar IFC")} size="large" onClick={() => {}} />
-          <RibbonButton icon={ifcImportIcon} label={t("ifc.broToIfc", "BRO naar IFC")} size="large" onClick={() => {}} />
+          <RibbonButton icon={gefIcon} label={t("ifc.gefToIfc", "GEF naar IFC")} size="large" onClick={() => {}} />
+          <RibbonButton icon={broIcon} label={t("ifc.broToIfc", "BRO naar IFC")} size="large" onClick={() => {}} />
         </RibbonGroup>
       </div>
     </div>
