@@ -10,6 +10,13 @@ import {
   redoIcon,
   reportPreviewIcon,
   reportGenerateIcon,
+  boldIcon,
+  italicIcon,
+  reportTemplateIcon,
+  imageIcon,
+  rectangleIcon,
+  tableIcon,
+  pencilIcon,
 } from "./icons";
 
 interface CalcTabProps {
@@ -32,6 +39,23 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
             <RibbonButton icon={undoIcon} label={t("calc.undo", "Ongedaan")} size="small" onClick={() => {}} />
             <RibbonButton icon={redoIcon} label={t("calc.redo", "Opnieuw")} size="small" onClick={() => {}} />
           </RibbonButtonStack>
+        </RibbonGroup>
+
+        <RibbonGroup label={t("insert.elements", "Invoegen")}>
+          <RibbonButton icon={boldIcon} label={t("insert.heading", "Kop")} size="large" onClick={() => {}} />
+          <RibbonButton icon={italicIcon} label={t("insert.formula", "Formule")} size="large" onClick={() => {}} />
+          <RibbonButton icon={reportTemplateIcon} label={t("insert.select", "Keuzelijst")} size="large" onClick={() => {}} />
+        </RibbonGroup>
+
+        <RibbonGroup label={t("insert.media", "Media")}>
+          <RibbonButton icon={imageIcon} label={t("insert.image", "Afbeelding")} size="large" onClick={() => {}} />
+          <RibbonButton icon={rectangleIcon} label={t("insert.svg", "SVG")} size="large" onClick={() => {}} />
+        </RibbonGroup>
+
+        <RibbonGroup label={t("view.layout", "Weergave")}>
+          <RibbonButton icon={tableIcon} label={t("view.split", "Splitsen")} size="large" onClick={() => {}} />
+          <RibbonButton icon={pencilIcon} label={t("view.editor", "Editor")} size="large" onClick={() => {}} />
+          <RibbonButton icon={reportPreviewIcon} label={t("view.preview", "Preview")} size="large" onClick={() => {}} />
         </RibbonGroup>
 
         <RibbonGroup label={t("calc.export", "Exporteren")}>

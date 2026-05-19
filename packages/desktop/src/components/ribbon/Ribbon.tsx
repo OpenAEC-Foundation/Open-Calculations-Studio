@@ -2,8 +2,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import RibbonTab from "./RibbonTab";
 import CalcTab from "./CalcTab";
-import InsertTab from "./InsertTab";
-import ViewTab from "./ViewTab";
 import IfcTab from "./IfcTab";
 import "./Ribbon.css";
 
@@ -14,7 +12,7 @@ interface RibbonProps {
   onViewChange: (view: string) => void;
 }
 
-const TABS = ["calc", "insert", "view", "ifc"] as const;
+const TABS = ["calc", "ifc"] as const;
 type TabId = (typeof TABS)[number];
 
 export default function Ribbon({ onFileTabClick, onSettingsClick, onViewChange }: RibbonProps) {
@@ -67,8 +65,8 @@ export default function Ribbon({ onFileTabClick, onSettingsClick, onViewChange }
     setActiveTab(newTab);
     setAnimating(true);
 
-    // Phase 1: all tabs use the default view
-    onViewChange("default");
+    // IFC tab → switch main view to IFC code panel
+    onViewChange(newTab === "ifc" ? "ifc" : "default");
   }, [activeTab, onViewChange]);
 
   useEffect(() => {
@@ -93,8 +91,6 @@ export default function Ribbon({ onFileTabClick, onSettingsClick, onViewChange }
   const renderContent = (tab: TabId) => {
     switch (tab) {
       case "calc": return <CalcTab onSettingsClick={onSettingsClick} />;
-      case "insert": return <InsertTab />;
-      case "view": return <ViewTab />;
       case "ifc": return <IfcTab />;
     }
   };

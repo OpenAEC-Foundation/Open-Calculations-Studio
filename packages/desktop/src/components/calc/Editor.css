@@ -3,6 +3,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--theme-bg);
 }
 
 .calc-editor .cm-editor {
@@ -10,8 +11,35 @@
   height: 100%;
   font-family: var(--font-mono);
   font-size: 13px;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+}
+
+.calc-editor .cm-editor.cm-focused {
+  outline: none;
 }
 
 .calc-editor .cm-scroller {
   font-family: inherit;
+}
+
+/* Brand-aligned syntax (replaces oneDark) */
+.calc-editor .cm-gutters {
+  background: var(--theme-bg-lighter);
+  color: var(--theme-text-secondary);
+  border-right: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+}
+
+.calc-editor .cm-activeLineGutter,
+.calc-editor .cm-activeLine {
+  background: var(--theme-hover, rgba(217, 119, 6, 0.06));
+}
+
+.calc-editor .cm-selectionBackground,
+.calc-editor .cm-content ::selection {
+  background: var(--theme-hover-strong, rgba(217, 119, 6, 0.18)) !important;
+}
+
+.calc-editor .cm-cursor {
+  border-left-color: var(--theme-accent, #D97706);
 }
