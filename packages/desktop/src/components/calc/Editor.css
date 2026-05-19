@@ -1,14 +1,21 @@
 .calc-editor {
   height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--theme-bg);
 }
 
+/* CodeMirror 6 needs an explicit definite height on the outermost element so
+ * .cm-scroller (internal) can overflow:auto and scroll. Without min-height:0
+ * the flex parent refuses to shrink below content size and the scrollbar
+ * never appears. */
 .calc-editor .cm-editor {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   height: 100%;
+  width: 100%;
   font-family: var(--font-mono);
   font-size: 13px;
   background: var(--theme-bg);
@@ -21,6 +28,22 @@
 
 .calc-editor .cm-scroller {
   font-family: inherit;
+  overflow: auto;
+}
+
+.calc-editor .cm-scroller::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.calc-editor .cm-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+.calc-editor .cm-scroller::-webkit-scrollbar-thumb {
+  background: var(--theme-border-subtle, rgba(217, 119, 6, 0.2));
+  border-radius: 5px;
+}
+.calc-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-accent, #D97706);
 }
 
 /* Brand-aligned syntax (replaces oneDark) */
