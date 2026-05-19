@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import CodeMirror from "@uiw/react-codemirror";
-import { markdown } from "@codemirror/lang-markdown";
 import { useDocumentStore } from "../../store/documentStore";
+import { ifcCalcLang } from "./ifcCalcLanguage";
 import "./Editor.css";
 
 export default function Editor() {
@@ -20,7 +20,7 @@ export default function Editor() {
       <CodeMirror
         value={source}
         height="100%"
-        extensions={[markdown()]}
+        extensions={[ifcCalcLang()]}
         onChange={onChange}
         basicSetup={{
           lineNumbers: true,
