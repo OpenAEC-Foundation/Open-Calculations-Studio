@@ -73,3 +73,42 @@ function pathBaseName(p: string): string {
 function stripExt(s: string): string {
   return s.replace(/\.(ifc-calculation|cpd|cpdz|txt)$/i, "");
 }
+
+function sanitizeFileName(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, "_");
+}
+
+/**
+ * Save the current document via a Save As dialog. Defaults to the supplied
+ * `defaultName` (without extension) and writes a `.ifc-calculation` file. The
+ * resolved absolute path is returned, or `null` if the user cancelled.
+ */
+export async function saveCalculationFile(
+  content: string,
+  defaultName: string,
+): Promise<string | null> {
+  if (isTauri()) {
+    const { save } = await import("@tauri-apps/plugin-dialog");
+    const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+    const path = await save({
+      title: "Bestand opslaan als",
+      defaultPath: `${sanitizeFileName(defaultName)}.ifc-calculation`,
+      filters: SUPPORTED_FILTERS,
+    });
+    if (!path) return null;
+    await writeTextFile(path, content);
+    return path;
+  }
+
+  // Browser fallback — download via Blob link
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${sanitizeFileName(defaultName)}.ifc-calculation`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  return a.download;
+}

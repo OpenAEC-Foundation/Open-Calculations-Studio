@@ -3,6 +3,12 @@ import {
   HighlightStyle,
   syntaxHighlighting,
 } from "@codemirror/language";
+import {
+  autocompletion,
+  type Completion,
+  type CompletionContext,
+  type CompletionResult,
+} from "@codemirror/autocomplete";
 import { tags as t } from "@lezer/highlight";
 import type { Extension } from "@codemirror/state";
 
@@ -186,7 +192,135 @@ const ifcCalcHighlight = HighlightStyle.define([
   { tag: t.punctuation, color: "#525252" },
 ]);
 
+// ── Autocomplete (IntelliSense) ────────────────────────────────────────
+
+/** Static keyword/snippet completions — directives, functions, units. */
+const STATIC_COMPLETIONS: Completion[] = [
+  // Directives
+  { label: "#if", type: "keyword", detail: "conditional", apply: "#if " },
+  { label: "#else", type: "keyword", detail: "conditional" },
+  { label: "#else if", type: "keyword", detail: "conditional", apply: "#else if " },
+  { label: "#end if", type: "keyword", detail: "conditional" },
+  { label: "#hide", type: "keyword", detail: "visibility" },
+  { label: "#show", type: "keyword", detail: "visibility" },
+  { label: "#pre", type: "keyword", detail: "calcpad marker" },
+  { label: "#post", type: "keyword", detail: "calcpad marker" },
+  { label: "#repeat", type: "keyword", detail: "loop", apply: "#repeat " },
+  { label: "#end repeat", type: "keyword", detail: "loop" },
+  { label: "#rad", type: "keyword", detail: "angle mode" },
+  { label: "#deg", type: "keyword", detail: "angle mode" },
+
+  // Blocks
+  { label: "@svg", type: "namespace", detail: "drawing block", apply: "@svg\n\n@end" },
+  { label: "@select", type: "namespace", detail: "dropdown block", apply: '@select var "label"\n  optie = 1\n@end' },
+  { label: "@gef", type: "namespace", detail: "sondering upload", apply: "@gef sondering1" },
+  { label: "@img", type: "namespace", detail: "image", apply: "@img(pad/naar.png)" },
+  { label: "@end", type: "namespace", detail: "block end" },
+
+  // Plot operators
+  { label: "$Plot", type: "namespace", detail: "line plot", apply: "$Plot{f(x) @ x = -10 : 10}" },
+  { label: "$Map", type: "namespace", detail: "2D contour" },
+  { label: "$Sum", type: "namespace", detail: "summation", apply: "$Sum{f(n) @ n = 1 : N}" },
+  { label: "$Prod", type: "namespace", detail: "product" },
+  { label: "$Integral", type: "namespace", detail: "integral" },
+
+  // Math functions (mathjs)
+  ...[
+    ["sin", "trig"], ["cos", "trig"], ["tan", "trig"],
+    ["asin", "trig"], ["acos", "trig"], ["atan", "trig"], ["atan2", "trig"],
+    ["sqrt", "math"], ["sqr", "math (=sqrt)"], ["abs", "math"],
+    ["log", "math (natural)"], ["log10", "math"], ["lg", "math (=log10)"],
+    ["exp", "math"], ["pow", "math"],
+    ["floor", "math"], ["ceil", "math"], ["round", "math"],
+    ["min", "math"], ["max", "math"], ["sign", "math"],
+    ["if", "calcpad ternary"],
+    ["det", "matrix"], ["inv", "matrix"], ["transpose", "matrix"],
+  ].map(([label, detail]) => ({ label, type: "function" as const, detail, apply: `${label}(` })),
+
+  // Constants
+  { label: "pi", type: "constant", detail: "π = 3.14159…" },
+  { label: "e", type: "constant", detail: "Euler ≈ 2.71828" },
+
+  // Unit-conversion operators
+  { label: "to", type: "keyword", detail: "convert unit", apply: "to " },
+  { label: "in", type: "keyword", detail: "convert unit", apply: "in " },
+
+  // Common units
+  ...["mm", "cm", "m", "km", "g", "kg", "ton", "N", "kN", "MN",
+      "Pa", "kPa", "MPa", "GPa", "Nm", "kNm", "deg", "rad", "s"].map((u) => ({
+    label: u, type: "type" as const, detail: "unit",
+  })),
+];
+
+/**
+ * Build completions by scanning the document for user-defined variables and
+ * functions. Picks up assignments (`x = ...`), prompts (`F = ?kN`), and
+ * function definitions (`f(x) = ...`).
+ */
+function dynamicCompletions(source: string): Completion[] {
+  const out: Completion[] = [];
+  const seen = new Set<string>();
+  const lines = source.split("\n");
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith("'") || line.startsWith("//") || line.startsWith("#") || line.startsWith("@") || line.startsWith("$") || line.startsWith('"')) continue;
+
+    // Function def: f(x) = ... or g(a,b) = ...
+    const fnMatch = line.match(/^([\p{L}_][\p{L}\p{N}_]*)\s*\(([^)]+)\)\s*=/u);
+    if (fnMatch && !seen.has(fnMatch[1])) {
+      seen.add(fnMatch[1]);
+      out.push({
+        label: fnMatch[1],
+        type: "function",
+        detail: `(${fnMatch[2].split(",").map((s) => s.trim()).join(", ")})`,
+        apply: `${fnMatch[1]}(`,
+      });
+      continue;
+    }
+
+    // Assignment / prompt: name = ... or name = ?
+    const assignMatch = line.match(/^([\p{L}_][\p{L}\p{N}_]*)\s*=/u);
+    if (assignMatch && !seen.has(assignMatch[1])) {
+      seen.add(assignMatch[1]);
+      const isPrompt = line.includes("= ?");
+      out.push({
+        label: assignMatch[1],
+        type: "variable",
+        detail: isPrompt ? "input prompt" : "variable",
+      });
+    }
+  }
+  return out;
+}
+
+function calcpadCompletionSource(ctx: CompletionContext): CompletionResult | null {
+  // Allow identifier characters + leading #, @, $ for directive triggers
+  const before = ctx.matchBefore(/[#@$]?[\p{L}_][\p{L}\p{N}_]*$/u) ??
+                 ctx.matchBefore(/[#@$]$/);
+  if (!before && !ctx.explicit) return null;
+  const word = before;
+  if (!word) return null;
+
+  const source = ctx.state.doc.toString();
+  const dynamic = dynamicCompletions(source);
+
+  return {
+    from: word.from,
+    options: [...STATIC_COMPLETIONS, ...dynamic],
+    validFor: /^[#@$]?[\p{L}\p{N}_]*$/u,
+  };
+}
+
 /** Composite extension consumed by `<CodeMirror extensions={[ifcCalcLang()]}/>`. */
 export function ifcCalcLang(): Extension {
-  return [ifcCalcStream, syntaxHighlighting(ifcCalcHighlight)];
+  return [
+    ifcCalcStream,
+    syntaxHighlighting(ifcCalcHighlight),
+    autocompletion({
+      override: [calcpadCompletionSource],
+      activateOnTyping: true,
+      defaultKeymap: true,
+    }),
+  ];
 }

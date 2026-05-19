@@ -14,18 +14,14 @@ import {
   selectListIcon,
   imageIcon,
   svgShapeIcon,
-  viewSplitIcon,
-  viewEditorIcon,
-  viewPreviewIcon,
   pdfPreviewIcon,
   pdfIcon,
-  ifcExportIcon,
 } from "./calcIcons";
 import { parse, evaluate } from "@ifc-calc/core";
 import { useDocumentStore } from "../../store/documentStore";
 import { useLoadCaseStore } from "../../store/loadCaseStore";
 import { previewPdfReport, savePdfReport } from "../../tauri/pdfReport";
-import { openCalculationFile } from "../../tauri/fileOps";
+import { openCalculationFile, saveCalculationFile } from "../../tauri/fileOps";
 import PdfPreviewModal from "../calc/PdfPreviewModal";
 
 interface CalcTabProps {
@@ -54,6 +50,19 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
       alert(`Bestand openen mislukt: ${(err as Error).message}`);
     }
   }, [loadTemplate]);
+
+  const handleSave = useCallback(async () => {
+    try {
+      const path = await saveCalculationFile(source, filePath ?? "Berekening");
+      if (path) {
+        // Persist the new file path so DocumentBar / next save reflects it.
+        useDocumentStore.getState().markSaved(path);
+      }
+    } catch (err) {
+      console.error("Save file failed:", err);
+      alert(`Bestand opslaan mislukt: ${(err as Error).message}`);
+    }
+  }, [source, filePath]);
 
   const projectName = filePath ?? "Berekening";
 
@@ -88,7 +97,7 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
         <RibbonGroup label={t("calc.file", "Bestand")}>
           <RibbonButton icon={newDocIcon} label={t("calc.new", "Nieuw")} size="large" onClick={() => {}} />
           <RibbonButton icon={openFolderIcon} label={t("calc.open", "Openen")} size="large" onClick={handleOpen} />
-          <RibbonButton icon={saveDiskIcon} label={t("calc.save", "Opslaan")} size="large" onClick={() => {}} />
+          <RibbonButton icon={saveDiskIcon} label={t("calc.save", "Opslaan")} size="large" onClick={handleSave} />
         </RibbonGroup>
 
         <RibbonGroup label={t("calc.edit", "Bewerken")}>
@@ -109,12 +118,6 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
           <RibbonButton icon={svgShapeIcon} label={t("insert.svg", "SVG")} size="large" onClick={() => {}} />
         </RibbonGroup>
 
-        <RibbonGroup label={t("view.layout", "Weergave")}>
-          <RibbonButton icon={viewSplitIcon} label={t("view.split", "Splitsen")} size="large" onClick={() => {}} />
-          <RibbonButton icon={viewEditorIcon} label={t("view.editor", "Editor")} size="large" onClick={() => {}} />
-          <RibbonButton icon={viewPreviewIcon} label={t("view.preview", "Preview")} size="large" onClick={() => {}} />
-        </RibbonGroup>
-
         <RibbonGroup label={t("calc.export", "Exporteren")}>
           <RibbonButton
             icon={pdfPreviewIcon}
@@ -128,7 +131,6 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
             size="large"
             onClick={handleSavePdf}
           />
-          <RibbonButton icon={ifcExportIcon} label={t("calc.ifcExport", "IFC")} size="large" onClick={() => {}} />
         </RibbonGroup>
       </div>
 

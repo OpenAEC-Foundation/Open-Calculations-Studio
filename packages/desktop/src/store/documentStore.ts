@@ -10,6 +10,8 @@ interface DocumentState {
   setSource: (src: string) => void;
   setSelectValue: (id: string, value: string) => void;
   loadTemplate: (src: string, name?: string) => void;
+  /** Clear dirty flag and remember the on-disk filename (after Save / Save As). */
+  markSaved: (filePath: string) => void;
 }
 
 export const useDocumentStore = create<DocumentState>((set) => ({
@@ -22,4 +24,6 @@ export const useDocumentStore = create<DocumentState>((set) => ({
     set((s) => ({ selectValues: { ...s.selectValues, [id]: value } })),
   loadTemplate: (src, name) =>
     set({ source: src, selectValues: {}, filePath: name ?? null, dirty: false }),
+  markSaved: (filePath) =>
+    set({ filePath, dirty: false }),
 }));
