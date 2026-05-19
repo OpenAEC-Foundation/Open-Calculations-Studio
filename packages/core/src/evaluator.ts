@@ -3,6 +3,18 @@ import type { AstNode, ConditionalNode, EvaluatedNode } from './types.js';
 
 const math: MathJsInstance = create(all, {});
 
+// CalcPAD-style inline ternary: `if(cond, t, f)` — mathjs has no `if` function
+// by default. Register one. Booleans coerce naturally; unit-bearing values flow
+// through unchanged.
+math.import(
+  {
+    if: function (cond: unknown, t: unknown, f: unknown) {
+      return Boolean(cond) ? t : f;
+    },
+  },
+  { override: true },
+);
+
 export interface Scope {
   [key: string]: unknown;
 }

@@ -315,7 +315,13 @@ function parseLines(
     // Input prompt — check BEFORE generic assignment
     const promptMatch = trimmed.match(INPUT_PROMPT_RE);
     if (promptMatch) {
-      const unit = promptMatch[2].trim();
+      // CalcPAD allows `?*(unit)` for prompts that imply multiplication by the
+      // unit (e.g. `q = ?*(kN/m)`). Strip the leading `*` plus optional parens.
+      let unit = promptMatch[2].trim();
+      if (unit.startsWith('*')) unit = unit.slice(1).trim();
+      if (unit.startsWith('(') && unit.endsWith(')')) {
+        unit = unit.slice(1, -1).trim();
+      }
       nodes.push(
         markHidden({
           type: 'input-prompt',
