@@ -1,0 +1,320 @@
+#def style1$ = style="stroke:black; stroke-width:'stroke'; stroke-opacity:1;"
+#def style2$ = style="stroke:black; stroke-width:'stroke'; stroke-opacity:1; fill:transparent;"
+#def style3$ = style="stroke:black; stroke-width:'stroke'; stroke-opacity:1; fill:Lavender;"
+#def style4$ = style="stroke:black; stroke-width:'0.2'; stroke-opacity:1;"
+#def line$(x1$; y1$; x2$; y2$; style$) = '<line x1="'x1$'" y1="'y1$'" x2="'x2$'" y2="'y2$'" style$/>
+#def dashLine$(x1$; y1$; x2$; y2$; style$) = '<line x1="'x1$'" y1="'y1$'" x2="'x2$'" y2="'y2$'" stroke-dasharray="5 2" style4$/>
+#def rect$(x$; y$; w$; h$; style$) = '<rect x="'x$'" y="'y$'" width="'w$'" height="'h$'" style$/>
+#def rect2$(x$; y$; w$; h$; style$) = '<rect x="'x$'" y="'y$'" width="'w$'" height="'h$'" stroke-dasharray="40 10" style$/>
+#def circle$(x$; y$; style$) = '<circle cx="'x$'" cy="'y$'" r="'dist*3/10'" style$/>
+#def texth$(x$; y$; s$) = '<text x="'x$'" y="'y$'" text-anchor="middle">s$</text>
+#def texth2$(x$; y$; s$) = '<text x="'x$'" y="'y$'" text-anchor="middle" dominant-baseline="middle">s$</text>
+#def texth3$(x$; y$; s$) = '<text x="'x$'" y="'y$'" text-anchor="right" dominant-baseline="right" style="fill: red;">s$</text>
+#def texth4$(x$; y$; s$) = '<text x="'x$'" y="'y$'" text-anchor="left" dominant-baseline="Hanging" style="fill: red;">s$</text>
+#def textv$(x$; y$; s$) = '<text x="'x$'" y="'y$'" text-anchor="middle" transform="rotate(-90,'x$','y$')">s$</text>
+#def standard_style$ = style="stroke:black; stroke-width:1; fill:None; fill-opacity:1; stroke-opacity:1"
+#def sec_style$ = style="stroke:black; stroke-width:1; fill:lightyellow"
+#def axis_style$ = stroke-dasharray="'36*stroke','12*stroke','4*stroke','12*stroke'" style="stroke:limegreen; stroke-width:'2*stroke'"
+#def dim_style$ = style="stroke:goldenrod; stroke-width:'1.5*stroke'; fill:goldenrod"
+#def dimh$(x1$; x2$; y$; s$)
+	line$(x1$; y$ - dist; x1$; y$ + dist; dim_style$)
+	line$(x2$; y$ - dist; x2$; y$ + dist; dim_style$)
+	line$(x1$ - dist; y$; x2$ + dist; y$; dim_style$)
+	circle$(x2$; y$; dim_style$)
+	circle$(x1$; y$; dim_style$)
+	texth$((x1$ + x2$)/2; y$ - dist*3/4; s$)
+#end def
+#def dimv$(x$; y1$; y2$; s$)
+	line$(x$ - dist; y1$; x$ + dist; y1$; dim_style$)
+	line$(x$ - dist; y2$; x$ + dist; y2$; dim_style$)
+	line$(x$; y1$ + dist; x$; y2$ - dist; dim_style$)
+	circle$(x$; y1$; dim_style$)
+	circle$(x$; y2$; dim_style$)
+	textv$(x$ - dist*3/4; (y1$ + y2$)/2; s$)
+#end def
+#def rectanglecross$(x$; y$; w$; h$)
+	line$(x$; y$; x$+w$; y$; standard_style$)
+	line$(x$+w$; y$; x$; y$+h$; standard_style$)
+	line$(x$; y$+h$; x$+w$; y$+h$; standard_style$)
+	line$(x$; y$; x$; y$+h$; standard_style$)
+	line$(x$; y$; x$+w$; y$+h$; standard_style$)
+	line$(x$+w$; y$+h$; x$+w$; y$; standard_style$)
+#end def
+#def arrowLeft$(x$; y$; h$; text$)
+	 '<polygon points="'x$ + 45','y$ - h$/2' 'x$ + 30','y$ - h$/2' 'x$ + 30','y$ - 15' 'x$ + 15','y$' 'x$ + 30','y$ + 15' 'x$ + 30','y$ + h$/2' 'x$ + 45','y$ + h$/2'" style="stroke:red; stroke-width:1; fill:None; fill-opacity:1; stroke-opacity:1;" />
+	'<text x="'x$ + 10'" y="'y$ + 35'" style="font-family:Calibri;font-size:14px;stroke:red;stroke-width:0.1;">'text$'</text>'
+#end def
+#def arrowUp$(x$; y$; h$; text$)
+	'<polygon points="'x$ - h$/2','y$ + 45' 'x$ - h$/2','y$ + 30' 'x$ - 15','y$ + 30' 'x$','y$ + 15' 'x$ + 15','y$ + 30' 'x$ + h$/2','y$ + 30' 'x$ + h$/2','y$ + 45'" style="stroke:red; stroke-width:1; fill:None; fill-opacity:1; stroke-opacity:1;" />
+	'<text x="'x$ + 25'" y="'y$ + 40'" style="font-family:Calibri;font-size:14px;stroke:red;stroke-width:0.1;">'text$'</text>'
+#end def
+#def drawGeneral$(b$; l$; n_Length$)
+	#hide
+	#val
+	b__ = b$/1m
+	l__ = l$/1m
+	b__total = b__*n_Length$
+	l__total = l__*1
+	
+	scale__ = 0.05
+	b__scale = b__/scale__
+	l__scale = l__/scale__
+	btot_scale = b__total/scale__
+	htot_scale = l__total/scale__
+	stroke = 1
+	dist = 10
+	xx__0 = 50
+	yy__0 = 70
+	#show
+	'<svg viewbox="'-xx__0' '-yy__0' 'b__scale*n_Length$ + 2*xx__0' 'l__scale + 1.5*yy__0'" xmlns="http://www.w3.org/2000/svg" version="1.1" style="font-size:16px; width:100%; max-height:500px;">'
+	#for i = 0 : n_Length$ - 1
+		rect$(b__scale*i; 0; b__scale; l__scale; style2$)
+		line$(b__scale*i; 0; b__scale*i + b__scale; l__scale; style1$)
+		line$(b__scale*i; l__scale; b__scale*i + b__scale; 0; style1$)
+		dimh$(b__scale*i; b__scale*i + b__scale; -25; 'b__')
+	#loop
+	dimh$(0; btot_scale; -50; 'b__total')
+	dimv$(-25; htot_scale; 0; 'l__total')
+	'</svg>'
+	#equ
+#end def
+#def drawWind$(b$; l$; n_Length$)
+	#val
+	#hide
+	b__ = b$/1m
+	l__ = l$/1m
+	b__total = b__*n_Length$
+	l__total = l__*1
+	scale__ = 0.08
+	b__scale = b__/scale__
+	l__scale = l__/scale__
+	btot_scale = b__total/scale__
+	htot_scale = l__total/scale__
+	stroke = 1'lijndikte
+	dist = 10'maatlijnschaal
+	
+	xx__0 = 50
+	yy__0 = 70
+	#show
+	'<svg viewbox="'-xx__0' '-yy__0' 'b__scale*n_Length$ + 2*xx__0' 'l__scale + 2*yy__0'" xmlns="http://www.w3.org/2000/svg" version="1.1" style="font-size:16px; width:100%; max-height:500px;">'
+	#for i = 0 : n_Length$ - 1
+		rect$(b__scale*i; 0; b__scale; l__scale; style2$)
+		line$(b__scale*i; 0; b__scale*i + b__scale; l__scale; style1$)
+		line$(b__scale*i; l__scale; b__scale*i + b__scale; 0; style1$)
+		dimh$(b__scale*i; b__scale*i + b__scale; -25; 'b__')
+	#loop
+	dimh$(0; btot_scale; -50; 'b__total')
+	dimv$(-25; htot_scale; 0; 'l__total')
+	arrowLeft$(btot_scale; l__scale/2; 15; "Wind 1")
+	arrowUp$(b__scale*n_Length/2; htot_scale; 15; "Wind 2")
+	'</svg>'
+	#equ
+#end def
+#def drawFDN$(b$; l$; n_Length$; nnn$; b_fdn1$; b_fdn2$; b_fdn3$; b_fdn4$; l_fdn1$; l_fdn2$; l_fdn3$; l_fdn4$)
+	#val
+	#hide
+	b__ = b$/1m
+	l__ = l$/1m
+	 
+	b__total = b__*n_Length$
+	l__total = l__*1
+	
+	scale__ = 0.05
+	b__scale = b__/scale__
+	l__scale = l__/scale__
+	btot_scale = b__total/scale__
+	htot_scale = l__total/scale__
+	stroke = 1
+	dist = 10
+	
+	xx__0 = 20
+	yy__0 = 40
+	
+	b__1 = b_fdn1$/1m/scale__
+	b__2 = b_fdn2$/1m/scale__
+	b__3 = b_fdn3$/1m/scale__
+	b__4 = b_fdn4$/1m/scale__
+	
+	l__1 = l_fdn1$/1m/scale__
+	l__2 = l_fdn2$/1m/scale__
+	l__3 = l_fdn3$/1m/scale__
+	l__4 = l_fdn4$/1m/scale__
+	
+	#show
+	'<svg viewbox="'-xx__0' '-yy__0' 'b__scale*n_Length$ + 2*xx__0' 'l__scale + 2*yy__0'" xmlns="http://www.w3.org/2000/svg" version="1.1" style="font-size:16px; width:100%; max-height:500px;">'
+	#for i = 0 : n_Length$ - 1
+		rect$(b__scale*i; 0; b__scale; l__scale; style2$)
+		line$(b__scale*i; 0; b__scale*i + b__scale; l__scale; style1$)
+		line$(b__scale*i; l__scale; b__scale*i + b__scale; 0; style1$)
+	#loop
+	rect$(0*b__scale - b__1/2; 0 - l__1/2; b__1; l__1; style3$)
+	rect$(n_Length*b__scale - b__1/2; 0 - l__1/2; b__1; l__1; style3$)
+	rect$(0*b__scale - b__1/2; l__scale - l__1/2; b__1; l__1; style3$)
+	rect$(n_Length*b__scale - b__1/2; l__scale - l__1/2; b__1; l__1; style3$)
+	texth2$(0*b__scale; 0; 1)
+	texth2$(n_Length*b__scale; 0; 1)
+	texth2$(0*b__scale; l__scale; 1)
+	texth2$(n_Length*b__scale; l__scale; 1)
+	
+	#for i = 1 : n_Length$ - 1
+		rect$(i*b__scale - b__2/2; 0 - l__2/2; b__2; l__2; style3$)
+		rect$(i*b__scale - b__2/2; l__scale - l__2/2; b__2; l__2; style3$)
+		
+		texth2$(i*b__scale; 0; 2)
+		texth2$(i*b__scale; l__scale; 2)
+		
+		#for j = 1 : nnn$
+			rect$(i*b__scale - b__4/2; j*l__scale/(nnn$ + 1) - l__4/2; b__4; l__4; style3$)
+			texth2$(i*b__scale; j*l__scale/(nnn$ + 1); 4)
+		#loop
+	#loop
+	
+	#for j = 1 : nnn$
+		rect$(0*b__scale - b__3/2; j*l__scale/(nnn$ + 1) - l__3/2; b__3; l__3; style3$)
+		texth2$(0*b__scale; j*l__scale/(nnn$ + 1); 3)
+		
+		rect$(n_Length*b__scale - b__3/2; j*l__scale/(nnn$ + 1) - l__3/2; b__3; l__3; style3$)
+		texth2$(n_Length*b__scale; j*l__scale/(nnn$ + 1); 3)
+	#loop
+	'</svg>'
+	#equ
+#end def
+#def drawFloor$(b$; l$; nnn$)
+	#hide
+	#val
+	nnn2 = 2*nnn$
+	b__ = (b$/1m)/nnn2
+	l__ = l$/1m
+	b__total = b__*nnn2
+	l__total = l__*1
+	
+	scale__ = 0.05
+	b__scale = b__/scale__
+	l__scale = l__/scale__
+	btot_scale = b__total/scale__
+	htot_scale = l__total/scale__
+	stroke = 0.5
+	dist = 5
+	xx__0 = 50
+	yy__0 = 70
+	
+	#if nnn$ ≡ 1
+		aaa1 = [0; 1; 2]
+	#else if nnn$ ≡ 2
+		aaa1 = [0; 1; 3; 4]
+	#else if nnn$ ≡ 3
+		aaa1 = [0; 1; 3; 5; 6]
+	#end if
+	#show
+	'<svg viewbox="'-xx__0' '-yy__0' 'b__scale*nnn2 + 2*xx__0' 'l__scale + 1.2*yy__0'" xmlns="http://www.w3.org/2000/svg" version="1.1" style="font-size:10px; width:100%; max-height:500px;background-color: #ffffff;">'
+	#for i = 0 : nnn$ - 1
+		#hide
+		j = 2*i + 1
+		#show
+		dashLine$(b__scale*j; 0; b__scale*j; l__scale; style1$)
+	#loop
+	texth3$(0; 0; A)
+	texth4$(0; l__scale; A)
+	texth3$(b__scale*2*nnn$; 0; A)
+	texth4$(b__scale*2*nnn$; l__scale; A)
+	#if nnn$ ≡ 1
+		texth3$(b__scale; 0; B)
+		texth4$(b__scale; l__scale; B)
+	#else 
+		#for i = 1 : nnn$ - 1
+			texth3$(b__scale*i*2; 0; B)
+			texth4$(b__scale*i*2; l__scale; B)
+		#loop
+	#end if
+	#for i = 1 : nnn$ + 1
+		dimh$(b__scale*aaa1.i; b__scale*aaa1.(i+1); -15; '(aaa1.(i+1) - aaa1.i)*b__')
+	#loop
+	rect$(0; 0; b__scale * nnn2; htot_scale; style2$)
+	dashLine$(0; htot_scale / 2; btot_scale; htot_scale / 2; style1$)
+	dimh$(0; btot_scale; -35; 'b__total')
+	dimv$(-32; l__scale; 0; 'l__total')
+	dimv$(-15; l__scale / 2; 0; 'l__total / 2')
+	dimv$(-15; l__scale; l__scale / 2; 'l__total / 2')
+	'</svg>'
+	'<div style="text-align: center; font-size:20px;">Ground Floor Payment</div>
+	#equ
+#end def
+#def drawCeiling$(b$; l$)
+	#hide
+	#val
+	nnn2 = 2
+	b__ = (b$/1m)/nnn2
+	l__ = l$/1m
+	b__total = b__*nnn2
+	l__total = l__*1
+	
+	scale__ = 0.05
+	b__scale = b__/scale__
+	l__scale = l__/scale__
+	btot_scale = b__total/scale__
+	htot_scale = l__total/scale__
+	stroke = 0.5
+	dist = 5
+	xx__0 = 50
+	yy__0 = 70
+	
+	#show
+	'<svg viewbox="'-xx__0' '-yy__0' 'b__scale*nnn2 + 2*xx__0' 'l__scale + 1.2*yy__0'" xmlns="http://www.w3.org/2000/svg" version="1.1" style="font-size:10px; width:100%; max-height:500px;background-color: #ffffff;">'
+	#for i = 0 : 2
+		#hide
+		j = 2*i + 1
+		#show
+		dashLine$(b__scale*j; 0; b__scale*j; l__scale; style1$)
+	#loop
+	texth3$(0; 0; C)
+	texth4$(0; l__scale; C)
+	texth3$(b__scale*nnn2; 0; C)
+	texth4$(b__scale*nnn2; l__scale; C)
+	
+	dimh$(b__scale*0; b__scale*1; -15; 'b__')
+	dimh$(b__scale*1; b__scale*2; -15; 'b__')
+	
+	rect$(0; 0; b__scale * nnn2; htot_scale; style2$)
+	dashLine$(0; htot_scale / 2; btot_scale; htot_scale / 2; style1$)
+	dimh$(0; btot_scale; -35; 'b__total')
+	dimv$(-30; l__scale; 0; 'l__total')
+	dimv$(-10; l__scale / 2; 0; 'l__total / 2')
+	dimv$(-10; l__scale; l__scale / 2; 'l__total / 2')
+	'</svg>'
+	'<div style="text-align: center; font-size:20px;">First Floor, Roof Payment</div>
+	#equ
+#end def
+#def drawSide$(b$; l$; nnn$)
+	#hide
+	#val
+	b__ = (b$/1m)
+	h__ = l$/1m
+	b__total = b__*1
+	l__total = h__*nnn$
+	
+	scale__ = 0.05
+	b__scale = b__/scale__
+	l__scale = h__/scale__
+	btot_scale = b__total/scale__
+	htot_scale = l__total/scale__
+	stroke = 0.5
+	dist = 5
+	xx__0 = 50
+	yy__0 = 30
+	
+	#show
+	'<svg viewbox="'-xx__0' '-yy__0' 'b__scale + 2*xx__0' 'htot_scale + 1.2*yy__0'" xmlns="http://www.w3.org/2000/svg" version="1.1" style="font-size:10px; width:100%; max-height:500px;background-color: #ffffff;">'
+	#for i = 0 : nnn$ - 1
+		rect$(0; l__scale*i; b__scale; l__scale; style2$)
+		dimv$(-15; l__scale*(i+1); l__scale*i; 'h__')
+		texth2$(b__scale / 2; i * l__scale + l__scale / 2; Story 'nnn$ - i - 1')
+	#loop
+	
+	#if nnn$ > 1
+		dimv$(-32; nnn$*l__scale; 0; 'l__total')
+	#end if
+	
+	'</svg>'
+	'<div style="text-align: center; font-size:20px;">Side View</div>
+	#equ
+#end def

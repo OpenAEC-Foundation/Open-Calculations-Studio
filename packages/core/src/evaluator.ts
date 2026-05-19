@@ -324,6 +324,9 @@ function evaluateAssignment(
       unit,
     };
   } catch (err) {
+    // Bind to NaN so downstream references don't cascade into "Undefined
+    // symbol" — they'll get NaN and either short-circuit or propagate.
+    scope[name] = Number.NaN;
     return {
       type: 'assignment',
       name,

@@ -84,6 +84,10 @@ const ANGLE_MODE_RE = /^#(rad|deg|gra|equ)\b/;
 const NO_OP_DIRECTIVE_RE = /^#(def|include|novar|varsub)\b/;
 const REPEAT_RE = /^#repeat\s+(.+)$/;
 const ENDREPEAT_RE = /^#end\s+repeat\b/;
+// CalcPAD `#for var = lo : hi … #loop` (#break supported as early exit)
+const FOR_RE = /^#for\s+([\p{L}_][\p{L}\p{N}_]*)\s*=\s*(.+?)\s*:\s*(.+)$/u;
+const LOOP_RE = /^#loop\b/;
+const BREAK_RE = /^#break\b/;
 // Match `$Plot{...}` even when CalcPAD has appended trailing persisted-input
 // data after the closing brace (e.g. `}\v2\t3`).
 const PLOT_RE = /^\$Plot\s*\{([^}]+)\}/;
@@ -135,6 +139,184 @@ function stripDollarSuffix(source: string): string {
 }
 
 /**
+ * Expand CalcPAD multi-line `#def name(p1; p2; ...) ... #end def` macros via
+ * textual substitution. Single-line `#def name = "value"` and
+ * `#def name(args) = expression` are skipped (handled later).
+ *
+ * The macro body lines have parameter references like `x1`, `dist*3/10`, or
+ * nested macro calls `line(...)`. We substitute params with the actual call
+ * arguments and re-emit the body lines in place of the call site. Recursive
+ * expansion runs up to MAX_PASSES times to resolve macro→macro→macro chains.
+ */
+function expandMacros(source: string): string {
+  interface Macro { params: string[]; body: string[]; oneLine: string | null }
+  const macros = new Map<string, Macro>();
+
+  // Pass 1 — collect definitions and remove their lines from the source.
+  const raw = source.split('\n');
+  const stripped: string[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const line = raw[i];
+    const trimmed = line.trim();
+    // Multi-line: `#def name(p1; p2; ...)` or `#def name$(p1$; p2$; ...)`
+    // (no `=` sign on the def line). `$` is a CalcPAD string-type suffix.
+    const blockDef = trimmed.match(/^#def\s+([\p{L}_][\p{L}\p{N}_]*)\$?\s*\(\s*([^)]*)\s*\)\s*$/u);
+    if (blockDef) {
+      const name = blockDef[1];
+      const params = blockDef[2]
+        .split(/[,;]/)
+        .map((p) => p.trim().replace(/\$$/, ''))  // strip trailing $ from param names
+        .filter(Boolean);
+      const body: string[] = [];
+      i++;
+      while (i < raw.length && !/^\s*#end\s+def\b/.test(raw[i])) {
+        body.push(raw[i]);
+        i++;
+      }
+      macros.set(name, { params, body, oneLine: null });
+      continue;
+    }
+    // Inline: `#def name(p1; p2) = template-text` (string suffix optional)
+    const inlineDef = trimmed.match(/^#def\s+([\p{L}_][\p{L}\p{N}_]*)\$?\s*\(\s*([^)]*)\s*\)\s*=\s*(.+)$/u);
+    if (inlineDef) {
+      const name = inlineDef[1];
+      const params = inlineDef[2]
+        .split(/[,;]/)
+        .map((p) => p.trim().replace(/\$$/, ''))
+        .filter(Boolean);
+      macros.set(name, { params, body: [], oneLine: inlineDef[3] });
+      continue;
+    }
+    // Inline string constant: `#def Name = "value"` — leave for later, line stays.
+    stripped.push(line);
+  }
+
+  if (macros.size === 0) return source;
+
+  // Pass 2 — left-to-right linear scan, expanding macro calls one at a time.
+  // `\$?` between the name and `(` matches CalcPAD's string-typed call syntax
+  // `getFdn$(arg)`, `line$(...)`.
+  let text = stripped.join('\n');
+  const namePattern = `(?<![\\p{L}\\p{N}_])(${[...macros.keys()].map(escapeRegExp).join('|')})\\$?\\s*\\(`;
+  const MAX_PASSES = 8;
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    let changed = false;
+    let cursor = 0;
+    const out: string[] = [];
+    const callRe = new RegExp(namePattern, 'gu');
+    let match;
+    while ((match = callRe.exec(text)) !== null) {
+      const name = match[1];
+      const openParen = match.index + match[0].length - 1;
+      const closeParen = findMatchingParen(text, openParen);
+      if (closeParen === -1) { callRe.lastIndex = openParen + 1; continue; }
+      const args = splitArgs(text.slice(openParen + 1, closeParen));
+      const macro = macros.get(name)!;
+      const expanded = applyMacro(macro, args);
+      out.push(text.slice(cursor, match.index));
+      out.push(expanded);
+      cursor = closeParen + 1;
+      callRe.lastIndex = cursor;
+      changed = true;
+    }
+    out.push(text.slice(cursor));
+    text = out.join('');
+    if (!changed) break;
+  }
+  return text;
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function findMatchingParen(s: string, openIdx: number): number {
+  let depth = 0;
+  let inString = false;
+  for (let i = openIdx; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '(') depth++;
+    else if (ch === ')') {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+function splitArgs(raw: string): string[] {
+  const out: string[] = [];
+  let depth = 0, inString = false, start = 0;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '(' || ch === '[') depth++;
+    else if (ch === ')' || ch === ']') depth--;
+    else if ((ch === ';' || ch === ',') && depth === 0) {
+      out.push(raw.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  out.push(raw.slice(start).trim());
+  return out.filter((s, idx) => idx < out.length - 1 || s !== '');
+}
+
+function applyMacro(macro: { params: string[]; body: string[]; oneLine: string | null }, args: string[]): string {
+  const subst = (s: string): string => {
+    let result = s;
+    for (let i = 0; i < macro.params.length; i++) {
+      const p = macro.params[i];
+      const a = args[i] ?? '';
+      // Replace whole-word occurrences of parameter name
+      result = result.replace(
+        new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(p)}(?![\\p{L}\\p{N}_])`, 'gu'),
+        a,
+      );
+    }
+    return result;
+  };
+  if (macro.oneLine !== null) return subst(macro.oneLine);
+  return macro.body.map(subst).join('\n');
+}
+
+/**
+ * CalcPAD allows `.` and `%` inside identifier names (e.g. `Cs.Cd`,
+ * `F_0.9G50%TotalWeight`). mathjs treats `.` as member access and `%` as
+ * modulo, so these names blow up. Fold them to `_` when the surrounding
+ * tokens form an identifier-like cluster: a leading letter/underscore,
+ * followed by one or more `.`/`%`-separated word groups.
+ *
+ *   `Cs.Cd`                  →  `Cs_Cd`
+ *   `F_0.9G50%TotalWeight`   →  `F_0_9G50_TotalWeight`
+ *   `0.5`                    →  unchanged (leading digit excluded)
+ *   `q * 0.9`                →  unchanged
+ */
+function foldIdentifierDots(source: string): string {
+  return source.replace(
+    /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*(?:[.%][\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_])/gu,
+    (match) => match.replace(/[.%]/g, '_'),
+  );
+}
+
+/**
+ * CalcPAD lets every expression carry a trailing display-format hint
+ * (`:F2` = fixed-point 2 decimals, `:N0`, `:G`, `:E3`, `:P`). It's a
+ * display directive, not part of the math — strip everywhere.
+ *
+ *   `Z_0:F2`         →  `Z_0`           (bare display)
+ *   `Cs.Cd = 1:F2`   →  `Cs.Cd = 1`     (assignment value)
+ *   `ψ_0,wind = 0.0:F2`  →  `ψ_0,wind = 0.0`
+ */
+function stripFormatSpecs(source: string): string {
+  // Match `:F2`, `:N0`, `:G`, `:E3`, `:P0` where preceded by digit/letter/`)`
+  // and followed by end-of-token (whitespace, EOL, or expression operator).
+  return source.replace(/(?<=[\p{L}\p{N}_)])\s*:\s*[FNGEPfngep]\d*(?=\s|$|[,;)+\-*/'])/gu, '');
+}
+
+/**
  * Rewrite CalcPAD multi-column matrix literals `[a;b;c|d;e;f]` into mathjs
  * nested-array form `[[a,d],[b,e],[c,f]]`. CalcPAD uses `|` as the column
  * separator and `;` between rows within a column. mathjs has no `|` operator
@@ -162,7 +344,15 @@ function rewriteMatrixLiterals(source: string): string {
 
 // ── Entry point ────────────────────────────────────────────────────────
 export function parse(source: string): AstNode[] {
-  source = rewriteMatrixLiterals(stripDollarSuffix(foldSubscriptCommas(source)));
+  // Macro expansion runs BEFORE \$-stripping so we still see param names like
+  // `x1\$` and substitute them across the body. After expansion we strip \$
+  // from any remaining identifiers.
+  source = expandMacros(source);
+  source = rewriteMatrixLiterals(
+    stripDollarSuffix(
+      foldIdentifierDots(stripFormatSpecs(foldSubscriptCommas(source))),
+    ),
+  );
   // CalcPAD's `'` character toggles between CODE and PROSE on a single line.
   // Lines start in CODE mode. Each `'` flips mode. So:
   //   a = ?', 'b = ?     →  CODE `a = ?` + PROSE `, ` + CODE `b = ?`
@@ -304,12 +494,45 @@ function parseLines(
       const bodyResult = parseLines(lines, i, end, state, (t) => ENDREPEAT_RE.test(t));
       i = bodyResult.endIndex;
       if (i < end) i++;
-      // Preserve outer hidden state — `#hide` inside the body shouldn't bubble
-      // up and mark the repeat itself as hidden.
       const repeatNode = { type: 'repeat' as const, count, body: bodyResult.nodes };
       nodes.push(wasHidden ? { ...repeatNode, hidden: true } : repeatNode);
       continue;
     }
+
+    // CalcPAD `#for var = lo : hi … #loop` — emit as a repeat node with the
+    // loop-var name baked into a synthetic `var = lo + _i - 1` prelude. Evaluator
+    // already exposes `_i` (1-based iteration counter) inside repeat bodies, so
+    // we only need to bind the user's `var` to the right value.
+    const forMatch = trimmed.match(FOR_RE);
+    if (forMatch) {
+      const wasHidden = state.hidden;
+      const varName = forMatch[1];
+      const lo = forMatch[2].trim();
+      const hi = forMatch[3].trim();
+      i++;
+      const bodyResult = parseLines(lines, i, end, state, (t) => LOOP_RE.test(t));
+      i = bodyResult.endIndex;
+      if (i < end) i++;
+      // Prepend a synthetic assignment so the loop variable is in scope each iter
+      const prelude: AstNode = {
+        type: 'assignment',
+        name: varName,
+        expression: `(${lo}) + _i - 1`,
+        raw: `${varName} = ${lo} + _i - 1`,
+      };
+      const count = `(${hi}) - (${lo}) + 1`;
+      const repeatNode = {
+        type: 'repeat' as const,
+        count,
+        body: [prelude, ...bodyResult.nodes],
+      };
+      nodes.push(wasHidden ? { ...repeatNode, hidden: true } : repeatNode);
+      continue;
+    }
+
+    // `#break` inside loops — not currently supported; emit as a no-op (the
+    // iteration still completes, but the loop won't terminate early).
+    if (BREAK_RE.test(trimmed)) { i++; continue; }
 
     // SVG block
     if (SVG_START_RE.test(trimmed)) {
