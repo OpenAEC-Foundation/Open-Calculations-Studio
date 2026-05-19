@@ -135,8 +135,9 @@ export const projectTree: TreeNode[] = [
     id: "calculations",
     label: "Calculations",
     defaultExpanded: true,
-    count: 2,
+    count: 3,
     children: [
+      { kind: "item", id: "calc-calcpad-demo", label: "CalcPAD syntax demo", templateId: "calcpad-demo" },
       { kind: "item", id: "calc-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen" },
       { kind: "item", id: "calc-stalen-ligger", label: "Stalen ligger IPE 300", templateId: "stalen-ligger" },
     ],

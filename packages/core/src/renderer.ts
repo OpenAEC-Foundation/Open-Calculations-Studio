@@ -62,9 +62,32 @@ function renderNode(node: EvaluatedNode): string {
     case 'select':
       return renderSelect(node);
 
+    case 'input-prompt':
+      return renderInputPrompt(node);
+
     case 'gef-upload':
       return renderGefUpload(node);
   }
+}
+
+function renderInputPrompt(node: {
+  name: string;
+  label: string;
+  unit: string;
+  currentValue: string;
+}): string {
+  const unitSuffix = node.unit
+    ? `<span class="calc-input-unit">${escapeHtml(node.unit)}</span>`
+    : '';
+  return `<div class="calc-input-prompt">
+  <label class="calc-input-label">${escapeHtml(node.label)} =</label>
+  <input type="number"
+    class="calc-input-value"
+    data-prompt="${escapeHtml(node.name)}"
+    value="${escapeHtml(node.currentValue)}"
+    step="any" />
+  ${unitSuffix}
+</div>`;
 }
 
 function renderSelect(node: {
@@ -286,6 +309,50 @@ export const defaultStyles = `
   outline: none;
   border-color: #0ea5e9;
   box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+}
+
+/* ─── CalcPAD ? Input Prompt ─────────────────────────────────────── */
+
+.calc-input-prompt {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0.35em 0;
+  padding: 0.4em 1em;
+  background: #fef3c7;
+  border-left: 3px solid #D97706;
+  border-radius: 0 6px 6px 0;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+.calc-input-label {
+  font-size: 0.95em;
+  font-weight: 600;
+  color: #92400E;
+  white-space: nowrap;
+}
+
+.calc-input-value {
+  padding: 0.25em 0.5em;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  background: white;
+  font-family: inherit;
+  font-size: 0.95em;
+  color: #1a1a1a;
+  width: 8em;
+}
+
+.calc-input-value:focus {
+  outline: none;
+  border-color: #D97706;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+}
+
+.calc-input-unit {
+  font-size: 0.9em;
+  color: #92400E;
+  font-style: italic;
 }
 
 /* ─── GEF Upload ─────────────────────────────────────────────────── */

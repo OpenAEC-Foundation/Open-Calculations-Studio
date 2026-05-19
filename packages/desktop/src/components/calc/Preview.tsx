@@ -38,7 +38,7 @@ export default function Preview() {
     if (!root) return;
 
     const selects = root.querySelectorAll<HTMLSelectElement>(".calc-select-input");
-    const handlers: Array<[HTMLSelectElement, () => void]> = [];
+    const selectHandlers: Array<[HTMLSelectElement, () => void]> = [];
 
     for (const sel of selects) {
       const varName = sel.dataset.var;
@@ -49,12 +49,31 @@ export default function Preview() {
         if (varName) setSelectValue(varName, sel.value);
       };
       sel.addEventListener("change", handler);
-      handlers.push([sel, handler]);
+      selectHandlers.push([sel, handler]);
+    }
+
+    // CalcPAD `?` input prompts — same selectValues store, different DOM
+    const prompts = root.querySelectorAll<HTMLInputElement>(".calc-input-value");
+    const promptHandlers: Array<[HTMLInputElement, () => void]> = [];
+
+    for (const inp of prompts) {
+      const varName = inp.dataset.prompt;
+      if (!varName) continue;
+      const stored = selectValues[varName];
+      if (stored !== undefined) inp.value = String(stored);
+      const handler = () => {
+        if (varName) setSelectValue(varName, inp.value);
+      };
+      inp.addEventListener("input", handler);
+      promptHandlers.push([inp, handler]);
     }
 
     return () => {
-      for (const [sel, handler] of handlers) {
+      for (const [sel, handler] of selectHandlers) {
         sel.removeEventListener("change", handler);
+      }
+      for (const [inp, handler] of promptHandlers) {
+        inp.removeEventListener("input", handler);
       }
     };
   }, [html, selectValues, setSelectValue]);

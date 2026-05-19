@@ -1,5 +1,5 @@
 import { create, all, type MathJsInstance, type MathNode } from 'mathjs';
-import type { AstNode, EvaluatedNode } from './types.js';
+import type { AstNode, ConditionalNode, EvaluatedNode } from './types.js';
 
 const math: MathJsInstance = create(all, {});
 
@@ -7,6 +7,11 @@ export interface Scope {
   [key: string]: unknown;
 }
 
+/**
+ * Values supplied at runtime for interactive nodes:
+ *   - @select blocks  → keyed by `name`, value is one of the option `value`s
+ *   - `?` input prompts (CalcPAD) → keyed by `name`, value is a number+unit string
+ */
 export interface SelectValues {
   [key: string]: string;
 }
@@ -22,56 +27,84 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
   for (const node of nodes) {
     switch (node.type) {
       case 'heading':
+        if (node.hidden) break;
         result.push({ type: 'heading', level: node.level, text: node.text });
         break;
 
       case 'text':
+        if (node.hidden) break;
         result.push({ type: 'text', text: node.text });
         break;
 
       case 'assignment': {
+        // Always evaluate so subsequent formulas see the binding — but only emit
+        // the rendered node when not hidden.
         const evaluated = evaluateAssignment(node.name, node.expression, scope);
-        result.push(evaluated);
+        if (!node.hidden) result.push(evaluated);
+        break;
+      }
+
+      case 'input-prompt': {
+        // CalcPAD `?` prompt — pick the user-supplied value or fall back to the default.
+        const raw = selectValues[node.name] ?? node.defaultValue;
+        const fullExpr = node.unit ? `${raw} ${node.unit}` : raw;
+        try {
+          scope[node.name] = math.evaluate(fullExpr, {});
+        } catch {
+          scope[node.name] = parseFloat(raw) || 0;
+        }
+        if (!node.hidden) {
+          result.push({
+            type: 'input-prompt',
+            name: node.name,
+            label: node.label,
+            unit: node.unit,
+            currentValue: raw,
+          });
+        }
         break;
       }
 
       case 'conditional': {
         const condResult = evaluateConditional(node, scope, selectValues);
-        if (condResult) {
-          result.push(condResult);
-        }
+        if (condResult && !node.hidden) result.push(condResult);
         break;
       }
 
       case 'svg': {
+        if (node.hidden) break;
         const interpolated = interpolateSvg(node.content, scope);
         result.push({ type: 'svg', content: interpolated });
         break;
       }
 
       case 'image':
+        if (node.hidden) break;
         result.push({ type: 'image', src: node.src });
         break;
 
       case 'gef-upload':
+        if (node.hidden) break;
         result.push({ type: 'gef-upload', name: node.name, data: null });
         break;
 
       case 'select': {
         const selectedValue = selectValues[node.name] ?? node.options[0]?.value ?? '0';
-        // Set the variable in scope so subsequent formulas can use it
+        // Always bind to scope; only emit when not hidden.
         try {
           scope[node.name] = math.evaluate(selectedValue, {});
         } catch {
           scope[node.name] = parseFloat(selectedValue) || 0;
         }
-        result.push({
-          type: 'select',
-          name: node.name,
-          label: node.label,
-          options: node.options,
-          selectedValue,
-        });
+        if (!node.hidden) {
+          result.push({
+            type: 'select',
+            name: node.name,
+            label: node.label,
+            options: node.options,
+            selectedValue,
+          });
+        }
         break;
       }
     }
@@ -300,26 +333,44 @@ function formatInline(value: unknown): string {
 
 // ─── Conditionals ───────────────────────────────────────────────────
 
+/**
+ * Cascading evaluation — first branch whose condition is truthy wins.
+ * Falls through to `elseBody` if none match.
+ */
 function evaluateConditional(
-  node: { condition: string; ifBody: AstNode[]; elseBody: AstNode[] },
+  node: ConditionalNode,
   scope: Scope,
-  selectValues: SelectValues
+  selectValues: SelectValues,
 ): EvaluatedNode | null {
-  try {
-    const condValue = math.evaluate(node.condition, scope);
-    const isTruthy = Boolean(condValue);
-    const body = isTruthy ? node.ifBody : node.elseBody;
+  const branches = node.branches ?? (
+    // Legacy fallback if a caller hands us pre-cascading nodes
+    node.condition !== undefined && node.ifBody !== undefined
+      ? [{ condition: node.condition, body: node.ifBody }]
+      : []
+  );
 
-    if (body.length === 0) return null;
-
-    const children = evaluateNodes(body, scope, selectValues);
-    return { type: 'conditional-branch', children };
-  } catch {
-    return {
-      type: 'conditional-branch',
-      children: [{ type: 'text', text: `Error evaluating condition: ${node.condition}` }],
-    };
+  for (const branch of branches) {
+    try {
+      const condValue = math.evaluate(branch.condition, scope);
+      if (Boolean(condValue)) {
+        if (branch.body.length === 0) return null;
+        const children = evaluateNodes(branch.body, scope, selectValues);
+        return { type: 'conditional-branch', children };
+      }
+    } catch {
+      return {
+        type: 'conditional-branch',
+        children: [{ type: 'text', text: `Error evaluating condition: ${branch.condition}` }],
+      };
+    }
   }
+
+  // No branch matched — try else
+  if (node.elseBody && node.elseBody.length > 0) {
+    const children = evaluateNodes(node.elseBody, scope, selectValues);
+    return { type: 'conditional-branch', children };
+  }
+  return null;
 }
 
 // ─── SVG interpolation ──────────────────────────────────────────────

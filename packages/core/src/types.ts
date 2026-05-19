@@ -1,12 +1,23 @@
+/**
+ * CalcPAD-compatible node types.
+ *
+ * Visibility model: each renderable node may carry `hidden: true` (set by parser
+ * inside #hide…#show ranges). Hidden assignments still execute (variable binds
+ * to scope) but the renderer skips them. Compatible with CalcPAD's `#hide`/`#show`
+ * directives.
+ */
+
 export interface HeadingNode {
   type: 'heading';
   level: number;
   text: string;
+  hidden?: boolean;
 }
 
 export interface TextNode {
   type: 'text';
   text: string;
+  hidden?: boolean;
 }
 
 export interface AssignmentNode {
@@ -14,23 +25,47 @@ export interface AssignmentNode {
   name: string;
   expression: string;
   raw: string;
+  hidden?: boolean;
 }
 
+/**
+ * Cascading conditional with CalcPAD-style `#else if`.
+ * `branches[0]` is the primary `#if`; subsequent are `#else if`.
+ * `elseBody` is the final `#else` (or empty).
+ */
 export interface ConditionalNode {
   type: 'conditional';
-  condition: string;
-  ifBody: AstNode[];
+  branches: { condition: string; body: AstNode[] }[];
   elseBody: AstNode[];
+  hidden?: boolean;
+  /** Backwards-compat shims (renderer/legacy code may still reference these). */
+  condition?: string;
+  ifBody?: AstNode[];
+}
+
+/**
+ * CalcPAD `?` input prompt — `F = ? kN` prompts user for a numeric value.
+ * Interactive: renderer emits an <input>, value flows back via SelectValues.
+ */
+export interface InputPromptNode {
+  type: 'input-prompt';
+  name: string;
+  label: string;
+  defaultValue: string;
+  unit: string;
+  hidden?: boolean;
 }
 
 export interface SvgNode {
   type: 'svg';
   content: string;
+  hidden?: boolean;
 }
 
 export interface ImageNode {
   type: 'image';
   src: string;
+  hidden?: boolean;
 }
 
 export interface SelectOption {
@@ -43,11 +78,13 @@ export interface SelectNode {
   name: string;
   label: string;
   options: SelectOption[];
+  hidden?: boolean;
 }
 
 export interface GefUploadNode {
   type: 'gef-upload';
   name: string;  // variable prefix, e.g. "sondering1"
+  hidden?: boolean;
 }
 
 export type AstNode =
@@ -55,6 +92,7 @@ export type AstNode =
   | TextNode
   | AssignmentNode
   | ConditionalNode
+  | InputPromptNode
   | SvgNode
   | ImageNode
   | SelectNode
@@ -78,6 +116,15 @@ export interface EvaluatedAssignment {
   substitution: string;
   result: string;
   unit: string;
+  hidden?: boolean;
+}
+
+export interface EvaluatedInputPrompt {
+  type: 'input-prompt';
+  name: string;
+  label: string;
+  unit: string;
+  currentValue: string;
 }
 
 export interface EvaluatedConditionalBranch {
@@ -113,6 +160,7 @@ export type EvaluatedNode =
   | EvaluatedHeading
   | EvaluatedText
   | EvaluatedAssignment
+  | EvaluatedInputPrompt
   | EvaluatedConditionalBranch
   | EvaluatedSvg
   | EvaluatedImage
