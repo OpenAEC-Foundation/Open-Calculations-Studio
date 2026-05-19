@@ -1,0 +1,17 @@
+.split-pane {
+  height: 100%;
+  width: 100%;
+}
+
+.split-pane-handle {
+  width: 4px;
+  background: var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+  cursor: col-resize;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.split-pane-handle:hover,
+.split-pane-handle[data-resize-handle-active] {
+  background: var(--theme-accent, #D97706);
+}

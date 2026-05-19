@@ -5,6 +5,9 @@ import DocumentBar from "./components/DocumentBar";
 import StatusBar from "./components/StatusBar";
 import Backstage from "./components/backstage/Backstage";
 import SettingsDialog, { applyTheme } from "./components/settings/SettingsDialog";
+import Editor from "./components/calc/Editor";
+import Preview from "./components/calc/Preview";
+import SplitPane from "./components/calc/SplitPane";
 import { getSetting } from "./store";
 
 export default function App() {
@@ -43,23 +46,8 @@ export default function App() {
         onViewChange={setActiveView}
       />
       <DocumentBar />
-      <main
-        className="main-view"
-        style={{ flex: 1 }}
-      >
-        <div
-          className="placeholder"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-            color: "var(--text-secondary)",
-            fontFamily: "var(--font-body, Inter, sans-serif)",
-          }}
-        >
-          <p>Editor + Preview komen in Fase 3</p>
-        </div>
+      <main className="main-view" style={{ flex: 1, minHeight: 0 }}>
+        <SplitPane left={<Editor />} right={<Preview />} />
       </main>
       <StatusBar />
       <Backstage

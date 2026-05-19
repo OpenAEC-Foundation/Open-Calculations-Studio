@@ -43,6 +43,52 @@ button, input, select, textarea {
   font-family: inherit;
 }
 
+/* ── Ribbon design adjustments (Ifc-Calc) ──────────────────────────── */
+
+/* Slimmer ribbon for more editor real estate */
+.ribbon-content-wrapper {
+  height: 76px !important;
+}
+
+/* Tabs use Space Grotesk (heading font) for stronger character */
+.ribbon-tab {
+  font-family: var(--font-heading);
+  font-size: 11.5px !important;
+  letter-spacing: 0.01em;
+  padding: 6px 14px !important;
+}
+
+/* Active tab gets the brand voice: bold + slight underline accent */
+.ribbon-tab.active {
+  font-weight: 600 !important;
+}
+
+/* Section labels in ribbon (BESTAND, BEWERKEN…) use mono brand font */
+.ribbon-group-label,
+.ribbon-section-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+/* Subtle elevation below the ribbon so it visually anchors above content */
+.ribbon-container {
+  box-shadow: 0 1px 0 0 var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+}
+
+/* Active tab indicator gets brand amber underline (replaces template's animated border for clarity) */
+.ribbon-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: -1px;
+  height: 2px;
+  background: var(--theme-accent, #D97706);
+  border-radius: 1px;
+}
+.ribbon-tab { position: relative; }
+
 * {
   margin: 0;
   padding: 0;

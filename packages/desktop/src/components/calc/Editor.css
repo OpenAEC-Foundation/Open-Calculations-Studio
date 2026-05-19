@@ -1,0 +1,17 @@
+.calc-editor {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.calc-editor .cm-editor {
+  flex: 1;
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.calc-editor .cm-scroller {
+  font-family: inherit;
+}
