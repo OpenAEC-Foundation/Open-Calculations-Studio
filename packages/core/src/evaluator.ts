@@ -65,6 +65,67 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
         break;
       }
 
+      case 'user-function': {
+        // mathjs supports the `f(x) = expr` form natively via its parser.
+        try {
+          math.evaluate(node.raw, scope);
+        } catch (err) {
+          // Surface error as a hidden text — function won't be callable later.
+          if (!node.hidden) {
+            result.push({
+              type: 'text',
+              text: `Error defining function ${node.name}: ${(err as Error).message}`,
+            });
+          }
+        }
+        if (!node.hidden) {
+          result.push({
+            type: 'user-function',
+            name: node.name,
+            params: node.params,
+            expression: node.expression,
+          });
+        }
+        break;
+      }
+
+      case 'var-display': {
+        const value = scope[node.name];
+        if (value === undefined) {
+          if (!node.hidden) {
+            result.push({ type: 'text', text: `(${node.name} is niet gedefinieerd)` });
+          }
+          break;
+        }
+        if (!node.hidden) {
+          const resultStr = formatResult(value);
+          const unit = isUnit(value) ? simplifyUnitString(value) : '';
+          result.push({ type: 'var-display', name: node.name, result: resultStr, unit });
+        }
+        break;
+      }
+
+      case 'repeat': {
+        // Evaluate count as expression — fall back to integer parse.
+        let count = 0;
+        try {
+          const v = math.evaluate(node.count, scope);
+          count = Math.trunc(Number(v));
+        } catch {
+          count = parseInt(node.count, 10) || 0;
+        }
+        if (count < 0 || count > 10000) {
+          // Safety cap — prevents runaway loops from freezing the UI.
+          count = Math.min(Math.max(count, 0), 10000);
+        }
+        for (let iter = 1; iter <= count; iter++) {
+          scope['_i'] = iter;
+          const children = evaluateNodes(node.body, scope, selectValues);
+          if (!node.hidden) result.push(...children);
+        }
+        break;
+      }
+
       case 'conditional': {
         const condResult = evaluateConditional(node, scope, selectValues);
         if (condResult && !node.hidden) result.push(condResult);

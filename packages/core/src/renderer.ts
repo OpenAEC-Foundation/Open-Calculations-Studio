@@ -65,9 +65,30 @@ function renderNode(node: EvaluatedNode): string {
     case 'input-prompt':
       return renderInputPrompt(node);
 
+    case 'user-function':
+      return renderUserFunction(node);
+
+    case 'var-display':
+      return renderVarDisplay(node);
+
     case 'gef-upload':
       return renderGefUpload(node);
   }
+}
+
+function renderUserFunction(node: { name: string; params: string[]; expression: string }): string {
+  const nameLatex = nameToLatex(node.name);
+  const paramsLatex = node.params.map(nameToLatex).join(", \\, ");
+  const exprLatex = exprToLatex(node.expression);
+  const latex = `${nameLatex}(${paramsLatex}) = ${exprLatex}`;
+  return `<div class="calc-line"><span class="calc-formula">${renderLatex(latex, true)}</span></div>`;
+}
+
+function renderVarDisplay(node: { name: string; result: string; unit: string }): string {
+  const nameLatex = nameToLatex(node.name);
+  const valueLatex = resultToLatex(node.result, node.unit);
+  const latex = `${nameLatex} = ${valueLatex}`;
+  return `<div class="calc-line"><span class="calc-formula">${renderLatex(latex, true)}</span></div>`;
 }
 
 function renderInputPrompt(node: {

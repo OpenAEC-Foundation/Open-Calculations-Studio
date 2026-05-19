@@ -56,6 +56,43 @@ export interface InputPromptNode {
   hidden?: boolean;
 }
 
+/**
+ * CalcPAD user-defined function: `f(x) = x^2 + 1` or `g(a, b) = sqrt(a^2 + b^2)`.
+ * Evaluator passes the full assignment string verbatim to mathjs which supports
+ * function definitions natively (`f = (x) -> x^2 + 1`).
+ */
+export interface UserFunctionNode {
+  type: 'user-function';
+  name: string;
+  params: string[];
+  expression: string;
+  raw: string;
+  hidden?: boolean;
+}
+
+/**
+ * Read-only variable display — `x` alone on a line renders the current value.
+ * Useful for referencing earlier-computed quantities in narrative flow.
+ */
+export interface VarDisplayNode {
+  type: 'var-display';
+  name: string;
+  hidden?: boolean;
+}
+
+/**
+ * CalcPAD `#repeat n … #end repeat` loop. The body is evaluated `count` times;
+ * scope is shared across iterations so values accumulate (e.g. running totals).
+ *
+ * Iteration index is bound to the variable `_i` (1-based) within the body.
+ */
+export interface RepeatNode {
+  type: 'repeat';
+  count: string; // raw expression — evaluated against scope per repeat
+  body: AstNode[];
+  hidden?: boolean;
+}
+
 export interface SvgNode {
   type: 'svg';
   content: string;
@@ -93,6 +130,9 @@ export type AstNode =
   | AssignmentNode
   | ConditionalNode
   | InputPromptNode
+  | UserFunctionNode
+  | VarDisplayNode
+  | RepeatNode
   | SvgNode
   | ImageNode
   | SelectNode
@@ -125,6 +165,21 @@ export interface EvaluatedInputPrompt {
   label: string;
   unit: string;
   currentValue: string;
+}
+
+export interface EvaluatedUserFunction {
+  type: 'user-function';
+  name: string;
+  params: string[];
+  expression: string;
+}
+
+/** Renders as `name = <value>` — same chrome as a regular assignment with no substitution. */
+export interface EvaluatedVarDisplay {
+  type: 'var-display';
+  name: string;
+  result: string;
+  unit: string;
 }
 
 export interface EvaluatedConditionalBranch {
@@ -161,6 +216,8 @@ export type EvaluatedNode =
   | EvaluatedText
   | EvaluatedAssignment
   | EvaluatedInputPrompt
+  | EvaluatedUserFunction
+  | EvaluatedVarDisplay
   | EvaluatedConditionalBranch
   | EvaluatedSvg
   | EvaluatedImage

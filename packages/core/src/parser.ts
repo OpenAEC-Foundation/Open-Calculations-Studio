@@ -16,6 +16,8 @@ import type { AstNode, ConditionalNode } from './types.js';
 // ── Recognizers ────────────────────────────────────────────────────────
 const ASSIGNMENT_RE = /^([a-zA-Z_]\w*)\s*=\s*(.+)$/;
 const INPUT_PROMPT_RE = /^([a-zA-Z_]\w*)\s*=\s*\?\s*(.*)$/;
+const USER_FUNC_RE = /^([a-zA-Z_]\w*)\s*\(\s*([a-zA-Z_]\w*(?:\s*,\s*[a-zA-Z_]\w*)*)\s*\)\s*=\s*(.+)$/;
+const VAR_DISPLAY_RE = /^([a-zA-Z_]\w*)\s*$/;
 const HEADING_RE = /^(#{1,6})\s+(.+)$/;
 const SVG_START_RE = /^@svg\s*$/;
 const BLOCK_END_RE = /^@end\s*$/;
@@ -29,6 +31,12 @@ const ELSE_RE = /^#else\s*$/;
 const ENDIF_RE = /^#end\s+if\s*$/;
 const HIDE_RE = /^#hide\s*$/;
 const SHOW_RE = /^#show\s*$/;
+const PRE_RE = /^#pre\s*$/;
+const ENDPRE_RE = /^#end\s+pre\s*$/;
+const POST_RE = /^#post\s*$/;
+const ENDPOST_RE = /^#end\s+post\s*$/;
+const REPEAT_RE = /^#repeat\s+(.+)$/;
+const ENDREPEAT_RE = /^#end\s+repeat\s*$/;
 const COMMENT_APOS_RE = /^'(\s|$)/;
 const COMMENT_SLASH_RE = /^\/\//;
 
@@ -48,11 +56,17 @@ interface ParseResult {
   endIndex: number;
 }
 
+/**
+ * Parse a contiguous slice of lines. When `stopOn` is provided, parsing halts at
+ * the first line (NOT consuming it) for which the predicate returns true. This
+ * lets conditional/loop bodies share all the top-level syntax handlers below.
+ */
 function parseLines(
   lines: string[],
   start: number,
   end: number,
   state: ParserState,
+  stopOn?: (trimmed: string) => boolean,
 ): ParseResult {
   const nodes: AstNode[] = [];
   let i = start;
@@ -60,6 +74,10 @@ function parseLines(
   while (i < end) {
     const line = lines[i];
     const trimmed = line.trim();
+
+    if (stopOn && stopOn(trimmed)) {
+      break;
+    }
 
     // Empty line — skip
     if (trimmed === '') {
@@ -82,6 +100,34 @@ function parseLines(
     if (SHOW_RE.test(trimmed)) {
       state.hidden = false;
       i++;
+      continue;
+    }
+
+    // #pre … #end pre / #post … #end post — execute but never render
+    if (PRE_RE.test(trimmed) || POST_RE.test(trimmed)) {
+      const isPre = PRE_RE.test(trimmed);
+      const wasHidden = state.hidden;
+      state.hidden = true;
+      i++;
+      const inner = parseLines(lines, i, end, state, (t) =>
+        isPre ? ENDPRE_RE.test(t) : ENDPOST_RE.test(t),
+      );
+      nodes.push(...inner.nodes);
+      i = inner.endIndex;
+      state.hidden = wasHidden;
+      if (i < end) i++; // consume #end pre / #end post
+      continue;
+    }
+
+    // #repeat N … #end repeat — body is collected verbatim and replayed in evaluator
+    const repeatMatch = trimmed.match(REPEAT_RE);
+    if (repeatMatch) {
+      const count = repeatMatch[1];
+      i++;
+      const bodyResult = parseLines(lines, i, end, state, (t) => ENDREPEAT_RE.test(t));
+      i = bodyResult.endIndex;
+      if (i < end) i++; // consume #end repeat
+      nodes.push(markHidden({ type: 'repeat', count, body: bodyResult.nodes }, state));
       continue;
     }
 
@@ -176,6 +222,23 @@ function parseLines(
       continue;
     }
 
+    // User-defined function: `f(x) = x^2 + 1` — match BEFORE generic assignment
+    const fnMatch = trimmed.match(USER_FUNC_RE);
+    if (fnMatch) {
+      const params = fnMatch[2].split(',').map((p) => p.trim());
+      nodes.push(
+        markHidden({
+          type: 'user-function',
+          name: fnMatch[1],
+          params,
+          expression: fnMatch[3].trim(),
+          raw: trimmed,
+        }, state),
+      );
+      i++;
+      continue;
+    }
+
     // Assignment (variable = expression)
     const assignMatch = trimmed.match(ASSIGNMENT_RE);
     if (assignMatch) {
@@ -187,6 +250,14 @@ function parseLines(
           raw: trimmed,
         }, state),
       );
+      i++;
+      continue;
+    }
+
+    // Bare variable display: `x` on its own line → show current value
+    const varDisplayMatch = trimmed.match(VAR_DISPLAY_RE);
+    if (varDisplayMatch) {
+      nodes.push(markHidden({ type: 'var-display', name: varDisplayMatch[1] }, state));
       i++;
       continue;
     }
@@ -271,108 +342,18 @@ function parseConditional(
   return { node, endIndex: i };
 }
 
-/** Collect body lines for a single conditional branch — stops at #else, #else if, #end if. */
+/**
+ * Collect body lines for a single conditional branch — stops at #else, #else if,
+ * #end if. Delegates to parseLines so the full syntax (functions, repeats, hide,
+ * nested conditionals, input prompts, …) is supported inside branches.
+ */
 function collectConditionalBody(
   lines: string[],
   start: number,
   end: number,
   state: ParserState,
 ): ParseResult {
-  const nodes: AstNode[] = [];
-  let i = start;
-
-  while (i < end) {
-    const trimmed = lines[i].trim();
-    if (
-      ELSE_RE.test(trimmed) ||
-      ELSE_IF_RE.test(trimmed) ||
-      ENDIF_RE.test(trimmed)
-    ) {
-      break;
-    }
-
-    // Empty line
-    if (trimmed === '') {
-      i++;
-      continue;
-    }
-
-    // Comment
-    if (COMMENT_APOS_RE.test(trimmed) || COMMENT_SLASH_RE.test(trimmed)) {
-      i++;
-      continue;
-    }
-
-    // #hide / #show toggles
-    if (HIDE_RE.test(trimmed)) {
-      state.hidden = true;
-      i++;
-      continue;
-    }
-    if (SHOW_RE.test(trimmed)) {
-      state.hidden = false;
-      i++;
-      continue;
-    }
-
-    // Nested #if
-    const ifMatch = trimmed.match(IF_RE);
-    if (ifMatch) {
-      const result = parseConditional(lines, i, end, state, ifMatch[1]);
-      nodes.push(result.node);
-      i = result.endIndex;
-      continue;
-    }
-
-    // Heading
-    const headingMatch = trimmed.match(HEADING_RE);
-    if (headingMatch) {
-      nodes.push(
-        markHidden({
-          type: 'heading',
-          level: headingMatch[1].length,
-          text: headingMatch[2],
-        }, state),
-      );
-      i++;
-      continue;
-    }
-
-    // Input prompt
-    const promptMatch = trimmed.match(INPUT_PROMPT_RE);
-    if (promptMatch) {
-      const unit = promptMatch[2].trim();
-      nodes.push(
-        markHidden({
-          type: 'input-prompt',
-          name: promptMatch[1],
-          label: promptMatch[1],
-          defaultValue: '0',
-          unit,
-        }, state),
-      );
-      i++;
-      continue;
-    }
-
-    // Assignment
-    const assignMatch = trimmed.match(ASSIGNMENT_RE);
-    if (assignMatch) {
-      nodes.push(
-        markHidden({
-          type: 'assignment',
-          name: assignMatch[1],
-          expression: assignMatch[2].trim(),
-          raw: trimmed,
-        }, state),
-      );
-      i++;
-      continue;
-    }
-
-    nodes.push(markHidden({ type: 'text', text: trimmed }, state));
-    i++;
-  }
-
-  return { nodes, endIndex: i };
+  return parseLines(lines, start, end, state, (trimmed) =>
+    ELSE_RE.test(trimmed) || ELSE_IF_RE.test(trimmed) || ENDIF_RE.test(trimmed),
+  );
 }
