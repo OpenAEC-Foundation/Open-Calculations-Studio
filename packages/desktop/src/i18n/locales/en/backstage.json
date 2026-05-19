@@ -1,0 +1,50 @@
+{
+  "file": "File",
+  "new": "New",
+  "open": "Open",
+  "save": "Save",
+  "saveAs": "Save As...",
+  "print": "Print",
+  "import": "Import",
+  "export": "Export",
+  "preferences": "Preferences",
+  "about": "About",
+  "exit": "Exit",
+  "aboutPanel": {
+    "title": "About",
+    "appName": "OpenAEC Desktop",
+    "version": "Version",
+    "tagline": "Build free. Build together.",
+    "description": "An open-source desktop application for the built environment — built with Tauri, React and TypeScript. Part of the OpenAEC Foundation: free tooling for architecture, engineering and construction.",
+    "companyName": "OpenAEC Foundation",
+    "companyDescription": "The built environment belongs to everyone. The OpenAEC Foundation develops and maintains free, open-source software for architecture, engineering and construction — so that knowledge and tools are shared, not locked away. Our core values: Open by default · Build together · Own your tools · Ship it.",
+    "website": "open-aec.com",
+    "github": "GitHub",
+    "license": "License",
+    "stichting": "Stichting OpenAEC Foundation (NL)",
+    "copyright": "© 2026 OpenAEC Foundation. Code: MIT. Content: CC BY-SA 4.0."
+  },
+  "importPanel": {
+    "title": "Import",
+    "fromFile": "Import from File",
+    "fromFileDesc": "Import data from supported file formats",
+    "fromTemplate": "Import from Template",
+    "fromTemplateDesc": "Load a pre-built template as a starting point"
+  },
+  "extensions": "Extensions",
+  "extInstalled": "Installed",
+  "extBrowse": "Browse Catalog",
+  "extSearchPlaceholder": "Search extensions...",
+  "extInstallFile": "Install from file",
+  "extInstalledBadge": "Installed",
+  "extInstallBtn": "Install",
+  "exportPanel": {
+    "title": "Export",
+    "asPdf": "Export as PDF",
+    "asPdfDesc": "Save the current document as a PDF file",
+    "asImage": "Export as Image",
+    "asImageDesc": "Save as PNG or JPEG image files",
+    "asHtml": "Export as HTML",
+    "asHtmlDesc": "Export the document as an HTML file"
+  }
+}

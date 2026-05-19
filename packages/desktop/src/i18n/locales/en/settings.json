@@ -1,0 +1,69 @@
+{
+  "title": "Settings",
+  "resetToDefaults": "Reset to Defaults",
+  "resetConfirm": "Are you sure you want to reset all settings to their default values?",
+  "tabs": {
+    "general": "General",
+    "appearance": "Appearance",
+    "editor": "Editor",
+    "files": "Files",
+    "shortcuts": "Shortcuts",
+    "plugins": "Plugins",
+    "about": "About"
+  },
+  "general": {
+    "application": "Application",
+    "language": "Language",
+    "startup": "Startup",
+    "restoreSession": "Restore last session on startup",
+    "checkUpdates": "Check for updates automatically",
+    "author": "Author",
+    "authorName": "Author name"
+  },
+  "appearance": {
+    "theme": "Theme",
+    "themeDescription": "Choose a color theme for the application.",
+    "light": "Light",
+    "forge": "Forge (dark)",
+    "dark": "OpenAEC (dark)",
+    "blueprint": "Blueprint",
+    "contrast": "High contrast",
+    "font": "Font",
+    "uiFontSize": "UI Font Size"
+  },
+  "editor": {
+    "general": "General",
+    "wordWrap": "Word wrap",
+    "lineNumbers": "Show line numbers",
+    "minimap": "Show minimap",
+    "indentation": "Indentation",
+    "tabSize": "Tab size",
+    "insertSpaces": "Insert spaces instead of tabs",
+    "nSpaces": "{{count}} spaces"
+  },
+  "files": {
+    "autoSave": "Auto Save",
+    "autoSaveOption": "Auto save",
+    "off": "Off",
+    "afterDelay": "After delay",
+    "onFocusChange": "On focus change",
+    "onWindowChange": "On window change",
+    "encoding": "File Encoding",
+    "defaultEncoding": "Default encoding",
+    "backup": "Backup",
+    "autoBackup": "Create automatic backups"
+  },
+  "shortcuts": {
+    "placeholder": "Keyboard shortcuts configuration will appear here."
+  },
+  "plugins": {
+    "placeholder": "Plugin management will appear here."
+  },
+  "about": {
+    "appName": "Open Template",
+    "version": "Version",
+    "framework": "Framework",
+    "license": "License",
+    "description": "A template application for building cross-platform desktop apps with Tauri."
+  }
+}

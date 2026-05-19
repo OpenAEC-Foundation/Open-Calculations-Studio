@@ -1,0 +1,23 @@
+{
+  "title": "Send Feedback",
+  "email": "Email",
+  "emailPlaceholder": "your@email.com",
+  "fullName": "Full Name",
+  "fullNamePlaceholder": "Your name (optional)",
+  "categoryGeneral": "General",
+  "categoryBug": "Bug",
+  "categoryFeature": "Feature",
+  "messagePlaceholder": "Tell us what's on your mind... (minimum 10 characters)",
+  "attachImages": "Attach Images",
+  "imageLimit": "Max 3 images, 1MB total",
+  "sentiment": "How are you feeling?",
+  "sentimentFrustrated": "Frustrated",
+  "sentimentNeutral": "Neutral",
+  "sentimentHappy": "Happy",
+  "submit": "Submit Feedback",
+  "submitting": "Submitting...",
+  "successTitle": "Thank you!",
+  "successMessage": "Your feedback has been submitted successfully.",
+  "sendAnother": "Send another",
+  "errorGeneric": "Failed to submit feedback. Please try again."
+}

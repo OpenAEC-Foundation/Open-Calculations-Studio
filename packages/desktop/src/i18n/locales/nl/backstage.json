@@ -1,0 +1,50 @@
+{
+  "file": "Bestand",
+  "new": "Nieuw",
+  "open": "Openen",
+  "save": "Opslaan",
+  "saveAs": "Opslaan als...",
+  "print": "Afdrukken",
+  "import": "Importeren",
+  "export": "Exporteren",
+  "preferences": "Voorkeuren",
+  "about": "Over",
+  "exit": "Afsluiten",
+  "aboutPanel": {
+    "title": "Over",
+    "appName": "OpenAEC Desktop",
+    "version": "Versie",
+    "tagline": "Build free. Build together.",
+    "description": "Een open-source desktopapplicatie voor de bouw — gemaakt met Tauri, React en TypeScript. Onderdeel van de OpenAEC Foundation: vrije gereedschappen voor architectuur, engineering en constructie.",
+    "companyName": "OpenAEC Foundation",
+    "companyDescription": "De gebouwde omgeving is van iedereen. De OpenAEC Foundation ontwikkelt en onderhoudt vrije, open-source software voor architectuur, engineering en constructie — zodat kennis en gereedschap gedeeld worden, niet opgesloten. Onze kernwaarden: Open by default · Build together · Own your tools · Ship it.",
+    "website": "open-aec.com",
+    "github": "GitHub",
+    "license": "Licentie",
+    "stichting": "Stichting OpenAEC Foundation (NL)",
+    "copyright": "© 2026 OpenAEC Foundation. Code: MIT. Inhoud: CC BY-SA 4.0."
+  },
+  "importPanel": {
+    "title": "Importeren",
+    "fromFile": "Importeren uit bestand",
+    "fromFileDesc": "Gegevens importeren uit ondersteunde bestandsindelingen",
+    "fromTemplate": "Importeren uit sjabloon",
+    "fromTemplateDesc": "Laad een vooraf gemaakt sjabloon als startpunt"
+  },
+  "extensions": "Extensies",
+  "extInstalled": "Geïnstalleerd",
+  "extBrowse": "Bladeren",
+  "extSearchPlaceholder": "Zoek extensies...",
+  "extInstallFile": "Installeren uit bestand",
+  "extInstalledBadge": "Geïnstalleerd",
+  "extInstallBtn": "Installeren",
+  "exportPanel": {
+    "title": "Exporteren",
+    "asPdf": "Exporteren als PDF",
+    "asPdfDesc": "Sla het huidige document op als een PDF-bestand",
+    "asImage": "Exporteren als afbeelding",
+    "asImageDesc": "Opslaan als PNG- of JPEG-afbeeldingsbestanden",
+    "asHtml": "Exporteren als HTML",
+    "asHtmlDesc": "Exporteer het document als een HTML-bestand"
+  }
+}
