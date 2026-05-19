@@ -38,6 +38,11 @@ code, kbd, samp, pre {
   font-weight: 400;
 }
 
+/* Browser default for button/input is Arial — force brand body font everywhere */
+button, input, select, textarea {
+  font-family: inherit;
+}
+
 * {
   margin: 0;
   padding: 0;
