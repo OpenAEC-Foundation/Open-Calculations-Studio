@@ -5,5 +5,11 @@
     "packages/core",
     "packages/web",
     "packages/desktop"
-  ]
+  ],
+  "scripts": {
+    "icons": "node scripts/generate-icons.mjs && npm --prefix packages/desktop exec -- tauri icon src-tauri/icon-source.png"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5"
+  }
 }
