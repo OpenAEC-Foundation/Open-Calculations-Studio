@@ -41,7 +41,7 @@ npm run tauri dev --workspace=@openaec/calc
 ## Stack notes
 
 - **Frontend pure CSS, not Tailwind** — matches OpenAEC template's actual implementation (template has a leftover `tailwind.config.ts` but no Tailwind dep). All styling via `themes.css` tokens + per-component `.css` files.
-- **Body font: Segoe UI fallback** — template uses `"Segoe UI", Tahoma, Geneva, Verdana, sans-serif` instead of the brandbook's Inter. Documented as Phase 5 polish item; sister tools have the same setup.
+- **Fonts per brandbook §2.2** — body Inter, headings Space Grotesk, code JetBrains Mono. Loaded via Google Fonts link in `index.html`. The template's `App.css` originally hardcoded Segoe UI; we override to comply with the brandbook.
 - **Port 3021** — distinct from sister tool `cpt-viewer` on 3020 (template default).
 
 ## Stripped from OpenAEC template
