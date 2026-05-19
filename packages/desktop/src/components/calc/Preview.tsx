@@ -1,6 +1,7 @@
 import { useEffect, useRef, useMemo } from "react";
 import { process, defaultStyles } from "@ifc-calc/core";
 import { useDocumentStore } from "../../store/documentStore";
+import { useLoadCaseStore } from "../../store/loadCaseStore";
 import "katex/dist/katex.min.css";
 import "./Preview.css";
 
@@ -16,8 +17,13 @@ function ensureCoreStyles() {
 
 export default function Preview() {
   const source = useDocumentStore((s) => s.source);
-  const selectValues = useDocumentStore((s) => s.selectValues);
-  const setSelectValue = useDocumentStore((s) => s.setSelectValue);
+  // Prompt + select values are stored per-load-case. The active case's values
+  // drive the evaluator; switching the case re-renders the preview.
+  const activeId = useLoadCaseStore((s) => s.activeId);
+  const valuesByCase = useLoadCaseStore((s) => s.valuesByCase);
+  const setActiveValue = useLoadCaseStore((s) => s.setActiveValue);
+  const selectValues = valuesByCase[activeId] ?? {};
+  const setSelectValue = setActiveValue;
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

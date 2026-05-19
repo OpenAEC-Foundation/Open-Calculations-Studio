@@ -21,6 +21,7 @@ import {
 } from "./icons";
 import { parse, evaluate } from "@ifc-calc/core";
 import { useDocumentStore } from "../../store/documentStore";
+import { useLoadCaseStore } from "../../store/loadCaseStore";
 import { previewPdfReport, savePdfReport } from "../../tauri/pdfReport";
 import { openCalculationFile } from "../../tauri/fileOps";
 import PdfPreviewModal from "../calc/PdfPreviewModal";
@@ -32,9 +33,13 @@ interface CalcTabProps {
 export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabProps) {
   const { t } = useTranslation("ribbon");
   const source = useDocumentStore((s) => s.source);
-  const selectValues = useDocumentStore((s) => s.selectValues);
   const filePath = useDocumentStore((s) => s.filePath);
   const loadTemplate = useDocumentStore((s) => s.loadTemplate);
+  // PDF export uses the currently active load case's values so the exported
+  // report reflects whichever scenario the user is looking at.
+  const activeId = useLoadCaseStore((s) => s.activeId);
+  const valuesByCase = useLoadCaseStore((s) => s.valuesByCase);
+  const selectValues = valuesByCase[activeId] ?? {};
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const handleOpen = useCallback(async () => {

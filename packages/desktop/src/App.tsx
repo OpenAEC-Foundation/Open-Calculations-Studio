@@ -10,6 +10,7 @@ import Preview from "./components/calc/Preview";
 import SplitPane from "./components/calc/SplitPane";
 import ProjectBrowser from "./components/calc/ProjectBrowser";
 import IfcCodePanel from "./components/calc/IfcCodePanel";
+import LoadCaseTabs from "./components/calc/LoadCaseTabs";
 import { getSetting } from "./store";
 
 export default function App() {
@@ -50,12 +51,15 @@ export default function App() {
       <DocumentBar />
       <main className="main-view" style={{ flex: 1, minHeight: 0, display: "flex" }}>
         <ProjectBrowser />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {activeView === "ifc" ? (
-            <IfcCodePanel />
-          ) : (
-            <SplitPane left={<Editor />} right={<Preview />} />
-          )}
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            {activeView === "ifc" ? (
+              <IfcCodePanel />
+            ) : (
+              <SplitPane left={<Editor />} right={<Preview />} />
+            )}
+          </div>
+          {activeView !== "ifc" && <LoadCaseTabs />}
         </div>
       </main>
       <StatusBar />
