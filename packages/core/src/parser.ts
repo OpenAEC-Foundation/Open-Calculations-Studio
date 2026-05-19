@@ -77,7 +77,11 @@ const HIDE_RE = /^#hide\b/;
 const SHOW_RE = /^#show\b/;
 const PRE_RE = /^#pre\b/;
 const POST_RE = /^#post\b/;
-const ANGLE_MODE_RE = /^#(rad|deg|gra)\b/;
+const ANGLE_MODE_RE = /^#(rad|deg|gra|equ)\b/;
+// CalcPAD `#def Name$ = "string"` constant definitions, `#include filename`,
+// `#novar` (hide variable substitution), `#varsub` (variable substitution
+// control). Silently ignored — they don't change calculation values.
+const NO_OP_DIRECTIVE_RE = /^#(def|include|novar|varsub)\b/;
 const REPEAT_RE = /^#repeat\s+(.+)$/;
 const ENDREPEAT_RE = /^#end\s+repeat\b/;
 // Match `$Plot{...}` even when CalcPAD has appended trailing persisted-input
@@ -93,8 +97,72 @@ interface ParserState {
   hidden: boolean;
 }
 
+/**
+ * Pre-process the entire source to fold CalcPAD's comma-subscript identifiers
+ * (e.g. `V_b,0`, `n_Int,support,points`, `A_WindPressure,Suction`) into
+ * underscore-only equivalents that math.js can parse as valid identifiers.
+ *
+ * Heuristic — a comma is part of a subscript when it follows an identifier
+ * that already contains at least one `_`:
+ *   `n_Int,support,points`  →  `n_Int_support_points`
+ *   `V_b,0`                  →  `V_b_0`
+ *   `min(x_1; x_2)`          →  unchanged (`;` not `,`)
+ *   `f(x, y)`                →  unchanged (no `_` before the comma)
+ *   `min(x_1, x_2)`          →  unchanged (after `;` → `,` normalization runs
+ *                              later; `_1` lacks the comma cluster `,word`)
+ *
+ * Applied once at the top of parse() so all regexes downstream see clean
+ * identifiers.
+ */
+function foldSubscriptCommas(source: string): string {
+  return source.replace(
+    /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*_[\p{L}\p{N}_]+(?:,[\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_])/gu,
+    (match) => match.replace(/,/g, '_'),
+  );
+}
+
+/**
+ * CalcPAD identifies string variables with a trailing `$` (e.g. `ii$`,
+ * `Client$`, `getFdn$(ii$)`). math.js doesn't allow `$` in identifiers, so
+ * these references blow up entire conditional cascades. We simply strip the
+ * trailing `$` everywhere a word character precedes it — the values still
+ * bind to scope under the bare name, and the `$Plot{ … }` / `$Sum{ … }`
+ * directives (which start with `$`) are unaffected because they have no
+ * preceding word char.
+ */
+function stripDollarSuffix(source: string): string {
+  return source.replace(/([\p{L}\p{N}_])\$/gu, '$1');
+}
+
+/**
+ * Rewrite CalcPAD multi-column matrix literals `[a;b;c|d;e;f]` into mathjs
+ * nested-array form `[[a,d],[b,e],[c,f]]`. CalcPAD uses `|` as the column
+ * separator and `;` between rows within a column. mathjs has no `|` operator
+ * for matrices and needs explicit row-of-row form.
+ *
+ * Pattern matches a `[…]` block that contains at least one `|`. Inside, each
+ * `|`-delimited column is split on `;` into row values. The result is a
+ * mathjs nested array transposed so the rows iterate properly.
+ */
+function rewriteMatrixLiterals(source: string): string {
+  return source.replace(/\[([^\[\]]*\|[^\[\]]+)\]/g, (full, inner: string) => {
+    const columns = inner.split('|').map((col) =>
+      col.split(';').map((s) => s.trim()).filter(Boolean),
+    );
+    if (columns.length < 2) return full;
+    const rowCount = Math.max(...columns.map((c) => c.length));
+    const rows: string[] = [];
+    for (let r = 0; r < rowCount; r++) {
+      const cells = columns.map((c) => c[r] ?? '0');
+      rows.push(`[${cells.join(', ')}]`);
+    }
+    return `[${rows.join(', ')}]`;
+  });
+}
+
 // ── Entry point ────────────────────────────────────────────────────────
 export function parse(source: string): AstNode[] {
+  source = rewriteMatrixLiterals(stripDollarSuffix(foldSubscriptCommas(source)));
   // CalcPAD's `'` character toggles between CODE and PROSE on a single line.
   // Lines start in CODE mode. Each `'` flips mode. So:
   //   a = ?', 'b = ?     →  CODE `a = ?` + PROSE `, ` + CODE `b = ?`
@@ -220,7 +288,12 @@ function parseLines(
     if (PRE_RE.test(trimmed)) { i++; continue; }
 
     // #rad / #deg / #gra — angle mode hint. We rely on mathjs unit handling.
+    // #equ — CalcPAD equation-mode marker, same no-op for us.
     if (ANGLE_MODE_RE.test(trimmed)) { i++; continue; }
+
+    // #def / #include — currently skipped (string-constant definitions and
+    // file inclusion are out of scope for this engine).
+    if (NO_OP_DIRECTIVE_RE.test(trimmed)) { i++; continue; }
 
     // #repeat N … #end repeat
     const repeatMatch = trimmed.match(REPEAT_RE);

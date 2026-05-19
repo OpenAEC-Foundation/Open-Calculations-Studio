@@ -3,13 +3,101 @@ import type { AstNode, ConditionalNode, EvaluatedNode } from './types.js';
 
 const math: MathJsInstance = create(all, {});
 
-// CalcPAD-style inline ternary: `if(cond, t, f)` — mathjs has no `if` function
-// by default. Register one. Booleans coerce naturally; unit-bearing values flow
-// through unchanged.
+// CalcPAD-style helper functions that mathjs doesn't ship with.
 math.import(
   {
+    // Inline ternary: `if(cond, t, f)`
     if: function (cond: unknown, t: unknown, f: unknown) {
       return Boolean(cond) ? t : f;
+    },
+    // 1-based vector index: `take(2, [10, 20, 30])` → 20
+    // Also tolerates 1-arg form `take(vec)` → first element.
+    take: function (...args: unknown[]) {
+      // CalcPAD syntax is `take(idx, vec)`; after `;` → `,` normalization
+      // the second arg is the vector. mathjs may pass either order; accept both.
+      if (args.length === 1) {
+        const v = args[0];
+        return Array.isArray(v) ? v[0] : v;
+      }
+      const [a, b] = args;
+      const idx = typeof a === 'number' ? a : typeof b === 'number' ? b : NaN;
+      const vec = Array.isArray(a) ? a : Array.isArray(b) ? b : null;
+      if (!vec) return Number.NaN;
+      const i = Math.max(1, Math.trunc(idx)) - 1;
+      return vec[Math.min(i, vec.length - 1)];
+    },
+    // Boolean → 0/1 (CalcPAD uses `(cond) * value` patterns)
+    bool: function (cond: unknown) {
+      return Boolean(cond) ? 1 : 0;
+    },
+    // CalcPAD Excel-like lookups. Real semantics:
+    //   hlookup(value, lookup_row, return_row_index[, exact])
+    //   vlookup(value, lookup_col, return_col_index[, exact])
+    // Stubbed: search for the closest match in the first array argument and
+    // return the matching value (or 0 on miss). Far from a faithful Excel
+    // impl but prevents whole-conditional cascades from failing.
+    hlookup: function (...args: unknown[]) {
+      const arr = args.find((a) => Array.isArray(a)) as unknown[] | undefined;
+      const target = args.find((a) => typeof a === 'number' || (a && typeof (a as object).valueOf === 'function')) ?? 0;
+      if (!arr) return 0;
+      const tNum = Number(target);
+      let bestIdx = 0;
+      let bestDelta = Infinity;
+      for (let i = 0; i < arr.length; i++) {
+        const v = Number(arr[i]);
+        const d = Math.abs(v - tNum);
+        if (d < bestDelta) { bestDelta = d; bestIdx = i; }
+      }
+      return arr[bestIdx];
+    },
+    vlookup: function (...args: unknown[]) {
+      return (math as unknown as { hlookup: (...a: unknown[]) => unknown }).hlookup(...args);
+    },
+    // Variants of hlookup — closest-greater-or-equal, closest-less-or-equal
+    hlookup_ge: function (...args: unknown[]) {
+      const arr = args.find((a) => Array.isArray(a)) as unknown[] | undefined;
+      const target = Number(args.find((a) => typeof a === 'number') ?? 0);
+      if (!arr || arr.length === 0) return 0;
+      let candidate: unknown = arr[0];
+      let bestDelta = Infinity;
+      for (const v of arr) {
+        const n = Number(v);
+        if (n >= target && n - target < bestDelta) { bestDelta = n - target; candidate = v; }
+      }
+      return candidate;
+    },
+    hlookup_le: function (...args: unknown[]) {
+      const arr = args.find((a) => Array.isArray(a)) as unknown[] | undefined;
+      const target = Number(args.find((a) => typeof a === 'number') ?? 0);
+      if (!arr || arr.length === 0) return 0;
+      let candidate: unknown = arr[arr.length - 1];
+      let bestDelta = Infinity;
+      for (const v of arr) {
+        const n = Number(v);
+        if (n <= target && target - n < bestDelta) { bestDelta = target - n; candidate = v; }
+      }
+      return candidate;
+    },
+    n_rows: function (v: unknown) {
+      if (Array.isArray(v)) return v.length;
+      return 1;
+    },
+    n_cols: function (v: unknown) {
+      if (Array.isArray(v) && Array.isArray(v[0])) return v[0].length;
+      return 1;
+    },
+    // CalcPAD `get(row, col, matrix)` — fetch matrix element (1-based)
+    get: function (...args: unknown[]) {
+      const mat = args.find((a) => Array.isArray(a)) as unknown[] | undefined;
+      if (!mat) return 0;
+      const nums = args.filter((a) => typeof a === 'number') as number[];
+      const row = nums[0] ? Math.max(1, Math.trunc(nums[0])) - 1 : 0;
+      const col = nums[1] ? Math.max(1, Math.trunc(nums[1])) - 1 : 0;
+      const rowVal = mat[Math.min(row, mat.length - 1)];
+      if (Array.isArray(rowVal)) {
+        return rowVal[Math.min(col, rowVal.length - 1)];
+      }
+      return rowVal;
     },
   },
   { override: true },
