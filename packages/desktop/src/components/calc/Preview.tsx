@@ -2,6 +2,7 @@ import { useEffect, useRef, useMemo } from "react";
 import { process, defaultStyles } from "@ifc-calc/core";
 import { useDocumentStore } from "../../store/documentStore";
 import { useLoadCaseStore } from "../../store/loadCaseStore";
+import { calcpadIncludes } from "../../templates/calcpad-includes";
 import "katex/dist/katex.min.css";
 import "./Preview.css";
 
@@ -32,7 +33,7 @@ export default function Preview() {
 
   const html = useMemo(() => {
     try {
-      return process(source, selectValues);
+      return process(source, selectValues, { includes: calcpadIncludes });
     } catch (err) {
       const msg = (err as Error).message;
       return `<div class="ifc-calc"><p class="calc-text" style="color:#dc2626;">Render error: ${msg}</p></div>`;

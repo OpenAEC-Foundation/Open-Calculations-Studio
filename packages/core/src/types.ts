@@ -20,6 +20,11 @@ export interface TextNode {
   /** True when text came from a CalcPAD prose line (`'...`) — content is passed
    *  through as HTML without escaping. False (default) for derived/safe text. */
   html?: boolean;
+  /** Optional template parts for CalcPAD prose interpolation. When present,
+   *  the renderer should concat literal segments with evaluated expressions.
+   *  Example: `'<svg viewbox="'-xx' '-yy'" ...>` becomes
+   *    [{lit:'<svg viewbox="'}, {expr:'-xx'}, {lit:' '}, {expr:'-yy'}, {lit:'" ...>'}] */
+  parts?: Array<{ kind: 'literal'; value: string } | { kind: 'expr'; value: string }>;
   hidden?: boolean;
 }
 

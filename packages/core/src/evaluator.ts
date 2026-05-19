@@ -133,7 +133,26 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
 
       case 'text':
         if (node.hidden) break;
-        result.push({ type: 'text', text: node.text, html: node.html });
+        if (node.parts && node.parts.length > 0) {
+          // Resolve CalcPAD prose interpolation — eval each `expr` part and
+          // concat with literal parts. Failed exprs fall back to the source.
+          const out: string[] = [];
+          for (const p of node.parts) {
+            if (p.kind === 'literal') {
+              out.push(p.value);
+            } else {
+              try {
+                const v = math.evaluate(p.value, scope);
+                out.push(stringifyInterpolated(v));
+              } catch {
+                out.push(p.value);
+              }
+            }
+          }
+          result.push({ type: 'text', text: out.join(''), html: true });
+        } else {
+          result.push({ type: 'text', text: node.text, html: node.html });
+        }
         break;
 
       case 'assignment': {
@@ -676,6 +695,19 @@ function formatTick(n: number): string {
 }
 
 // ─── SVG interpolation ──────────────────────────────────────────────
+
+/**
+ * Convert an evaluated mathjs value to a string suitable for inlining into
+ * SVG / HTML markup. Numbers lose their units (SVG coordinates are unitless).
+ */
+function stringifyInterpolated(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'number') return formatNumber(v);
+  if (typeof v === 'string') return v;
+  if (typeof v === 'boolean') return v ? '1' : '0';
+  if (isUnit(v)) return formatNumber(getNumericValue(v));
+  return String(v);
+}
 
 function interpolateSvg(content: string, scope: Scope): string {
   return content.replace(/\{\{(\w+)\}\}/g, (_, varName: string) => {

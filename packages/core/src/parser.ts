@@ -1,4 +1,4 @@
-import type { AstNode, ConditionalNode, PlotNode } from './types.js';
+import type { AstNode, ConditionalNode, PlotNode, TextNode } from './types.js';
 
 /**
  * Line-based parser with CalcPAD-compatible syntax.
@@ -151,6 +151,9 @@ function stripDollarSuffix(source: string): string {
 function expandMacros(source: string): string {
   interface Macro { params: string[]; body: string[]; oneLine: string | null }
   const macros = new Map<string, Macro>();
+  // Constant `#def Name$ = literal` macros — expanded as bare-identifier
+  // textual substitution (no call syntax).
+  const constants = new Map<string, string>();
 
   // Pass 1 — collect definitions and remove their lines from the source.
   const raw = source.split('\n');
@@ -187,16 +190,49 @@ function expandMacros(source: string): string {
       macros.set(name, { params, body: [], oneLine: inlineDef[3] });
       continue;
     }
-    // Inline string constant: `#def Name = "value"` — leave for later, line stays.
+    // Inline constant: `#def Name$ = literal` (no parens). Collect for
+    // bare-identifier textual replacement in pass 3.
+    const constDef = trimmed.match(/^#def\s+([\p{L}_][\p{L}\p{N}_]*)\$?\s*=\s*(.+)$/u);
+    if (constDef) {
+      constants.set(constDef[1], constDef[2]);
+      continue;
+    }
     stripped.push(line);
   }
 
-  if (macros.size === 0) return source;
+  if (macros.size === 0 && constants.size === 0) return source;
 
   // Pass 2 — left-to-right linear scan, expanding macro calls one at a time.
   // `\$?` between the name and `(` matches CalcPAD's string-typed call syntax
   // `getFdn$(arg)`, `line$(...)`.
   let text = stripped.join('\n');
+
+  // Constant substitution helper — bare-identifier replacement, optional
+  // trailing `$`. Loop a few times so constants referencing other constants
+  // resolve.
+  const constPattern = constants.size > 0
+    ? `(?<![\\p{L}\\p{N}_])(${[...constants.keys()].map(escapeRegExp).join('|')})\\$?(?![\\p{L}\\p{N}_(])`
+    : null;
+  const expandConstants = (s: string): string => {
+    if (!constPattern) return s;
+    let out = s;
+    for (let pass = 0; pass < 4; pass++) {
+      let changed = false;
+      out = out.replace(new RegExp(constPattern, 'gu'), (_m, name: string) => {
+        changed = true;
+        return constants.get(name) ?? '';
+      });
+      if (!changed) break;
+    }
+    return out;
+  };
+
+  // Pass 1.5 — substitute constants (so constants referenced in macro CALLS
+  // get expanded before macro arg-substitution sees them).
+  text = expandConstants(text);
+
+  if (macros.size === 0) return text;
+
   const namePattern = `(?<![\\p{L}\\p{N}_])(${[...macros.keys()].map(escapeRegExp).join('|')})\\$?\\s*\\(`;
   const MAX_PASSES = 8;
   for (let pass = 0; pass < MAX_PASSES; pass++) {
@@ -223,6 +259,10 @@ function expandMacros(source: string): string {
     text = out.join('');
     if (!changed) break;
   }
+  // Pass 3 — re-substitute constants that surfaced via macro arg-substitution
+  // (e.g. `rect$(...; style1$)` injects `style1$` into the macro body, which
+  // must now resolve to `style="stroke:..."`).
+  text = expandConstants(text);
   return text;
 }
 
@@ -270,9 +310,13 @@ function applyMacro(macro: { params: string[]; body: string[]; oneLine: string |
     for (let i = 0; i < macro.params.length; i++) {
       const p = macro.params[i];
       const a = args[i] ?? '';
-      // Replace whole-word occurrences of parameter name
+      // CalcPAD typed-param references carry `$` suffix (`x$`, `b$`). Match
+      // BOTH `name$` (preferred, unambiguous) and `name` (whole-word bare
+      // reference, used in arithmetic contexts like `b__ = b/1m` after the
+      // body's own $-strip pass). The $-suffixed form is checked first so it
+      // wins over the shorter bare form within a single replacement scan.
       result = result.replace(
-        new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(p)}(?![\\p{L}\\p{N}_])`, 'gu'),
+        new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(p)}\\$(?![\\p{L}\\p{N}_])`, 'gu'),
         a,
       );
     }
@@ -295,10 +339,15 @@ function applyMacro(macro: { params: string[]; body: string[]; oneLine: string |
  *   `q * 0.9`                →  unchanged
  */
 function foldIdentifierDots(source: string): string {
-  return source.replace(
-    /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*(?:[.%][\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_])/gu,
-    (match) => match.replace(/[.%]/g, '_'),
-  );
+  // Skip content inside double-quoted strings — URLs like
+  // "http://www.w3.org/2000/svg" and dotted text inside SVG must survive.
+  return source.split('"').map((seg, idx) => {
+    if (idx % 2 === 1) return seg;
+    return seg.replace(
+      /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*(?:[.%][\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_])/gu,
+      (match) => match.replace(/[.%]/g, '_'),
+    );
+  }).join('"');
 }
 
 /**
@@ -342,8 +391,30 @@ function rewriteMatrixLiterals(source: string): string {
   });
 }
 
+/**
+ * Inline `#include filename` directives by looking up each filename in the
+ * resolver map. Missing files become a comment line. Runs once before macro
+ * expansion so included macros (`#def …`) participate in expansion.
+ */
+function inlineIncludes(source: string, includes: ReadonlyMap<string, string>): string {
+  return source.replace(/^[ \t]*#include\s+(\S+)\s*$/gmu, (match, name: string) => {
+    const key = name.trim().replace(/^["']|["']$/g, '');
+    const content = includes.get(key);
+    if (content === undefined) return `// (include not found: ${key})`;
+    return content;
+  });
+}
+
+export interface ParseOptions {
+  /** Map of filename → contents for `#include filename` resolution. */
+  includes?: ReadonlyMap<string, string>;
+}
+
 // ── Entry point ────────────────────────────────────────────────────────
-export function parse(source: string): AstNode[] {
+export function parse(source: string, options: ParseOptions = {}): AstNode[] {
+  if (options.includes && options.includes.size > 0) {
+    source = inlineIncludes(source, options.includes);
+  }
   // Macro expansion runs BEFORE \$-stripping so we still see param names like
   // `x1\$` and substitute them across the body. After expansion we strip \$
   // from any remaining identifiers.
@@ -381,7 +452,26 @@ export function parse(source: string): AstNode[] {
       lines.push(raw);
       continue;
     }
-    // Toggle split — alternating code / prose fragments
+    // Prose lines (leading `'`) split toggle-style into alternating prose/code
+    // segments. If NO code segment looks like an assignment (`name = value`),
+    // treat the whole line as one prose template with inline value interp
+    // (SVG macros: `'<line x1="'a'" y1="'b'"/>`). If any segment is a real
+    // assignment (e.g. `'→'b_fdn = 0.58m`), fall back to per-segment split.
+    if (trimmed.startsWith("'")) {
+      const segs = raw.split("'");
+      // Code segments are at even indices ≥ 2. Treat as assignment if it
+      // matches IDENT '=' VALUE (single `=`, not `==` / `!=` / `<=` / `>=`).
+      const assignLikeRe = /^\s*[\p{L}_][\p{L}\p{N}_,]*\s*=(?!=)/u;
+      let hasAssignment = false;
+      for (let k = 2; k < segs.length; k += 2) {
+        if (assignLikeRe.test(segs[k])) { hasAssignment = true; break; }
+      }
+      if (!hasAssignment) {
+        lines.push(raw);
+        continue;
+      }
+    }
+    // Toggle split — alternating code / prose fragments (`a = ?', 'b = ?`)
     const parts = raw.split("'");
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
@@ -429,13 +519,31 @@ function parseLines(
     }
 
     // CalcPAD prose line: 'free text + <i>HTML</i>
+    // May contain embedded `'expr'` value interpolation (e.g. SVG macros).
     const proseMatch = trimmed.match(PROSE_RE);
     if (proseMatch) {
-      const text = proseMatch[1].trim();
+      const text = proseMatch[1];
+      const textTrim = text.trim();
       // Skip empty prose AND CalcPAD's persisted input values that latch
       // onto a trailing `'` (e.g. `'2	1` at EOF).
-      if (text !== '' && !TRAILING_DATA_RE.test(text)) {
-        nodes.push(markHidden({ type: 'text', text, html: true }, state));
+      if (textTrim !== '' && !TRAILING_DATA_RE.test(textTrim)) {
+        if (text.indexOf("'") !== -1) {
+          // Interpolation: split on `'`, alternating literal/expression.
+          const segments = text.split("'");
+          const parts: NonNullable<TextNode['parts']> = [];
+          for (let k = 0; k < segments.length; k++) {
+            const seg = segments[k];
+            if (k % 2 === 0) {
+              if (seg !== '') parts.push({ kind: 'literal', value: seg });
+            } else {
+              const expr = seg.trim();
+              if (expr !== '') parts.push({ kind: 'expr', value: expr });
+            }
+          }
+          nodes.push(markHidden({ type: 'text', text: textTrim, html: true, parts }, state));
+        } else {
+          nodes.push(markHidden({ type: 'text', text: textTrim, html: true }, state));
+        }
       }
       i++;
       continue;
@@ -513,12 +621,15 @@ function parseLines(
       const bodyResult = parseLines(lines, i, end, state, (t) => LOOP_RE.test(t));
       i = bodyResult.endIndex;
       if (i < end) i++;
-      // Prepend a synthetic assignment so the loop variable is in scope each iter
+      // Prepend a synthetic assignment so the loop variable is in scope each iter.
+      // Hidden so it doesn't show up in the rendered output (it's an implementation
+      // detail of the #for → repeat translation, not user-authored math).
       const prelude: AstNode = {
         type: 'assignment',
         name: varName,
         expression: `(${lo}) + _i - 1`,
         raw: `${varName} = ${lo} + _i - 1`,
+        hidden: true,
       };
       const count = `(${hi}) - (${lo}) + 1`;
       const repeatNode = {

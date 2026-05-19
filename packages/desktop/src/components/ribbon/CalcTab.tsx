@@ -22,6 +22,7 @@ import { useDocumentStore } from "../../store/documentStore";
 import { useLoadCaseStore } from "../../store/loadCaseStore";
 import { previewPdfReport, savePdfReport } from "../../tauri/pdfReport";
 import { openCalculationFile, saveCalculationFile } from "../../tauri/fileOps";
+import { calcpadIncludes } from "../../templates/calcpad-includes";
 import PdfPreviewModal from "../calc/PdfPreviewModal";
 
 interface CalcTabProps {
@@ -67,7 +68,7 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
   const projectName = filePath ?? "Berekening";
 
   const evaluateCurrent = useCallback(() => {
-    const ast = parse(source);
+    const ast = parse(source, { includes: calcpadIncludes });
     return evaluate(ast, selectValues);
   }, [source, selectValues]);
 

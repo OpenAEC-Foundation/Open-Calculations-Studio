@@ -28,10 +28,49 @@ function escapeHtml(str: string): string {
 
 // ─── Node rendering ─────────────────────────────────────────────────
 
+/**
+ * Coalesce consecutive HTML text nodes that together form an `<svg>...</svg>`
+ * block into a single `svg` node. This is needed because CalcPAD's SVG macros
+ * emit one prose line per element (`'<line .../>`, `'<rect .../>`, etc.), and
+ * the default text renderer wraps each in `<p>`, which breaks SVG nesting.
+ */
+function coalesceSvg(nodes: EvaluatedNode[]): EvaluatedNode[] {
+  const out: EvaluatedNode[] = [];
+  let i = 0;
+  while (i < nodes.length) {
+    const n = nodes[i];
+    if (n.type === 'conditional-branch') {
+      out.push({ ...n, children: coalesceSvg(n.children) });
+      i++;
+      continue;
+    }
+    if (n.type === 'text' && n.html && /<svg\b/i.test(n.text)) {
+      const buf: string[] = [n.text];
+      let depth = (n.text.match(/<svg\b/gi)?.length ?? 0)
+                - (n.text.match(/<\/svg>/gi)?.length ?? 0);
+      i++;
+      while (i < nodes.length && depth > 0) {
+        const m = nodes[i];
+        if (m.type !== 'text' || !m.html) break;
+        buf.push(m.text);
+        depth += (m.text.match(/<svg\b/gi)?.length ?? 0)
+               - (m.text.match(/<\/svg>/gi)?.length ?? 0);
+        i++;
+      }
+      out.push({ type: 'svg', content: buf.join('\n') });
+      continue;
+    }
+    out.push(n);
+    i++;
+  }
+  return out;
+}
+
 export function render(nodes: EvaluatedNode[]): string {
+  const coalesced = coalesceSvg(nodes);
   const parts: string[] = ['<div class="ifc-calc">'];
 
-  for (const node of nodes) {
+  for (const node of coalesced) {
     parts.push(renderNode(node));
   }
 
