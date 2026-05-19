@@ -142,4 +142,17 @@ export const projectTree: TreeNode[] = [
       { kind: "item", id: "calc-stalen-ligger", label: "Stalen ligger IPE 300", templateId: "stalen-ligger" },
     ],
   },
+  {
+    kind: "category",
+    id: "calcpad-samples",
+    label: "CalcPAD voorbeelden",
+    defaultExpanded: true,
+    count: 4,
+    children: [
+      { kind: "item", id: "cpd-quadratic", label: "Quadratic Equation (.cpd)", templateId: "cpd-quadratic" },
+      { kind: "item", id: "cpd-cubic", label: "Cubic Equation (.cpd)", templateId: "cpd-cubic" },
+      { kind: "item", id: "cpd-lissajous", label: "Lissajous Curve (.cpd)", templateId: "cpd-lissajous" },
+      { kind: "item", id: "cpd-rectangle", label: "Rectangle Area (.cpd)", templateId: "cpd-rectangle" },
+    ],
+  },
 ];

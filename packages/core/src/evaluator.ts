@@ -33,7 +33,7 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
 
       case 'text':
         if (node.hidden) break;
-        result.push({ type: 'text', text: node.text });
+        result.push({ type: 'text', text: node.text, html: node.html });
         break;
 
       case 'assignment': {
@@ -106,7 +106,6 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
       }
 
       case 'repeat': {
-        // Evaluate count as expression — fall back to integer parse.
         let count = 0;
         try {
           const v = math.evaluate(node.count, scope);
@@ -115,13 +114,26 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
           count = parseInt(node.count, 10) || 0;
         }
         if (count < 0 || count > 10000) {
-          // Safety cap — prevents runaway loops from freezing the UI.
           count = Math.min(Math.max(count, 0), 10000);
         }
         for (let iter = 1; iter <= count; iter++) {
           scope['_i'] = iter;
           const children = evaluateNodes(node.body, scope, selectValues);
           if (!node.hidden) result.push(...children);
+        }
+        break;
+      }
+
+      case 'plot': {
+        if (node.hidden) break;
+        try {
+          const svg = renderPlotSvg(node, scope);
+          result.push({ type: 'plot', svg });
+        } catch (err) {
+          result.push({
+            type: 'text',
+            text: `Plot fout: ${(err as Error).message}`,
+          });
         }
         break;
       }
@@ -432,6 +444,132 @@ function evaluateConditional(
     return { type: 'conditional-branch', children };
   }
   return null;
+}
+
+// ─── Plot rendering ─────────────────────────────────────────────────
+
+/**
+ * Sample each curve at `samples` evenly-spaced parameter values and produce
+ * a self-contained SVG with axes + colored polylines. Numbers are coerced to
+ * plain JS numbers (units are stripped via `valueOf`).
+ */
+function renderPlotSvg(
+  node: { curves: { xExpr?: string; yExpr: string }[]; param: string; lo: string; hi: string; samples?: number },
+  scope: Scope,
+): string {
+  const samples = node.samples ?? 120;
+  const lo = toPlain(math.evaluate(node.lo, scope));
+  const hi = toPlain(math.evaluate(node.hi, scope));
+  if (!isFinite(lo) || !isFinite(hi) || lo === hi) {
+    throw new Error(`invalid range ${lo} … ${hi}`);
+  }
+
+  // Pre-compile each curve's expressions
+  const compiled = node.curves.map((c) => ({
+    x: c.xExpr ? math.parse(c.xExpr).compile() : null,
+    y: math.parse(c.yExpr).compile(),
+  }));
+
+  // Sample
+  type Pt = { x: number; y: number };
+  const seriesData: Pt[][] = compiled.map(() => []);
+  const innerScope: Scope = { ...scope };
+  for (let i = 0; i <= samples; i++) {
+    const t = lo + ((hi - lo) * i) / samples;
+    innerScope[node.param] = t;
+    for (let s = 0; s < compiled.length; s++) {
+      try {
+        const x = compiled[s].x ? toPlain(compiled[s].x!.evaluate(innerScope)) : t;
+        const y = toPlain(compiled[s].y.evaluate(innerScope));
+        if (isFinite(x) && isFinite(y)) {
+          seriesData[s].push({ x, y });
+        }
+      } catch { /* skip bad sample */ }
+    }
+  }
+
+  // Compute bounds across all series
+  let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+  for (const series of seriesData) {
+    for (const p of series) {
+      if (p.x < xMin) xMin = p.x;
+      if (p.x > xMax) xMax = p.x;
+      if (p.y < yMin) yMin = p.y;
+      if (p.y > yMax) yMax = p.y;
+    }
+  }
+  if (!isFinite(xMin) || xMin === xMax) { xMin -= 1; xMax += 1; }
+  if (!isFinite(yMin) || yMin === yMax) { yMin -= 1; yMax += 1; }
+  const xPad = (xMax - xMin) * 0.05;
+  const yPad = (yMax - yMin) * 0.08;
+  xMin -= xPad; xMax += xPad; yMin -= yPad; yMax += yPad;
+
+  const W = 520;
+  const H = 320;
+  const padL = 44, padR = 16, padT = 16, padB = 32;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const sx = (v: number): number => padL + ((v - xMin) / (xMax - xMin)) * plotW;
+  const sy = (v: number): number => padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
+
+  const colors = ['#D97706', '#2563EB', '#16A34A', '#DC2626', '#7C3AED', '#0891B2'];
+  const series = seriesData.map((pts, s) => {
+    if (pts.length === 0) return '';
+    const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join(' ');
+    const color = colors[s % colors.length];
+    // Single-point series (e.g. roots `x_1|0`) → dot instead of line.
+    if (pts.length <= 2 && pts.every((p, i, arr) => i === 0 || (p.x === arr[i - 1].x && p.y === arr[i - 1].y))) {
+      const p = pts[0];
+      return `<circle cx="${sx(p.x).toFixed(1)}" cy="${sy(p.y).toFixed(1)}" r="4" fill="${color}" />`;
+    }
+    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" />`;
+  });
+
+  // Axes — origin lines if 0 is inside the range
+  const axes: string[] = [];
+  if (xMin < 0 && xMax > 0) {
+    const x0 = sx(0);
+    axes.push(`<line x1="${x0.toFixed(1)}" y1="${padT}" x2="${x0.toFixed(1)}" y2="${padT + plotH}" stroke="#94a3b8" stroke-width="0.8" />`);
+  }
+  if (yMin < 0 && yMax > 0) {
+    const y0 = sy(0);
+    axes.push(`<line x1="${padL}" y1="${y0.toFixed(1)}" x2="${padL + plotW}" y2="${y0.toFixed(1)}" stroke="#94a3b8" stroke-width="0.8" />`);
+  }
+
+  // Frame + tick labels (4 on each axis)
+  const ticks: string[] = [];
+  for (let i = 0; i <= 4; i++) {
+    const tx = xMin + ((xMax - xMin) * i) / 4;
+    const ty = yMin + ((yMax - yMin) * i) / 4;
+    const x = sx(tx);
+    const y = sy(ty);
+    ticks.push(`<text x="${x.toFixed(1)}" y="${H - padB + 14}" font-size="9" fill="#64748b" text-anchor="middle">${formatTick(tx)}</text>`);
+    ticks.push(`<text x="${padL - 6}" y="${y.toFixed(1) }" font-size="9" fill="#64748b" text-anchor="end" dominant-baseline="middle">${formatTick(ty)}</text>`);
+  }
+
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="calc-plot">
+    <rect x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="#fafaf9" stroke="#e7e5e4" stroke-width="1" />
+    ${axes.join('\n    ')}
+    ${series.join('\n    ')}
+    ${ticks.join('\n    ')}
+  </svg>`;
+}
+
+function toPlain(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (isUnit(v)) {
+    try { return getNumericValue(v); } catch { return Number.NaN; }
+  }
+  const n = Number(v);
+  return isFinite(n) ? n : Number.NaN;
+}
+
+function formatTick(n: number): string {
+  if (n === 0) return '0';
+  const abs = Math.abs(n);
+  if (abs >= 1000 || abs < 0.01) return n.toExponential(1);
+  if (Number.isInteger(n)) return n.toString();
+  return n.toFixed(2).replace(/\.?0+$/, '');
 }
 
 // ─── SVG interpolation ──────────────────────────────────────────────

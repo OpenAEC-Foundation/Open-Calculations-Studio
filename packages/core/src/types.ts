@@ -17,6 +17,9 @@ export interface HeadingNode {
 export interface TextNode {
   type: 'text';
   text: string;
+  /** True when text came from a CalcPAD prose line (`'...`) — content is passed
+   *  through as HTML without escaping. False (default) for derived/safe text. */
+  html?: boolean;
   hidden?: boolean;
 }
 
@@ -93,6 +96,28 @@ export interface RepeatNode {
   hidden?: boolean;
 }
 
+/**
+ * CalcPAD `$Plot{curve1 & curve2 @ var = lo : hi}` inline 2D plot.
+ * Each curve is either `yExpr` (implicit x) or `xExpr|yExpr` (parametric).
+ * The parameter (variable name + range) is shared across all curves.
+ *
+ * Evaluator samples each curve at `samples` points and renders as inline SVG.
+ */
+export interface PlotNode {
+  type: 'plot';
+  curves: { xExpr?: string; yExpr: string }[];
+  param: string;        // variable name, e.g. "x" or "θ"
+  lo: string;           // expression for lower bound
+  hi: string;           // expression for upper bound
+  samples?: number;     // default 100
+  hidden?: boolean;
+}
+
+export interface EvaluatedPlot {
+  type: 'plot';
+  svg: string;
+}
+
 export interface SvgNode {
   type: 'svg';
   content: string;
@@ -133,6 +158,7 @@ export type AstNode =
   | UserFunctionNode
   | VarDisplayNode
   | RepeatNode
+  | PlotNode
   | SvgNode
   | ImageNode
   | SelectNode
@@ -147,6 +173,7 @@ export interface EvaluatedHeading {
 export interface EvaluatedText {
   type: 'text';
   text: string;
+  html?: boolean;
 }
 
 export interface EvaluatedAssignment {
@@ -219,6 +246,7 @@ export type EvaluatedNode =
   | EvaluatedUserFunction
   | EvaluatedVarDisplay
   | EvaluatedConditionalBranch
+  | EvaluatedPlot
   | EvaluatedSvg
   | EvaluatedImage
   | EvaluatedSelect

@@ -45,7 +45,14 @@ function renderNode(node: EvaluatedNode): string {
       return `<h${node.level}>${escapeHtml(node.text)}</h${node.level}>`;
 
     case 'text':
-      return `<p class="calc-text">${escapeHtml(node.text)}</p>`;
+      // CalcPAD prose lines (`'…`) come through with `html: true` and may contain
+      // inline tags like <i>, <b>, <hr/>, <sub>. Pass them through unescaped.
+      return node.html
+        ? `<p class="calc-text">${node.text}</p>`
+        : `<p class="calc-text">${escapeHtml(node.text)}</p>`;
+
+    case 'plot':
+      return `<div class="calc-plot-wrap">${node.svg}</div>`;
 
     case 'assignment':
       return renderAssignment(node);
@@ -285,6 +292,20 @@ export const defaultStyles = `
 }
 .calc-svg svg {
   max-width: 100%;
+}
+
+.calc-plot-wrap {
+  margin: 1em 0;
+  background: #fafaf9;
+  border: 1px solid #e7e5e4;
+  border-radius: 6px;
+  padding: 6px;
+  text-align: center;
+}
+.calc-plot {
+  max-width: 100%;
+  height: auto;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
 }
 
 .calc-image {

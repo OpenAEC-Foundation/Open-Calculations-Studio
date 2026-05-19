@@ -1,5 +1,6 @@
 import { paalExample, exampleDoc } from "./examples";
 import { calcpadDemo } from "./calcpad-demo";
+import { calcpadSamples } from "./calcpad-samples";
 import {
   ec5Buiging, ec5Afschuiving, ec5Druk, ec5DrukLoodrecht,
   ec5Knik, ec5Doorbuiging, ec5HoutenBalk,
@@ -32,6 +33,7 @@ import {
 
 export const templates: Record<string, string> = {
   "calcpad-demo": calcpadDemo,
+  ...calcpadSamples,
   "paaldraagvermogen": paalExample,
   "stalen-ligger": exampleDoc,
   "ec5-buiging": ec5Buiging,

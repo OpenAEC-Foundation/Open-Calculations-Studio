@@ -22,6 +22,7 @@ import {
 import { parse, evaluate } from "@ifc-calc/core";
 import { useDocumentStore } from "../../store/documentStore";
 import { previewPdfReport, savePdfReport } from "../../tauri/pdfReport";
+import { openCalculationFile } from "../../tauri/fileOps";
 import PdfPreviewModal from "../calc/PdfPreviewModal";
 
 interface CalcTabProps {
@@ -33,7 +34,19 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
   const source = useDocumentStore((s) => s.source);
   const selectValues = useDocumentStore((s) => s.selectValues);
   const filePath = useDocumentStore((s) => s.filePath);
+  const loadTemplate = useDocumentStore((s) => s.loadTemplate);
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  const handleOpen = useCallback(async () => {
+    try {
+      const file = await openCalculationFile();
+      if (!file) return;
+      loadTemplate(file.content, file.name);
+    } catch (err) {
+      console.error("Open file failed:", err);
+      alert(`Bestand openen mislukt: ${(err as Error).message}`);
+    }
+  }, [loadTemplate]);
 
   const projectName = filePath ?? "Berekening";
 
@@ -67,7 +80,7 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
       <div className="ribbon-groups">
         <RibbonGroup label={t("calc.file", "Bestand")}>
           <RibbonButton icon={reportNewIcon} label={t("calc.new", "Nieuw")} size="large" onClick={() => {}} />
-          <RibbonButton icon={ifcImportIcon} label={t("calc.open", "Openen")} size="large" onClick={() => {}} />
+          <RibbonButton icon={ifcImportIcon} label={t("calc.open", "Openen")} size="large" onClick={handleOpen} />
           <RibbonButton icon={ifcExportIcon} label={t("calc.save", "Opslaan")} size="large" onClick={() => {}} />
         </RibbonGroup>
 
