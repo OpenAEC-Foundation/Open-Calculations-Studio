@@ -52,22 +52,29 @@ function n(node: MathNode): AnyNode {
 
 // ─── Symbol formatting ──────────────────────────────────────────────
 
+function escapeText(s: string): string {
+  // KaTeX's `\text{}` is text-mode: `_` and `^` and `\` and `{}` need escaping
+  // to render literally. CalcPAD identifiers fold multi-comma subscripts to
+  // `_` (e.g. `V_b_0`), so the sub-string commonly contains underscores.
+  return s.replace(/\\/g, '\\backslash{}').replace(/[_^{}#$%&]/g, '\\$&');
+}
+
 function symbolToLatex(name: string): string {
   const underscoreIdx = name.indexOf('_');
   if (underscoreIdx > 0) {
     const base = name.substring(0, underscoreIdx);
     const sub = name.substring(underscoreIdx + 1);
     const baseLatex = GREEK[base] || base;
-    return `{${baseLatex}_{\\text{${sub}}}}`;
+    return `{${baseLatex}_{\\text{${escapeText(sub)}}}}`;
   }
   if (GREEK[name]) return GREEK[name];
   // Multi-letter non-Greek variable: use mathrm
-  if (name.length > 1 && !isKnownUnit(name)) return `\\text{${name}}`;
+  if (name.length > 1 && !isKnownUnit(name)) return `\\text{${escapeText(name)}}`;
   return name;
 }
 
 function unitToLatex(name: string): string {
-  return `\\text{${name}}`;
+  return `\\text{${escapeText(name)}}`;
 }
 
 // ─── Number formatting ──────────────────────────────────────────────
