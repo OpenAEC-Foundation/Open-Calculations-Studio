@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import RibbonGroup from "./RibbonGroup";
 import RibbonButton from "./RibbonButton";
@@ -21,7 +21,8 @@ import {
 } from "./icons";
 import { parse, evaluate } from "@ifc-calc/core";
 import { useDocumentStore } from "../../store/documentStore";
-import { savePdfReport } from "../../tauri/pdfReport";
+import { previewPdfReport, savePdfReport } from "../../tauri/pdfReport";
+import PdfPreviewModal from "../calc/PdfPreviewModal";
 
 interface CalcTabProps {
   onSettingsClick?: () => void;
@@ -32,23 +33,34 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
   const source = useDocumentStore((s) => s.source);
   const selectValues = useDocumentStore((s) => s.selectValues);
   const filePath = useDocumentStore((s) => s.filePath);
-  const [pdfBusy, setPdfBusy] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
-  const handleExportPdf = async () => {
-    if (pdfBusy) return;
-    setPdfBusy(true);
+  const projectName = filePath ?? "Berekening";
+
+  const evaluateCurrent = useCallback(() => {
+    const ast = parse(source);
+    return evaluate(ast, selectValues);
+  }, [source, selectValues]);
+
+  const handlePreviewPdf = useCallback(() => {
+    setPreviewOpen(true);
+  }, []);
+
+  const generatePdfPath = useCallback(async () => {
+    const nodes = evaluateCurrent();
+    return previewPdfReport(nodes, projectName);
+  }, [evaluateCurrent, projectName]);
+
+  const handleSavePdf = useCallback(async () => {
     try {
-      const ast = parse(source);
-      const nodes = evaluate(ast, selectValues);
-      const projectName = filePath ?? "Berekening";
-      await savePdfReport(nodes, projectName);
+      const nodes = evaluateCurrent();
+      return await savePdfReport(nodes, projectName);
     } catch (err) {
-      console.error("PDF export failed:", err);
-      alert(`PDF export mislukt: ${(err as Error).message}`);
-    } finally {
-      setPdfBusy(false);
+      console.error("PDF save failed:", err);
+      alert(`PDF opslaan mislukt: ${(err as Error).message}`);
+      return null;
     }
-  };
+  }, [evaluateCurrent, projectName]);
 
   return (
     <div className="ribbon-content">
@@ -86,13 +98,27 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
         <RibbonGroup label={t("calc.export", "Exporteren")}>
           <RibbonButton
             icon={reportPreviewIcon}
-            label={pdfBusy ? t("calc.pdfBusy", "...") : t("calc.pdf", "PDF")}
+            label={t("calc.pdfPreview", "PDF voorvertonen")}
             size="large"
-            onClick={handleExportPdf}
+            onClick={handlePreviewPdf}
+          />
+          <RibbonButton
+            icon={ifcExportIcon}
+            label={t("calc.pdfSave", "PDF opslaan")}
+            size="large"
+            onClick={handleSavePdf}
           />
           <RibbonButton icon={reportGenerateIcon} label={t("calc.ifcExport", "IFC")} size="large" onClick={() => {}} />
         </RibbonGroup>
       </div>
+
+      <PdfPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        projectName={projectName}
+        generate={generatePdfPath}
+        onSave={handleSavePdf}
+      />
     </div>
   );
 }
