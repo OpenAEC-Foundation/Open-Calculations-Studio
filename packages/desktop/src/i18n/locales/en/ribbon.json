@@ -4,7 +4,37 @@
     "home": "Home",
     "ifc": "IFC",
     "viewer": "3D Viewer",
-    "report": "Report"
+    "report": "Report",
+    "calc": "Home",
+    "insert": "Insert",
+    "view": "View"
+  },
+  "calc": {
+    "file": "File",
+    "edit": "Edit",
+    "export": "Export",
+    "new": "New",
+    "open": "Open",
+    "save": "Save",
+    "undo": "Undo",
+    "redo": "Redo",
+    "pdf": "PDF",
+    "ifcExport": "IFC"
+  },
+  "insert": {
+    "elements": "Elements",
+    "media": "Media",
+    "heading": "Heading",
+    "formula": "Formula",
+    "select": "Select List",
+    "image": "Image",
+    "svg": "SVG"
+  },
+  "view": {
+    "layout": "Layout",
+    "split": "Split",
+    "editor": "Editor",
+    "preview": "Preview"
   },
   "home": {
     "general": "General",
@@ -48,7 +78,15 @@
     "statistics": "Statistics",
     "tools": "Tools",
     "validate": "Validate",
-    "lines": "lines"
+    "lines": "lines",
+    "file": "File",
+    "view": "View",
+    "convert": "Convert",
+    "open": "IFC Open",
+    "tree": "Spatial Tree",
+    "props": "Properties",
+    "gefToIfc": "GEF to IFC",
+    "broToIfc": "BRO to IFC"
   },
   "viewer": {
     "file": "File",

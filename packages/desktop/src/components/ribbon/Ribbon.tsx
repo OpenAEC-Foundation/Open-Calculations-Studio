@@ -1,33 +1,25 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import RibbonTab from "./RibbonTab";
-import HomeTab from "./HomeTab";
+import CalcTab from "./CalcTab";
+import InsertTab from "./InsertTab";
+import ViewTab from "./ViewTab";
 import IfcTab from "./IfcTab";
-import ReportTab from "./ReportTab";
 import "./Ribbon.css";
 
 interface RibbonProps {
   onFileTabClick?: () => void;
   onSettingsClick?: () => void;
-  onProjectSettingsClick?: () => void;
   activeView: string;
   onViewChange: (view: string) => void;
-  /** @deprecated — read from useReportStore in the Report tab/preview. Kept for prop-compat. */
-  pageSize?: "A4" | "A3";
-  /** @deprecated */
-  orientation?: "portrait" | "landscape";
-  /** @deprecated */
-  onPageSizeChange?: (size: "A4" | "A3") => void;
-  /** @deprecated */
-  onOrientationChange?: (orientation: "portrait" | "landscape") => void;
 }
 
-const TABS = ["home", "ifc", "viewer", "report"] as const;
+const TABS = ["calc", "insert", "view", "ifc"] as const;
 type TabId = (typeof TABS)[number];
 
-export default function Ribbon({ onFileTabClick, onSettingsClick, onProjectSettingsClick, onViewChange }: RibbonProps) {
+export default function Ribbon({ onFileTabClick, onSettingsClick, onViewChange }: RibbonProps) {
   const { t, i18n } = useTranslation("ribbon");
-  const [activeTab, setActiveTab] = useState<TabId>("home");
+  const [activeTab, setActiveTab] = useState<TabId>("calc");
   const [prevTab, setPrevTab] = useState<TabId | null>(null);
   const [animating, setAnimating] = useState(false);
   const [direction, setDirection] = useState<"left" | "right">("right");
@@ -75,11 +67,8 @@ export default function Ribbon({ onFileTabClick, onSettingsClick, onProjectSetti
     setActiveTab(newTab);
     setAnimating(true);
 
-    // Switch main content view based on tab
-    if (newTab === "ifc") onViewChange("ifc");
-    else if (newTab === "viewer") onViewChange("viewer");
-    else if (newTab === "report") onViewChange("report");
-    else onViewChange("default");
+    // Phase 1: all tabs use the default view
+    onViewChange("default");
   }, [activeTab, onViewChange]);
 
   useEffect(() => {
@@ -103,15 +92,12 @@ export default function Ribbon({ onFileTabClick, onSettingsClick, onProjectSetti
 
   const renderContent = (tab: TabId) => {
     switch (tab) {
-      case "home": return <HomeTab onSettingsClick={onSettingsClick} onProjectSettingsClick={onProjectSettingsClick} />;
+      case "calc": return <CalcTab onSettingsClick={onSettingsClick} />;
+      case "insert": return <InsertTab />;
+      case "view": return <ViewTab />;
       case "ifc": return <IfcTab />;
-      case "viewer": return null; // 3D Viewer has no ribbon buttons
-      case "report": return <ReportTab />;
     }
   };
-
-  // Hide ribbon content area for viewer tab (no buttons needed)
-  const hideContent = activeTab === "viewer";
 
   return (
     <div className="ribbon-container">
@@ -129,24 +115,22 @@ export default function Ribbon({ onFileTabClick, onSettingsClick, onProjectSetti
         <div className="ribbon-tab-gap" ref={gapRef} />
       </div>
 
-      {!hideContent && (
-        <div className="ribbon-content-wrapper">
-          {animating && prevTab && prevTab !== "viewer" && (
-            <div
-              className={`ribbon-content-panel ribbon-panel-exit-${direction}`}
-              key={`prev-${prevTab}`}
-            >
-              {renderContent(prevTab)}
-            </div>
-          )}
+      <div className="ribbon-content-wrapper">
+        {animating && prevTab && (
           <div
-            className={`ribbon-content-panel${animating ? ` ribbon-panel-enter-${direction}` : ""}`}
-            key={`active-${activeTab}`}
+            className={`ribbon-content-panel ribbon-panel-exit-${direction}`}
+            key={`prev-${prevTab}`}
           >
-            {renderContent(activeTab)}
+            {renderContent(prevTab)}
           </div>
+        )}
+        <div
+          className={`ribbon-content-panel${animating ? ` ribbon-panel-enter-${direction}` : ""}`}
+          key={`active-${activeTab}`}
+        >
+          {renderContent(activeTab)}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -4,7 +4,37 @@
     "home": "Start",
     "ifc": "IFC",
     "viewer": "3D Viewer",
-    "report": "Rapport"
+    "report": "Rapport",
+    "calc": "Start",
+    "insert": "Invoegen",
+    "view": "Weergave"
+  },
+  "calc": {
+    "file": "Bestand",
+    "edit": "Bewerken",
+    "export": "Exporteren",
+    "new": "Nieuw",
+    "open": "Openen",
+    "save": "Opslaan",
+    "undo": "Ongedaan",
+    "redo": "Opnieuw",
+    "pdf": "PDF",
+    "ifcExport": "IFC"
+  },
+  "insert": {
+    "elements": "Elementen",
+    "media": "Media",
+    "heading": "Kop",
+    "formula": "Formule",
+    "select": "Keuzelijst",
+    "image": "Afbeelding",
+    "svg": "SVG"
+  },
+  "view": {
+    "layout": "Indeling",
+    "split": "Splitsen",
+    "editor": "Editor",
+    "preview": "Preview"
   },
   "home": {
     "general": "Algemeen",
@@ -48,7 +78,15 @@
     "statistics": "Statistieken",
     "tools": "Gereedschap",
     "validate": "Valideren",
-    "lines": "regels"
+    "lines": "regels",
+    "file": "Bestand",
+    "view": "Bekijken",
+    "convert": "Converteren",
+    "open": "IFC Open",
+    "tree": "Spatial Tree",
+    "props": "Properties",
+    "gefToIfc": "GEF naar IFC",
+    "broToIfc": "BRO naar IFC"
   },
   "viewer": {
     "file": "Bestand",
