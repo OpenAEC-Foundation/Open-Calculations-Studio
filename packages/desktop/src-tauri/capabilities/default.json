@@ -22,6 +22,9 @@
     "opener:default",
     "store:default",
     "os:default",
-    "dialog:default"
+    "dialog:default",
+    "dialog:allow-save",
+    "fs:default",
+    "fs:allow-write-file"
   ]
 }

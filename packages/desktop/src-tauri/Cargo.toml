@@ -20,3 +20,8 @@ serde_json = "1"
 tauri-plugin-store = "2.4.2"
 tauri-plugin-os = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+
+# OpenAEC report engine — local path dep to the openaec-reports workspace.
+# Provides ReportData schema + generate_pdf_bytes(&ReportData) -> Vec<u8>.
+openaec-core = { path = "../../../../../../../openaec-reports/rust/crates/openaec-core" }

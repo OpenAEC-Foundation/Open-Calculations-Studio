@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import RibbonGroup from "./RibbonGroup";
 import RibbonButton from "./RibbonButton";
@@ -18,6 +19,9 @@ import {
   tableIcon,
   pencilIcon,
 } from "./icons";
+import { parse, evaluate } from "@ifc-calc/core";
+import { useDocumentStore } from "../../store/documentStore";
+import { savePdfReport } from "../../tauri/pdfReport";
 
 interface CalcTabProps {
   onSettingsClick?: () => void;
@@ -25,6 +29,27 @@ interface CalcTabProps {
 
 export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabProps) {
   const { t } = useTranslation("ribbon");
+  const source = useDocumentStore((s) => s.source);
+  const selectValues = useDocumentStore((s) => s.selectValues);
+  const filePath = useDocumentStore((s) => s.filePath);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  const handleExportPdf = async () => {
+    if (pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      const ast = parse(source);
+      const nodes = evaluate(ast, selectValues);
+      const projectName = filePath ?? "Berekening";
+      await savePdfReport(nodes, projectName);
+    } catch (err) {
+      console.error("PDF export failed:", err);
+      alert(`PDF export mislukt: ${(err as Error).message}`);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   return (
     <div className="ribbon-content">
       <div className="ribbon-groups">
@@ -59,7 +84,12 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
         </RibbonGroup>
 
         <RibbonGroup label={t("calc.export", "Exporteren")}>
-          <RibbonButton icon={reportPreviewIcon} label={t("calc.pdf", "PDF")} size="large" onClick={() => {}} />
+          <RibbonButton
+            icon={reportPreviewIcon}
+            label={pdfBusy ? t("calc.pdfBusy", "...") : t("calc.pdf", "PDF")}
+            size="large"
+            onClick={handleExportPdf}
+          />
           <RibbonButton icon={reportGenerateIcon} label={t("calc.ifcExport", "IFC")} size="large" onClick={() => {}} />
         </RibbonGroup>
       </div>
