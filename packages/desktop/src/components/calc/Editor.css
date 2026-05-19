@@ -1,21 +1,23 @@
+/*
+ * Layout strategy: position-absolute the CodeMirror root inside a relative
+ * container. This sidesteps the % / flex height-resolution dance entirely —
+ * .cm-editor inherits exact pixel dimensions from the parent box and its
+ * internal .cm-scroller can then honour overflow: auto for both axes.
+ */
 .calc-editor {
+  position: relative;
   height: 100%;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  flex: 1 1 0;
   overflow: hidden;
   background: var(--theme-bg);
 }
 
-/* CodeMirror 6 needs an explicit definite height on the outermost element so
- * .cm-scroller (internal) can overflow:auto and scroll. Without min-height:0
- * the flex parent refuses to shrink below content size and the scrollbar
- * never appears. */
 .calc-editor .cm-editor {
-  flex: 1 1 0;
-  min-height: 0;
-  height: 100%;
-  width: 100%;
+  position: absolute;
+  inset: 0;
+  height: auto;
+  width: auto;
   font-family: var(--font-mono);
   font-size: 13px;
   background: var(--theme-bg);
@@ -28,7 +30,7 @@
 
 .calc-editor .cm-scroller {
   font-family: inherit;
-  overflow: auto;
+  overflow: auto !important;
 }
 
 .calc-editor .cm-scroller::-webkit-scrollbar {

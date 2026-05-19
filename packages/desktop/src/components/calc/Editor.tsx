@@ -19,7 +19,6 @@ export default function Editor() {
     <div className="calc-editor">
       <CodeMirror
         value={source}
-        height="100%"
         extensions={[ifcCalcLang()]}
         onChange={onChange}
         basicSetup={{
