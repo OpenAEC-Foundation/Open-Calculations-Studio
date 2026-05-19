@@ -89,6 +89,14 @@ button, input, select, textarea {
 }
 .ribbon-tab { position: relative; }
 
+/* ── Main view layout override for calc workspace (ProjectBrowser + Editor + Preview) ── */
+.main-view {
+  /* Template defaults to centered placeholder — we use a left-to-right split */
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  overflow: hidden !important;
+}
+
 * {
   margin: 0;
   padding: 0;

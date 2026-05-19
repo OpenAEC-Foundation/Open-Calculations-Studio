@@ -8,6 +8,7 @@ import SettingsDialog, { applyTheme } from "./components/settings/SettingsDialog
 import Editor from "./components/calc/Editor";
 import Preview from "./components/calc/Preview";
 import SplitPane from "./components/calc/SplitPane";
+import ProjectBrowser from "./components/calc/ProjectBrowser";
 import { getSetting } from "./store";
 
 export default function App() {
@@ -46,8 +47,11 @@ export default function App() {
         onViewChange={setActiveView}
       />
       <DocumentBar />
-      <main className="main-view" style={{ flex: 1, minHeight: 0 }}>
-        <SplitPane left={<Editor />} right={<Preview />} />
+      <main className="main-view" style={{ flex: 1, minHeight: 0, display: "flex" }}>
+        <ProjectBrowser />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <SplitPane left={<Editor />} right={<Preview />} />
+        </div>
       </main>
       <StatusBar />
       <Backstage

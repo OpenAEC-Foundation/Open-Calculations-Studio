@@ -1,0 +1,210 @@
+.project-browser {
+  width: 240px;
+  min-width: 240px;
+  background: var(--theme-bg);
+  border-right: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.18s ease, min-width 0.18s ease;
+  flex-shrink: 0;
+  user-select: none;
+  font-family: var(--font-body);
+}
+
+.project-browser.collapsed {
+  width: 36px;
+  min-width: 36px;
+}
+
+.project-browser-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  padding: 0 10px;
+  background: var(--theme-bg-lighter);
+  border-bottom: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+  flex-shrink: 0;
+}
+
+.project-browser-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--theme-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.project-browser-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  color: var(--theme-text-secondary);
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.project-browser-toggle:hover {
+  background: var(--theme-hover, rgba(217, 119, 6, 0.08));
+  color: var(--theme-accent);
+}
+
+.project-browser-tree {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+}
+
+/* Tree category */
+.tree-category {
+  display: block;
+}
+
+.tree-category-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  color: var(--theme-text);
+  transition: background 0.12s;
+}
+
+.tree-category-header:hover {
+  background: var(--theme-hover, rgba(217, 119, 6, 0.08));
+}
+
+.tree-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  font-size: 9px;
+  color: var(--theme-text-secondary);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.tree-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.tree-category-label {
+  font-size: 11px;
+  font-weight: 600;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-subcategory .tree-category-label {
+  font-weight: 500;
+  font-size: 10.5px;
+  color: var(--theme-text-secondary);
+}
+
+.tree-category-count {
+  font-size: 9px;
+  color: var(--theme-text-secondary);
+  flex-shrink: 0;
+  background: var(--theme-bg-lighter);
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+}
+
+/* Tree items */
+.tree-children {
+  display: block;
+}
+
+.tree-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--theme-text-secondary);
+  transition: background 0.1s, color 0.12s;
+  border-left: 2px solid transparent;
+}
+
+.tree-item:hover {
+  background: var(--theme-hover, rgba(217, 119, 6, 0.08));
+  color: var(--theme-text);
+}
+
+.tree-item.selected {
+  background: var(--theme-hover-strong, rgba(217, 119, 6, 0.15));
+  color: var(--theme-accent);
+  border-left-color: var(--theme-accent);
+}
+
+.tree-item-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tree-item-disabled:hover {
+  background: transparent;
+  color: var(--theme-text-secondary);
+}
+
+.tree-item-icon {
+  font-size: 11px;
+  width: 12px;
+  flex-shrink: 0;
+  text-align: center;
+  color: var(--theme-text-secondary);
+}
+
+.tree-item.selected .tree-item-icon {
+  color: var(--theme-accent);
+}
+
+.tree-item-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Scrollbar */
+.project-browser-tree::-webkit-scrollbar {
+  width: 8px;
+}
+
+.project-browser-tree::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.project-browser-tree::-webkit-scrollbar-thumb {
+  background: var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+  border-radius: 4px;
+}
+
+.project-browser-tree::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-accent, #D97706);
+}
