@@ -1,8 +1,11 @@
-import { StreamLanguage, type StreamParser } from "@codemirror/language";
 import {
+  StreamLanguage,
   HighlightStyle,
   syntaxHighlighting,
+  foldService,
+  type StreamParser,
 } from "@codemirror/language";
+import type { EditorState } from "@codemirror/state";
 import {
   autocompletion,
   type Completion,
@@ -11,6 +14,50 @@ import {
 } from "@codemirror/autocomplete";
 import { tags as t } from "@lezer/highlight";
 import type { Extension } from "@codemirror/state";
+
+// ── Block folding ──────────────────────────────────────────────────────
+//
+// Match opener regex on a line; scan forward for the corresponding closer.
+// The fold range starts at the END of the opening line (so the opener
+// remains visible) and stops at the START of the closing line.
+type FoldRule = { open: RegExp; close: RegExp };
+
+const FOLD_RULES: FoldRule[] = [
+  { open: /^\s*@svg\b/, close: /^\s*@end\b/ },
+  { open: /^\s*@select\b/, close: /^\s*@end\b/ },
+  { open: /^\s*#if\b/, close: /^\s*#end\s+if\b/ },
+  { open: /^\s*#repeat\b/, close: /^\s*#end\s+repeat\b/ },
+  { open: /^\s*#for\b/, close: /^\s*#loop\b/ },
+  // `#def name(...)` (multi-line; the inline `#def name = ...` form is skipped
+  // because the opener regex below also rejects lines containing `=`).
+  { open: /^\s*#def\s+[\p{L}_][\p{L}\p{N}_]*\$?\s*\([^)]*\)\s*$/u, close: /^\s*#end\s+def\b/ },
+  // `#hide`/`#show` block — fold the hidden section.
+  { open: /^\s*#hide\b/, close: /^\s*#show\b/ },
+];
+
+function ifcCalcFoldService(state: EditorState, lineStart: number, lineEnd: number) {
+  const line = state.doc.sliceString(lineStart, lineEnd);
+  const rule = FOLD_RULES.find((r) => r.open.test(line));
+  if (!rule) return null;
+  // Scan downward for the closer, tracking nesting of the same kind.
+  let nest = 1;
+  let i = lineEnd + 1; // start of next line
+  while (i <= state.doc.length) {
+    const ln = state.doc.lineAt(i);
+    const text = state.doc.sliceString(ln.from, ln.to);
+    if (rule.open.test(text)) nest++;
+    else if (rule.close.test(text)) {
+      nest--;
+      if (nest === 0) {
+        // Fold from end of opener line to start of closer line.
+        return { from: lineEnd, to: ln.from };
+      }
+    }
+    if (ln.to + 1 > state.doc.length) break;
+    i = ln.to + 1;
+  }
+  return null;
+}
 
 /**
  * CodeMirror 6 stream parser for the .ifc-calculation / CalcPAD syntax.
@@ -330,6 +377,7 @@ export function ifcCalcLang(): Extension {
   return [
     ifcCalcStream,
     syntaxHighlighting(ifcCalcHighlight),
+    foldService.of(ifcCalcFoldService),
     autocompletion({
       override: [calcpadCompletionSource],
       activateOnTyping: true,

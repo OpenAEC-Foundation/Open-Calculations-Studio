@@ -5,11 +5,24 @@
   "tabs": {
     "general": "General",
     "appearance": "Appearance",
+    "units": "Units",
     "editor": "Editor",
     "files": "Files",
     "shortcuts": "Shortcuts",
     "plugins": "Plugins",
     "about": "About"
+  },
+  "units": {
+    "angle": "Angle mode",
+    "angleMode": "Angle unit",
+    "deg": "Degrees (°)",
+    "rad": "Radians (rad)",
+    "gra": "Gradians (grad)",
+    "returnAngleUnits": "Return angles with unit attached",
+    "defaults": "Default display units",
+    "length": "Length",
+    "force": "Force",
+    "stress": "Stress / pressure"
   },
   "general": {
     "application": "Application",

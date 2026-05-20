@@ -22,7 +22,24 @@ const THEME_OPTIONS = [
    Voorbeeld met domein-tab:
      const TAB_IDS = ["general", "appearance", "calculation", "about"] as const;
    ─────────────────────────────────────────────────────────── */
-const TAB_IDS = ["general", "appearance", "about"] as const;
+const TAB_IDS = ["general", "appearance", "units", "about"] as const;
+
+/** Persisted under the "units" settings key. Defaults match CalcPAD's. */
+export interface UnitsSettings {
+  angleMode: "deg" | "rad" | "gra";
+  defaultLength: "mm" | "cm" | "m";
+  defaultForce: "N" | "kN" | "MN";
+  defaultStress: "Pa" | "kPa" | "MPa" | "GPa" | "N/mm^2";
+  returnAngleUnits: boolean;
+}
+
+export const UNITS_DEFAULTS: UnitsSettings = {
+  angleMode: "rad",
+  defaultLength: "mm",
+  defaultForce: "kN",
+  defaultStress: "MPa",
+  returnAngleUnits: false,
+};
 
 export function applyTheme(theme?: string) {
   document.documentElement.setAttribute("data-theme", theme || "light");
@@ -48,11 +65,13 @@ export default function SettingsDialog({
   // Draft state — only committed on Save
   const [draftTheme, setDraftTheme] = useState(theme);
   const [draftLang, setDraftLang] = useState("auto");
+  const [draftUnits, setDraftUnits] = useState<UnitsSettings>(UNITS_DEFAULTS);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
   // Snapshot of original values when dialog opens, for reverting on Cancel
   const originalTheme = useRef(theme);
   const originalLang = useRef("");
+  const originalUnits = useRef<UnitsSettings>(UNITS_DEFAULTS);
 
   // Reset draft to current values when dialog opens
   useEffect(() => {
@@ -62,6 +81,10 @@ export default function SettingsDialog({
       getSetting("language", "auto").then((lang) => {
         originalLang.current = lang;
         setDraftLang(lang);
+      });
+      getSetting<UnitsSettings>("units", UNITS_DEFAULTS).then((u) => {
+        originalUnits.current = u;
+        setDraftUnits(u);
       });
     }
   }, [open, theme]);
@@ -85,6 +108,7 @@ export default function SettingsDialog({
     applyTheme(originalTheme.current);
     setDraftLang(originalLang.current);
     changeLanguage(originalLang.current);
+    setDraftUnits(originalUnits.current);
     onClose();
   };
 
@@ -96,6 +120,9 @@ export default function SettingsDialog({
 
     setSetting("language", draftLang);
     changeLanguage(draftLang);
+
+    setSetting("units", draftUnits);
+    window.dispatchEvent(new CustomEvent("units-changed", { detail: draftUnits }));
 
     onClose();
   };
@@ -110,6 +137,7 @@ export default function SettingsDialog({
     applyTheme("light");
     setDraftLang("auto");
     changeLanguage("auto");
+    setDraftUnits(UNITS_DEFAULTS);
     setConfirmResetOpen(false);
   };
 
@@ -151,6 +179,9 @@ export default function SettingsDialog({
           )}
           {activeTab === "appearance" && (
             <AppearanceTabContent theme={draftTheme} onThemeSelect={handleThemePreview} />
+          )}
+          {activeTab === "units" && (
+            <UnitsTabContent units={draftUnits} onChange={setDraftUnits} />
           )}
           {activeTab === "about" && <AboutTabContent />}
         </div>
@@ -280,6 +311,91 @@ function ThemeDropdown({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─── Units Tab ─────────────────────────────────────────────
+   Mirrors the CalcPAD `#deg`/`#rad`/`#gra` switches plus default display
+   units. Saved values are picked up by the evaluator (angle mode) and
+   shown in the preview.
+   ─────────────────────────────────────────────────────────── */
+function UnitsTabContent({
+  units,
+  onChange,
+}: {
+  units: UnitsSettings;
+  onChange: (next: UnitsSettings) => void;
+}) {
+  const { t } = useTranslation("settings");
+  const patch = (partial: Partial<UnitsSettings>) => onChange({ ...units, ...partial });
+  return (
+    <div className="settings-section">
+      <h3>{t("units.angle", "Hoekmodus")}</h3>
+      <div className="settings-row">
+        <span className="settings-label">{t("units.angleMode", "Hoek-eenheid")}</span>
+        <ThemedSelect
+          value={units.angleMode}
+          options={[
+            { value: "deg", label: t("units.deg", "Graden (°)") },
+            { value: "rad", label: t("units.rad", "Radialen (rad)") },
+            { value: "gra", label: t("units.gra", "Gradianen (grad)") },
+          ]}
+          onChange={(v) => patch({ angleMode: v as UnitsSettings["angleMode"] })}
+          style={{ width: 180 }}
+        />
+      </div>
+      <div className="settings-row">
+        <span className="settings-label">{t("units.returnAngleUnits", "Hoeken mét eenheid teruggeven")}</span>
+        <input
+          type="checkbox"
+          checked={units.returnAngleUnits}
+          onChange={(e) => patch({ returnAngleUnits: e.target.checked })}
+        />
+      </div>
+
+      <h3 style={{ marginTop: 16 }}>{t("units.defaults", "Standaard weergave-eenheden")}</h3>
+      <div className="settings-row">
+        <span className="settings-label">{t("units.length", "Lengte")}</span>
+        <ThemedSelect
+          value={units.defaultLength}
+          options={[
+            { value: "mm", label: "mm" },
+            { value: "cm", label: "cm" },
+            { value: "m", label: "m" },
+          ]}
+          onChange={(v) => patch({ defaultLength: v as UnitsSettings["defaultLength"] })}
+          style={{ width: 120 }}
+        />
+      </div>
+      <div className="settings-row">
+        <span className="settings-label">{t("units.force", "Kracht")}</span>
+        <ThemedSelect
+          value={units.defaultForce}
+          options={[
+            { value: "N", label: "N" },
+            { value: "kN", label: "kN" },
+            { value: "MN", label: "MN" },
+          ]}
+          onChange={(v) => patch({ defaultForce: v as UnitsSettings["defaultForce"] })}
+          style={{ width: 120 }}
+        />
+      </div>
+      <div className="settings-row">
+        <span className="settings-label">{t("units.stress", "Spanning / druk")}</span>
+        <ThemedSelect
+          value={units.defaultStress}
+          options={[
+            { value: "Pa", label: "Pa" },
+            { value: "kPa", label: "kPa" },
+            { value: "MPa", label: "MPa" },
+            { value: "GPa", label: "GPa" },
+            { value: "N/mm^2", label: "N/mm²" },
+          ]}
+          onChange={(v) => patch({ defaultStress: v as UnitsSettings["defaultStress"] })}
+          style={{ width: 120 }}
+        />
+      </div>
     </div>
   );
 }

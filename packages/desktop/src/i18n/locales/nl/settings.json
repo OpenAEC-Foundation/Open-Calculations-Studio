@@ -3,11 +3,24 @@
   "tabs": {
     "general": "Algemeen",
     "appearance": "Uiterlijk",
+    "units": "Eenheden",
     "editor": "Editor",
     "files": "Bestanden",
     "shortcuts": "Sneltoetsen",
     "plugins": "Invoegtoepassingen",
     "about": "Over"
+  },
+  "units": {
+    "angle": "Hoekmodus",
+    "angleMode": "Hoek-eenheid",
+    "deg": "Graden (°)",
+    "rad": "Radialen (rad)",
+    "gra": "Gradianen (grad)",
+    "returnAngleUnits": "Hoeken mét eenheid teruggeven",
+    "defaults": "Standaard weergave-eenheden",
+    "length": "Lengte",
+    "force": "Kracht",
+    "stress": "Spanning / druk"
   },
   "general": {
     "application": "Applicatie",

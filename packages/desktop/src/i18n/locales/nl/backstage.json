@@ -24,6 +24,15 @@
     "stichting": "Stichting OpenAEC Foundation (NL)",
     "copyright": "© 2026 OpenAEC Foundation. Code: MIT. Inhoud: CC BY-SA 4.0."
   },
+  "openPanel": {
+    "browse": "Bladeren…",
+    "browseDesc": "Open een .cpd of .ifc-calculation bestand vanaf schijf",
+    "title": "Recente bestanden",
+    "noRecent": "Geen recente bestanden",
+    "clearAll": "Wis lijst",
+    "justNow": "Zojuist",
+    "remove": "Verwijderen"
+  },
   "importPanel": {
     "title": "Importeren",
     "fromFile": "Importeren uit bestand",

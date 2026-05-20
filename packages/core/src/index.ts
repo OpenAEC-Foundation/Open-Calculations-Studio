@@ -1,6 +1,6 @@
 export { parse, type ParseOptions } from './parser.js';
-export { evaluate } from './evaluator.js';
-export type { SelectValues } from './evaluator.js';
+export { evaluate, setAngleMode } from './evaluator.js';
+export type { SelectValues, AngleMode } from './evaluator.js';
 export { render, defaultStyles } from './renderer.js';
 export { exprToLatex, nameToLatex } from './latex.js';
 export { parseGef, type GefData } from './gef-parser.js';

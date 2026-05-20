@@ -3,6 +3,46 @@ import type { AstNode, ConditionalNode, EvaluatedNode } from './types.js';
 
 const math: MathJsInstance = create(all, {});
 
+/**
+ * Trigonometric input mode. Default is `rad` (mathjs native). When set to
+ * `deg` or `gra`, the wrappers below scale every unit-less input. Inputs
+ * already carrying a unit (e.g. `45 deg`) pass through unchanged because
+ * mathjs handles the conversion itself.
+ */
+export type AngleMode = 'rad' | 'deg' | 'gra';
+let currentAngleMode: AngleMode = 'rad';
+
+/** Set the global angle mode used by sin/cos/tan family for unit-less input. */
+export function setAngleMode(mode: AngleMode): void {
+  currentAngleMode = mode;
+}
+
+function toRadians(v: unknown): unknown {
+  if (typeof v !== 'number') return v;
+  if (currentAngleMode === 'deg') return v * Math.PI / 180;
+  if (currentAngleMode === 'gra') return v * Math.PI / 200;
+  return v;
+}
+function fromRadians(v: unknown): unknown {
+  if (typeof v !== 'number') return v;
+  if (currentAngleMode === 'deg') return v * 180 / Math.PI;
+  if (currentAngleMode === 'gra') return v * 200 / Math.PI;
+  return v;
+}
+
+// Wrap trig functions so plain numbers honour the active angle mode. mathjs
+// units (45 deg, π rad) bypass the wrapper.
+const nativeSin = math.sin, nativeCos = math.cos, nativeTan = math.tan;
+const nativeAsin = math.asin, nativeAcos = math.acos, nativeAtan = math.atan;
+math.import({
+  sin: (v: unknown) => nativeSin(toRadians(v) as number),
+  cos: (v: unknown) => nativeCos(toRadians(v) as number),
+  tan: (v: unknown) => nativeTan(toRadians(v) as number),
+  asin: (v: unknown) => fromRadians(nativeAsin(v as number)),
+  acos: (v: unknown) => fromRadians(nativeAcos(v as number)),
+  atan: (v: unknown) => fromRadians(nativeAtan(v as number)),
+}, { override: true });
+
 // CalcPAD-style helper functions that mathjs doesn't ship with.
 
 // mathjs returns Matrix objects from `[…]` literals — Array.isArray(M) is
@@ -16,6 +56,59 @@ function toArrayLike(v: unknown): unknown[] | null {
   return null;
 }
 
+/** Numeric value, unit-aware (extracts SI value from mathjs Unit). */
+function asNumber(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (v && typeof (v as { toNumber?: (u?: string) => number }).toNumber === 'function') {
+    try { return (v as { toNumber: () => number }).toNumber(); } catch { /* fall through */ }
+  }
+  if (v && typeof v === 'object' && 'value' in v && typeof (v as { value: unknown }).value === 'number') {
+    return (v as { value: number }).value;
+  }
+  return Number(v);
+}
+
+/**
+ * CalcPAD `hlookup` family, executed against a 2D matrix.
+ *
+ *   hlookup(M; search; lookupCol; returnCol)      — exact match
+ *   hlookup_ge(M; search; lookupCol; returnCol)   — smallest M[i][lookupCol-1] ≥ search
+ *   hlookup_le(M; search; lookupCol; returnCol)   — largest  M[i][lookupCol-1] ≤ search
+ *
+ * `returnCol` defaults to `lookupCol` (returns the matched value itself).
+ * When `M` is a flat vector (1D), the lookup operates on it directly.
+ */
+function lookupHelper(args: unknown[], mode: 'eq' | 'ge' | 'le'): unknown {
+  if (args.length === 0) return 0;
+  const matrix = toArrayLike(args[0]);
+  if (!matrix) return 0;
+  const target = asNumber(args[1] ?? 0);
+  const lookupCol = Math.max(1, Math.trunc(asNumber(args[2] ?? 1)));
+  const returnCol = Math.max(1, Math.trunc(asNumber(args[3] ?? lookupCol)));
+
+  // Detect 1D vs 2D
+  const first = matrix[0];
+  const firstRow = toArrayLike(first);
+  const is2D = firstRow !== null;
+
+  let best: unknown = null;
+  let bestDelta = Infinity;
+  for (const row of matrix) {
+    const r = is2D ? toArrayLike(row) : null;
+    const key = is2D ? asNumber(r?.[lookupCol - 1]) : asNumber(row);
+    if (!Number.isFinite(key)) continue;
+    if (mode === 'eq' && key !== target) continue;
+    if (mode === 'ge' && key < target) continue;
+    if (mode === 'le' && key > target) continue;
+    const delta = Math.abs(key - target);
+    if (delta < bestDelta) {
+      bestDelta = delta;
+      best = is2D ? r?.[returnCol - 1] : row;
+    }
+  }
+  return best ?? 0;
+}
+
 math.import(
   {
     // Inline ternary: `if(cond, t, f)`
@@ -24,9 +117,11 @@ math.import(
     },
     // 1-based vector index: `take(2, [10, 20, 30])` → 20
     // Also tolerates 1-arg form `take(vec)` → first element.
+    //
+    // CalcPAD chains like `take(1; hlookup_ge(M; h; 1; 1))` may pass a scalar
+    // as the "vector" (when hlookup_* returns a single matched value); in
+    // that case treat the scalar as a 1-element vector and return it.
     take: function (...args: unknown[]) {
-      // CalcPAD syntax is `take(idx, vec)`; after `;` → `,` normalization
-      // the second arg is the vector. mathjs may pass either order; accept both.
       if (args.length === 1) {
         const v = toArrayLike(args[0]);
         return v ? v[0] : args[0];
@@ -34,7 +129,11 @@ math.import(
       const [a, b] = args;
       const idx = typeof a === 'number' ? a : typeof b === 'number' ? b : NaN;
       const vec = toArrayLike(a) ?? toArrayLike(b);
-      if (!vec) return Number.NaN;
+      if (!vec) {
+        // No array on either side — treat the non-index arg as the scalar
+        // "vector" and return it as-is (idx is effectively 1).
+        return typeof a === 'number' ? b : a;
+      }
       const i = Math.max(1, Math.trunc(idx)) - 1;
       return vec[Math.min(i, vec.length - 1)];
     },
@@ -48,48 +147,10 @@ math.import(
     // Stubbed: search for the closest match in the first array argument and
     // return the matching value (or 0 on miss). Far from a faithful Excel
     // impl but prevents whole-conditional cascades from failing.
-    hlookup: function (...args: unknown[]) {
-      const arr = args.map(toArrayLike).find((a) => a !== null);
-      const target = args.find((a) => typeof a === 'number' || (a && typeof (a as object).valueOf === 'function')) ?? 0;
-      if (!arr) return 0;
-      const tNum = Number(target);
-      let bestIdx = 0;
-      let bestDelta = Infinity;
-      for (let i = 0; i < arr.length; i++) {
-        const v = Number(arr[i]);
-        const d = Math.abs(v - tNum);
-        if (d < bestDelta) { bestDelta = d; bestIdx = i; }
-      }
-      return arr[bestIdx];
-    },
-    vlookup: function (...args: unknown[]) {
-      return (math as unknown as { hlookup: (...a: unknown[]) => unknown }).hlookup(...args);
-    },
-    // Variants of hlookup — closest-greater-or-equal, closest-less-or-equal
-    hlookup_ge: function (...args: unknown[]) {
-      const arr = args.map(toArrayLike).find((a) => a !== null);
-      const target = Number(args.find((a) => typeof a === 'number') ?? 0);
-      if (!arr || arr.length === 0) return 0;
-      let candidate: unknown = arr[0];
-      let bestDelta = Infinity;
-      for (const v of arr) {
-        const n = Number(v);
-        if (n >= target && n - target < bestDelta) { bestDelta = n - target; candidate = v; }
-      }
-      return candidate;
-    },
-    hlookup_le: function (...args: unknown[]) {
-      const arr = args.map(toArrayLike).find((a) => a !== null);
-      const target = Number(args.find((a) => typeof a === 'number') ?? 0);
-      if (!arr || arr.length === 0) return 0;
-      let candidate: unknown = arr[arr.length - 1];
-      let bestDelta = Infinity;
-      for (const v of arr) {
-        const n = Number(v);
-        if (n <= target && target - n < bestDelta) { bestDelta = target - n; candidate = v; }
-      }
-      return candidate;
-    },
+    hlookup: function (...args: unknown[]) { return lookupHelper(args, 'eq'); },
+    vlookup: function (...args: unknown[]) { return lookupHelper(args, 'eq'); },
+    hlookup_ge: function (...args: unknown[]) { return lookupHelper(args, 'ge'); },
+    hlookup_le: function (...args: unknown[]) { return lookupHelper(args, 'le'); },
     n_rows: function (v: unknown) {
       const a = toArrayLike(v);
       return a ? a.length : 1;
