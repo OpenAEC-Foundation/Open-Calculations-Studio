@@ -21,8 +21,9 @@ jobs:
       deploy_port: ${{ vars.DEPLOY_PORT }}
       deploy_user: ${{ vars.DEPLOY_USER }}
       deploy_path: /var/www/open-calculations-studio.open-aec.com
+      deploy_source: packages/web/dist
       node_version: "22"
       install_command: npm ci
-      build_command: npm run build --workspace=@ifc-calc/web
+      build_command: npm run build --workspace=@ifc-calc/core && npm run build --workspace=@ifc-calc/web
     secrets:
       deploy_ssh_key: ${{ secrets.DEPLOY_SSH_KEY }}
