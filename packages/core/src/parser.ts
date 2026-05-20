@@ -357,16 +357,17 @@ function applyMacro(macro: { params: string[]; body: string[]; oneLine: string |
  *   `q * 0.9`                →  unchanged
  */
 function foldIdentifierDots(source: string): string {
-  // Skip content inside double-quoted strings — URLs like
-  // "http://www.w3.org/2000/svg" and dotted text inside SVG must survive.
-  return source.split('"').map((seg, idx) => {
-    if (idx % 2 === 1) return seg;
-    let out = seg;
-    // CalcPAD vector index `name.digit` (`cc.3`) → mathjs subscript `name[3]`.
-    // Must run BEFORE identifier-dot fold so `cc.3` isn't read as `cc_3`.
+  // Skip content inside double-quoted strings on a PER-LINE basis. Unbalanced
+  // quotes on one line (e.g. `"Title` heading) shouldn't poison the rest of
+  // the file. URLs like "http://www.w3.org/..." and dotted text inside SVG
+  // attribute values must survive unchanged.
+  const transformOutsideQuotes = (text: string): string => {
+    let out = text;
+    // CalcPAD vector index `name.digit` → `name[digit]`. Must precede the
+    // identifier-cluster fold so `cc.3` isn't mistakenly read as `cc_3`.
     out = out.replace(
       /(?<![\p{L}\p{N}_.])([\p{L}_][\p{L}\p{N}_]*)\.(\d+)(?![\p{L}\p{N}_.])/gu,
-      (_m, name, idx2) => `${name}[${idx2}]`,
+      (_m, name, idx) => `${name}[${idx}]`,
     );
     // Identifier-cluster fold: `Cs.Cd`, `F_0.9G50%TotalWeight` → underscores.
     out = out.replace(
@@ -374,7 +375,16 @@ function foldIdentifierDots(source: string): string {
       (match) => match.replace(/[.%]/g, '_'),
     );
     return out;
-  }).join('"');
+  };
+
+  return source
+    .split('\n')
+    .map((line) => {
+      if (line.indexOf('"') === -1) return transformOutsideQuotes(line);
+      const segs = line.split('"');
+      return segs.map((seg, i) => (i % 2 === 1 ? seg : transformOutsideQuotes(seg))).join('"');
+    })
+    .join('\n');
 }
 
 /**
@@ -432,6 +442,31 @@ function inlineIncludes(source: string, includes: ReadonlyMap<string, string>): 
   });
 }
 
+/**
+ * Inline `@img(file.svg)` directives whose target is an SVG file in the
+ * include resolver — replace the line with an `@svg … @end` block so the
+ * actual SVG markup is rendered inline (not as `<img src="file.svg">`).
+ * Non-SVG targets (`.png`, `.jpg`, URLs) are left as `@img` directives and
+ * resolved by the host at render time.
+ *
+ * The host registers SVG image files alongside library .cpd files in the
+ * same `ParseOptions.includes` map.
+ */
+function inlineSvgImages(source: string, includes: ReadonlyMap<string, string>): string {
+  return source.replace(/^[ \t]*@img\(([^)]+)\)\s*$/gmu, (match, name: string) => {
+    const key = name.trim().replace(/^["']|["']$/g, '');
+    if (!/\.svg$/i.test(key)) return match;
+    const content = includes.get(key);
+    if (content === undefined) return match;
+    // Strip XML prolog + DOCTYPE — they don't belong inline inside HTML
+    const cleaned = content
+      .replace(/<\?xml\b[^?]*\?>/g, '')
+      .replace(/<!DOCTYPE[^>]*>/gi, '')
+      .trim();
+    return `@svg\n${cleaned}\n@end`;
+  });
+}
+
 export interface ParseOptions {
   /** Map of filename → contents for `#include filename` resolution. */
   includes?: ReadonlyMap<string, string>;
@@ -441,6 +476,7 @@ export interface ParseOptions {
 export function parse(source: string, options: ParseOptions = {}): AstNode[] {
   if (options.includes && options.includes.size > 0) {
     source = inlineIncludes(source, options.includes);
+    source = inlineSvgImages(source, options.includes);
   }
   // Macro expansion runs BEFORE \$-stripping so we still see param names like
   // `x1\$` and substitute them across the body. After expansion we strip \$

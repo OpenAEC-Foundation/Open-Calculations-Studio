@@ -6,7 +6,11 @@
  */
 
 import svgDrawing from "./calcpad-samples/svg_drawing.cpd?raw";
+import funderingDetail from "./calcpad-samples/fundering-detail.svg?raw";
 
 export const calcpadIncludes: ReadonlyMap<string, string> = new Map([
+  // CalcPAD library — drawing macros
   ["svg_drawing.cpd", svgDrawing],
+  // External SVG drawings inlined via @img(<file>.svg)
+  ["fundering-detail.svg", funderingDetail],
 ]);

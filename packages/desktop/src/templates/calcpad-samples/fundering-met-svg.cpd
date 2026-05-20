@@ -1,0 +1,32 @@
+"Fundering met externe SVG-tekening
+
+'<h3>1. Invoer</h3>
+b_fdn = ?*(m)
+l_fdn = ?*(m)
+t_fdn = ?*(m)
+N_Ed = ?*(kN)
+p_soil = ?*(kN/m^2)
+
+'<h3>2. Detail D1</h3>
+'Onderstaand een geheid-fundering-detail. De SVG wordt geladen via het @img directive en geheel inline gerendered (inclusief gevulde polygons en arceringen).
+@img(fundering-detail.svg)
+
+'<h3>3. Controle grondspanning</h3>
+A_fdn = b_fdn*l_fdn
+sigma_grond = N_Ed/A_fdn
+'Maximale grondspanning: 'sigma_grond
+'Beschikbaar: 'p_soil
+
+uc_grond = sigma_grond/p_soil
+
+#if uc_grond ≤ 1
+	'<b>UC = 'uc_grond' ≤ 1.0 → Voldoet</b>'
+#else
+	'<b>UC = 'uc_grond' > 1.0 → Voldoet niet</b>'
+#end if
+
+0.6
+2
+0.4
+80
+220
