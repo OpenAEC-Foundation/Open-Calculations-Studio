@@ -132,7 +132,11 @@ function renderUserFunction(node: { name: string; params: string[]; expression: 
 
 function renderVarDisplay(node: { name: string; result: string; unit: string }): string {
   const nameLatex = nameToLatex(node.name);
-  const valueLatex = resultToLatex(node.result, node.unit);
+  // node.result already includes the unit ("2.91 m"); pass num + unit to
+  // resultToLatex separately so we don't double-print the unit suffix.
+  const { numStr, unitStr } = splitResult(node.result);
+  const effectiveUnit = node.unit || unitStr;
+  const valueLatex = resultToLatex(numStr, effectiveUnit);
   const latex = `${nameLatex} = ${valueLatex}`;
   return `<div class="calc-line"><span class="calc-formula">${renderLatex(latex, true)}</span></div>`;
 }

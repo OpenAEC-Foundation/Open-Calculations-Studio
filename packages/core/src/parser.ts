@@ -80,8 +80,9 @@ const POST_RE = /^#post\b/;
 const ANGLE_MODE_RE = /^#(rad|deg|gra|equ)\b/;
 // CalcPAD `#def Name$ = "string"` constant definitions, `#include filename`,
 // `#novar` (hide variable substitution), `#varsub` (variable substitution
-// control). Silently ignored — they don't change calculation values.
-const NO_OP_DIRECTIVE_RE = /^#(def|include|novar|varsub)\b/;
+// control), `#val` (force value-only substitution — no symbolic expansion).
+// All silently ignored — they don't change calculation values.
+const NO_OP_DIRECTIVE_RE = /^#(def|include|novar|varsub|val|noc)\b/;
 const REPEAT_RE = /^#repeat\s+(.+)$/;
 const ENDREPEAT_RE = /^#end\s+repeat\b/;
 // CalcPAD `#for var = lo : hi … #loop` (#break supported as early exit)
@@ -470,6 +471,28 @@ function inlineSvgImages(source: string, includes: ReadonlyMap<string, string>):
 export interface ParseOptions {
   /** Map of filename → contents for `#include filename` resolution. */
   includes?: ReadonlyMap<string, string>;
+  /**
+   * Map of filename → URL for rewriting `<img src="...">` references inside
+   * prose. Lookup is by basename (case-insensitive), so the source can write
+   * `src="./Images/Picture0.png"` and we'll match the `"Picture0.png"` key.
+   */
+  imageUrls?: ReadonlyMap<string, string>;
+}
+
+/**
+ * Rewrite `<img src="path">` and `src='path'` attributes in prose so the
+ * basename matches a known asset URL (Vite-bundled, base64 data URL, etc.).
+ * Anything not in the map is left untouched.
+ */
+function rewriteImageSrc(source: string, imageUrls: ReadonlyMap<string, string>): string {
+  // Build a case-insensitive basename → URL map.
+  const lookup = new Map<string, string>();
+  for (const [k, v] of imageUrls) lookup.set(k.toLowerCase(), v);
+  return source.replace(/src\s*=\s*(["'])([^"']+)\1/g, (full, quote: string, path: string) => {
+    const base = path.split(/[\\/]/).pop()?.toLowerCase() ?? "";
+    const url = lookup.get(base);
+    return url ? `src=${quote}${url}${quote}` : full;
+  });
 }
 
 // ── Entry point ────────────────────────────────────────────────────────
@@ -477,6 +500,9 @@ export function parse(source: string, options: ParseOptions = {}): AstNode[] {
   if (options.includes && options.includes.size > 0) {
     source = inlineIncludes(source, options.includes);
     source = inlineSvgImages(source, options.includes);
+  }
+  if (options.imageUrls && options.imageUrls.size > 0) {
+    source = rewriteImageSrc(source, options.imageUrls);
   }
   // Macro expansion runs BEFORE \$-stripping so we still see param names like
   // `x1\$` and substitute them across the body. After expansion we strip \$
