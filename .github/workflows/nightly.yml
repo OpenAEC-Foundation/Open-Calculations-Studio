@@ -1,0 +1,140 @@
+name: Nightly Build
+
+# Daily / on-demand builds, published as a rolling pre-release on GitHub.
+#
+# Difference vs release.yml:
+#   - release.yml  -> triggered by `v*` semver tags, becomes the "Latest" stable release
+#   - nightly.yml  -> continuous interim builds, marked prerelease, single rolling tag
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-build
+  cancel-in-progress: true
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      release_id: ${{ steps.recreate.outputs.release_id }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compute nightly version + tag
+        id: version
+        shell: bash
+        run: |
+          BASE_VERSION=$(node -p "require('./packages/desktop/package.json').version")
+          DATE=$(date -u +'%Y%m%d')
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          VERSION="${BASE_VERSION}-nightly.${DATE}.${SHORT_SHA}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=nightly" >> "$GITHUB_OUTPUT"
+          echo "Building nightly ${VERSION}"
+
+      - name: Delete previous nightly release + tag (rolling)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete nightly --yes --cleanup-tag || true
+
+      - name: Create fresh nightly release
+        id: recreate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = "${{ steps.version.outputs.version }}";
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: "nightly",
+              target_commitish: context.sha,
+              name: `Nightly build ${version}`,
+              body: [
+                "**Nightly / interim build** — not a stable release.",
+                "",
+                "Built from the latest `main` branch. May contain bugs or incomplete features.",
+                "For stable, use the latest `v*` release.",
+                "",
+                `Source: \`${context.sha.substring(0,7)}\``,
+                `Build version: \`${version}\``
+              ].join("\n"),
+              draft: false,
+              prerelease: true
+            });
+            core.setOutput("release_id", data.id);
+            return data.id;
+
+  build-tauri:
+    needs: prepare-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'ubuntu-22.04'
+            args: ''
+            target: 'linux'
+          - platform: 'macos-latest'
+            args: '--target universal-apple-darwin'
+            target: 'macos'
+          - platform: 'windows-latest'
+            args: ''
+            target: 'windows-system'
+          - platform: 'windows-latest'
+            args: ''
+            target: 'windows-user'
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Rust targets (macOS universal)
+        if: matrix.target == 'macos'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Install dependencies (Ubuntu only)
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install workspace dependencies
+        run: npm install
+
+      - name: Set user install mode (Windows user installer)
+        if: matrix.target == 'windows-user'
+        shell: pwsh
+        working-directory: packages/desktop
+        run: |
+          $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $conf.bundle.windows.nsis.installMode = "currentUser"
+          $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@action-v0.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: packages/desktop
+          args: ${{ matrix.args }}
+          releaseId: ${{ needs.prepare-release.outputs.release_id }}
+          includeUpdaterJson: false

@@ -1,0 +1,180 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        default: 'v0.1.0'
+
+jobs:
+  create-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create-release.outputs.result }}
+      version: ${{ steps.get-version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Get version
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create release
+        id: create-release
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const version = '${{ steps.get-version.outputs.version }}';
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: version,
+              name: `Open Calculations Studio ${version}`,
+              body: `## What's New in ${version}\n\nOpen desktop app for structural calculations using CalcPAD syntax, with direct IFC 4x3 / IFCX export.\n\n### Downloads\n- **Windows (System)**: Download the \`*_x64-setup.exe\` installer for system-wide installation (requires admin)\n- **Windows (User)**: Download the \`*_x64_user-setup.exe\` installer for current user only (no admin required)\n- **macOS**: Download the \`.dmg\` file (universal - supports Intel and Apple Silicon)\n- **Linux**: Download the \`.deb\` package or \`.AppImage\``,
+              draft: true,
+              prerelease: false
+            });
+            return data.id;
+
+  build:
+    needs: create-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'ubuntu-22.04'
+            args: ''
+            target: 'linux'
+          - platform: 'macos-latest'
+            args: '--target universal-apple-darwin'
+            target: 'macos'
+          - platform: 'windows-latest'
+            args: ''
+            target: 'windows-system'
+          - platform: 'windows-latest'
+            args: ''
+            target: 'windows-user'
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Rust targets (macOS universal)
+        if: matrix.target == 'macos'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Install dependencies (Ubuntu only)
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install workspace dependencies
+        run: npm install
+
+      - name: Set user install mode (Windows user installer)
+        if: matrix.target == 'windows-user'
+        shell: pwsh
+        working-directory: packages/desktop
+        run: |
+          $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $conf.bundle.windows.nsis.installMode = "currentUser"
+          $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json
+
+      - name: Pre-build cargo (Windows) to materialize WebView2Loader.dll
+        if: contains(matrix.target, 'windows')
+        shell: pwsh
+        working-directory: packages/desktop/src-tauri
+        run: |
+          cargo build --release
+          $dll = Get-ChildItem -Path 'target/release/build' -Recurse -Filter 'WebView2Loader.dll' -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -like '*\x64\*' } |
+            Select-Object -First 1
+          if ($dll) {
+            Copy-Item -Path $dll.FullName -Destination 'target/release/WebView2Loader.dll' -Force
+            Write-Output "Copied WebView2Loader.dll from $($dll.FullName)"
+          }
+          if (-not (Test-Path 'target/release/WebView2Loader.dll')) {
+            Write-Error "WebView2Loader.dll missing from target/release - NSIS bundle will not include it"
+            exit 1
+          }
+
+      - name: Build Tauri app (with release upload)
+        if: matrix.target != 'windows-user'
+        uses: tauri-apps/tauri-action@action-v0.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: packages/desktop
+          args: ${{ matrix.args }}
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          includeUpdaterJson: false
+
+      - name: Build Tauri app (user installer)
+        if: matrix.target == 'windows-user'
+        uses: tauri-apps/tauri-action@action-v0.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: packages/desktop
+          args: ${{ matrix.args }}
+
+      - name: Upload user installer to release
+        if: matrix.target == 'windows-user'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $VERSION = "${{ needs.create-release.outputs.version }}"
+          $NSIS_DIR = "packages/desktop/src-tauri/target/release/bundle/nsis"
+          $EXE = Get-ChildItem "$NSIS_DIR/*-setup.exe" | Select-Object -First 1
+          $NEW_NAME = $EXE.Name -replace '_x64-setup\.exe$', '_x64_user-setup.exe'
+          $NEW_PATH = Join-Path $EXE.DirectoryName $NEW_NAME
+          Rename-Item $EXE.FullName $NEW_PATH
+          gh release upload $VERSION "$NEW_PATH" --clobber --repo "${{ github.repository }}"
+          Write-Host "Uploaded user installer: $NEW_NAME"
+
+  publish-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    needs: [create-release, build]
+
+    steps:
+      - name: Publish release
+        uses: actions/github-script@v8
+        env:
+          release_id: ${{ needs.create-release.outputs.release_id }}
+        with:
+          script: |
+            github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.release_id,
+              draft: false,
+              prerelease: false
+            });
