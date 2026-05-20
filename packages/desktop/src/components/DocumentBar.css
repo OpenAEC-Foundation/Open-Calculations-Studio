@@ -1,0 +1,109 @@
+.document-bar {
+  display: flex;
+  align-items: flex-end;
+  height: 30px;
+  background: var(--theme-docbar-bg);
+  border-top: 1px solid rgba(217, 119, 6, 0.15);
+  border-bottom: 1px solid var(--theme-border);
+  flex-shrink: 0;
+  padding: 0 4px;
+  gap: 1px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.document-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.document-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 0 10px;
+  height: 24px;
+  background: transparent;
+  border: 1px solid var(--theme-border);
+  border-bottom: 2px solid transparent;
+  border-radius: 3px 3px 0 0;
+  color: var(--theme-text-muted);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: default;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  white-space: nowrap;
+  position: relative;
+}
+
+.document-tab:hover {
+  background: var(--theme-hover);
+  color: var(--theme-text);
+}
+
+.document-tab.active {
+  color: var(--theme-accent);
+  border-color: var(--theme-accent);
+  border-bottom-color: transparent;
+  background: var(--theme-accent-soft);
+}
+
+.document-tab-icon {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.document-tab.active .document-tab-icon {
+  opacity: 1;
+  stroke: var(--theme-accent);
+}
+
+.document-tab-title {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.document-tab-modified {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--theme-accent);
+  flex-shrink: 0;
+}
+
+.document-tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-left: 6px;
+  opacity: 0;
+  transition: opacity 0.1s, background 0.1s;
+  color: var(--theme-text-muted);
+}
+
+.document-tab:hover .document-tab-close,
+.document-tab.active .document-tab-close {
+  opacity: 1;
+}
+
+.document-tab-close:hover {
+  background: var(--theme-ribbon-btn-hover);
+  color: var(--theme-accent);
+}
+
+/* Dock-back flash animation */
+.document-bar.dock-flash {
+  animation: dock-flash 0.6s ease;
+}
+
+@keyframes dock-flash {
+  0%   { background: var(--theme-docbar-bg); }
+  30%  { background: rgba(217, 119, 6, 0.15); }
+  100% { background: var(--theme-docbar-bg); }
+}

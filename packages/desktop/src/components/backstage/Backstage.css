@@ -1,0 +1,362 @@
+/* Backstage Overlay — transparent click-catcher behind the menu */
+.backstage-overlay {
+  position: fixed;
+  top: 32px; /* titlebar height */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: row;
+  background: transparent;
+  pointer-events: auto;
+}
+
+/* Sidebar — anchored at the left, drops a panel-shadow */
+.backstage-sidebar {
+  width: 260px;
+  background: var(--theme-bg-lighter);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--theme-border);
+  box-shadow: var(--theme-panel-shadow);
+  flex-shrink: 0;
+  height: 100%;
+}
+
+/* Back button */
+.backstage-back {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--theme-accent);
+  border: none;
+  color: var(--theme-accent-text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: default;
+  transition: background 0.15s;
+}
+
+.backstage-back:hover {
+  background: var(--theme-accent-hover);
+}
+
+.backstage-back svg {
+  flex-shrink: 0;
+}
+
+/* Menu items */
+.backstage-items {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.backstage-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  color: var(--theme-text);
+  font-size: 13px;
+  cursor: default;
+  transition: background 0.1s;
+  text-align: left;
+  width: 100%;
+  border-left: 3px solid transparent;
+}
+
+.backstage-item:hover {
+  background: var(--theme-hover);
+  color: var(--theme-accent);
+}
+
+.backstage-item.active {
+  background: var(--theme-hover-strong);
+  border-left-color: var(--theme-accent);
+  padding-left: 17px;
+  color: var(--theme-accent);
+}
+
+.backstage-item-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.backstage-item-icon svg {
+  stroke: var(--theme-text);
+}
+
+.backstage-item:hover .backstage-item-icon svg,
+.backstage-item.active .backstage-item-icon svg {
+  stroke: var(--theme-accent);
+}
+
+.backstage-item-label {
+  flex: 1;
+}
+
+.backstage-item-shortcut {
+  font-size: 11px;
+  color: var(--theme-backstage-item-shortcut);
+  margin-left: auto;
+}
+
+.backstage-item:hover .backstage-item-shortcut {
+  color: var(--theme-backstage-item-shortcut-hover);
+}
+
+/* Divider */
+.backstage-divider {
+  height: 1px;
+  background: var(--theme-border-subtle);
+  margin: 4px 16px;
+}
+
+/* Content area — only shown when a panel is active. Width is constrained,
+   not full-screen, and the rest of the underlying app stays visible. */
+.backstage-content {
+  width: 580px;
+  max-width: calc(100vw - 260px - 40px);
+  background: var(--theme-bg);
+  border-right: 1px solid var(--theme-border);
+  box-shadow: var(--theme-panel-shadow);
+  padding: 32px 40px;
+  overflow-y: auto;
+  color: var(--theme-text);
+  height: 100%;
+}
+
+/* The click-catcher fills the remaining space and closes the menu on click. */
+.backstage-dismiss-area {
+  flex: 1;
+  background: transparent;
+  cursor: default;
+}
+
+/* About Panel */
+.bs-about-panel {
+  max-width: 500px;
+}
+
+.bs-about-title {
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--theme-accent);
+  margin: 0 0 24px 0;
+}
+
+.bs-about-app {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.bs-about-logo {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bs-about-logo svg {
+  width: 48px;
+  height: 48px;
+}
+
+.bs-about-app-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.bs-about-app-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--theme-accent);
+  margin: 0 0 2px 0;
+}
+
+.bs-about-version {
+  font-size: 12px;
+  color: var(--theme-text);
+  margin: 0;
+}
+
+.bs-about-tagline {
+  font-size: 13px;
+  color: var(--theme-text);
+  margin: 0 0 12px 0;
+  font-style: italic;
+}
+
+.bs-about-description {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--theme-text);
+  margin: 0 0 20px 0;
+}
+
+.bs-about-company {
+  background: var(--theme-accent-soft);
+  border: 1px solid var(--theme-border);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.bs-about-company-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-accent);
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bs-about-company-name::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  background: var(--theme-accent);
+}
+
+.bs-about-company-desc {
+  font-size: 11px;
+  color: var(--theme-text);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.bs-about-company-meta {
+  font-size: 10px;
+  color: var(--theme-text-secondary);
+  margin: 8px 0 0;
+  font-style: italic;
+  letter-spacing: 0.3px;
+}
+
+.bs-about-links {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.bs-about-link {
+  background: var(--theme-accent-soft);
+  border: 1px solid var(--theme-border);
+  color: var(--theme-text);
+  padding: 8px 16px;
+  font-size: 12px;
+  cursor: default;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bs-about-link:hover {
+  background: var(--theme-hover-strong);
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
+}
+
+.bs-about-link svg {
+  width: 14px;
+  height: 14px;
+}
+
+.bs-about-footer {
+  padding-top: 12px;
+  border-top: 1px solid var(--theme-border-subtle);
+}
+
+.bs-about-copyright {
+  font-size: 10px;
+  color: var(--theme-text-secondary);
+  margin: 0;
+}
+
+/* Export/Import Panel */
+.bs-export-panel {
+  max-width: 600px;
+}
+
+.bs-export-title {
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--theme-accent);
+  margin: 0 0 24px 0;
+}
+
+.bs-export-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.bs-export-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--theme-accent-soft);
+  border: 1px solid var(--theme-border);
+  cursor: default;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.bs-export-card:hover {
+  background: var(--theme-hover-strong);
+  border-color: var(--theme-accent);
+}
+
+.bs-export-card.active {
+  border-color: var(--theme-accent);
+  background: var(--theme-hover-strong);
+}
+
+.bs-export-card-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bs-export-card-icon svg {
+  stroke: var(--theme-text);
+}
+
+.bs-export-card:hover .bs-export-card-icon svg,
+.bs-export-card.active .bs-export-card-icon svg {
+  stroke: var(--theme-accent);
+}
+
+.bs-export-card-info h3 {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-accent);
+}
+
+.bs-export-card-info p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--theme-text);
+}

@@ -1,0 +1,508 @@
+/* ============================================================
+   OpenAEC Theme System
+
+   Variants:
+   - light       — Real light theme (Blueprint White bg, dark text)
+   - forge       — Deep Forge dark theme with amber accents (former "light")
+   - openaec     — Darker Night Build variant
+   - blueprint   — Cool blueprint blue industrial theme
+   - contrast    — High-contrast accessibility theme
+
+   Color reference (DESIGN-SYSTEM.md):
+     #D97706  Construction Amber  (primary brand)
+     #EA580C  Signal Orange       (hover)
+     #F59E0B  Warm Gold           (secondary)
+     #36363E  Deep Forge          (dark surface)
+     #27272A  Dark Slate
+     #1C1917  Night Build
+     #FAFAF9  Blueprint White     (light bg)
+     #F5F5F4  Concrete            (light surface)
+     #A1A1AA  Scaffold Gray
+   ============================================================ */
+
+/* ────────────────────────────────────────────────────────────
+   Light Theme (default) — TRUE LIGHT
+   White background, dark text, amber accents
+   ──────────────────────────────────────────────────────────── */
+:root,
+[data-theme="light"] {
+  /* ─── Core palette ─── */
+  --theme-bg: #FAFAF9;
+  --theme-bg-lighter: #FFFFFF;
+  --theme-docbar-bg: #F5F5F4;
+  --theme-surface: #FFFFFF;
+  --theme-border: rgba(54, 54, 62, 0.12);
+  --theme-border-subtle: rgba(54, 54, 62, 0.06);
+  --theme-text: #36363E;
+  --theme-text-secondary: rgba(54, 54, 62, 0.65);
+  --theme-text-muted: rgba(54, 54, 62, 0.5);
+  --theme-text-faint: rgba(54, 54, 62, 0.35);
+  --theme-accent: #D97706;
+  --theme-accent-hover: #EA580C;
+  --theme-accent-text: #FFFFFF;
+  --theme-accent-soft: rgba(217, 119, 6, 0.08);
+  --theme-accent-tint: rgba(217, 119, 6, 0.85);
+  --theme-hover: rgba(217, 119, 6, 0.08);
+  --theme-hover-strong: rgba(217, 119, 6, 0.15);
+  --theme-active: #D97706;
+
+  --theme-focus-color: #D97706;
+  --theme-danger-color: #DC2626;
+  --theme-danger-hover: #B91C1C;
+
+  /* ─── Shadows ─── */
+  --theme-dialog-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --theme-panel-shadow: 2px 0 8px rgba(0, 0, 0, 0.06);
+  --theme-popover-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+
+  /* ─── File tab / accent bar ─── */
+  --theme-file-tab-bg: #D97706;
+  --theme-file-tab-hover: #EA580C;
+  --theme-file-tab-text: #FFFFFF;
+
+  /* ─── Content ─── */
+  --theme-content-bg: #FFFFFF;
+  --theme-placeholder-icon: rgba(217, 119, 6, 0.25);
+  --theme-placeholder-heading: rgba(54, 54, 62, 0.4);
+  --theme-placeholder-text: rgba(54, 54, 62, 0.3);
+
+  /* ─── Ribbon ─── */
+  --theme-ribbon-btn-hover: rgba(217, 119, 6, 0.10);
+  --theme-ribbon-btn-hover-border: rgba(217, 119, 6, 0.25);
+  --theme-ribbon-btn-active-bg: rgba(217, 119, 6, 0.15);
+  --theme-ribbon-btn-active-border: rgba(217, 119, 6, 0.35);
+  --theme-ribbon-btn-active-text: #D97706;
+  --theme-ribbon-icon-active: #D97706;
+  --theme-ribbon-text-hover: #D97706;
+  --theme-ribbon-group-separator: rgba(54, 54, 62, 0.12);
+  --theme-ribbon-group-label: rgba(217, 119, 6, 0.8);
+
+  /* ─── Status bar (amber accent bar) ─── */
+  --theme-status-bg: #36363E;
+  --theme-status-border: #27272A;
+  --theme-status-text: #A1A1AA;
+  --theme-status-text-label: rgba(161, 161, 170, 0.7);
+  --theme-status-hover: rgba(250, 250, 249, 0.1);
+  --theme-status-separator: rgba(250, 250, 249, 0.15);
+
+  /* ─── Backstage (File menu) ─── */
+  --theme-backstage-item-shortcut: rgba(54, 54, 62, 0.5);
+  --theme-backstage-item-shortcut-hover: rgba(217, 119, 6, 0.85);
+
+  /* ─── Dialogs ─── */
+  --theme-dialog-overlay: rgba(0, 0, 0, 0.40);
+  --theme-dialog-bg: #FFFFFF;
+  --theme-dialog-border: rgba(54, 54, 62, 0.12);
+  --theme-dialog-header-bg: #F5F5F4;
+  --theme-dialog-header-text: #D97706;
+  --theme-dialog-sidebar-bg: #F5F5F4;
+  --theme-dialog-sidebar-border: rgba(54, 54, 62, 0.10);
+  --theme-dialog-tab-text: #36363E;
+  --theme-dialog-tab-hover: rgba(217, 119, 6, 0.08);
+  --theme-dialog-tab-hover-text: #D97706;
+  --theme-dialog-tab-active-bg: rgba(217, 119, 6, 0.12);
+  --theme-dialog-tab-active-text: #D97706;
+  --theme-dialog-tab-active-accent: #D97706;
+  --theme-dialog-content-bg: #FFFFFF;
+  --theme-dialog-content-text: #36363E;
+  --theme-dialog-content-secondary: rgba(54, 54, 62, 0.65);
+  --theme-dialog-input-bg: #FAFAF9;
+  --theme-dialog-input-border: rgba(54, 54, 62, 0.15);
+  --theme-dialog-input-text: #36363E;
+  --theme-dialog-btn-bg: #D97706;
+  --theme-dialog-btn-text: #FFFFFF;
+  --theme-dialog-btn-hover: #EA580C;
+  --theme-dialog-section-border: rgba(54, 54, 62, 0.10);
+
+  /* ─── Buttons ─── */
+  --theme-btn-primary-bg: #D97706;
+  --theme-btn-primary-text: #FFFFFF;
+  --theme-btn-primary-border: #D97706;
+  --theme-btn-primary-hover-bg: #EA580C;
+  --theme-btn-primary-hover-text: #FFFFFF;
+  --theme-btn-secondary-bg: #F5F5F4;
+  --theme-btn-secondary-text: #36363E;
+  --theme-btn-secondary-hover-bg: rgba(217, 119, 6, 0.10);
+  --theme-btn-secondary-hover-border: rgba(217, 119, 6, 0.30);
+}
+
+/* ────────────────────────────────────────────────────────────
+   Forge Theme — Dark Deep Forge with amber accents
+   (Was the previous "light" — moved to its own name)
+   ──────────────────────────────────────────────────────────── */
+[data-theme="forge"] {
+  --theme-bg: #36363E;
+  --theme-bg-lighter: #44444C;
+  --theme-docbar-bg: #2E2E36;
+  --theme-surface: #36363E;
+  --theme-border: rgba(217, 119, 6, 0.25);
+  --theme-border-subtle: rgba(217, 119, 6, 0.15);
+  --theme-text: #FAFAF9;
+  --theme-text-secondary: rgba(250, 250, 249, 0.6);
+  --theme-text-muted: rgba(250, 250, 249, 0.5);
+  --theme-text-faint: rgba(250, 250, 249, 0.4);
+  --theme-accent: #D97706;
+  --theme-accent-hover: #EA580C;
+  --theme-accent-text: #36363E;
+  --theme-accent-soft: rgba(217, 119, 6, 0.08);
+  --theme-accent-tint: rgba(217, 119, 6, 0.8);
+  --theme-hover: rgba(217, 119, 6, 0.10);
+  --theme-hover-strong: rgba(217, 119, 6, 0.18);
+  --theme-active: #D97706;
+
+  --theme-focus-color: #D97706;
+  --theme-danger-color: #f87171;
+  --theme-danger-hover: #ef4444;
+
+  --theme-dialog-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --theme-panel-shadow: 2px 0 8px rgba(0, 0, 0, 0.20);
+  --theme-popover-shadow: 0 8px 24px rgba(0, 0, 0, 0.40);
+
+  --theme-file-tab-bg: #D97706;
+  --theme-file-tab-hover: #EA580C;
+  --theme-file-tab-text: #36363E;
+
+  --theme-content-bg: #FAFAF9;
+  --theme-placeholder-icon: rgba(217, 119, 6, 0.2);
+  --theme-placeholder-heading: rgba(54, 54, 62, 0.3);
+  --theme-placeholder-text: rgba(54, 54, 62, 0.25);
+
+  --theme-ribbon-btn-hover: rgba(217, 119, 6, 0.15);
+  --theme-ribbon-btn-hover-border: rgba(217, 119, 6, 0.30);
+  --theme-ribbon-btn-active-bg: rgba(217, 119, 6, 0.20);
+  --theme-ribbon-btn-active-border: rgba(217, 119, 6, 0.40);
+  --theme-ribbon-btn-active-text: #D97706;
+  --theme-ribbon-icon-active: #D97706;
+  --theme-ribbon-text-hover: #D97706;
+  --theme-ribbon-group-separator: rgba(250, 250, 249, 0.15);
+  --theme-ribbon-group-label: rgba(217, 119, 6, 0.8);
+
+  --theme-status-bg: #36363E;
+  --theme-status-border: #27272A;
+  --theme-status-text: #A1A1AA;
+  --theme-status-text-label: rgba(161, 161, 170, 0.7);
+  --theme-status-hover: rgba(250, 250, 249, 0.1);
+  --theme-status-separator: rgba(250, 250, 249, 0.15);
+
+  --theme-backstage-item-shortcut: rgba(250, 250, 249, 0.5);
+  --theme-backstage-item-shortcut-hover: rgba(217, 119, 6, 0.7);
+
+  --theme-dialog-overlay: rgba(0, 0, 0, 0.55);
+  --theme-dialog-bg: #36363E;
+  --theme-dialog-border: rgba(217, 119, 6, 0.2);
+  --theme-dialog-header-bg: #44444C;
+  --theme-dialog-header-text: #D97706;
+  --theme-dialog-sidebar-bg: #44444C;
+  --theme-dialog-sidebar-border: rgba(217, 119, 6, 0.2);
+  --theme-dialog-tab-text: #FAFAF9;
+  --theme-dialog-tab-hover: rgba(217, 119, 6, 0.1);
+  --theme-dialog-tab-hover-text: #D97706;
+  --theme-dialog-tab-active-bg: rgba(217, 119, 6, 0.15);
+  --theme-dialog-tab-active-text: #D97706;
+  --theme-dialog-tab-active-accent: #D97706;
+  --theme-dialog-content-bg: #36363E;
+  --theme-dialog-content-text: #FAFAF9;
+  --theme-dialog-content-secondary: rgba(250, 250, 249, 0.6);
+  --theme-dialog-input-bg: rgba(217, 119, 6, 0.05);
+  --theme-dialog-input-border: rgba(217, 119, 6, 0.2);
+  --theme-dialog-input-text: #FAFAF9;
+  --theme-dialog-btn-bg: #D97706;
+  --theme-dialog-btn-text: #36363E;
+  --theme-dialog-btn-hover: #EA580C;
+  --theme-dialog-section-border: rgba(217, 119, 6, 0.15);
+
+  --theme-btn-primary-bg: #D97706;
+  --theme-btn-primary-text: #36363E;
+  --theme-btn-primary-border: #D97706;
+  --theme-btn-primary-hover-bg: #EA580C;
+  --theme-btn-primary-hover-text: #36363E;
+  --theme-btn-secondary-bg: rgba(217, 119, 6, 0.1);
+  --theme-btn-secondary-text: #FAFAF9;
+  --theme-btn-secondary-hover-bg: rgba(217, 119, 6, 0.2);
+  --theme-btn-secondary-hover-border: rgba(217, 119, 6, 0.3);
+}
+
+/* ────────────────────────────────────────────────────────────
+   OpenAEC Theme — Darker Night Build variant
+   ──────────────────────────────────────────────────────────── */
+[data-theme="openaec"] {
+  --theme-bg: #27272A;
+  --theme-bg-lighter: #36363E;
+  --theme-docbar-bg: #1C1917;
+  --theme-surface: #27272A;
+  --theme-border: rgba(217, 119, 6, 0.2);
+  --theme-border-subtle: rgba(217, 119, 6, 0.15);
+  --theme-text: #FAFAF9;
+  --theme-text-secondary: rgba(250, 250, 249, 0.6);
+  --theme-text-muted: rgba(250, 250, 249, 0.5);
+  --theme-text-faint: rgba(250, 250, 249, 0.4);
+  --theme-accent: #D97706;
+  --theme-accent-hover: #EA580C;
+  --theme-accent-text: #27272A;
+  --theme-accent-soft: rgba(217, 119, 6, 0.05);
+  --theme-accent-tint: rgba(217, 119, 6, 0.8);
+  --theme-hover: rgba(217, 119, 6, 0.1);
+  --theme-hover-strong: rgba(217, 119, 6, 0.15);
+  --theme-active: #D97706;
+
+  --theme-focus-color: #D97706;
+  --theme-danger-color: #f87171;
+  --theme-danger-hover: #ef4444;
+
+  --theme-dialog-shadow: 0 4px 16px rgba(0, 0, 0, 0.40);
+  --theme-panel-shadow: 2px 0 8px rgba(0, 0, 0, 0.25);
+  --theme-popover-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+
+  --theme-file-tab-bg: #D97706;
+  --theme-file-tab-hover: #EA580C;
+  --theme-file-tab-text: #27272A;
+
+  --theme-content-bg: #1C1917;
+  --theme-placeholder-icon: rgba(217, 119, 6, 0.2);
+  --theme-placeholder-heading: rgba(250, 250, 249, 0.3);
+  --theme-placeholder-text: rgba(250, 250, 249, 0.25);
+
+  --theme-ribbon-btn-hover: rgba(217, 119, 6, 0.15);
+  --theme-ribbon-btn-hover-border: rgba(217, 119, 6, 0.30);
+  --theme-ribbon-btn-active-bg: rgba(217, 119, 6, 0.20);
+  --theme-ribbon-btn-active-border: rgba(217, 119, 6, 0.40);
+  --theme-ribbon-btn-active-text: #D97706;
+  --theme-ribbon-icon-active: #D97706;
+  --theme-ribbon-text-hover: #D97706;
+  --theme-ribbon-group-separator: rgba(217, 119, 6, 0.25);
+  --theme-ribbon-group-label: rgba(217, 119, 6, 0.8);
+
+  --theme-status-bg: #27272A;
+  --theme-status-border: #1C1917;
+  --theme-status-text: #A1A1AA;
+  --theme-status-text-label: rgba(161, 161, 170, 0.7);
+  --theme-status-hover: rgba(250, 250, 249, 0.1);
+  --theme-status-separator: rgba(250, 250, 249, 0.15);
+
+  --theme-backstage-item-shortcut: rgba(250, 250, 249, 0.5);
+  --theme-backstage-item-shortcut-hover: rgba(217, 119, 6, 0.7);
+
+  --theme-dialog-overlay: rgba(0, 0, 0, 0.60);
+  --theme-dialog-bg: #27272A;
+  --theme-dialog-border: rgba(217, 119, 6, 0.2);
+  --theme-dialog-header-bg: #36363E;
+  --theme-dialog-header-text: #D97706;
+  --theme-dialog-sidebar-bg: #36363E;
+  --theme-dialog-sidebar-border: rgba(217, 119, 6, 0.2);
+  --theme-dialog-tab-text: #FAFAF9;
+  --theme-dialog-tab-hover: rgba(217, 119, 6, 0.1);
+  --theme-dialog-tab-hover-text: #D97706;
+  --theme-dialog-tab-active-bg: rgba(217, 119, 6, 0.15);
+  --theme-dialog-tab-active-text: #D97706;
+  --theme-dialog-tab-active-accent: #D97706;
+  --theme-dialog-content-bg: #27272A;
+  --theme-dialog-content-text: #FAFAF9;
+  --theme-dialog-content-secondary: rgba(250, 250, 249, 0.6);
+  --theme-dialog-input-bg: rgba(217, 119, 6, 0.05);
+  --theme-dialog-input-border: rgba(217, 119, 6, 0.2);
+  --theme-dialog-input-text: #FAFAF9;
+  --theme-dialog-btn-bg: #D97706;
+  --theme-dialog-btn-text: #27272A;
+  --theme-dialog-btn-hover: #EA580C;
+  --theme-dialog-section-border: rgba(217, 119, 6, 0.15);
+
+  --theme-btn-primary-bg: #D97706;
+  --theme-btn-primary-text: #27272A;
+  --theme-btn-primary-border: #D97706;
+  --theme-btn-primary-hover-bg: #EA580C;
+  --theme-btn-primary-hover-text: #27272A;
+  --theme-btn-secondary-bg: rgba(217, 119, 6, 0.1);
+  --theme-btn-secondary-text: #FAFAF9;
+  --theme-btn-secondary-hover-bg: rgba(217, 119, 6, 0.2);
+  --theme-btn-secondary-hover-border: rgba(217, 119, 6, 0.3);
+}
+
+/* ────────────────────────────────────────────────────────────
+   Blueprint Theme — Cool industrial blue
+   ──────────────────────────────────────────────────────────── */
+[data-theme="blueprint"] {
+  --theme-bg: #0F1B2D;
+  --theme-bg-lighter: #1A2C45;
+  --theme-docbar-bg: #0A1320;
+  --theme-surface: #0F1B2D;
+  --theme-border: rgba(96, 165, 250, 0.20);
+  --theme-border-subtle: rgba(96, 165, 250, 0.12);
+  --theme-text: #E0E7FF;
+  --theme-text-secondary: rgba(224, 231, 255, 0.65);
+  --theme-text-muted: rgba(224, 231, 255, 0.50);
+  --theme-text-faint: rgba(224, 231, 255, 0.35);
+  --theme-accent: #60A5FA;
+  --theme-accent-hover: #93C5FD;
+  --theme-accent-text: #0F1B2D;
+  --theme-accent-soft: rgba(96, 165, 250, 0.08);
+  --theme-accent-tint: rgba(96, 165, 250, 0.85);
+  --theme-hover: rgba(96, 165, 250, 0.10);
+  --theme-hover-strong: rgba(96, 165, 250, 0.18);
+  --theme-active: #60A5FA;
+
+  --theme-focus-color: #60A5FA;
+  --theme-danger-color: #f87171;
+  --theme-danger-hover: #ef4444;
+
+  --theme-dialog-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --theme-panel-shadow: 2px 0 8px rgba(0, 0, 0, 0.30);
+  --theme-popover-shadow: 0 8px 24px rgba(0, 0, 0, 0.50);
+
+  --theme-file-tab-bg: #60A5FA;
+  --theme-file-tab-hover: #93C5FD;
+  --theme-file-tab-text: #0F1B2D;
+
+  --theme-content-bg: #0A1320;
+  --theme-placeholder-icon: rgba(96, 165, 250, 0.25);
+  --theme-placeholder-heading: rgba(224, 231, 255, 0.35);
+  --theme-placeholder-text: rgba(224, 231, 255, 0.30);
+
+  --theme-ribbon-btn-hover: rgba(96, 165, 250, 0.12);
+  --theme-ribbon-btn-hover-border: rgba(96, 165, 250, 0.30);
+  --theme-ribbon-btn-active-bg: rgba(96, 165, 250, 0.18);
+  --theme-ribbon-btn-active-border: rgba(96, 165, 250, 0.40);
+  --theme-ribbon-btn-active-text: #93C5FD;
+  --theme-ribbon-icon-active: #60A5FA;
+  --theme-ribbon-text-hover: #60A5FA;
+  --theme-ribbon-group-separator: rgba(96, 165, 250, 0.18);
+  --theme-ribbon-group-label: rgba(96, 165, 250, 0.85);
+
+  --theme-status-bg: #0F1B2D;
+  --theme-status-border: #0A1320;
+  --theme-status-text: #9CA3AF;
+  --theme-status-text-label: rgba(156, 163, 175, 0.7);
+  --theme-status-hover: rgba(224, 231, 255, 0.10);
+  --theme-status-separator: rgba(224, 231, 255, 0.15);
+
+  --theme-backstage-item-shortcut: rgba(224, 231, 255, 0.50);
+  --theme-backstage-item-shortcut-hover: rgba(96, 165, 250, 0.85);
+
+  --theme-dialog-overlay: rgba(0, 0, 0, 0.65);
+  --theme-dialog-bg: #0F1B2D;
+  --theme-dialog-border: rgba(96, 165, 250, 0.20);
+  --theme-dialog-header-bg: #1A2C45;
+  --theme-dialog-header-text: #60A5FA;
+  --theme-dialog-sidebar-bg: #1A2C45;
+  --theme-dialog-sidebar-border: rgba(96, 165, 250, 0.20);
+  --theme-dialog-tab-text: #E0E7FF;
+  --theme-dialog-tab-hover: rgba(96, 165, 250, 0.10);
+  --theme-dialog-tab-hover-text: #60A5FA;
+  --theme-dialog-tab-active-bg: rgba(96, 165, 250, 0.15);
+  --theme-dialog-tab-active-text: #60A5FA;
+  --theme-dialog-tab-active-accent: #60A5FA;
+  --theme-dialog-content-bg: #0F1B2D;
+  --theme-dialog-content-text: #E0E7FF;
+  --theme-dialog-content-secondary: rgba(224, 231, 255, 0.65);
+  --theme-dialog-input-bg: rgba(96, 165, 250, 0.05);
+  --theme-dialog-input-border: rgba(96, 165, 250, 0.20);
+  --theme-dialog-input-text: #E0E7FF;
+  --theme-dialog-btn-bg: #60A5FA;
+  --theme-dialog-btn-text: #0F1B2D;
+  --theme-dialog-btn-hover: #93C5FD;
+  --theme-dialog-section-border: rgba(96, 165, 250, 0.15);
+
+  --theme-btn-primary-bg: #60A5FA;
+  --theme-btn-primary-text: #0F1B2D;
+  --theme-btn-primary-border: #60A5FA;
+  --theme-btn-primary-hover-bg: #93C5FD;
+  --theme-btn-primary-hover-text: #0F1B2D;
+  --theme-btn-secondary-bg: rgba(96, 165, 250, 0.10);
+  --theme-btn-secondary-text: #E0E7FF;
+  --theme-btn-secondary-hover-bg: rgba(96, 165, 250, 0.20);
+  --theme-btn-secondary-hover-border: rgba(96, 165, 250, 0.30);
+}
+
+/* ────────────────────────────────────────────────────────────
+   High Contrast Theme — Accessibility (WCAG AAA)
+   ──────────────────────────────────────────────────────────── */
+[data-theme="contrast"] {
+  --theme-bg: #000000;
+  --theme-bg-lighter: #0A0A0A;
+  --theme-docbar-bg: #000000;
+  --theme-surface: #000000;
+  --theme-border: #FFD700;
+  --theme-border-subtle: rgba(255, 215, 0, 0.5);
+  --theme-text: #FFFFFF;
+  --theme-text-secondary: #FFFFFF;
+  --theme-text-muted: #E5E5E5;
+  --theme-text-faint: #C0C0C0;
+  --theme-accent: #FFD700;
+  --theme-accent-hover: #FFFF00;
+  --theme-accent-text: #000000;
+  --theme-accent-soft: rgba(255, 215, 0, 0.15);
+  --theme-accent-tint: #FFD700;
+  --theme-hover: rgba(255, 215, 0, 0.20);
+  --theme-hover-strong: rgba(255, 215, 0, 0.35);
+  --theme-active: #FFD700;
+
+  --theme-focus-color: #FFD700;
+  --theme-danger-color: #FF6B6B;
+  --theme-danger-hover: #FF0000;
+
+  --theme-dialog-shadow: 0 4px 16px rgba(255, 215, 0, 0.4);
+  --theme-panel-shadow: 2px 0 8px rgba(255, 215, 0, 0.3);
+  --theme-popover-shadow: 0 8px 24px rgba(255, 215, 0, 0.4);
+
+  --theme-file-tab-bg: #FFD700;
+  --theme-file-tab-hover: #FFFF00;
+  --theme-file-tab-text: #000000;
+
+  --theme-content-bg: #000000;
+  --theme-placeholder-icon: #FFD700;
+  --theme-placeholder-heading: #FFFFFF;
+  --theme-placeholder-text: #E5E5E5;
+
+  --theme-ribbon-btn-hover: rgba(255, 215, 0, 0.25);
+  --theme-ribbon-btn-hover-border: #FFD700;
+  --theme-ribbon-btn-active-bg: rgba(255, 215, 0, 0.40);
+  --theme-ribbon-btn-active-border: #FFD700;
+  --theme-ribbon-btn-active-text: #FFD700;
+  --theme-ribbon-icon-active: #FFD700;
+  --theme-ribbon-text-hover: #FFD700;
+  --theme-ribbon-group-separator: #FFFFFF;
+  --theme-ribbon-group-label: #FFD700;
+
+  --theme-status-bg: #000000;
+  --theme-status-border: #FFD700;
+  --theme-status-text: #FFFFFF;
+  --theme-status-text-label: #FFFFFF;
+  --theme-status-hover: rgba(255, 215, 0, 0.25);
+  --theme-status-separator: #FFD700;
+
+  --theme-backstage-item-shortcut: #FFFFFF;
+  --theme-backstage-item-shortcut-hover: #FFD700;
+
+  --theme-dialog-overlay: rgba(0, 0, 0, 0.85);
+  --theme-dialog-bg: #000000;
+  --theme-dialog-border: #FFD700;
+  --theme-dialog-header-bg: #0A0A0A;
+  --theme-dialog-header-text: #FFD700;
+  --theme-dialog-sidebar-bg: #0A0A0A;
+  --theme-dialog-sidebar-border: #FFD700;
+  --theme-dialog-tab-text: #FFFFFF;
+  --theme-dialog-tab-hover: rgba(255, 215, 0, 0.20);
+  --theme-dialog-tab-hover-text: #FFD700;
+  --theme-dialog-tab-active-bg: rgba(255, 215, 0, 0.30);
+  --theme-dialog-tab-active-text: #FFD700;
+  --theme-dialog-tab-active-accent: #FFD700;
+  --theme-dialog-content-bg: #000000;
+  --theme-dialog-content-text: #FFFFFF;
+  --theme-dialog-content-secondary: #E5E5E5;
+  --theme-dialog-input-bg: #0A0A0A;
+  --theme-dialog-input-border: #FFD700;
+  --theme-dialog-input-text: #FFFFFF;
+  --theme-dialog-btn-bg: #FFD700;
+  --theme-dialog-btn-text: #000000;
+  --theme-dialog-btn-hover: #FFFF00;
+  --theme-dialog-section-border: #FFD700;
+
+  --theme-btn-primary-bg: #FFD700;
+  --theme-btn-primary-text: #000000;
+  --theme-btn-primary-border: #FFD700;
+  --theme-btn-primary-hover-bg: #FFFF00;
+  --theme-btn-primary-hover-text: #000000;
+  --theme-btn-secondary-bg: #000000;
+  --theme-btn-secondary-text: #FFFFFF;
+  --theme-btn-secondary-hover-bg: rgba(255, 215, 0, 0.25);
+  --theme-btn-secondary-hover-border: #FFD700;
+}

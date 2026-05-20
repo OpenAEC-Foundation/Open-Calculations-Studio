@@ -1,0 +1,68 @@
+/* Status Bar */
+.status-bar {
+  background: var(--theme-status-bg);
+  border-top: 1px solid var(--theme-status-border);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 22px;
+  font-size: 12px;
+  color: var(--theme-status-text);
+  flex-shrink: 0;
+  user-select: none;
+  cursor: default;
+}
+
+.status-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.status-bar-center {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  justify-content: center;
+}
+
+.status-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  height: 22px;
+  cursor: default;
+  transition: background 0.1s;
+}
+
+.status-item:hover {
+  background: var(--theme-status-hover);
+}
+
+.status-separator {
+  width: 1px;
+  height: 14px;
+  background: var(--theme-status-separator);
+}
+
+.status-item-label {
+  color: var(--theme-status-text-label);
+  font-size: 12px;
+}
+
+.status-item-value {
+  color: var(--theme-status-text);
+  font-weight: 500;
+  font-size: 12px;
+}

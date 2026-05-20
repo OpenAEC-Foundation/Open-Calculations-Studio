@@ -1,0 +1,1095 @@
+#hide
+#include svg_drawing.cpd
+#equ
+#pre
+#def Client$ = "Portakabin"
+#def ClientStreet$ = "Rivierdijk 2"
+#def ClientPostalCode$ = "3361 AP"
+#def ClientPlace$ = "SLIEDRECHT"
+#def ProjectNumber$ = "2845"
+#def ProjectName$ = "Intertek Europoort, uitbreiding"
+#def ProjectAddress$ = "Moezelweg 75"
+#def ProjectPostCode$ = "3198 LS"
+#def ProjectSite$ = "EUROPOORT ROTTERDAM"
+#def DocumentReference$ = "CB-21"
+#def Date$ = "03-10-2025"
+#def Change$ = "n.v.t."
+#def engineer$ = "Ing. M.D. Vroegindeweij"
+#show
+'<h3>Inputs</h3>
+TypeOfBuilding = 1
+DesignLifeClass = 1
+WindArea = 2
+TerrainCategory = 2
+Subsoil = 3
+ModuleType = 15
+n_story = 2': Number of stories'
+n_Length = 5': Number of modulus in the X direction
+
+'<h4>Code Parameters</h4>
+'<div class="fold">
+'<h4>Type of Building</h4>
+'1 - Categorie B: Office
+'2 - Categorie A: Residential
+'3 - Categorie E: Light gathering place
+'4 - Categorie A: Heavy gathering place
+'5 - Categorie A: Childcare Facility
+'6 - Categorie B: Villa
+'</div>
+
+#if TypeOfBuilding ≡ 1
+	'→Categorie B: Office
+	'→'ConsequenceClass = 2
+	'→'P_Live = 2.50kN/m^2
+	'→'LoadClass = 2
+#else if TypeOfBuilding ≡ 2
+	'→Categorie A: Residential
+	'→'ConsequenceClass = 1
+	'→'P_Live = 1.75kN/m^2
+	'→'LoadClass = 1
+#else if TypeOfBuilding ≡ 3
+	'→Categorie E: Light gathering place
+	'→'ConsequenceClass = 1
+	'→'P_Live = 4.00kN/m^2
+	'→'LoadClass = 5
+#else if TypeOfBuilding ≡ 4
+	'→Categorie C: Congregation areas
+	'→'ConsequenceClass = 3
+	'→'P_Live = 5.00kN/m^2
+	'→'LoadClass = 3
+#else if TypeOfBuilding ≡ 5
+	'→Categorie C: Childcare Facility
+	'→'ConsequenceClass = 2
+	'→'P_Live = 5.00kN/m^2
+	'→'LoadClass = 3
+#else
+	'Error!
+	'→'LoadClass = 0
+#end if
+
+#if LoadClass ≡ 1
+	'Load Class: Category A: residential and living spaces
+	ψ_0 = 0.4
+	ψ_1 = 0.5
+	ψ_2 = 0.3
+#else if LoadClass ≡ 2
+	'Load Class: Category B: office spaces
+	ψ_0 = 0.5
+	ψ_1 = 0.5
+	ψ_2 = 0.3
+#else if LoadClass ≡ 3
+	'Load Class: Category C: assembly spaces
+	ψ_0 = 0.6
+	ψ_1 = 0.7
+	ψ_2 = 0.6
+#else if LoadClass ≡ 4
+	'Load Class: Category D: retail spaces
+	ψ_0 = 0.4
+	ψ_1 = 0.7
+	ψ_2 = 0.6
+#else if LoadClass ≡ 5
+	'Load Class: Category E: storage spaces
+	ψ_0 = 1.0
+	ψ_1 = 0.9
+	ψ_2 = 0.8
+#else if LoadClass ≡ 5
+	'Load Class: Category F: traffic space, vehicle weight ≤ 30 kN
+	ψ_0 = 0.7
+	ψ_1 = 0.7
+	ψ_2 = 0.6
+#else if LoadClass ≡ 5
+	'Load Class: Category G: traffic space b, 30 kN < vehicle weight ≤ 160 kN
+	ψ_0 = 0.7
+	ψ_1 = 0.5
+	ψ_2 = 0.3
+#end if
+
+#if ConsequenceClass ≡ 1
+	'→'β = 3.3
+	'→'K_FI = 0.9
+	'→'ReliabilityClass = 1
+#else if ConsequenceClass ≡ 2
+	'→'β = 3.8
+	'→'K_FI = 1.0
+	'→'ReliabilityClass = 2
+#else if ConsequenceClass ≡ 3
+	'→'β = 4.3
+	'→'K_FI = 1.1
+	'→'ReliabilityClass = 3
+#else
+	'Error in Consequence Class!!!! 
+#end if
+
+'<div class="fold">
+'<h4>Design Life</h4>
+'1 - 5 years
+'2 - 15 years
+'3 - 50 years
+'4 - 100 years
+'</div>
+
+#if DesignLifeClass ≡ 1
+	'→'y_DesignLife = 5
+#else if DesignLifeClass ≡ 2
+	'→'y_DesignLife = 15
+#else if DesignLifeClass ≡ 3
+	'→'y_DesignLife = 50
+#else if DesignLifeClass ≡ 4
+	'→'y_DesignLife = 15
+#else
+	'Error in Design Life Class!!!! 
+#end if
+
+'<div class="fold">
+'<h4>Wind Zone</h4>
+'1 - Zone I
+'2 - Zone II
+'3 - Zone III
+'</div>
+
+#if WindArea ≡ 1
+	'→'V_b,0 = 29.5m/s
+#else if WindArea ≡ 2
+	'→'V_b,0 = 27.0m/s
+#else if WindArea ≡ 3
+	'→'V_b,0 = 24.5m/s
+#else
+	'Error in Wind Zone!!!! 
+#end if
+
+'<div class="fold">
+'<h4>Terrain Category</h4>
+'1 - Coastal area (0)
+'2 - Undeveloped area (II)
+'3 - Built-up area (III)
+'</div>
+
+#if TerrainCategory ≡ 1
+	'→'Z_0 = 0.05m
+	'→'Z_min = 1m
+#else if TerrainCategory ≡ 2
+	'→'Z_0 = 0.2m
+	'→'Z_min = 4m
+#else if TerrainCategory ≡ 3
+	'→'Z_0 = 0.5m
+	'→'Z_min = 7m
+#else
+	'Error in Terrain Category!!!! 
+#end if
+
+'<div class="fold">
+'<h4>Subsoil</h4>
+'1 - Sand
+'2 - Clayey sand
+'3 - Clay
+'4 - Peat or humus topsoil
+'</div>
+
+#def subsoilName$ = "3 Clay"
+#def locationName$ = "ROTTERDAM"
+#if Subsoil ≡ 1
+	'→'p_soil = 150kN/m^2
+#else if Subsoil ≡ 2
+	'→'p_soil = 100kN/m^2
+#else if Subsoil ≡ 3
+	'→'p_soil = 50kN/m^2
+#else if Subsoil ≡ 4
+	'→'p_soil = 25kN/m^2
+#else
+	'Error in Subsoil!!!! 
+#end if
+
+'<h4>Building Design Parameters</h4>
+'<div class="fold">
+'<h4>Module Type</h4>
+'11 - UN072-M
+'12 - UN072-E
+'13 - UN092-M
+'14 - UN092-E
+'15 - UN122-M
+'16 - UN122-E
+'21 - TN104
+'22 - TN124
+'23 - TN154
+'24 - TN184
+'31 - SL031
+'32 - SL051
+'33 - SL062
+'34 - SL071
+'35 - SL072
+'36 - SL082
+'37 - SL102
+'38 - SL122
+'</div>
+
+#if ModuleType ≡ 11
+	'→'l = 7.54m
+	'→'b = 2.91m
+	'→'h = 3.51m
+	'→'l_floor = 0.37m
+	'→'G_unit = 21.14kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 12
+	'→'l = 7.54m
+	'→'b = 3.03m
+	'→'h = 3.51m
+	'→'l_floor = 0.37m
+	'→'G_unit = 26.71kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 13
+	'→'l = 9.94m
+	'→'b = 2.91m
+	'→'h = 3.51m
+	'→'l_floor = 0.37m
+	'→'G_unit = 26.38kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 14
+	'→'l = 9.94m
+	'→'b = 3.03m
+	'→'h = 3.51m
+	'→'l_floor = 0.37m
+	'→'G_unit = 34.20kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 15
+	'→'l = 12.34m
+	'→'b = 2.91m
+	'→'h = 3.51m
+	'→'l_floor = 0.37m
+	'→'G_unit = 33.54kN
+	'→'n_Int,support,points = 2
+#else if ModuleType ≡ 16
+	'→'l = 12.34m
+	'→'b = 3.03m
+	'→'h = 3.51m
+	'→'l_floor = 0.37m
+	'→'G_unit = 43.29kN
+	'→'n_Int,support,points = 2
+#else if ModuleType ≡ 21
+	'→'l = 10.01m
+	'→'b = 4.19m
+	'→'h = 2.9m
+	'→'l_floor = 0.31m
+	'→'G_unit = 47.06kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 22
+	'→'l = 12.41m
+	'→'b = 4.19m
+	'→'h = 2.9m
+	'→'l_floor = 0.31m
+	'→'G_unit = 56.58kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 23
+	'→'l = 14.81m
+	'→'b = 4.19m
+	'→'h = 2.9m
+	'→'l_floor = 0.31m
+	'→'G_unit = 65.41kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 24
+	'→'l = 18.41m
+	'→'b = 4.19m
+	'→'h = 2.9m
+	'→'l_floor = 0.31m
+	'→'G_unit = 79.74kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 31
+	'→'l = 3.10m
+	'→'b = 3.03m
+	'→'h = 2.57m
+	'→'l_floor = 0.17m
+	'→'G_unit = 10.84kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 32
+	'→'l = 5.10m
+	'→'b = 3.03m
+	'→'h = 2.57m
+	'→'l_floor = 0.17m
+	'→'G_unit = 15.78kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 33
+	'→'l = 6.10m
+	'→'b = 3.03m
+	'→'h = 2.57m
+	'→'l_floor = 0.17m
+	'→'G_unit = 20.38kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 34
+	'→'l = 7.50m
+	'→'b = 3.03m
+	'→'h = 2.57m
+	'→'l_floor = 0.17m
+	'→'G_unit = 21.62kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 35
+	'→'l = 7.50m
+	'→'b = 3.39m
+	'→'h = 2.57m
+	'→'l_floor = 0.17m
+	'→'G_unit = 24.22kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 36
+	'→'l = 8.64m
+	'→'b = 3.39m
+	'→'h = 2.57m
+	'→'l_floor = 0.17m
+	'→'G_unit = 27.71kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 37
+	'→'l = 10.24m
+	'→'b = 3.39m
+	'→'h = 2.57m
+	'→'l_floor = 0.17m
+	'→'G_unit = 32.20kN
+	'→'n_Int,support,points = 1
+#else if ModuleType ≡ 38
+	'→'l = 12.24m
+	'→'b = 3.39m
+	'→'h = 2.57m
+	'→'l_floor = 0.17m
+	'→'G_unit = 34.04kN
+	'→'n_Int,support,points = 1
+#else
+	'Error in Module Type!!!! 
+#end if
+
+'<div class="fold">
+'<h4>Foundation plates</h4>
+'1 - PL 0.58x0.4x0.05
+'2 - PL 0.5x0.5x0.05
+'3 - PL 0.8x0.8x0.045
+'4 - PL 1x1x0.14
+'5 - PL 1x2x0.14
+'6 - PL 2x2x0.14
+'7 - PL 2x2x0.16
+'8 - PL 1x2x0.16
+'9 - PL 2x2x0.25
+'</div>
+
+'<h3>Loading</h3>
+'<h4>Dead Load (G)</h4>
+"Roof
+p_insulation = 0.2kN/m^2': insulation + roofing
+p_ceiling = 0.32kN/m^2': steel beam layer + ceiling,
+
+"Floor
+p_partition = 0.15kN/m^2
+p_Steel,Beam,Layer,Other = 0.32kN/m^2
+
+"Facade
+p_Facade = 0.15kN/m^2
+
+"Other
+p_other = 1.0kN/m^2
+
+'<h4>Live Load (Q)</h4>
+P_sep_walls = 0.5kN/m^2
+P_Live = P_Live + P_sep_walls
+F_k,General = 3kN
+
+P_L,FlatRoof = 1kN/m^2
+F_k,FlatRoof = 2kN
+
+'<h4>Snow Load (S)</h4>
+q_snow = 0.56kN/m^2':  Flat roof
+
+"Dimensions
+
+n_Width = 1' : Number of modulus in the Y direction
+
+WindTerrain = (WindArea - 1)*3 + TerrainCategory
+
+'<h4 style="page-break-before: always;">Consulting Engineer</h4> 
+'3BM, Ingenieurs van oplossingen
+'Wattstraat 17
+'3335 LV Zwijndrecht
+'078-7400 252
+'maarten@3bm.co.nl
+
+'<h4>Project</h4>
+'Project Number: 'ProjectNumber$
+'Project Name: 'ProjectName$
+'Project Address: 'ProjectAddress$
+'Project Post Code: 'ProjectPostCode$
+'Project Site: 'ProjectSite$
+
+"Report content: Structural calculation and foundation 
+'Document Reference: 'DocumentReference$
+'Date: 'Date$
+'Change: 'Change$
+
+'<h3>Client</h3>
+'Name: 'Client$
+'Address: 'ClientStreet$
+'Postal Code: 'ClientPostalCode$
+'Client Place: 'ClientPlace$
+
+'<h3>Structural Engineer</h3>
+'3BM Bouwtechniek V.O.F.
+'Responsible Engineer: Ing. M.D. Vroegindeweij
+'Executive Engineer:'engineer$
+
+'<h3>Applied Standards</h3>
+'NEN-EN 1990 t/m 1997
+
+#val
+'<h4><style>h2 {page-break-before: always; color: #1F3864; text-transform: uppercase;} h3 {color: #374F8C;} h4 {color: #5D77B8;} h5 {color: #006400;} h6 {color: #800000;} .pass {color: green;} .fail {color: red} .header{width: 100%; max-width:170mm;} .header th{border: solid 1pt lightgray; text-align:left; font-size:90%;} .header th p{line-height:1em; } .header td{border: solid 1pt lightgray; text-align:left; font-size:90%;} .header td p{line-height:1em; } .logo{width:55pt; height:auto; float:right; margin-top:3pt;} .addr{margin-bottom:8pt;} .pr{font-size:130%;} .center { display: block; margin-left: auto; margin-right: auto; } .table { width: 100%; border-collapse: collapse; } .table tr, td, th { border: 1px solid black }</style></h4>
+
+#equ 
+'<h2>Table of contents</h2>
+'<h4>1. Introduction</h4>
+'<h4>2. Project description</h4>
+'<h4>3. Structure</h4>
+'<h6>3.1 Building System</h6>
+'<h6>3.2 Points of attention during execution</h6>
+'<h6>3.3 Foundation</h6>
+'<h4>4. Loading </h4>
+'<h6>4.1 Building type and load class</h6>
+'<h6>4.2 Applied materials</h6>
+'<h6>4.3 Load Combinations</h6>
+'<h6>4.4 Snow loads (Q)</h6>
+'<h6>4.5 Wind loads (Q)</h6>
+'<h6>4.6 Rainwater accumulation (Q)</h6>
+'<h6>4.7 Other live loads (Q)</h6>
+'<h6>4.8 Existing situation (NVT)</h6>
+'<h6>4.9 Dead loads (G)</h6>
+'<h4>5. Calculations</h4>
+'<h6>5.1 Load Take Down</h6>
+'<h6>5.2 Stability</h6>
+'<h6>5.3 Foundation</h6>
+
+'<h4>Attachments</h4>
+'<h6>A Architectural drawing</h6>
+'<h6>B KOMO certificate</h6>
+
+'<h2>1. Introduction</h2>
+'For the purpose of the aforementioned project, our Engineering Agency, at the request of the Client, issues a structural advice in this report.
+'This report is carried out under our general terms and conditions (which can be sent upon request) and the DNR 2011.
+
+'<h2>2. Project Description</h2>
+'The project involves a structural advice for the Portakabin modular building system.
+
+'<img style="width:100%;" src="./Images/Picture0.png" alt="Picture0.png">
+
+'<h2>3. Structure</h2>
+'<h3>3.1 Explanation of the Building System</h3>
+'A movable PORTA KABIN building system is a construction system where units are connected in a single row and can be placed up to two stories high.
+  'Below we see the configuration used in this project.
+
+#val
+'The building contains <b>'n_story' levels </b> 
+#equ
+
+drawGeneral$(b; l; n_Length)
+'The PORTA KABIN modules are intended for non-permanent use. See the attachment with the KOMO certificate.
+'These modules are available in the dimensions listed below:
+#val
+'<table style="width: 100%;" class="table">
+'  <tr><th>Parameters</th><th>Values</th></tr>
+'  <tr><td>External length (m)</td><td>'l'</td></tr>
+'  <tr><td>External width (m)</td><td>'b'</td></tr>
+'  <tr><td>Total height (m)</td><td>'h'</td></tr>
+'  <tr><td>Floor level relative to foundation (m)</td><td>'l_floor'</td></tr>
+'  <tr><td>Empty weight of the unit (kN)</td><td>'G_unit'</td></tr>
+'  <tr><td>Number of intermediate supports for ground floor</td><td>'n_Int,support,points'</td></tr>
+'</table>
+#equ
+
+'<h3>3.2 Points of attention during execution</h3>
+'Prior to placing the foundation plates: check the subsoil for organic soil layers.
+
+'The module is constructed from a steel structure that provides strength and stability. The calculation for this is not included in this report. Based on the KOMO certificate, it is suitable for use with a variable load of 3-5 kN/m². Please see the attached KOMO certificate for more information.
+'
+'One module consists of a steel frame with tubular profiles. The floor is made up of a wooden beam structure. Stability is ensured by the moment-resistant connections in two directions within the steel frame.
+
+'<h3>3.3 Foundation</h3>
+'The building is a temporary structure with a short reference period. It is also a serially produced simple product, of which hundreds have already been built.
+
+'<b>The construction falls under geotechnical category 1 according to the EC7.</b>
+'Quote from NEN 9997-1 Geotechnical design of structures
+'<i>
+'14) Geotechnical category 1 should only include small and relatively simple structures:
+'
+'for which it can be ensured, based on experience and qualitative geotechnical investigation that,
+'<ul>
+'  <li>the fundamental requirements are met</li>
+'  <li>with negligible risk</li>
+'</ul>
+'
+'15) The procedures of geotechnical category 1 should only be used if there is a negligible risk with regard to overall stability or ground deformations and a subsoil condition that, based on other local experience, is known to be sufficiently uncomplicated. In these cases, the procedures may consist of routine methods for the design and execution of the foundation.
+'
+
+'16) The procedures of geotechnical category 1 should only be used if no excavation takes place below the groundwater level or if, based on comparable local experience, it is known that the proposed excavation below the groundwater level can be carried out without issues.
+'Building and ground structures may be classified in geotechnical category 1 provided the following criteria a to c are met:
+'<h6>a. Type and size of the structure:</h6>
+'<b>(1) Permitted are light structures:</b>
+' - with a design load value on the foundation strips of up to 100 kN/m and on slabs or footings of up to 250 kN;
+' - with a design floor load value of up to 20 kN/m²;
+' - equipped with foundation structures whose behavior has been tested based on local experience;
+' - equipped with a foundation on wooden or prefabricated concrete piles that are only subjected to vertical compression, and for which a pile driving log has been created for each pile over at least the last 2 meters of penetration, confirming that the piles are situated in the load-bearing layer.
+'<h6>b. Influences from the surrounding:</h6>
+'Environmental influences are so minor that the behavior of the structures mentioned under a) can be determined using locally acquired knowledge.
+'<h6>c. Deformations:</h6>
+'No stringent requirements are imposed on the structure.
+'</i>
+
+'Based on the above, it is evident that a temporary POTA KABIN module is a structure in geotechnical category 1.
+'Therefore, no geotechnical investigation was carried out in accordance with Article 3.1, paragraph 4a:
+'a) Geotechnical investigation may be omitted if the structure is classified in geotechnical category 1, and if the following conditions are met:
+'
+' - The geological map shows a homogeneous soil composition;
+' - The foundation of the structure is comparable to the foundation method used in adjacent plots, where, in the case of pile foundations, driven piles must have been used.
+
+'Location: <b>'locationName$'</b>'
+'Subsoil type: <b>'subsoilName$'</b>'
+'Maximum pressure, <b>'p_soil'</b>'
+
+'<h2>4. Loading</h2>
+'<h3>4.1 Building type and load class</h3>
+#hide
+cc = [1; 1; 1; 1; 5; 3.3; 0.9; 1; 1; 1|2; 2; 2; 1; 5; 3.8; 1; 2; 2; 1|3; 1; 1; 1; 5; 3.3; 0.9; 1; 1; 5|4; 1; 1; 1; 5; 3.3; 0.9; 1; 1; 1|5; 1; 1; 1; 5; 3.3; 0.9; 1; 1; 1|6; 2; 2; 1; 5; 3.8; 1; 2; 2; 2|7; 1; 1; 1; 5; 3.3; 0.9; 1; 1; 5|8; 1; 1; 1; 5; 3.3; 0.9; 1; 1; 1]
+cc = row(cc; TypeOfBuilding)
+
+ReliabilityClass = cc.3
+DesignLifeClass = cc.4
+DesignLife = cc.5
+
+DesignCalculationSupervision = cc.8
+InspectionDuringDxecution = cc.9
+#show
+#val
+'Type of building: 'TypeOfBuilding'<br/>
+'Design Calculation Supervision: 'DesignCalculationSupervision'<br/>
+'Inspection during execution: 'InspectionDuringDxecution'<br/>
+'Load class: 'LoadClass'<br/>
+#equ
+β
+K_FI
+h_Building = n_story*h
+
+'<h3>4.2 Applied Materials</h3>
+'<table style="width:100%;border-collapse:collapse;text-align:left;border:1px solid black;">'
+'<thead>'
+'<tr style="background-color:#ccc;color:black;">'
+'<th style="border:1px solid black;padding:8px;">Material Type</th>'
+'<th style="border:1px solid black;padding:8px;">Quality / Grade</th>'
+'</tr>'
+'</thead>'
+'<tbody>'
+'<tr><td style="border:1px solid black;padding:8px;">Concrete</td><td style="border:1px solid black;padding:8px;">C45/55</td></tr>'
+'<tr><td style="border:1px solid black;padding:8px;">Wood</td><td style="border:1px solid black;padding:8px;">C24</td></tr>'
+'<tr><td style="border:1px solid black;padding:8px;">Reinforcing steel</td><td style="border:1px solid black;padding:8px;">B500</td></tr>'
+'<tr><td style="border:1px solid black;padding:8px;">Steel</td><td style="border:1px solid black;padding:8px;">S235</td></tr>'
+'<tr><td style="border:1px solid black;padding:8px;">Bolts</td><td style="border:1px solid black;padding:8px;">8.8</td></tr>'
+'<tr><td style="border:1px solid black;padding:8px;">Wood screw</td><td style="border:1px solid black;padding:8px;">4.6</td></tr>'
+'<tr><td style="border:1px solid black;padding:8px;">Chemical Anchors</td><td style="border:1px solid black;padding:8px;">5.8</td></tr>'
+'</tbody>'
+'</table>'
+'<i>(unless otherwise stated)</i>'
+
+'<h3>4.3 Load factors and load combinations</h3>
+γ_Gsup,610a = 1.35*K_FI
+γ_Gsup,610b = 1.2*K_FI
+γ_Q,610b = 1.5*K_FI
+
+'<h3>4.4. Snow loads (Q)</h3>
+q_snow
+
+'<h3>4.5 Wind loads (Q)</h3>
+#hide
+#novar
+M = [0m; 2m; 3m; 4m; 5m; 6m; 7m; 8m; 9m; 10m; 15m; 20m; 25m; 30m; 35m; 40m; 45m; 50m; 55m; 60m; 65m; 70m; 75m; 80m; 85m; 90m; 95m; 100m; 110m; 120m; 130m; 140m; 150m; 160m; 170m; 180m; 190m; 200m|1; 1.11; 1.22; 1.30; 1.37; 1.42; 1.47; 1.51; 1.55; 1.58; 1.71; 1.80; 1.88; 1.94; 2.00; 2.04; 2.09; 2.12; 2.16; 2.19; 2.22; 2.25; 2.27; 2.30; 2.32; 2.34; 2.36; 2.38; 2.42; 2.45; 2.48; 2.51; 2.54; 2.56; 2.59; 2.61; 2.63; 2.65|2; 0.71; 0.71; 0.71; 0.78; 0.84; 0.89; 0.94; 0.98; 1.02; 1.16; 1.27; 1.36; 1.43; 1.50; 1.55; 1.60; 1.65; 1.69; 1.73; 1.76; 1.80; 1.83; 1.86; 1.88; 1.91; 1.93; 1.96; 2.00; 2.04; 2.08; 2.12; 2.15; 2.18; 2.21; 2.24; 2.27; 2.29|3; 0.69; 0.69; 0.69; 0.69; 0.69; 0.69; 0.73; 0.77; 0.81; 0.96; 1.07; 1.16; 1.23; 1.30; 1.35; 1.40; 1.45; 1.49; 1.53; 1.57; 1.60; 1.63; 1.66; 1.69; 1.72; 1.74; 1.77; 1.81; 1.85; 1.89; 1.93; 1.96; 2.00; 2.03; 2.06; 2.08; 2.11|4; 0.93; 1.02; 1.09; 1.14; 1.19; 1.23; 1.26; 1.29; 1.32; 1.43; 1.51; 1.57; 1.63; 1.67; 1.71; 1.75; 1.78; 1.81; 1.83; 1.86; 1.88; 1.90; 1.92; 1.94; 1.96; 1.98; 1.99; 2.03; 2.05; 2.08; 2.10; 2.13; 2.15; 2.17; 2.19; 2.20; 2.22|5; 0.60; 0.60; 0.60; 0.66; 0.71; 0.75; 0.79; 0.82; 0.85; 0.98; 1.07; 1.14; 1.20; 1.25; 1.30; 1.34; 1.38; 1.42; 1.45; 1.48; 1.50; 1.53; 1.55; 1.58; 1.60; 1.62; 1.64; 1.68; 1.71; 1.74; 1.77; 1.80; 1.83; 1.85; 1.88; 1.90; 1.92|6; 0.58; 0.58; 0.58; 0.58; 0.58; 0.58; 0.62; 0.65; 0.68; 0.80; 0.90; 0.97; 1.03; 1.09; 1.13; 1.17; 1.21; 1.25; 1.28; 1.31; 1.34; 1.37; 1.39; 1.42; 1.44; 1.46; 1.48; 1.52; 1.55; 1.59; 1.62; 1.65; 1.67; 1.70; 1.72; 1.75; 1.77|7|8; 0.49; 0.49; 0.49; 0.54; 0.58; 0.62; 0.65; 0.68; 0.70; 0.80; 0.88; 0.94; 0.99; 1.03; 1.07; 1.11; 1.14; 1.17; 1.19; 1.22; 1.24; 1.26; 1.28; 1.30; 1.32; 1.33; 1.35; 1.38; 1.41; 1.44; 1.46; 1.48; 1.50; 1.52; 1.54; 1.56; 1.58|9; 0.48; 0.48; 0.48; 0.48; 0.48; 0.48; 0.51; 0.53; 0.56; 0.66; 0.74; 0.80; 0.85; 0.89; 0.93; 0.97; 1.00; 1.03; 1.05; 1.08; 1.10; 1.13; 1.15; 1.17; 1.18; 1.20; 1.22; 1.25; 1.28; 1.31; 1.33; 1.35; 1.38; 1.40; 1.42; 1.44; 1.46]
+
+BuildingHeight_x1 = take(1; hlookup_ge(M; h_Building; 1; 1))
+BuildingHeight_x2 = take(n_rows(hlookup_le(M; h_Building; 1; 1)); hlookup_le(M; h_Building; 1; 1))
+
+#if BuildingHeight_x1 ≡ BuildingHeight_x2
+	y = hlookup(M; BuildingHeight_x1; 1; (WindTerrain + 1))
+#else
+	y_1 = hlookup(M; BuildingHeight_x1; 1; (WindTerrain + 1))
+	y_2 = hlookup(M; BuildingHeight_x2; 1; (WindTerrain + 1))
+	y = y_1 + (h_Building - BuildingHeight_x1)/(BuildingHeight_x2 - BuildingHeight_x1)*(y_2 - y_1)
+#end if
+
+M_1 = hlookup(M; h_Building; 1; (WindArea + 1))
+#show
+'Wind Area: 'WindArea
+#if TerrainCategory ≡ 1
+	'Terrain category: <b>Coast Area</b>'
+#else if TerrainCategory ≡ 2
+	'Terrain category: <b>Undeveloped area</b>'
+#else if TerrainCategory ≡ 3
+	'Terrain category: <b>Built-up Area</b>'
+#end if
+'Building Height: 'h_Building
+#varsub
+Z_0:F2
+Z_min:F2
+Cs.Cd = 1:F2
+#hide
+q_p = take(1; y)*kN/m^2
+#show
+q_p
+'<h3>4.6. Rainwater accumulation (Q)</h3>
+'Not Applicable
+
+'<h3>4.7 Other live loads (Q)</h3>
+
+#if TypeOfBuilding ≡ 1
+	'→Categorie B: Office
+#else if TypeOfBuilding ≡ 2
+	'→Categorie A: Residential
+#else if TypeOfBuilding ≡ 3
+	'→Categorie E: Light gathering place
+#else if TypeOfBuilding ≡ 4
+	'→Categorie C: Congregation areas
+#else if TypeOfBuilding ≡ 5
+	'→Categorie C: Childcare Facility
+#else
+	'Error!
+#end if
+
+P_Live
+ψ_0
+ψ_1
+ψ_2
+
+'Roof class: H
+ψ_0,RoofClass = 0
+ψ_1,RoofClass = 0
+ψ_2,RoofClass = 0
+
+'<h3>4.8. Existing situation</h3>
+'Not Applicable
+
+'<h3>4.9. Dead loads (G)</h3>
+'<h6>Roof</h6>
+p_insulation
+p_ceiling
+P_D,roof = p_insulation + p_ceiling
+'<h6>Floor</h6>
+p_partition
+p_Steel,Beam,Layer,Other
+P_D,floor = p_partition + p_Steel,Beam,Layer,Other
+'<h6>Facade</h6>
+p_Facade
+'<h6>Other</h6>
+p_other
+P_Live
+
+'<h2>5. Calculations</h2>
+'<h3>5.1 Load take down</h3>
+drawFloor$(l;b;(n_Int,support,points + 1))
+drawCeiling$(l;b)
+drawSide$(l;h;n_story)
+
+l', 'b', 'h
+'<h6>5.1.1. Calculation of effective length</h6>
+b_1 = b/2
+L_A = l/(2*(n_Int,support,points + 1))
+L_B = 2*L_A
+L_C = l/2
+'<h6>5.1.2. Calculation of effective area</h6>
+A_A = b_1*L_A' for floor
+A_B = b_1*L_B' for floor
+A_C = b_1*L_C' for roof
+'<h3>5.2. Stability calculation in the wind</h3>
+q_p
+
+'<table class="">
+'<thead>
+'<tr><th style="width:30%">c</th><th>P<sub>rep</sub></th></tr>
+'</thead>
+'<tbody>
+'<tr><td>'c_1 = 0.02'</td><td>→'P_rep,1 = q_p*c_1'</td></tr>
+'<tr><td>'c_2 = 0.50'</td><td>→'P_rep,2 = q_p*c_2'</td></tr>
+'<tr><td>'c_3 = 0.80'</td><td>→'P_rep,3 = q_p*c_3'</td></tr>
+'<tr><td>'c_4 = 1.10'</td><td>→'P_rep,4 = q_p*c_4'</td></tr>
+'</tbody>
+'</table>
+
+#noc
+ψ_0,wind = 0.0:F2
+ψ_1,wind = 0.2:F2
+ψ_2,wind = 0.0:F2
+#equ
+
+'The modules are connected as a single unit.
+'The connections can transfer shear, tension, and compression forces in three directions
+
+drawWind$(b; l; n_Length)
+'<h4>5.2.1. Wind 1</h4>
+L_total = n_Length*b
+B_total = l
+H_total = n_story*h
+G_unit,total = n_story*n_Length*G_unit
+
+'<h6>Area calculation</h6>
+A_WindPressure,Suction = B_total*H_total
+A_RoofFriction = L_total*B_total
+A_FacadeFriction = L_total*H_total*2
+
+'<h6>Force calculation</h6>
+F_WindSuction = A_WindPressure,Suction*P_rep,2
+F_WindPressure = A_WindPressure,Suction*P_rep,3
+F_RoofFriction = A_RoofFriction*P_rep,1
+F_Friction = A_FacadeFriction*P_rep,1
+F_Wind,total = F_WindSuction + F_WindPressure + F_RoofFriction + F_Friction
+
+'<h6>Calculation of safety factor</h6>
+h_WindResultant = H_total/2
+F_wind,ED = F_Wind,total*γ_Q,610b
+M_wind = F_wind,ED*h_WindResultant
+F_0.9G50%TotalWeight = G_unit,total*0.9*0.5
+e_FoundationLeg = L_total
+F_wind,zijde = M_wind/e_FoundationLeg
+#hide
+uc_trek = F_wind,zijde/F_0.9G50%TotalWeight
+#show
+
+#if uc_trek ≤ 1
+	uc_trek = F_wind,zijde/F_0.9G50%TotalWeight'<span style="color: green">≤ 1.0 → Ok</span>
+#else
+	uc_trek = F_wind,zijde/F_0.9G50%TotalWeight'<span style="color: red">> 1.0 → N.G</span>
+#end if
+
+'<h4>5.2.2. Wind 2</h4>
+L_total = n_Width*b
+B_total = l
+H_total = n_story*h
+G_unit,total = n_story*n_Width*G_unit
+
+'<h6>Area calculation</h6>
+A_WindPressure,Suction = L_total*H_total
+A_RoofFriction = B_total*L_total
+A_FacadeFriction = B_total*H_total*2
+
+'<h6>Force calculation</h6>
+F_WindSuction = A_WindPressure,Suction*P_rep,2
+F_WindPressure = A_WindPressure,Suction*P_rep,3
+F_RoofFriction = A_RoofFriction*P_rep,1
+F_Friction = A_FacadeFriction*P_rep,1
+F_Wind,total = F_WindSuction + F_WindPressure + F_RoofFriction + F_Friction
+
+'<h6>Calculation of safety factor</h6>
+h_WindResultant = H_total/2
+F_wind,ED = F_Wind,total*γ_Q,610b
+M_wind = F_wind,ED*h_WindResultant
+F_0.9G50%TotalWeight = G_unit,total*0.9*0.5
+e_FoundationLeg = B_total
+F_wind,zijde = M_wind/e_FoundationLeg
+#hide
+uc_trek = F_wind,zijde/F_0.9G50%TotalWeight
+#show
+
+#if uc_trek ≤ 1
+	uc_trek = F_wind,zijde/F_0.9G50%TotalWeight'<span style="color: green">≤ 1.0 → Ok</span>
+#else
+	uc_trek = F_wind,zijde/F_0.9G50%TotalWeight'<span style="color: red">> 1.0 → N.G</span>
+#end if
+
+'<h3>5.3 Foundation</h3>
+#def getFdn$(ii$)
+	#hide
+	#if ii$ ≡ 1
+		'→'b_fdn = 0.58m
+		'→'l_fdn = 0.4m
+		'→'t_fdn = 0.05m'→'G_fdn = 11kN
+		'→'p_max = 120kN
+	#else if ii$ ≡ 2
+		'→'b_fdn = 0.5m
+		'→'l_fdn = 0.5m
+		'→'t_fdn = 0.05m
+		'→'G_fdn = 11.5kN
+		'→'p_max = 120kN
+	#else if ii$ ≡ 3
+		'→'b_fdn = 0.8m
+		'→'l_fdn = 0.8m
+		'→'t_fdn = 0.045m
+		'→'G_fdn = 2.8kN
+		'→'p_max = 200kN
+	#else if ii$ ≡ 4
+		'→'b_fdn = 1.0m
+		'→'l_fdn = 1.0m
+		'→'t_fdn = 0.14m
+		'→'G_fdn = 3.5kN
+		'→'p_max = 150kN
+	#else if ii$ ≡ 5
+		'→'b_fdn = 1.0m
+		'→'l_fdn = 2.0m
+		'→'t_fdn = 0.14m
+		'→'G_fdn = 7.0kN
+		'→'p_max = 150kN
+	#else if ii$ ≡ 6
+		'→'b_fdn = 1.0m
+		'→'l_fdn = 2.0m
+		'→'t_fdn = 0.16m
+		'→'G_fdn = 8.0kN
+		'→'p_max = 200kN
+	#else if ii$ ≡ 7
+		'→'b_fdn = 2.0m
+		'→'l_fdn = 2.0m
+		'→'t_fdn = 0.14m
+		'→'G_fdn = 14.0kN
+		'→'p_max = 150kN
+	#else if ii$ ≡ 8
+		'→'b_fdn = 2.0m
+		'→'l_fdn = 2.0m
+		'→'t_fdn = 0.16m
+		'→'G_fdn = 16.0kN
+		'→'p_max = 200kN
+	#else if ii$ ≡ 9
+		'→'b_fdn = 2.0m
+		'→'l_fdn = 2.0m
+		'→'t_fdn = 0.25m
+		'→'G_fdn = 25.0kN
+		'→'p_max = 420kN
+	#end if
+	#show
+#end def
+'<h5>5.3.1 Corner (1)</h5>
+'<h6>Dead Loads (G)</h6>
+F_Other_weight = 1m^2*p_other
+F_Roof = n_story*A_C*P_D,roof
+#if n_story ≡ 1
+	F_Floor = A_A*P_D,floor
+#else
+	F_Floor = (n_story - 1)*A_C*P_D,floor + A_A*P_D,floor
+#end if
+F_Dead = F_Other_weight + F_Roof + F_Floor
+
+'<h6>Live Loads (Q)</h6>
+F_Roof = A_C*P_L,FlatRoof
+#if n_story ≡ 1
+	F_Floor = A_A*P_Live
+#else
+	F_Floor = (n_story - 1)*A_C*P_Live + A_A*P_Live
+#end if
+F_Live = F_Roof + F_Floor
+
+'<h6>Total Loads</h6>
+F_total_1 = γ_Gsup,610b*F_Dead + γ_Q,610b*F_Live
+F_total_2 = γ_Gsup,610a*F_Dead + γ_Q,610b*F_Floor*ψ_0
+F_total,1 = max(F_total_1; F_total_2)
+
+#hide 
+f_Corner = 0
+#show
+#for i = 1 : 9
+	getFdn$(i)
+	#hide
+	A = b_fdn*l_fdn
+	F_total_u = F_total,1 + G_fdn*1.2
+	p_ground = F_total_u/A|kN/m^2', Ground pressure'
+	f_Corner = i
+	#if and(p_ground/p_soil ≤ 1.0; F_total,1/p_max ≤ 1.0)
+		#break
+	#end if
+#loop
+#show
+'Type: 'f_Corner
+A = b_fdn*l_fdn
+F_total_u = F_total,1 + G_fdn*1.2
+p_ground = F_total_u/A|kN/m^2', Ground pressure'
+
+'<h6>Unity Check</h6>
+#hide
+uc = p_ground/p_soil
+#show
+#if uc ≤ 1
+	'Ground pressure: 'uc = p_ground/p_soil'<span style="color:green">≤1.0→<b>Ok</b></span>'
+#else
+	'Ground pressure: 'uc = p_ground/p_soil'<span style="color:red">>1.0→<b>N.G</b></span>'
+#end if
+#hide
+uc = F_total,1/p_max
+#show
+#if uc ≤ 1
+	'Foundation plate: 'uc = F_total,1/p_max'<span style="color:green">≤1.0→<b>Ok</b></span>'
+#else
+	'Foundation plate: 'uc = F_total,1/p_max'<span style="color:red">>1.0→<b>N.G</b></span>'
+#end if
+
+#hide
+'----------------------------------------------------------------------------------------------
+uc_1 = max(p_ground/p_soil; F_total,1/p_max)
+b_fdn,1 = b_fdn
+l_fdn,1 = l_fdn
+
+#show
+'<h5>5.3.2. Top/Bottom Edge (2)</h5>
+#hide
+f_Edge1 = 0
+#show
+#for i = 1 : 9
+	getFdn$(i)
+	#hide
+	A = b_fdn*l_fdn
+	F_total,2 = 2*F_total,1
+	F_total_u = F_total,2 + G_fdn*1.2
+	p_ground = F_total_u/A|kN/m^2', Ground pressure'
+	f_Edge1 = i
+	#if and(p_ground/p_soil ≤ 1.0; F_total,2/p_max ≤ 1.0)
+		#break
+	#end if
+#loop
+#show
+'Type: 'f_Edge1
+A = b_fdn*l_fdn
+F_total,2 = 2*F_total,1
+F_total_u = F_total,2 + G_fdn*1.2
+p_ground = F_total_u/A|kN/m^2', Ground pressure'
+
+'<h6>Unity Check</h6>
+#hide
+uc = p_ground/p_soil
+#show
+#if uc ≤ 1
+	'Ground pressure: 'uc = p_ground/p_soil'<span style="color:green">≤1.0→<b>Ok</b></span>'
+#else
+	'Ground pressure: 'uc = p_ground/p_soil'<span style="color:red">>1.0→<b>N.G</b></span>'
+#end if
+#hide
+uc = F_total,2/p_max
+#show
+#if uc ≤ 1
+	'Foundation plate: 'uc = F_total,2/p_max'<span style="color:green">≤1.0→<b>Ok</b></span>'
+#else
+	'Foundation plate: 'uc = F_total,2/p_max'<span style="color:red">>1.0→<b>N.G</b></span>'
+#end if
+#hide
+uc_2 = max(p_ground/p_soil; F_total,2/p_max)
+b_fdn,2 = b_fdn
+l_fdn,2 = l_fdn
+#show
+
+'<h5>5.3.3. Side Edge (3)</h5>
+'<h6>Dead Loads (G)</h6>
+F_Other_weight = 1m^2*p_other
+F_Floor = A_B*P_D,floor
+F_Dead = F_Other_weight + F_Floor
+
+'<h6>Live Loads (Q)</h6>
+F_Floor = A_B*P_Live
+F_Live = F_Floor
+
+'<h6>Total Loads</h6>
+F_total_1 = γ_Gsup,610b*F_Dead + γ_Q,610b*F_Live
+F_total_2 = γ_Gsup,610a*F_Dead + γ_Q,610b*F_Floor*ψ_0
+F_total,3 = max(F_total_1; F_total_2)
+
+#hide
+f_Edge2 = 0
+#show
+#for i = 1 : 6
+	getFdn$(i)
+	#hide
+	A = b_fdn*l_fdn
+	F_total_u = F_total,3 + G_fdn*1.2
+	p_ground = F_total_u/A|kN/m^2', Ground pressure'
+	f_Edge2 = i
+	#if and(p_ground/p_soil ≤ 1.0; F_total,3/p_max ≤ 1.0)
+		#break
+	#end if
+#loop
+#show
+'Type: 'f_Edge2
+A = b_fdn*l_fdn
+F_total_u = F_total,3 + G_fdn*1.2
+p_ground = F_total_u/A|kN/m^2', Ground pressure'
+
+'<h6>Unity Check</h6>
+#hide
+uc = p_ground/p_soil
+#show
+#if uc ≤ 1
+	'Ground pressure: 'uc = p_ground/p_soil'<span style="color:green">≤1.0→<b>Ok</b></span>'
+#else
+	'Ground pressure: 'uc = p_ground/p_soil'<span style="color:red">>1.0→<b>N.G</b></span>'
+#end if
+#hide
+uc = F_total,3/p_max
+#show
+#if uc ≤ 1
+	'Foundation plate: 'uc = F_total,3/p_max'<span style="color:green">≤1.0→<b>Ok</b></span>'
+#else
+	'Foundation plate: 'uc = F_total,3/p_max'<span style="color:red">>1.0→<b>N.G</b></span>'
+#end if
+#hide
+uc_3 = max(p_ground/p_soil; F_total,3/p_max)
+b_fdn,3 = b_fdn
+l_fdn,3 = l_fdn
+#show
+
+'<h5>5.3.4. Middle (4)</h5>
+#hide
+
+#show
+#for i = 1 : 6
+	getFdn$(i)
+	#hide
+	A = b_fdn*l_fdn
+	F_total,4 = 2*F_total,3
+	F_total_u = F_total,4 + G_fdn*1.2
+	p_ground = F_total_u/A|kN/m^2', Ground pressure'
+	f_Middle = i
+	#if and(p_ground/p_soil ≤ 1.0; F_total,4/p_max ≤ 1.0)
+		#break
+	#end if
+#loop
+#show
+'Type: 'f_Middle
+
+A = b_fdn*l_fdn
+F_total,4 = 2*F_total,3
+F_total_u = F_total,4 + G_fdn*1.2
+p_ground = F_total_u/A|kN/m^2', Ground pressure'
+
+'<h6>Unity Check</h6>
+#hide
+uc = p_ground/p_soil
+#show
+#if uc ≤ 1
+	'Ground pressure: 'uc = p_ground/p_soil'<span style="color:green">≤1.0→<b>Ok</b></span>'
+#else
+	'Ground pressure: 'uc = p_ground/p_soil'<span style="color:red">>1.0→<b>N.G</b></span>'
+#end if
+#hide
+uc = F_total,4/p_max
+#show
+#if uc ≤ 1
+	'Foundation plate: 'uc = F_total,4/p_max'<span style="color:green">≤1.0→<b>Ok</b></span>'
+#else
+	'Foundation plate: 'uc = F_total,4/p_max'<span style="color:red">>1.0→<b>N.G</b></span>'
+#end if
+#hide
+uc_4 = max(p_ground/p_soil; F_total,4/p_max)
+b_fdn,4 = b_fdn
+l_fdn,4 = l_fdn
+#show
+
+
+#if Or(uc_1 > 1.0; uc_2 > 1.0; uc_3 > 1.0; uc_4 > 1.0)
+	'<h6>Total Failors</h6>
+#end if
+#if uc_1 > 1.0
+	'<div style="color: red;"><b>Corner foundations fail to meet design criteria!</b></div>
+#end if
+#if uc_2 > 1.0
+	'<div style="color: red;"><b>Top and bottom edge foundations fail to meet design criteria!</b></div>
+#end if
+#if uc_3 > 1.0
+	'<div style="color: red;"><b>Left and right edge foundations fail to meet design criteria!</b></div>
+#end if
+#if uc_4 > 1.0
+	'<div style="color: red;"><b>Middle foundations fail to meet design criteria!</b></div>
+#end if
+
+'<h4>5.4. Foundation Layout</h4> 
+
+drawFDN$(b; l; n_Length; n_Int,support,points; b_fdn,1; b_fdn,2; b_fdn,3; b_fdn,4; l_fdn,1; l_fdn,2; l_fdn,3; l_fdn,4)
+
+'Minimum dimensions of foundation plates. See attached drawing of the chosen foundation plates. Bigger plates can be used out for practical reasons.
+'Plate 1: 1x2x0.14m
+'Plate 2: 2x2x0.14m
+'Plate 3: 1x1x0.14m
+'Plate 4: 1x2x0.14m

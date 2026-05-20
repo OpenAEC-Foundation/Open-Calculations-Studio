@@ -28,10 +28,49 @@ function escapeHtml(str: string): string {
 
 // ─── Node rendering ─────────────────────────────────────────────────
 
+/**
+ * Coalesce consecutive HTML text nodes that together form an `<svg>...</svg>`
+ * block into a single `svg` node. This is needed because CalcPAD's SVG macros
+ * emit one prose line per element (`'<line .../>`, `'<rect .../>`, etc.), and
+ * the default text renderer wraps each in `<p>`, which breaks SVG nesting.
+ */
+function coalesceSvg(nodes: EvaluatedNode[]): EvaluatedNode[] {
+  const out: EvaluatedNode[] = [];
+  let i = 0;
+  while (i < nodes.length) {
+    const n = nodes[i];
+    if (n.type === 'conditional-branch') {
+      out.push({ ...n, children: coalesceSvg(n.children) });
+      i++;
+      continue;
+    }
+    if (n.type === 'text' && n.html && /<svg\b/i.test(n.text)) {
+      const buf: string[] = [n.text];
+      let depth = (n.text.match(/<svg\b/gi)?.length ?? 0)
+                - (n.text.match(/<\/svg>/gi)?.length ?? 0);
+      i++;
+      while (i < nodes.length && depth > 0) {
+        const m = nodes[i];
+        if (m.type !== 'text' || !m.html) break;
+        buf.push(m.text);
+        depth += (m.text.match(/<svg\b/gi)?.length ?? 0)
+               - (m.text.match(/<\/svg>/gi)?.length ?? 0);
+        i++;
+      }
+      out.push({ type: 'svg', content: buf.join('\n') });
+      continue;
+    }
+    out.push(n);
+    i++;
+  }
+  return out;
+}
+
 export function render(nodes: EvaluatedNode[]): string {
+  const coalesced = coalesceSvg(nodes);
   const parts: string[] = ['<div class="ifc-calc">'];
 
-  for (const node of nodes) {
+  for (const node of coalesced) {
     parts.push(renderNode(node));
   }
 
@@ -45,7 +84,14 @@ function renderNode(node: EvaluatedNode): string {
       return `<h${node.level}>${escapeHtml(node.text)}</h${node.level}>`;
 
     case 'text':
-      return `<p class="calc-text">${escapeHtml(node.text)}</p>`;
+      // CalcPAD prose lines (`'…`) come through with `html: true` and may contain
+      // inline tags like <i>, <b>, <hr/>, <sub>. Pass them through unescaped.
+      return node.html
+        ? `<p class="calc-text">${node.text}</p>`
+        : `<p class="calc-text">${escapeHtml(node.text)}</p>`;
+
+    case 'plot':
+      return `<div class="calc-plot-wrap">${node.svg}</div>`;
 
     case 'assignment':
       return renderAssignment(node);
@@ -62,9 +108,53 @@ function renderNode(node: EvaluatedNode): string {
     case 'select':
       return renderSelect(node);
 
+    case 'input-prompt':
+      return renderInputPrompt(node);
+
+    case 'user-function':
+      return renderUserFunction(node);
+
+    case 'var-display':
+      return renderVarDisplay(node);
+
     case 'gef-upload':
       return renderGefUpload(node);
   }
+}
+
+function renderUserFunction(node: { name: string; params: string[]; expression: string }): string {
+  const nameLatex = nameToLatex(node.name);
+  const paramsLatex = node.params.map(nameToLatex).join(", \\, ");
+  const exprLatex = exprToLatex(node.expression);
+  const latex = `${nameLatex}(${paramsLatex}) = ${exprLatex}`;
+  return `<div class="calc-line"><span class="calc-formula">${renderLatex(latex, true)}</span></div>`;
+}
+
+function renderVarDisplay(node: { name: string; result: string; unit: string }): string {
+  const nameLatex = nameToLatex(node.name);
+  const valueLatex = resultToLatex(node.result, node.unit);
+  const latex = `${nameLatex} = ${valueLatex}`;
+  return `<div class="calc-line"><span class="calc-formula">${renderLatex(latex, true)}</span></div>`;
+}
+
+function renderInputPrompt(node: {
+  name: string;
+  label: string;
+  unit: string;
+  currentValue: string;
+}): string {
+  const unitSuffix = node.unit
+    ? `<span class="calc-input-unit">${escapeHtml(node.unit)}</span>`
+    : '';
+  return `<div class="calc-input-prompt">
+  <label class="calc-input-label">${escapeHtml(node.label)} =</label>
+  <input type="number"
+    class="calc-input-value"
+    data-prompt="${escapeHtml(node.name)}"
+    value="${escapeHtml(node.currentValue)}"
+    step="any" />
+  ${unitSuffix}
+</div>`;
 }
 
 function renderSelect(node: {
@@ -243,6 +333,20 @@ export const defaultStyles = `
   max-width: 100%;
 }
 
+.calc-plot-wrap {
+  margin: 1em 0;
+  background: #fafaf9;
+  border: 1px solid #e7e5e4;
+  border-radius: 6px;
+  padding: 6px;
+  text-align: center;
+}
+.calc-plot {
+  max-width: 100%;
+  height: auto;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+}
+
 .calc-image {
   margin: 1em 0;
   text-align: center;
@@ -286,6 +390,50 @@ export const defaultStyles = `
   outline: none;
   border-color: #0ea5e9;
   box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+}
+
+/* ─── CalcPAD ? Input Prompt ─────────────────────────────────────── */
+
+.calc-input-prompt {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0.35em 0;
+  padding: 0.4em 1em;
+  background: #fef3c7;
+  border-left: 3px solid #D97706;
+  border-radius: 0 6px 6px 0;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+.calc-input-label {
+  font-size: 0.95em;
+  font-weight: 600;
+  color: #92400E;
+  white-space: nowrap;
+}
+
+.calc-input-value {
+  padding: 0.25em 0.5em;
+  border: 1px solid #fcd34d;
+  border-radius: 4px;
+  background: white;
+  font-family: inherit;
+  font-size: 0.95em;
+  color: #1a1a1a;
+  width: 8em;
+}
+
+.calc-input-value:focus {
+  outline: none;
+  border-color: #D97706;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
+}
+
+.calc-input-unit {
+  font-size: 0.9em;
+  color: #92400E;
+  font-style: italic;
 }
 
 /* ─── GEF Upload ─────────────────────────────────────────────────── */

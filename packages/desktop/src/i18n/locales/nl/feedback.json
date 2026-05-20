@@ -1,0 +1,23 @@
+{
+  "title": "Feedback verzenden",
+  "email": "E-mail",
+  "emailPlaceholder": "uw@email.com",
+  "fullName": "Volledige naam",
+  "fullNamePlaceholder": "Uw naam (optioneel)",
+  "categoryGeneral": "Algemeen",
+  "categoryBug": "Bug",
+  "categoryFeature": "Functie",
+  "messagePlaceholder": "Vertel ons wat u denkt... (minimaal 10 tekens)",
+  "attachImages": "Afbeeldingen bijvoegen",
+  "imageLimit": "Max. 3 afbeeldingen, 1 MB totaal",
+  "sentiment": "Hoe voelt u zich?",
+  "sentimentFrustrated": "Gefrustreerd",
+  "sentimentNeutral": "Neutraal",
+  "sentimentHappy": "Blij",
+  "submit": "Feedback verzenden",
+  "submitting": "Bezig met verzenden...",
+  "successTitle": "Bedankt!",
+  "successMessage": "Uw feedback is succesvol verzonden.",
+  "sendAnother": "Nog een verzenden",
+  "errorGeneric": "Feedback verzenden mislukt. Probeer het opnieuw."
+}
