@@ -2,7 +2,9 @@ import { useEffect, useRef, useMemo } from "react";
 import { process, defaultStyles } from "@ifc-calc/core";
 import { useDocumentStore } from "../../store/documentStore";
 import { useLoadCaseStore } from "../../store/loadCaseStore";
-import { calcpadIncludes } from "../../templates/calcpad-includes";
+import { useZoom } from "../../hooks/useZoom";
+import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
+import HelpPanel from "./HelpPanel";
 import "katex/dist/katex.min.css";
 import "./Preview.css";
 
@@ -33,7 +35,7 @@ export default function Preview() {
 
   const html = useMemo(() => {
     try {
-      return process(source, selectValues, { includes: calcpadIncludes });
+      return process(source, selectValues, { includes: calcpadIncludes, imageUrls: calcpadImageUrls });
     } catch (err) {
       const msg = (err as Error).message;
       return `<div class="ifc-calc"><p class="calc-text" style="color:#dc2626;">Render error: ${msg}</p></div>`;
@@ -85,13 +87,24 @@ export default function Preview() {
     };
   }, [html, selectValues, setSelectValue]);
 
+  const { ref: zoomRef, zoom } = useZoom();
+  const isEmpty = source.trim().length === 0;
+
   return (
-    <div className="calc-preview">
-      <div
-        ref={containerRef}
-        className="calc-preview-content"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+    <div
+      className="calc-preview"
+      ref={zoomRef}
+      style={{ fontSize: `${zoom * 100}%` }}
+    >
+      {isEmpty ? (
+        <HelpPanel />
+      ) : (
+        <div
+          ref={containerRef}
+          className="calc-preview-content"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      )}
     </div>
   );
 }

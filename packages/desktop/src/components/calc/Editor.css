@@ -23,7 +23,8 @@
   max-height: 100% !important;
   width: auto !important;
   font-family: var(--font-mono);
-  font-size: 13px;
+  /* Driven by useZoom — wrapper sets --cm-font-size; falls back to 13px. */
+  font-size: var(--cm-font-size, 13px);
   background: var(--theme-bg);
   color: var(--theme-text);
 }
