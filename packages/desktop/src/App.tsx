@@ -9,7 +9,7 @@ import Editor from "./components/calc/Editor";
 import Preview from "./components/calc/Preview";
 import SplitPane from "./components/calc/SplitPane";
 import ProjectBrowser from "./components/calc/ProjectBrowser";
-import IfcCodePanel from "./components/calc/IfcCodePanel";
+import IfcViewerPanel from "./components/calc/IfcViewerPanel";
 import { getSetting } from "./store";
 
 export default function App() {
@@ -52,7 +52,7 @@ export default function App() {
         <ProjectBrowser />
         <div style={{ flex: 1, minWidth: 0 }}>
           {activeView === "ifc" ? (
-            <IfcCodePanel />
+            <IfcViewerPanel />
           ) : (
             <SplitPane left={<Editor />} right={<Preview />} />
           )}

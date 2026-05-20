@@ -4,6 +4,15 @@ export type { SelectValues } from './evaluator.js';
 export { render, defaultStyles } from './renderer.js';
 export { exprToLatex, nameToLatex } from './latex.js';
 export { parseGef, type GefData } from './gef-parser.js';
+export {
+  generateIfcx,
+  generateIfc4x3Step,
+  type IfcGenerationOptions,
+  type IfcGenerationResult,
+  type IfcxDocument,
+  type IfcxHeader,
+  type IfcxEntry,
+} from './ifc-generator.js';
 export type * from './types.js';
 
 import { parse, type ParseOptions } from './parser.js';

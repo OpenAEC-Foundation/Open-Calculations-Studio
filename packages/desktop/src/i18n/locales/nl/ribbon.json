@@ -73,6 +73,8 @@
     "fileOps": "Bestand",
     "import": "IFC Importeren",
     "export": "IFC Exporteren",
+    "exportStep": "Exporteer .ifc",
+    "exportIfcx": "Exporteer .ifcx",
     "model": "Model",
     "structure": "Structuur",
     "statistics": "Statistieken",

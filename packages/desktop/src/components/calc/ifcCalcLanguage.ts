@@ -112,6 +112,19 @@ const parser: StreamParser<{ inPlot: boolean }> = {
       return "string";
     }
 
+    // Inline double-quoted string `"…"` — used in #def constants
+    // (`#def style1$ = style="…"`), HTML/SVG attributes, and string-typed
+    // params. Highlight everything between the quotes as a string.
+    if (stream.peek() === '"') {
+      stream.next();
+      while (!stream.eol() && stream.peek() !== '"') {
+        if (stream.peek() === "\\") stream.next();
+        stream.next();
+      }
+      if (stream.peek() === '"') stream.next();
+      return "string";
+    }
+
     // Block markers
     if (stream.match(/^@(svg|end|select|gef|img)\b/)) {
       // For @img() also consume the rest

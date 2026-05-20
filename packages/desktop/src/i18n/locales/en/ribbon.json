@@ -73,6 +73,8 @@
     "fileOps": "File",
     "import": "Import IFC",
     "export": "Export IFC",
+    "exportStep": "Export .ifc",
+    "exportIfcx": "Export .ifcx",
     "model": "Model",
     "structure": "Structure",
     "statistics": "Statistics",

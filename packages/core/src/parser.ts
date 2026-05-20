@@ -287,6 +287,10 @@ function findMatchingParen(s: string, openIdx: number): number {
 }
 
 function splitArgs(raw: string): string[] {
+  // CalcPAD uses `;` to separate function/macro arguments. Comma is reserved
+  // for subscripts (`b_fdn,1`) which foldSubscriptCommas rewrites later.
+  // Splitting on `,` here would scramble argument order whenever a subscript
+  // value is passed in (e.g. `drawFDN$(...; b_fdn,1; b_fdn,2; ...)`).
   const out: string[] = [];
   let depth = 0, inString = false, start = 0;
   for (let i = 0; i < raw.length; i++) {
@@ -295,7 +299,7 @@ function splitArgs(raw: string): string[] {
     if (inString) continue;
     if (ch === '(' || ch === '[') depth++;
     else if (ch === ')' || ch === ']') depth--;
-    else if ((ch === ';' || ch === ',') && depth === 0) {
+    else if (ch === ';' && depth === 0) {
       out.push(raw.slice(start, i).trim());
       start = i + 1;
     }
@@ -305,25 +309,39 @@ function splitArgs(raw: string): string[] {
 }
 
 function applyMacro(macro: { params: string[]; body: string[]; oneLine: string | null }, args: string[]): string {
-  const subst = (s: string): string => {
+  // CalcPAD typed-param refs carry `$` (`x$`, `n_Length$`). Bare refs
+  // (`n_Length` without `$`) also occur in arithmetic context, but bare refs
+  // for single-letter params (`x`, `y`, `b`, `h`, `l`, `w`) collide with SVG
+  // attribute names inside prose-template lines (`<rect x="…">`). Strategy:
+  //   • Always substitute `paramname$`.
+  //   • In *code* lines (no leading `'`), also substitute bare `paramname`.
+  //   • In *prose* lines, ONLY substitute `$`-suffixed refs.
+  const substLine = (s: string, isProse: boolean): string => {
     let result = s;
     for (let i = 0; i < macro.params.length; i++) {
       const p = macro.params[i];
       const a = args[i] ?? '';
-      // CalcPAD typed-param references carry `$` suffix (`x$`, `b$`). Match
-      // BOTH `name$` (preferred, unambiguous) and `name` (whole-word bare
-      // reference, used in arithmetic contexts like `b__ = b/1m` after the
-      // body's own $-strip pass). The $-suffixed form is checked first so it
-      // wins over the shorter bare form within a single replacement scan.
+      // 1) `$`-suffixed (always applies)
       result = result.replace(
         new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(p)}\\$(?![\\p{L}\\p{N}_])`, 'gu'),
         a,
       );
+      // 2) bare reference (skip in prose to protect SVG attribute names)
+      if (!isProse) {
+        result = result.replace(
+          new RegExp(`(?<![\\p{L}\\p{N}_.])${escapeRegExp(p)}(?![\\p{L}\\p{N}_])`, 'gu'),
+          a,
+        );
+      }
     }
     return result;
   };
-  if (macro.oneLine !== null) return subst(macro.oneLine);
-  return macro.body.map(subst).join('\n');
+  if (macro.oneLine !== null) {
+    return substLine(macro.oneLine, macro.oneLine.trimStart().startsWith("'"));
+  }
+  return macro.body
+    .map((line) => substLine(line, line.trimStart().startsWith("'")))
+    .join('\n');
 }
 
 /**
