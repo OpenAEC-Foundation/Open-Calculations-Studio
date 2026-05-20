@@ -13,7 +13,9 @@ import IfcViewerPanel from "./components/calc/IfcViewerPanel";
 import { getSetting } from "./store";
 import { useDocumentStore } from "./store/documentStore";
 import { useRecentFiles } from "./hooks/useRecentFiles";
-import { openCalculationFile } from "./tauri/fileOps";
+import { openCalculationFile, unwrapFromIfcCalculation } from "./tauri/fileOps";
+import { setAngleMode, type AngleMode } from "@ifc-calc/core";
+import { UNITS_DEFAULTS, type UnitsSettings } from "./components/settings/SettingsDialog";
 
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -26,6 +28,14 @@ export default function App() {
       setTheme(saved);
       applyTheme(saved);
     });
+    getSetting<UnitsSettings>("units", UNITS_DEFAULTS).then((u) => {
+      setAngleMode(u.angleMode as AngleMode);
+    });
+    const onUnits = (e: Event) => {
+      const detail = (e as CustomEvent<UnitsSettings>).detail;
+      if (detail) setAngleMode(detail.angleMode as AngleMode);
+    };
+    window.addEventListener("units-changed", onUnits);
     // Show window once theme is applied (avoids flash of unstyled chrome)
     import("@tauri-apps/api/window")
       .then(({ getCurrentWindow }) => {
@@ -34,6 +44,7 @@ export default function App() {
       .catch(() => {
         // Browser fallback (npm run dev without Tauri)
       });
+    return () => window.removeEventListener("units-changed", onUnits);
   }, []);
 
   const handleThemeChange = (newTheme: string) => {
@@ -71,7 +82,8 @@ export default function App() {
         return;
       }
       const { readTextFile } = await import("@tauri-apps/plugin-fs");
-      const content = await readTextFile(path);
+      const raw = await readTextFile(path);
+      const content = unwrapFromIfcCalculation(raw);
       const name = path.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, "") ?? path;
       loadTemplate(content, name);
       markSaved(path);

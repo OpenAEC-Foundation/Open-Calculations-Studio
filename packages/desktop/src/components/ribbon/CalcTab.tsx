@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import RibbonGroup from "./RibbonGroup";
 import RibbonButton from "./RibbonButton";
@@ -9,21 +9,16 @@ import {
   saveDiskIcon,
   undoIcon,
   redoIcon,
-  headingIcon,
-  formulaIcon,
-  selectListIcon,
   imageIcon,
   svgShapeIcon,
-  pdfPreviewIcon,
   pdfIcon,
 } from "./calcIcons";
-import { parse, evaluate } from "@ifc-calc/core";
+import { parse, evaluate, generateIfcx } from "@ifc-calc/core";
 import { useDocumentStore } from "../../store/documentStore";
 import { useLoadCaseStore } from "../../store/loadCaseStore";
-import { previewPdfReport, savePdfReport } from "../../tauri/pdfReport";
+import { savePdfReport } from "../../tauri/pdfReport";
 import { openCalculationFile, saveCalculationFile } from "../../tauri/fileOps";
-import { calcpadIncludes } from "../../templates/calcpad-includes";
-import PdfPreviewModal from "../calc/PdfPreviewModal";
+import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
 import { useRecentFiles } from "../../hooks/useRecentFiles";
 
 interface CalcTabProps {
@@ -40,7 +35,6 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
   const activeId = useLoadCaseStore((s) => s.activeId);
   const valuesByCase = useLoadCaseStore((s) => s.valuesByCase);
   const selectValues = valuesByCase[activeId] ?? {};
-  const [previewOpen, setPreviewOpen] = useState(false);
   const { addRecentFile } = useRecentFiles();
 
   const handleOpen = useCallback(async () => {
@@ -61,34 +55,36 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
     }
   }, [loadTemplate, addRecentFile]);
 
+  const projectName = filePath ?? "Berekening";
+
+  const evaluateCurrent = useCallback(() => {
+    const ast = parse(source, { includes: calcpadIncludes, imageUrls: calcpadImageUrls });
+    return evaluate(ast, selectValues);
+  }, [source, selectValues]);
+
   const handleSave = useCallback(async () => {
     try {
-      const path = await saveCalculationFile(source, filePath ?? "Berekening");
+      // Save as IFCX (.ifc-calculation) — the IFCX document IS the file, with
+      // the CalcPAD source embedded under `source.content` for round-trip.
+      const nodes = evaluateCurrent();
+      const ifcx = generateIfcx(nodes, { projectName });
+      const path = await saveCalculationFile(source, ifcx, projectName);
       if (path) {
-        // Persist the new file path so DocumentBar / next save reflects it.
         useDocumentStore.getState().markSaved(path);
       }
     } catch (err) {
       console.error("Save file failed:", err);
       alert(`Bestand opslaan mislukt: ${(err as Error).message}`);
     }
-  }, [source, filePath]);
+  }, [source, projectName, evaluateCurrent]);
 
-  const projectName = filePath ?? "Berekening";
-
-  const evaluateCurrent = useCallback(() => {
-    const ast = parse(source, { includes: calcpadIncludes });
-    return evaluate(ast, selectValues);
-  }, [source, selectValues]);
-
-  const handlePreviewPdf = useCallback(() => {
-    setPreviewOpen(true);
-  }, []);
-
-  const generatePdfPath = useCallback(async () => {
-    const nodes = evaluateCurrent();
-    return previewPdfReport(nodes, projectName);
-  }, [evaluateCurrent, projectName]);
+  const handleNew = useCallback(() => {
+    if (useDocumentStore.getState().dirty) {
+      const ok = confirm("Niet-opgeslagen wijzigingen worden weggegooid. Doorgaan?");
+      if (!ok) return;
+    }
+    loadTemplate("", "Nieuw");
+  }, [loadTemplate]);
 
   const handleSavePdf = useCallback(async () => {
     try {
@@ -105,7 +101,7 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
     <div className="ribbon-content">
       <div className="ribbon-groups">
         <RibbonGroup label={t("calc.file", "Bestand")}>
-          <RibbonButton icon={newDocIcon} label={t("calc.new", "Nieuw")} size="large" onClick={() => {}} />
+          <RibbonButton icon={newDocIcon} label={t("calc.new", "Nieuw")} size="large" onClick={handleNew} />
           <RibbonButton icon={openFolderIcon} label={t("calc.browse", "Browse…")} size="large" onClick={handleOpen} />
           <RibbonButton icon={saveDiskIcon} label={t("calc.save", "Opslaan")} size="large" onClick={handleSave} />
         </RibbonGroup>
@@ -117,24 +113,12 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
           </RibbonButtonStack>
         </RibbonGroup>
 
-        <RibbonGroup label={t("insert.elements", "Invoegen")}>
-          <RibbonButton icon={headingIcon} label={t("insert.heading", "Kop")} size="large" onClick={() => {}} />
-          <RibbonButton icon={formulaIcon} label={t("insert.formula", "Formule")} size="large" onClick={() => {}} />
-          <RibbonButton icon={selectListIcon} label={t("insert.select", "Keuzelijst")} size="large" onClick={() => {}} />
-        </RibbonGroup>
-
         <RibbonGroup label={t("insert.media", "Media")}>
           <RibbonButton icon={imageIcon} label={t("insert.image", "Afbeelding")} size="large" onClick={() => {}} />
           <RibbonButton icon={svgShapeIcon} label={t("insert.svg", "SVG")} size="large" onClick={() => {}} />
         </RibbonGroup>
 
         <RibbonGroup label={t("calc.export", "Exporteren")}>
-          <RibbonButton
-            icon={pdfPreviewIcon}
-            label={t("calc.pdfPreview", "PDF voorvertonen")}
-            size="large"
-            onClick={handlePreviewPdf}
-          />
           <RibbonButton
             icon={pdfIcon}
             label={t("calc.pdfSave", "PDF opslaan")}
@@ -144,13 +128,6 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
         </RibbonGroup>
       </div>
 
-      <PdfPreviewModal
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        projectName={projectName}
-        generate={generatePdfPath}
-        onSave={handleSavePdf}
-      />
     </div>
   );
 }

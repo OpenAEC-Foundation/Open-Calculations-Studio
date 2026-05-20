@@ -2,8 +2,9 @@ import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useDocumentStore } from "../../store/documentStore";
 import { useLoadCaseStore } from "../../store/loadCaseStore";
-import { calcpadIncludes } from "../../templates/calcpad-includes";
+import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
 import { parse, evaluate, generateIfcx, generateIfc4x3Step, type IfcGenerationResult, type IfcxDocument } from "@ifc-calc/core";
+import { wrapAsIfcCalculation } from "../../tauri/fileOps";
 import "./IfcViewerPanel.css";
 
 // ── BuildingSMART documentation links ─────────────────────────
@@ -328,7 +329,13 @@ function IfcxViewer({ content }: { content: string }) {
 
 // ── Main panel ───────────────────────────────────────────────
 
-function useGeneratedIfc(): IfcGenerationResult {
+/** IFCX shown in the viewer mirrors EXACTLY what Save writes to disk. */
+interface GeneratedIfc extends IfcGenerationResult {
+  /** Pretty-printed JSON identical to the on-disk `.ifc-calculation` payload. */
+  ifcxJsonString: string;
+}
+
+function useGeneratedIfc(): GeneratedIfc {
   const source = useDocumentStore((s) => s.source);
   const filePath = useDocumentStore((s) => s.filePath);
   const activeId = useLoadCaseStore((s) => s.activeId);
@@ -337,24 +344,28 @@ function useGeneratedIfc(): IfcGenerationResult {
 
   return useMemo(() => {
     try {
-      const ast = parse(source, { includes: calcpadIncludes });
+      const ast = parse(source, { includes: calcpadIncludes, imageUrls: calcpadImageUrls });
       const ev = evaluate(ast, selectValues);
       const projectName = filePath?.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, "") ?? "Berekening";
       const ifcx = generateIfcx(ev, { projectName });
       const step = generateIfc4x3Step(ev, { projectName });
-      return { ifcx, step };
+      // Show the IFCX exactly as it will be persisted on disk — same JSON the
+      // saveCalculationFile() helper writes.
+      const ifcxJsonString = wrapAsIfcCalculation(source, ifcx);
+      return { ifcx, step, ifcxJsonString };
     } catch (err) {
+      const errorDoc: IfcxDocument = { header: { name: "error.ifcx", error: (err as Error).message }, data: [] };
       return {
-        ifcx: { header: { name: "error.ifcx", error: (err as Error).message }, data: [] },
+        ifcx: errorDoc,
         step: `// Generation error: ${(err as Error).message}\n`,
+        ifcxJsonString: JSON.stringify(errorDoc, null, 2),
       };
     }
   }, [source, selectValues, filePath]);
 }
 
 export default function IfcViewerPanel() {
-  const { ifcx, step } = useGeneratedIfc();
-  const ifcxJson = useMemo(() => JSON.stringify(ifcx, null, 2), [ifcx]);
+  const { ifcx, step, ifcxJsonString } = useGeneratedIfc();
   const tree = useMemo(() => buildTreeFromIfcx(ifcx), [ifcx]);
 
   return (
@@ -363,7 +374,7 @@ export default function IfcViewerPanel() {
       <div className="ifc-viewer-divider" />
       <StepViewer content={step} />
       <div className="ifc-viewer-divider" />
-      <IfcxViewer content={ifcxJson} />
+      <IfcxViewer content={ifcxJsonString} />
     </div>
   );
 }
