@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import TitleBar from "./components/TitleBar";
 import Ribbon from "./components/ribbon/Ribbon";
 import DocumentBar from "./components/DocumentBar";
@@ -11,6 +11,9 @@ import SplitPane from "./components/calc/SplitPane";
 import ProjectBrowser from "./components/calc/ProjectBrowser";
 import IfcViewerPanel from "./components/calc/IfcViewerPanel";
 import { getSetting } from "./store";
+import { useDocumentStore } from "./store/documentStore";
+import { useRecentFiles } from "./hooks/useRecentFiles";
+import { openCalculationFile } from "./tauri/fileOps";
 
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -37,6 +40,46 @@ export default function App() {
     setTheme(newTheme);
     applyTheme(newTheme);
   };
+
+  const loadTemplate = useDocumentStore((s) => s.loadTemplate);
+  const markSaved = useDocumentStore((s) => s.markSaved);
+  const { addRecentFile } = useRecentFiles();
+
+  const handleBrowse = useCallback(async () => {
+    try {
+      const file = await openCalculationFile();
+      if (!file) return;
+      loadTemplate(file.content, file.name);
+      markSaved(file.path);
+      await addRecentFile({
+        path: file.path,
+        name: file.name,
+        type: "report",
+        timestamp: Date.now(),
+      });
+    } catch (err) {
+      alert(`Bestand openen mislukt: ${(err as Error).message}`);
+    }
+  }, [loadTemplate, markSaved, addRecentFile]);
+
+  const handleOpenRecent = useCallback(async (path: string) => {
+    try {
+      // Only Tauri runtime can read by absolute path; browser fallback cannot.
+      const win = window as unknown as { __TAURI_INTERNALS__?: unknown };
+      if (!win.__TAURI_INTERNALS__) {
+        alert("Recente bestanden openen vereist de desktop-app.");
+        return;
+      }
+      const { readTextFile } = await import("@tauri-apps/plugin-fs");
+      const content = await readTextFile(path);
+      const name = path.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, "") ?? path;
+      loadTemplate(content, name);
+      markSaved(path);
+      await addRecentFile(path);
+    } catch (err) {
+      alert(`Bestand openen mislukt: ${(err as Error).message}`);
+    }
+  }, [loadTemplate, markSaved, addRecentFile]);
 
   return (
     <>
@@ -66,6 +109,8 @@ export default function App() {
           setBackstageOpen(false);
           setSettingsOpen(true);
         }}
+        onBrowse={handleBrowse}
+        onOpenFile={handleOpenRecent}
       />
       <SettingsDialog
         open={settingsOpen}

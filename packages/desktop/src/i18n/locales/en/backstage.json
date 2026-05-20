@@ -24,6 +24,15 @@
     "stichting": "Stichting OpenAEC Foundation (NL)",
     "copyright": "© 2026 OpenAEC Foundation. Code: MIT. Content: CC BY-SA 4.0."
   },
+  "openPanel": {
+    "browse": "Browse…",
+    "browseDesc": "Open a .cpd or .ifc-calculation file from disk",
+    "title": "Recent files",
+    "noRecent": "No recent files",
+    "clearAll": "Clear all",
+    "justNow": "Just now",
+    "remove": "Remove"
+  },
   "importPanel": {
     "title": "Import",
     "fromFile": "Import from File",

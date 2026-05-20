@@ -54,10 +54,13 @@ interface BackstageProps {
   open: boolean;
   onClose: () => void;
   onOpenSettings: () => void;
+  /** Open a specific (recent) file by absolute path. */
   onOpenFile?: (path: string) => void;
+  /** Launch the OS file picker via the "Browse..." action in the Open panel. */
+  onBrowse?: () => void;
 }
 
-export default function Backstage({ open, onClose, onOpenSettings, onOpenFile }: BackstageProps) {
+export default function Backstage({ open, onClose, onOpenSettings, onOpenFile, onBrowse }: BackstageProps) {
   const { t } = useTranslation("backstage");
   const [activePanel, setActivePanel] = useState<string>("none");
   const { recentFiles, removeRecentFile, clearRecentFiles } = useRecentFiles();
@@ -186,6 +189,7 @@ export default function Backstage({ open, onClose, onOpenSettings, onOpenFile }:
           {activePanel === "open" && (
             <OpenPanel
               recentFiles={recentFiles}
+              onBrowse={() => { onClose(); onBrowse?.(); }}
               onOpenFile={(path) => { onClose(); onOpenFile?.(path); }}
               onRemoveFile={removeRecentFile}
               onClearAll={clearRecentFiles}
@@ -325,11 +329,13 @@ function ImportPanel() {
 
 function OpenPanel({
   recentFiles,
+  onBrowse,
   onOpenFile,
   onRemoveFile,
   onClearAll,
 }: {
   recentFiles: RecentFile[];
+  onBrowse: () => void;
   onOpenFile: (path: string) => void;
   onRemoveFile: (path: string) => void;
   onClearAll: () => void;
@@ -365,8 +371,24 @@ function OpenPanel({
 
   return (
     <div className="bs-export-panel">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <h2 className="bs-export-title" style={{ margin: 0 }}>{t("openPanel.title", "Recent Files")}</h2>
+      <button
+        className="bs-browse-card"
+        onClick={onBrowse}
+        type="button"
+      >
+        <span className="bs-browse-card-icon" dangerouslySetInnerHTML={{ __html: ICONS.open }} />
+        <span className="bs-browse-card-info">
+          <span className="bs-browse-card-title">{t("openPanel.browse", "Browse…")}</span>
+          <span className="bs-browse-card-desc">
+            {t("openPanel.browseDesc", "Open een .cpd of .ifc-calculation bestand vanaf schijf")}
+          </span>
+        </span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: "auto", opacity: 0.5 }}>
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 24, marginBottom: 12 }}>
+        <h2 className="bs-export-title" style={{ margin: 0 }}>{t("openPanel.title", "Recente bestanden")}</h2>
         {recentFiles.length > 0 && (
           <button
             onClick={onClearAll}
@@ -379,7 +401,7 @@ function OpenPanel({
               textDecoration: "underline",
             }}
           >
-            {t("openPanel.clearAll", "Clear all")}
+            {t("openPanel.clearAll", "Wis lijst")}
           </button>
         )}
       </div>

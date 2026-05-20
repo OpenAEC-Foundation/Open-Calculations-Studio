@@ -24,6 +24,7 @@ import { previewPdfReport, savePdfReport } from "../../tauri/pdfReport";
 import { openCalculationFile, saveCalculationFile } from "../../tauri/fileOps";
 import { calcpadIncludes } from "../../templates/calcpad-includes";
 import PdfPreviewModal from "../calc/PdfPreviewModal";
+import { useRecentFiles } from "../../hooks/useRecentFiles";
 
 interface CalcTabProps {
   onSettingsClick?: () => void;
@@ -40,17 +41,25 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
   const valuesByCase = useLoadCaseStore((s) => s.valuesByCase);
   const selectValues = valuesByCase[activeId] ?? {};
   const [previewOpen, setPreviewOpen] = useState(false);
+  const { addRecentFile } = useRecentFiles();
 
   const handleOpen = useCallback(async () => {
     try {
       const file = await openCalculationFile();
       if (!file) return;
       loadTemplate(file.content, file.name);
+      useDocumentStore.getState().markSaved(file.path);
+      await addRecentFile({
+        path: file.path,
+        name: file.name,
+        type: "report",
+        timestamp: Date.now(),
+      });
     } catch (err) {
       console.error("Open file failed:", err);
       alert(`Bestand openen mislukt: ${(err as Error).message}`);
     }
-  }, [loadTemplate]);
+  }, [loadTemplate, addRecentFile]);
 
   const handleSave = useCallback(async () => {
     try {
@@ -97,7 +106,7 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
       <div className="ribbon-groups">
         <RibbonGroup label={t("calc.file", "Bestand")}>
           <RibbonButton icon={newDocIcon} label={t("calc.new", "Nieuw")} size="large" onClick={() => {}} />
-          <RibbonButton icon={openFolderIcon} label={t("calc.open", "Openen")} size="large" onClick={handleOpen} />
+          <RibbonButton icon={openFolderIcon} label={t("calc.browse", "Browse…")} size="large" onClick={handleOpen} />
           <RibbonButton icon={saveDiskIcon} label={t("calc.save", "Opslaan")} size="large" onClick={handleSave} />
         </RibbonGroup>
 
