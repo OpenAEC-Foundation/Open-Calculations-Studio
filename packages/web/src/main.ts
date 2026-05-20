@@ -1,5 +1,6 @@
 import { createEditor } from './editor';
 import { updatePreview } from './preview';
+import { APP_FILE_EXT } from './branding';
 import {
   ec5Buiging,
   ec5Afschuiving,
@@ -594,7 +595,7 @@ document.querySelectorAll<HTMLButtonElement>('.tree-item').forEach(item => {
       const label = item.querySelector('.tree-item-label')?.textContent;
       if (label) {
         const fileSpan = document.querySelector('.app-titlebar .app-file');
-        if (fileSpan) fileSpan.textContent = `— ${label}.ifc-calc`;
+        if (fileSpan) fileSpan.textContent = `— ${label}.${APP_FILE_EXT}`;
       }
     }
   });
