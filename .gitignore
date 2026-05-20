@@ -3,3 +3,7 @@ dist/
 .vite/
 *.tsbuildinfo
 PROMPTS.md
+
+# Debug scripts (rendered html / scratch)
+scripts/debug-*.mjs
+scripts/last-render.html
