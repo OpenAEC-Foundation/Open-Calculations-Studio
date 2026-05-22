@@ -262,20 +262,25 @@ export function resultToLatex(numStr: string, unitStr: string): string {
   return `${num} \\; ${unitPartToLatex(unitStr)}`;
 }
 
-/** Format a unit string like "N / mm^2" as LaTeX */
+/** Format a unit string like "N / mm^2" or "kN m" directly as LaTeX. */
 export function unitPartToLatex(unitStr: string): string {
-  // Handle compound units like "N / mm^2" or "kN m"
-  // Parse as a mathjs expression to get proper LaTeX
-  try {
-    // Wrap in "1 unit" so mathjs parses it as a unit expression
-    const node = parse(`1 ${unitStr}`);
-    const latex = nodeToLatex(node);
-    // Remove the leading "1 \;" from the result
-    return latex.replace(/^1\s*\\[;,]\s*/, '').replace(/^1\s+/, '');
-  } catch {
-    // Fallback: simple text rendering
-    return `\\text{${unitStr.replace(/\^(\d+)/g, '}^{$1}\\text{')}}`;
-  }
+  // Direct converter — no mathjs round-trip (which prepends `1~` that's
+  // hard to strip reliably). Tokens are identifiers optionally followed by
+  // `^exp`. `/` introduces a denominator; space is implicit multiplication.
+  const fmtToken = (tok: string): string => {
+    const m = tok.match(/^([\p{L}_][\p{L}\p{N}_]*)(?:\^(-?\d+))?$/u);
+    if (!m) return `\\mathrm{${tok}}`;
+    if (!m[2]) return `\\mathrm{${m[1]}}`;
+    return `{\\mathrm{${m[1]}}}^{${m[2]}}`;
+  };
+  const fmtGroup = (s: string): string =>
+    s.trim().split(/\s+/).filter(Boolean).map(fmtToken).join('\\,');
+
+  const parts = unitStr.split('/').map((s) => s.trim()).filter(Boolean);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return fmtGroup(parts[0]);
+  // a/b/c → a / (b·c)
+  return `\\frac{${fmtGroup(parts[0])}}{${parts.slice(1).map(fmtGroup).join('\\,')}}`;
 }
 
 /** Format a variable name as LaTeX */

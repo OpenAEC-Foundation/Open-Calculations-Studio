@@ -11,10 +11,24 @@
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
-  overflow-x: auto;
+  /* Geen horizontale scrollbalk — content moet wrappen of clippen. */
+  overflow-x: hidden;
   padding: 24px 32px;
   font-family: var(--font-body);
   color: var(--theme-text);
+  /* Lange formules / tekst breken naar de volgende regel ipv te scrollen. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* KaTeX display-blokken: laat ze wrappen ipv één lange regel te forceren. */
+.calc-preview-content .calc-line,
+.calc-preview-content .katex-display {
+  max-width: 100%;
+}
+
+.calc-preview-content .katex-display {
+  overflow-x: hidden;
 }
 
 .calc-preview-content::-webkit-scrollbar {
