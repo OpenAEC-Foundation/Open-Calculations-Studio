@@ -92,6 +92,7 @@ const BREAK_RE = /^#break\b/;
 // Match `$Plot{...}` even when CalcPAD has appended trailing persisted-input
 // data after the closing brace (e.g. `}\v2\t3`).
 const PLOT_RE = /^\$Plot\s*\{([^}]+)\}/;
+const SOLVER_RE = /\$(Find|Root|Solve|Sup|Inf)\s*\{([^}]+)\}/g;
 const TRAILING_DATA_RE = /^[\s\d.eE+\-,;]+$/;  // pure numeric/whitespace line
 
 // HTML wrappers CalcPAD uses around conditions / equation fragments.
@@ -364,10 +365,23 @@ function foldIdentifierDots(source: string): string {
   // attribute values must survive unchanged.
   const transformOutsideQuotes = (text: string): string => {
     let out = text;
+    // CalcPAD vector index `name.(expr)` → `name[expr]`. Must precede dot-fold
+    // so the parenthesised index isn't accidentally read as a member access.
+    out = out.replace(
+      /(?<![\p{L}\p{N}_.])([\p{L}_][\p{L}\p{N}_]*)\.\(([^()]*)\)/gu,
+      (_m, name, expr) => `${name}[${expr}]`,
+    );
     // CalcPAD vector index `name.digit` → `name[digit]`. Must precede the
     // identifier-cluster fold so `cc.3` isn't mistakenly read as `cc_3`.
     out = out.replace(
       /(?<![\p{L}\p{N}_.])([\p{L}_][\p{L}\p{N}_]*)\.(\d+)(?![\p{L}\p{N}_.])/gu,
+      (_m, name, idx) => `${name}[${idx}]`,
+    );
+    // CalcPAD vector index by loop-variable: `name.i`, `name.j` (single
+    // lowercase letter) → `name[i]`. Distinguishes from dotted identifiers
+    // like `Cs.Cd` (uppercase / multi-char RHS) which still get folded.
+    out = out.replace(
+      /(?<![\p{L}\p{N}_.])([\p{L}_][\p{L}\p{N}_]*)\.([a-z])(?![\p{L}\p{N}_])/gu,
       (_m, name, idx) => `${name}[${idx}]`,
     );
     // Identifier-cluster fold: `Cs.Cd`, `F_0.9G50%TotalWeight` → underscores.
@@ -513,6 +527,7 @@ export function parse(source: string, options: ParseOptions = {}): AstNode[] {
       foldIdentifierDots(stripFormatSpecs(foldSubscriptCommas(source))),
     ),
   );
+  source = rewriteSolverDirectives(source);
   // CalcPAD's `'` character toggles between CODE and PROSE on a single line.
   // Lines start in CODE mode. Each `'` flips mode. So:
   //   a = ?', 'b = ?     →  CODE `a = ?` + PROSE `, ` + CODE `b = ?`
@@ -730,9 +745,13 @@ function parseLines(
       continue;
     }
 
-    // `#break` inside loops — not currently supported; emit as a no-op (the
-    // iteration still completes, but the loop won't terminate early).
-    if (BREAK_RE.test(trimmed)) { i++; continue; }
+    // `#break` inside loops — emit a BreakNode that the evaluator's repeat
+    // case uses as an early-exit signal (e.g. find-first-passing-pile-type).
+    if (BREAK_RE.test(trimmed)) {
+      nodes.push(markHidden({ type: 'break' }, state));
+      i++;
+      continue;
+    }
 
     // SVG block
     if (SVG_START_RE.test(trimmed)) {
@@ -918,11 +937,70 @@ function stripCondWrapping(cond: string): string {
  *   π              → pi
  *   f(a; b; c)     → f(a, b, c)       (CalcPAD uses `;` as arg separator)
  */
+/**
+ * Lift CalcPAD iterative-solver directives out of expressions so they can
+ * use mathjs user-functions internally.
+ *
+ *   `$Find{f(x) @ x = lo : hi}`   → bisection on f(x) = 0 in [lo, hi]
+ *   `$Root{...}`                   → alias for $Find
+ *   `$Solve{f(x) @ x = guess}`    → Newton-Raphson from `guess`
+ *   `$Sup{f(x) @ x = lo : hi}`    → golden-section search for the max
+ *   `$Inf{f(x) @ x = lo : hi}`    → golden-section search for the min
+ *
+ * Each directive is replaced by a `_find_root` / `_solve_newton` /
+ * `_extremum` call (registered in evaluator.ts as JS-backed math functions)
+ * and an auxiliary `__solver_N(var) = body` function is emitted on a line
+ * directly before the original.
+ */
+function rewriteSolverDirectives(source: string): string {
+  const lines = source.split('\n');
+  const out: string[] = [];
+  let counter = 0;
+  for (const line of lines) {
+    const defs: string[] = [];
+    const newLine = line.replace(SOLVER_RE, (match, op: string, inner: string) => {
+      const atIdx = inner.lastIndexOf('@');
+      if (atIdx === -1) return match;
+      const body = inner.slice(0, atIdx).trim();
+      const param = inner.slice(atIdx + 1).trim();
+      const eqIdx = param.indexOf('=');
+      if (eqIdx === -1) return match;
+      const varName = param.slice(0, eqIdx).trim();
+      const range = param.slice(eqIdx + 1).trim();
+      counter += 1;
+      const fnName = `__solver_${counter}`;
+      defs.push(`${fnName}(${varName}) = ${body}`);
+      if (op === 'Solve') {
+        return `_solve_newton(${fnName}, ${range})`;
+      }
+      const colonIdx = range.indexOf(':');
+      if (colonIdx === -1) return match;
+      const lo = range.slice(0, colonIdx).trim();
+      const hi = range.slice(colonIdx + 1).trim();
+      if (op === 'Find' || op === 'Root') return `_find_root(${fnName}, ${lo}, ${hi})`;
+      if (op === 'Sup') return `_extremum(${fnName}, ${lo}, ${hi}, 1)`;
+      if (op === 'Inf') return `_extremum(${fnName}, ${lo}, ${hi}, -1)`;
+      return match;
+    });
+    for (const d of defs) out.push(d);
+    out.push(newLine);
+  }
+  return out.join('\n');
+}
+
 function normalizeExpression(expr: string): string {
   return expr
     .replace(/\bsqr\b/g, 'sqrt')
     .replace(/\blg\b/g, 'log10')
     .replace(/π/g, 'pi')
+    .replace(/≡/g, '==')
+    .replace(/≠/g, '!=')
+    .replace(/≥/g, '>=')
+    .replace(/≤/g, '<=')
+    // CalcPAD `expr|unit` = target-unit conversion → mathjs `expr to unit`.
+    // Runs after matrix-rewrite so `[a;b|c;d]` matrices are already
+    // converted to nested arrays before this point.
+    .replace(/\|(\s*[\p{L}\p{N}_/\s^*-]+)$/u, ' to $1')
     .replace(/;/g, ',');
 }
 
