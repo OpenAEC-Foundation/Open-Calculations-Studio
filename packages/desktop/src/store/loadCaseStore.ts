@@ -1,5 +1,14 @@
 import { create } from "zustand";
 import type { SelectValues } from "@ifc-calc/core";
+import { getSetting, setSetting } from "../store";
+
+const STORE_KEY = "loadCaseState";
+
+interface Persisted {
+  cases: LoadCase[];
+  activeId: string;
+  valuesByCase: Record<string, SelectValues>;
+}
 
 /**
  * Per-document `belastingsgeval` (load case) state. Each load case stores its
@@ -36,6 +45,17 @@ interface LoadCaseState {
   getActiveValues: () => SelectValues;
   /** write a value into the active case */
   setActiveValue: (name: string, value: string) => void;
+}
+
+// Debounced persistence — coalesce rapid writes (e.g. while user types in a
+// prompt input) into a single Tauri store update.
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+function schedulePersist(snapshot: Persisted) {
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    void setSetting(STORE_KEY, snapshot);
+    persistTimer = null;
+  }, 250);
 }
 
 export const useLoadCaseStore = create<LoadCaseState>((set, get) => ({
@@ -88,3 +108,22 @@ export const useLoadCaseStore = create<LoadCaseState>((set, get) => ({
       };
     }),
 }));
+
+// Persistence — hydrate from Tauri store on first import, then auto-save on
+// every mutation. Values survive app restart.
+void getSetting<Persisted | null>(STORE_KEY, null).then((saved) => {
+  if (saved && saved.cases && saved.cases.length > 0) {
+    useLoadCaseStore.setState({
+      cases: saved.cases,
+      activeId: saved.activeId ?? saved.cases[0].id,
+      valuesByCase: saved.valuesByCase ?? {},
+    });
+  }
+  useLoadCaseStore.subscribe((s) =>
+    schedulePersist({
+      cases: s.cases,
+      activeId: s.activeId,
+      valuesByCase: s.valuesByCase,
+    }),
+  );
+});

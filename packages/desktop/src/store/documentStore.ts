@@ -1,6 +1,14 @@
 import { create } from "zustand";
 import type { SelectValues } from "@ifc-calc/core";
 import { paalExample } from "../templates/examples";
+import { getSetting, setSetting } from "../store";
+
+const STORE_KEY = "documentState";
+
+interface PersistedDoc {
+  source: string;
+  filePath: string | null;
+}
 
 interface DocumentState {
   source: string;
@@ -27,3 +35,23 @@ export const useDocumentStore = create<DocumentState>((set) => ({
   markSaved: (filePath) =>
     set({ filePath, dirty: false }),
 }));
+
+// Persistence — hydrate source + filePath, then auto-save (debounced) on
+// each change. Survives app restart so the user picks up where they left off.
+let docPersistTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleDocPersist(snapshot: PersistedDoc) {
+  if (docPersistTimer) clearTimeout(docPersistTimer);
+  docPersistTimer = setTimeout(() => {
+    void setSetting(STORE_KEY, snapshot);
+    docPersistTimer = null;
+  }, 500);
+}
+
+void getSetting<PersistedDoc | null>(STORE_KEY, null).then((saved) => {
+  if (saved && typeof saved.source === "string") {
+    useDocumentStore.setState({ source: saved.source, filePath: saved.filePath ?? null, dirty: false });
+  }
+  useDocumentStore.subscribe((s) =>
+    scheduleDocPersist({ source: s.source, filePath: s.filePath }),
+  );
+});
