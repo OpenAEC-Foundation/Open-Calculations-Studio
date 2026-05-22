@@ -1,20 +1,53 @@
 /**
- * Project browser tree — hierarchical organization of every template
- * (Eurocodes, Vandepitte books, project calcs) the user can drop into the editor.
+ * Project browser tree — sidebar voor de editor.
+ *
+ * Twee secties, gescheiden door een `section` node:
+ *   • PROJECT (boven) — projectgegevens + de calc-sheets van dit project
+ *   • LIBRARY (onder) — referentie-materiaal (boeken, NEN-EN, CalcPAD samples)
  *
  * `templateId` matches a key in `src/templates/index.ts`.
  */
 
 export type TreeNode =
+  | { kind: "section"; id: string; label: string; children: TreeNode[] }
   | { kind: "category"; id: string; label: string; defaultExpanded?: boolean; children: TreeNode[]; count?: number }
-  | { kind: "item"; id: string; label: string; templateId?: string };
+  | { kind: "item"; id: string; label: string; templateId?: string; emphasis?: boolean };
+
+/**
+ * Calc-sheets binnen het huidige project. Voor nu hardcoded; later vervangen
+ * door dynamische projectstaat (persisted per project file).
+ */
+const projectSheets: TreeNode[] = [
+  {
+    kind: "item",
+    id: "project-metadata",
+    label: "📋 Projectgegevens",
+    templateId: "project-metadata",
+    emphasis: true,
+  },
+  { kind: "item", id: "sheet-stalen-gevelkolom", label: "Stalen gevelkolom (wind + N)", templateId: "stalen-gevelkolom" },
+  { kind: "item", id: "sheet-verticaal-windverband", label: "Verticaal windverband", templateId: "verticaal-windverband" },
+  { kind: "item", id: "sheet-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen" },
+  { kind: "item", id: "sheet-stalen-ligger", label: "Stalen ligger IPE 300", templateId: "stalen-ligger" },
+];
 
 export const projectTree: TreeNode[] = [
+  {
+    kind: "section",
+    id: "project",
+    label: "Project",
+    children: projectSheets,
+  },
+  {
+    kind: "section",
+    id: "library",
+    label: "Library",
+    children: [
   {
     kind: "category",
     id: "books",
     label: "Books",
-    defaultExpanded: true,
+    defaultExpanded: false,
     count: 8,
     children: [
       { kind: "item", id: "book-bijlage-a", label: "Constructieberekening Bijlage A" },
@@ -132,23 +165,13 @@ export const projectTree: TreeNode[] = [
   },
   {
     kind: "category",
-    id: "calculations",
-    label: "Calculations",
-    defaultExpanded: true,
-    count: 3,
-    children: [
-      { kind: "item", id: "calc-calcpad-demo", label: "CalcPAD syntax demo", templateId: "calcpad-demo" },
-      { kind: "item", id: "calc-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen" },
-      { kind: "item", id: "calc-stalen-ligger", label: "Stalen ligger IPE 300", templateId: "stalen-ligger" },
-    ],
-  },
-  {
-    kind: "category",
     id: "calcpad-samples",
     label: "CalcPAD voorbeelden",
-    defaultExpanded: true,
-    count: 10,
+    defaultExpanded: false,
+    count: 11,
     children: [
+      { kind: "item", id: "cpd-2259-intertek", label: "2259 Intertek units (real-world)", templateId: "cpd-2259-intertek" },
+      { kind: "item", id: "cpd-calcpad-demo", label: "CalcPAD syntax demo", templateId: "calcpad-demo" },
       { kind: "item", id: "cpd-quadratic", label: "Quadratic Equation", templateId: "cpd-quadratic" },
       { kind: "item", id: "cpd-cubic", label: "Cubic Equation", templateId: "cpd-cubic" },
       { kind: "item", id: "cpd-lissajous", label: "Lissajous Curve", templateId: "cpd-lissajous" },
@@ -159,6 +182,8 @@ export const projectTree: TreeNode[] = [
       { kind: "item", id: "cpd-hexagon", label: "Hexagon Section", templateId: "cpd-hexagon" },
       { kind: "item", id: "cpd-ssb-force", label: "SSB Concentrated Force", templateId: "cpd-ssb-force" },
       { kind: "item", id: "cpd-deep-beam", label: "Deep Beam (Elastic)", templateId: "cpd-deep-beam" },
+    ],
+  },
     ],
   },
 ];

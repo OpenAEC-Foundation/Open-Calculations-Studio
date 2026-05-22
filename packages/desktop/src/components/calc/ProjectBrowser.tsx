@@ -13,8 +13,29 @@ interface TreeProps {
 
 function TreeNodeView({ node, level, selectedId, onSelect }: TreeProps) {
   const [expanded, setExpanded] = useState(
-    node.kind === "category" ? !!node.defaultExpanded : false,
+    node.kind === "category" ? !!node.defaultExpanded : node.kind === "section",
   );
+
+  if (node.kind === "section") {
+    return (
+      <div className="tree-section">
+        <div className="tree-section-header">
+          <span className="tree-section-label">{node.label}</span>
+        </div>
+        <div className="tree-section-children">
+          {node.children.map((child) => (
+            <TreeNodeView
+              key={child.id}
+              node={child}
+              level={0}
+              selectedId={selectedId}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (node.kind === "category") {
     return (
@@ -47,14 +68,15 @@ function TreeNodeView({ node, level, selectedId, onSelect }: TreeProps) {
 
   const isSelected = selectedId === node.id;
   const hasTemplate = !!node.templateId;
+  const isEmphasis = node.kind === "item" && node.emphasis;
   return (
     <button
-      className={`tree-item${isSelected ? " selected" : ""}${hasTemplate ? "" : " tree-item-disabled"}`}
+      className={`tree-item${isSelected ? " selected" : ""}${hasTemplate ? "" : " tree-item-disabled"}${isEmphasis ? " tree-item-emphasis" : ""}`}
       style={{ paddingLeft: 16 + level * 12 }}
       onClick={() => onSelect(node.id, node.templateId, node.label)}
       title={hasTemplate ? `Laad: ${node.label}` : `${node.label} (nog niet beschikbaar)`}
     >
-      <span className="tree-item-icon">{hasTemplate ? "○" : "□"}</span>
+      {!isEmphasis && <span className="tree-item-icon">{hasTemplate ? "○" : "□"}</span>}
       <span className="tree-item-label">{node.label}</span>
     </button>
   );
