@@ -289,12 +289,11 @@ export const defaultStyles = `
 }
 
 .calc-line {
-  background: #f8fafc;
-  border-left: 3px solid #3b82f6;
-  padding: 0.4em 1.2em;
-  margin: 0.35em 0;
-  border-radius: 0 6px 6px 0;
-  overflow-x: auto;
+  /* CalcPAD-stijl: geen achtergrond / linker streep — gewoon de formule. */
+  padding: 0.15em 0;
+  margin: 0.25em 0;
+  /* Verbergt overflow zonder slider; KaTeX past zich via .calc-line .katex aan. */
+  overflow-x: hidden;
 }
 
 .calc-line .katex-display {
@@ -312,8 +311,10 @@ export const defaultStyles = `
 }
 
 .calc-error {
-  border-left-color: #dc2626;
+  /* Fout-regels krijgen wel een lichte rood-tint zodat ze opvallen. */
   background: #fef2f2;
+  border-left: 3px solid #dc2626;
+  padding-left: 0.6em;
 }
 
 .calc-error-msg {

@@ -1,6 +1,9 @@
 import { paalExample, exampleDoc } from "./examples";
 import { calcpadDemo } from "./calcpad-demo";
 import { calcpadSamples } from "./calcpad-samples";
+import { projectMetadata } from "./projectMetadata";
+import { stalenGevelkolom } from "./stalenGevelkolom";
+import { verticaalWindverband } from "./verticaalWindverband";
 import {
   ec5Buiging, ec5Afschuiving, ec5Druk, ec5DrukLoodrecht,
   ec5Knik, ec5Doorbuiging, ec5HoutenBalk,
@@ -32,6 +35,9 @@ import {
 } from "./en1992";
 
 export const templates: Record<string, string> = {
+  "project-metadata": projectMetadata,
+  "stalen-gevelkolom": stalenGevelkolom,
+  "verticaal-windverband": verticaalWindverband,
   "calcpad-demo": calcpadDemo,
   ...calcpadSamples,
   "paaldraagvermogen": paalExample,

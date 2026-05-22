@@ -179,6 +179,71 @@ math.import(
   { override: true },
 );
 
+// ── Iterative numerical solvers (used by parser's $Find/$Solve/$Sup/$Inf
+//    rewrite). The `fn` argument is a mathjs user-defined function in scope;
+//    we call it via `Number(fn(x))` and run a robust scalar algorithm.
+math.import(
+  {
+    /** Bisection root-finder for f(x) = 0 in [lo, hi]. */
+    _find_root: function (fn: unknown, lo: unknown, hi: unknown) {
+      if (typeof fn !== 'function') return Number.NaN;
+      const evalAt = (x: number): number => Number((fn as (n: number) => unknown)(x));
+      let a = Number(lo); let b = Number(hi);
+      if (a > b) [a, b] = [b, a];
+      let fa = evalAt(a); let fb = evalAt(b);
+      if (!isFinite(fa) || !isFinite(fb)) return Number.NaN;
+      if (fa === 0) return a;
+      if (fb === 0) return b;
+      if (fa * fb > 0) return Number.NaN;
+      for (let i = 0; i < 80; i++) {
+        const c = (a + b) / 2;
+        const fc = evalAt(c);
+        if (Math.abs(fc) < 1e-12 || (b - a) < 1e-14) return c;
+        if (fa * fc < 0) { b = c; fb = fc; } else { a = c; fa = fc; }
+      }
+      return (a + b) / 2;
+    },
+    /** Newton-Raphson root-finder for f(x) = 0 starting from `guess`. */
+    _solve_newton: function (fn: unknown, guess: unknown) {
+      if (typeof fn !== 'function') return Number.NaN;
+      const evalAt = (x: number): number => Number((fn as (n: number) => unknown)(x));
+      let x = Number(guess);
+      const h = 1e-7;
+      for (let i = 0; i < 60; i++) {
+        const f = evalAt(x);
+        if (!isFinite(f)) return Number.NaN;
+        if (Math.abs(f) < 1e-12) return x;
+        const fp = (evalAt(x + h) - f) / h;
+        if (!isFinite(fp) || Math.abs(fp) < 1e-15) break;
+        const dx = f / fp;
+        x = x - dx;
+        if (Math.abs(dx) < 1e-12) return x;
+      }
+      return x;
+    },
+    /** Golden-section extremum over [lo, hi]; sign=+1 → sup, -1 → inf. */
+    _extremum: function (fn: unknown, lo: unknown, hi: unknown, sign: unknown) {
+      if (typeof fn !== 'function') return Number.NaN;
+      const s = Number(sign) >= 0 ? 1 : -1;
+      const evalAt = (x: number): number => s * Number((fn as (n: number) => unknown)(x));
+      const phi = (Math.sqrt(5) - 1) / 2;
+      let a = Number(lo); let b = Number(hi);
+      if (a > b) [a, b] = [b, a];
+      let c = b - (b - a) * phi;
+      let d = a + (b - a) * phi;
+      for (let i = 0; i < 80; i++) {
+        if (evalAt(c) > evalAt(d)) b = d; else a = c;
+        c = b - (b - a) * phi;
+        d = a + (b - a) * phi;
+        if ((b - a) < 1e-14) break;
+      }
+      const xOpt = (a + b) / 2;
+      return Number((fn as (n: number) => unknown)(xOpt));
+    },
+  },
+  { override: true },
+);
+
 export interface Scope {
   [key: string]: unknown;
 }
@@ -197,10 +262,16 @@ export function evaluate(nodes: AstNode[], selectValues?: SelectValues): Evaluat
   return evaluateNodes(nodes, scope, selectValues || {});
 }
 
+/** Sentinel key on `scope` used by `#break` to short-circuit out of a loop. */
+const BREAK_FLAG = '__break__';
+
 function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValues): EvaluatedNode[] {
   const result: EvaluatedNode[] = [];
 
   for (const node of nodes) {
+    // `#break` raised by a deeper node — stop evaluating siblings. The
+    // enclosing `repeat` case picks up the flag and exits the loop.
+    if (scope[BREAK_FLAG]) break;
     switch (node.type) {
       case 'heading':
         if (node.hidden) break;
@@ -300,6 +371,12 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
         break;
       }
 
+      case 'break': {
+        // Set the break flag — the enclosing repeat case consumes it.
+        scope[BREAK_FLAG] = true;
+        break;
+      }
+
       case 'repeat': {
         let count = 0;
         try {
@@ -315,6 +392,12 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
           scope['_i'] = iter;
           const children = evaluateNodes(node.body, scope, selectValues);
           if (!node.hidden) result.push(...children);
+          if (scope[BREAK_FLAG]) {
+            // Iteration stopped — consume the flag so outer loops aren't
+            // also broken out of.
+            delete scope[BREAK_FLAG];
+            break;
+          }
         }
         break;
       }

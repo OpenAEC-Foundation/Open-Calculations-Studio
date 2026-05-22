@@ -210,3 +210,47 @@
 .project-browser-tree::-webkit-scrollbar-thumb:hover {
   background: var(--theme-accent, #D97706);
 }
+
+/* ─── Sections (Project / Library) ───────────────────────────── */
+
+.tree-section {
+  margin: 8px 0 4px;
+}
+
+.tree-section + .tree-section {
+  margin-top: 16px;
+  border-top: 1px solid var(--theme-border-subtle);
+  padding-top: 8px;
+}
+
+.tree-section-header {
+  display: flex;
+  align-items: center;
+  padding: 4px 10px 6px;
+}
+
+.tree-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--theme-accent, #D97706);
+  opacity: 0.85;
+}
+
+.tree-section-children {
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-item-emphasis {
+  font-weight: 600;
+  color: var(--theme-text);
+  background: var(--theme-accent-soft);
+  border-radius: 4px;
+  margin: 2px 6px;
+}
+
+.tree-item-emphasis:hover {
+  background: var(--theme-hover);
+}

@@ -154,6 +154,12 @@ export interface GefUploadNode {
   hidden?: boolean;
 }
 
+/** CalcPAD `#break` — early exit from the enclosing #repeat / #for loop. */
+export interface BreakNode {
+  type: 'break';
+  hidden?: boolean;
+}
+
 export type AstNode =
   | HeadingNode
   | TextNode
@@ -165,6 +171,7 @@ export type AstNode =
   | RepeatNode
   | PlotNode
   | SvgNode
+  | BreakNode
   | ImageNode
   | SelectNode
   | GefUploadNode;
