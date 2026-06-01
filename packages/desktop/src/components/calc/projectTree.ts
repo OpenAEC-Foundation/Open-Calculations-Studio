@@ -45,6 +45,32 @@ export const projectTree: TreeNode[] = [
     children: [
   {
     kind: "category",
+    id: "wizards",
+    label: "Wizards (grafische invoer)",
+    defaultExpanded: true,
+    children: [
+      { kind: "item", id: "wzd-spuwer", label: "💧 Spuwer (noodafvoer)", templateId: "wizard:spuwer" },
+    ],
+  },
+  {
+    kind: "category",
+    id: "nl-rekensheets",
+    label: "NL rekensheets",
+    defaultExpanded: true,
+    children: [
+      { kind: "item", id: "nl-voorblad", label: "Voorblad", templateId: "voorblad" },
+      { kind: "item", id: "nl-projectgegevens", label: "Projectgegevens (globals + windgebied)", templateId: "project-metadata" },
+      { kind: "item", id: "nl-ligger-2steunpunten-hout", label: "Ligger op 2 steunpunten — hout (EC5)", templateId: "houten-balklaag" },
+      { kind: "item", id: "nl-ligger-2steunpunten-staal", label: "Ligger op 2 steunpunten — staal IPE/HEA (EC3)", templateId: "stalen-ligger" },
+      { kind: "item", id: "nl-kolom-hout", label: "Kolom — hout, knik EC5 §6.3.2", templateId: "houten-kolom" },
+      { kind: "item", id: "nl-kolom-staal-gevel", label: "Kolom — staal, gevel met wind+N (EC3)", templateId: "stalen-gevelkolom" },
+      { kind: "item", id: "nl-windverband-verticaal", label: "Windverband — verticaal (trekstaaf strip/L)", templateId: "verticaal-windverband" },
+      { kind: "item", id: "nl-oplegging-metselwerk", label: "Oplegging op metselwerk — EC6 §6.1.3", templateId: "oplegging-metselwerk" },
+      { kind: "item", id: "nl-paaldraagvermogen", label: "Paaldraagvermogen (GEF)", templateId: "paaldraagvermogen" },
+    ],
+  },
+  {
+    kind: "category",
     id: "books",
     label: "Books",
     defaultExpanded: false,
@@ -137,6 +163,7 @@ export const projectTree: TreeNode[] = [
           { kind: "item", id: "ec5-knik", label: "§6.3.2 Knik", templateId: "ec5-knik" },
           { kind: "item", id: "ec5-doorbuiging", label: "§7.2 Doorbuiging", templateId: "ec5-doorbuiging" },
           { kind: "item", id: "ec5-houten-balk", label: "Volledige toetsing houten balk", templateId: "ec5-houten-balk" },
+          { kind: "item", id: "ec5-houten-kolom", label: "Volledige toetsing houten kolom (knik)", templateId: "houten-kolom" },
         ],
       },
       {
@@ -146,6 +173,7 @@ export const projectTree: TreeNode[] = [
         children: [
           { kind: "item", id: "en1996-druksterkte", label: "§3.6 Druksterkte metselwerk", templateId: "en1996-druksterkte" },
           { kind: "item", id: "en1996-drukwand", label: "§6.1.2 Wand op druk", templateId: "en1996-drukwand" },
+          { kind: "item", id: "en1996-oplegging", label: "§6.1.3 Oplegging op metselwerk", templateId: "oplegging-metselwerk" },
           { kind: "item", id: "en1996-afschuiving", label: "§6.2 Afschuiving", templateId: "en1996-afschuiving" },
           { kind: "item", id: "en1996-slankheid", label: "§5.5.1 Slankheid", templateId: "en1996-slankheid" },
         ],

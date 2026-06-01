@@ -28,11 +28,13 @@ function isTauri(): boolean {
 }
 
 const SUPPORTED_FILTERS = [
-  { name: "Calculations", extensions: ["ifc-calculation", "cpd", "cpdz"] },
+  { name: "OpenAEC Calculations", extensions: ["ifccalculation", "ifc-calculation"] },
   { name: "CalcPAD bestanden", extensions: ["cpd", "cpdz"] },
-  { name: "OpenAEC Calculations", extensions: ["ifc-calculation"] },
   { name: "Alle bestanden", extensions: ["*"] },
 ];
+
+/** Primary save extension. Legacy `.ifc-calculation` still accepted on open. */
+const SAVE_EXTENSION = "ifccalculation";
 
 export interface OpenedFile {
   path: string;
@@ -43,23 +45,50 @@ export interface OpenedFile {
 
 /**
  * Wrap a CalcPAD source + IFCX representation into the on-disk
- * `.ifc-calculation` JSON-LD format. The result IS a valid IFCX document
+ * `.ifccalculation` JSON-LD format. The result IS a valid IFCX document
  * (an IFC consumer can read it) with one extra `source` field for round-trip.
+ *
+ * `projectSheets`, when provided, persists the full multi-sheet project
+ * state under `source.project.sheets[]`. On open, the projectStore is
+ * rehydrated from this list.
  */
-export function wrapAsIfcCalculation(source: string, ifcx: IfcxDocument): string {
+export function wrapAsIfcCalculation(
+  source: string,
+  ifcx: IfcxDocument,
+  projectSheets?: unknown,
+): string {
   const doc = {
     ...ifcx,
     source: {
       format: "calcpad",
-      language: "ifc-calculation",
+      language: "ifccalculation",
       content: source,
+      ...(projectSheets ? { project: { sheets: projectSheets } } : {}),
     },
   };
   return JSON.stringify(doc, null, 2);
 }
 
 /**
- * Extract the CalcPAD source from a `.ifc-calculation` file. Accepts either:
+ * Extract the multi-sheet project (if any) from a `.ifccalculation` file.
+ * Returns the sheets array verbatim — caller validates the shape.
+ */
+export function projectFromIfcCalculation(content: string): unknown[] | null {
+  const trimmed = content.trimStart();
+  if (!trimmed.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(trimmed) as {
+      source?: { project?: { sheets?: unknown[] } };
+    };
+    const sheets = parsed?.source?.project?.sheets;
+    return Array.isArray(sheets) ? sheets : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract the CalcPAD source from a `.ifccalculation` file. Accepts either:
  *   • new format: JSON document with `source.content`
  *   • legacy: raw CalcPAD text (also matches `.cpd` / `.cpdz` files)
  */
@@ -105,7 +134,7 @@ export async function openCalculationFile(): Promise<OpenedFile | null> {
   return new Promise<OpenedFile | null>((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".ifc-calculation,.cpd,.cpdz,.txt";
+    input.accept = ".ifccalculation,.ifc-calculation,.cpd,.cpdz,.txt";
     input.onchange = async () => {
       const f = input.files?.[0];
       if (!f) return resolve(null);
@@ -124,7 +153,82 @@ function pathBaseName(p: string): string {
 }
 
 function stripExt(s: string): string {
-  return s.replace(/\.(ifc-calculation|cpd|cpdz|txt)$/i, "");
+  return s.replace(/\.(ifccalculation|ifc-calculation|cpd|cpdz|txt)$/i, "");
+}
+
+export type PickedImage =
+  | { kind: "raster"; name: string; dataUrl: string }
+  | { kind: "svg"; name: string; content: string; dataUrl: string };
+
+/**
+ * Open an image picker that accepts both raster (.png/.jpg/.gif/.webp/.bmp)
+ * and vector (.svg) files. Returns the loaded content as a data URL (raster)
+ * or as the raw SVG text (vector).
+ */
+export async function openImageOrSvgDialog(): Promise<PickedImage | null> {
+  if (isTauri()) {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const { readFile, readTextFile } = await import("@tauri-apps/plugin-fs");
+    const picked = await open({
+      title: "Afbeelding of SVG kiezen",
+      multiple: false,
+      filters: [
+        { name: "Afbeeldingen + SVG", extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"] },
+        { name: "Alle bestanden", extensions: ["*"] },
+      ],
+    });
+    if (!picked || typeof picked !== "string") return null;
+    const name = picked.split(/[\\/]/).pop() ?? picked;
+    const ext = (name.split(".").pop() ?? "").toLowerCase();
+    if (ext === "svg") {
+      const content = await readTextFile(picked);
+      const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(content)}`;
+      return { kind: "svg", name, content, dataUrl };
+    }
+    const bytes = await readFile(picked);
+    const dataUrl = bytesToDataUrl(bytes, ext);
+    return { kind: "raster", name, dataUrl };
+  }
+
+  // Browser fallback
+  return new Promise<PickedImage | null>((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,image/*";
+    input.onchange = async () => {
+      const f = input.files?.[0];
+      if (!f) return resolve(null);
+      const ext = (f.name.split(".").pop() ?? "").toLowerCase();
+      if (ext === "svg" || f.type === "image/svg+xml") {
+        const content = await f.text();
+        const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(content)}`;
+        resolve({ kind: "svg", name: f.name, content, dataUrl });
+      } else {
+        const dataUrl = await new Promise<string>((res) => {
+          const reader = new FileReader();
+          reader.onload = () => res(String(reader.result));
+          reader.readAsDataURL(f);
+        });
+        resolve({ kind: "raster", name: f.name, dataUrl });
+      }
+    };
+    input.oncancel = () => resolve(null);
+    input.click();
+  });
+}
+
+function bytesToDataUrl(bytes: Uint8Array, ext: string): string {
+  const mimeMap: Record<string, string> = {
+    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+    gif: "image/gif", webp: "image/webp", bmp: "image/bmp",
+  };
+  const mime = mimeMap[ext] ?? "application/octet-stream";
+  let binary = "";
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
+  // btoa expects ASCII binary string; safe for image bytes.
+  // eslint-disable-next-line no-undef
+  return `data:${mime};base64,${btoa(binary)}`;
 }
 
 function sanitizeFileName(name: string): string {
@@ -142,9 +246,10 @@ export async function saveCalculationFile(
   source: string,
   ifcx: IfcxDocument,
   defaultName: string,
+  projectSheets?: unknown,
 ): Promise<string | null> {
-  const payload = wrapAsIfcCalculation(source, ifcx);
-  const defaultFile = `${sanitizeFileName(defaultName)}.ifc-calculation`;
+  const payload = wrapAsIfcCalculation(source, ifcx, projectSheets);
+  const defaultFile = `${sanitizeFileName(defaultName)}.${SAVE_EXTENSION}`;
 
   if (isTauri()) {
     const { save } = await import("@tauri-apps/plugin-dialog");
@@ -153,7 +258,8 @@ export async function saveCalculationFile(
       title: "Bestand opslaan als",
       defaultPath: defaultFile,
       filters: [
-        { name: "OpenAEC Calculation (IFCX)", extensions: ["ifc-calculation"] },
+        { name: "OpenAEC Calculation (IFCX)", extensions: ["ifccalculation"] },
+        { name: "Legacy (.ifc-calculation)", extensions: ["ifc-calculation"] },
         { name: "Alle bestanden", extensions: ["*"] },
       ],
     });

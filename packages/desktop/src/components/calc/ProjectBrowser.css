@@ -254,3 +254,223 @@
 .tree-item-emphasis:hover {
   background: var(--theme-hover);
 }
+
+/* ─── Project section: editable sheet rows ─────────────── */
+
+.project-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 4px;
+  padding: 2px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.project-sheet-row:hover {
+  background: var(--theme-hover);
+}
+
+.project-sheet-row.active {
+  background: var(--theme-accent-soft);
+}
+
+.project-sheet-pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--theme-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.project-sheet-icon {
+  font-size: 11px;
+  opacity: 0.7;
+  flex-shrink: 0;
+  width: 12px;
+  text-align: center;
+}
+
+.project-sheet-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-sheet-row.active .project-sheet-label {
+  font-weight: 600;
+  color: var(--theme-accent);
+}
+
+.project-sheet-actions {
+  display: flex;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.project-sheet-row:hover .project-sheet-actions,
+.project-sheet-row.active .project-sheet-actions {
+  opacity: 1;
+}
+
+.project-sheet-act {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  font-size: 10px;
+  color: var(--theme-text-secondary, var(--theme-text-muted, #888));
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0;
+}
+
+.project-sheet-act:hover:not(:disabled) {
+  background: var(--theme-hover);
+  color: var(--theme-accent);
+}
+
+.project-sheet-act:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.project-sheet-act.danger:hover:not(:disabled) {
+  color: #dc2626;
+}
+
+/* + Add-sheet menu */
+.sheet-add {
+  position: relative;
+  margin: 6px 8px 4px;
+}
+
+.sheet-add-trigger {
+  display: block;
+  width: 100%;
+  padding: 5px 8px;
+  background: transparent;
+  border: 1px dashed var(--theme-border-subtle);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--theme-text-secondary, var(--theme-text-muted, #888));
+  cursor: pointer;
+  text-align: left;
+}
+
+.sheet-add-trigger:hover {
+  border-color: var(--theme-accent);
+  color: var(--theme-accent);
+  background: var(--theme-accent-soft);
+}
+
+.sheet-add-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  padding: 4px;
+  background: var(--theme-bg);
+  border: 1px solid var(--theme-border-subtle);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sheet-add-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--theme-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.sheet-add-item:hover {
+  background: var(--theme-hover);
+}
+
+.sheet-add-icon {
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--theme-accent);
+}
+
+/* Drop target: library item being dragged over the Project section. */
+.tree-section.drop-target {
+  background: var(--theme-accent-soft);
+  outline: 2px dashed var(--theme-accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.tree-section-drop-hint {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--theme-accent);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.tree-item[draggable="true"] {
+  cursor: grab;
+}
+
+.tree-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Subtiele pulse op de Project-sectie zodra een library-item wordt gesleept. */
+body.ocs-dragging-template .tree-section:first-child {
+  outline: 2px dashed var(--theme-accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+  animation: ocs-drop-pulse 1.4s ease-in-out infinite;
+}
+
+body.ocs-dragging-template .tree-section:first-child .tree-section-label::after {
+  content: " — sleep hier om toe te voegen";
+  margin-left: 6px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--theme-accent);
+}
+
+@keyframes ocs-drop-pulse {
+  0%, 100% { background: var(--theme-accent-soft); }
+  50% { background: transparent; }
+}
+
+/* Grab-cursor op draggable tree-items werkt ook op de <div role="button"> variant. */
+[role="button"].tree-item[draggable="true"] {
+  cursor: grab;
+}
+[role="button"].tree-item[draggable="true"]:active {
+  cursor: grabbing;
+}

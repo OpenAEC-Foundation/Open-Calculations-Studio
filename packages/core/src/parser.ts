@@ -318,25 +318,29 @@ function applyMacro(macro: { params: string[]; body: string[]; oneLine: string |
   //   • Always substitute `paramname$`.
   //   • In *code* lines (no leading `'`), also substitute bare `paramname`.
   //   • In *prose* lines, ONLY substitute `$`-suffixed refs.
+  //
+  // True single-pass substitution. Two separate regex passes ($-form then
+  // bare-form) would let the SECOND pass re-match the values produced by
+  // the first: `b$ → l` followed by bare `l → b` corrupts back to the
+  // wrong param. One combined regex with optional `$` captures the type
+  // per match; JS replace advances through the ORIGINAL input so already-
+  // substituted text in the OUTPUT is never re-scanned.
+  const paramMap = new Map<string, string>();
+  for (let i = 0; i < macro.params.length; i++) paramMap.set(macro.params[i], args[i] ?? '');
+  const escNames = macro.params.map(escapeRegExp).join('|');
+  const combinedRe = new RegExp(
+    `(?<![\\p{L}\\p{N}_.])(${escNames})(\\$)?(?![\\p{L}\\p{N}_])`,
+    'gu',
+  );
+
   const substLine = (s: string, isProse: boolean): string => {
-    let result = s;
-    for (let i = 0; i < macro.params.length; i++) {
-      const p = macro.params[i];
-      const a = args[i] ?? '';
-      // 1) `$`-suffixed (always applies)
-      result = result.replace(
-        new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(p)}\\$(?![\\p{L}\\p{N}_])`, 'gu'),
-        a,
-      );
-      // 2) bare reference (skip in prose to protect SVG attribute names)
-      if (!isProse) {
-        result = result.replace(
-          new RegExp(`(?<![\\p{L}\\p{N}_.])${escapeRegExp(p)}(?![\\p{L}\\p{N}_])`, 'gu'),
-          a,
-        );
-      }
-    }
-    return result;
+    if (paramMap.size === 0) return s;
+    return s.replace(combinedRe, (_m, name: string, dollarSuffix?: string) => {
+      // Bare references inside prose lines: skip (would clobber SVG attr
+      // names like `x="..."` when params are single letters).
+      if (!dollarSuffix && isProse) return _m;
+      return paramMap.get(name) ?? _m;
+    });
   };
   if (macro.oneLine !== null) {
     return substLine(macro.oneLine, macro.oneLine.trimStart().startsWith("'"));

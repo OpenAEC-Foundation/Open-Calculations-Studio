@@ -257,9 +257,38 @@ export interface SelectValues {
   [key: string]: string;
 }
 
-export function evaluate(nodes: AstNode[], selectValues?: SelectValues): EvaluatedNode[] {
-  const scope: Scope = {};
+/**
+ * Optional starting scope for `evaluate` — used to seed the scope with
+ * global parameters that come from a parent sheet (e.g. the project-
+ * metadata sheet's K_FI, windgebied, etc.). The evaluator merges these
+ * into the new scope so the active sheet can reference them.
+ */
+export function evaluate(
+  nodes: AstNode[],
+  selectValues?: SelectValues,
+  initialScope?: Scope,
+): EvaluatedNode[] {
+  const scope: Scope = initialScope ? { ...initialScope } : {};
   return evaluateNodes(nodes, scope, selectValues || {});
+}
+
+/**
+ * Evaluate a sheet ONLY to extract its final scope (variables that ended
+ * up bound after running). Used by hosts that need to inherit globals
+ * from a parent sheet without rendering its output. Errors are silently
+ * ignored — partial scope is still returned.
+ */
+export function extractScope(nodes: AstNode[], selectValues?: SelectValues): Scope {
+  const scope: Scope = {};
+  try {
+    evaluateNodes(nodes, scope, selectValues || {});
+  } catch {
+    /* swallow — best-effort scope extraction */
+  }
+  // Strip internal flags.
+  delete scope[BREAK_FLAG];
+  delete scope['_i'];
+  return scope;
 }
 
 /** Sentinel key on `scope` used by `#break` to short-circuit out of a loop. */

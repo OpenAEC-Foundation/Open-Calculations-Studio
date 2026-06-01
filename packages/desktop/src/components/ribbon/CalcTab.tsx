@@ -10,14 +10,15 @@ import {
   undoIcon,
   redoIcon,
   imageIcon,
-  svgShapeIcon,
   pdfIcon,
 } from "./calcIcons";
+import { undo, redo } from "@codemirror/commands";
 import { parse, evaluate, generateIfcx } from "@ifc-calc/core";
 import { useDocumentStore } from "../../store/documentStore";
 import { useLoadCaseStore } from "../../store/loadCaseStore";
+import { useEditorViewStore } from "../../store/editorViewStore";
 import { savePdfReport } from "../../tauri/pdfReport";
-import { openCalculationFile, saveCalculationFile } from "../../tauri/fileOps";
+import { openCalculationFile, saveCalculationFile, openImageOrSvgDialog } from "../../tauri/fileOps";
 import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
 import { useRecentFiles } from "../../hooks/useRecentFiles";
 
@@ -64,11 +65,14 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
 
   const handleSave = useCallback(async () => {
     try {
-      // Save as IFCX (.ifc-calculation) — the IFCX document IS the file, with
-      // the CalcPAD source embedded under `source.content` for round-trip.
+      // Save as IFCX (.ifccalculation) — the IFCX document IS the file, with
+      // the CalcPAD source embedded under `source.content` + the full project
+      // sheets[] under `source.project.sheets` for multi-sheet round-trip.
       const nodes = evaluateCurrent();
       const ifcx = generateIfcx(nodes, { projectName });
-      const path = await saveCalculationFile(source, ifcx, projectName);
+      const { useProjectStore } = await import("../../store/projectStore");
+      const sheets = useProjectStore.getState().sheets;
+      const path = await saveCalculationFile(source, ifcx, projectName, sheets);
       if (path) {
         useDocumentStore.getState().markSaved(path);
       }
@@ -85,6 +89,40 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
     }
     loadTemplate("", "Nieuw");
   }, [loadTemplate]);
+
+  const handleUndo = useCallback(() => {
+    const view = useEditorViewStore.getState().view;
+    if (view) { undo(view); view.focus(); }
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    const view = useEditorViewStore.getState().view;
+    if (view) { redo(view); view.focus(); }
+  }, []);
+
+  const handleInsertImage = useCallback(async () => {
+    try {
+      const file = await openImageOrSvgDialog();
+      if (!file) return;
+      // SVG → inline-embed via @img(...) so existing parser includes path
+      // resolves it. Raster → base64 data URL inside a prose-line <img> tag
+      // so the file content survives independent of any include map.
+      const view = useEditorViewStore.getState().view;
+      const insert = file.kind === "svg"
+        ? `\n@img(${file.name})\n`
+        : `\n'<img src="${file.dataUrl}" style="max-width:100%;" alt="${file.name}"/>\n`;
+      if (view) {
+        const pos = view.state.selection.main.head;
+        view.dispatch({ changes: { from: pos, insert }, selection: { anchor: pos + insert.length } });
+        view.focus();
+      } else {
+        useDocumentStore.getState().setSource(source + insert);
+      }
+    } catch (err) {
+      console.error("Insert image failed:", err);
+      alert(`Afbeelding invoegen mislukt: ${(err as Error).message}`);
+    }
+  }, [source]);
 
   const handleSavePdf = useCallback(async () => {
     try {
@@ -108,14 +146,13 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
 
         <RibbonGroup label={t("calc.edit", "Bewerken")}>
           <RibbonButtonStack>
-            <RibbonButton icon={undoIcon} label={t("calc.undo", "Ongedaan")} size="small" onClick={() => {}} />
-            <RibbonButton icon={redoIcon} label={t("calc.redo", "Opnieuw")} size="small" onClick={() => {}} />
+            <RibbonButton icon={undoIcon} label={t("calc.undo", "Ongedaan")} size="small" onClick={handleUndo} />
+            <RibbonButton icon={redoIcon} label={t("calc.redo", "Opnieuw")} size="small" onClick={handleRedo} />
           </RibbonButtonStack>
         </RibbonGroup>
 
         <RibbonGroup label={t("insert.media", "Media")}>
-          <RibbonButton icon={imageIcon} label={t("insert.image", "Afbeelding")} size="large" onClick={() => {}} />
-          <RibbonButton icon={svgShapeIcon} label={t("insert.svg", "SVG")} size="large" onClick={() => {}} />
+          <RibbonButton icon={imageIcon} label={t("insert.image", "Afbeelding")} size="large" onClick={handleInsertImage} />
         </RibbonGroup>
 
         <RibbonGroup label={t("calc.export", "Exporteren")}>
