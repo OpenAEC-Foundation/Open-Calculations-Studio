@@ -27,6 +27,8 @@ const projectSheets: TreeNode[] = [
   },
   { kind: "item", id: "sheet-stalen-gevelkolom", label: "Stalen gevelkolom (wind + N)", templateId: "stalen-gevelkolom" },
   { kind: "item", id: "sheet-verticaal-windverband", label: "Verticaal windverband", templateId: "verticaal-windverband" },
+  { kind: "item", id: "sheet-voetplaatverbinding", label: "Voetplaatverbinding (kolomvoet)", templateId: "voetplaatverbinding" },
+  { kind: "item", id: "sheet-balklaag", label: "Balklaag (houten vloerbalken)", templateId: "balklaag" },
   { kind: "item", id: "sheet-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen" },
   { kind: "item", id: "sheet-stalen-ligger", label: "Stalen ligger IPE 300", templateId: "stalen-ligger" },
 ];

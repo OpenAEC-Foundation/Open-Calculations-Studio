@@ -4,6 +4,8 @@ import { calcpadSamples } from "./calcpad-samples";
 import { projectMetadata } from "./projectMetadata";
 import { stalenGevelkolom } from "./stalenGevelkolom";
 import { verticaalWindverband } from "./verticaalWindverband";
+import { voetplaatverbinding } from "./voetplaatverbinding";
+import { balklaag } from "./balklaag";
 import {
   ec5Buiging, ec5Afschuiving, ec5Druk, ec5DrukLoodrecht,
   ec5Knik, ec5Doorbuiging, ec5HoutenBalk,
@@ -38,6 +40,8 @@ export const templates: Record<string, string> = {
   "project-metadata": projectMetadata,
   "stalen-gevelkolom": stalenGevelkolom,
   "verticaal-windverband": verticaalWindverband,
+  "voetplaatverbinding": voetplaatverbinding,
+  "balklaag": balklaag,
   "calcpad-demo": calcpadDemo,
   ...calcpadSamples,
   "paaldraagvermogen": paalExample,
