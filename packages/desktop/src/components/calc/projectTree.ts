@@ -27,6 +27,8 @@ const projectSheets: TreeNode[] = [
   },
   { kind: "item", id: "sheet-stalen-gevelkolom", label: "Stalen gevelkolom (wind + N)", templateId: "stalen-gevelkolom" },
   { kind: "item", id: "sheet-verticaal-windverband", label: "Verticaal windverband", templateId: "verticaal-windverband" },
+  { kind: "item", id: "sheet-voetplaatverbinding", label: "Voetplaatverbinding (kolomvoet)", templateId: "voetplaatverbinding" },
+  { kind: "item", id: "sheet-balklaag", label: "Balklaag (houten vloerbalken)", templateId: "balklaag" },
   { kind: "item", id: "sheet-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen" },
   { kind: "item", id: "sheet-stalen-ligger", label: "Stalen ligger IPE 300", templateId: "stalen-ligger" },
 ];
@@ -67,6 +69,8 @@ export const projectTree: TreeNode[] = [
       { kind: "item", id: "nl-windverband-verticaal", label: "Windverband — verticaal (trekstaaf strip/L)", templateId: "verticaal-windverband" },
       { kind: "item", id: "nl-oplegging-metselwerk", label: "Oplegging op metselwerk — EC6 §6.1.3", templateId: "oplegging-metselwerk" },
       { kind: "item", id: "nl-permanente-vuurlast", label: "Permanente vuurlast — NEN 6090", templateId: "permanente-vuurlast" },
+      { kind: "item", id: "nl-voetplaatverbinding", label: "Voetplaatverbinding — kolomvoet (EC3)", templateId: "voetplaatverbinding" },
+      { kind: "item", id: "nl-balklaag", label: "Balklaag — houten vloerbalken", templateId: "balklaag" },
       { kind: "item", id: "nl-paaldraagvermogen", label: "Paaldraagvermogen (GEF)", templateId: "paaldraagvermogen" },
     ],
   },

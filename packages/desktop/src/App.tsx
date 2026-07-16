@@ -10,6 +10,8 @@ import Preview from "./components/calc/Preview";
 import SplitPane from "./components/calc/SplitPane";
 import ProjectBrowser from "./components/calc/ProjectBrowser";
 import IfcViewerPanel from "./components/calc/IfcViewerPanel";
+import VoetplaatDesigner from "./components/calc/VoetplaatDesigner";
+import BalklaagDesigner from "./components/calc/BalklaagDesigner";
 import { getSetting } from "./store";
 import { useDocumentStore } from "./store/documentStore";
 import { useRecentFiles } from "./hooks/useRecentFiles";
@@ -23,6 +25,8 @@ export default function App() {
   const [backstageOpen, setBackstageOpen] = useState(false);
   const [activeView, setActiveView] = useState("default");
   const [theme, setTheme] = useState("light");
+  // 2-pane werkruimte-modus: code+visueel / code+uitwerking / visueel+uitwerking
+  const [splitMode, setSplitMode] = useState<"cv" | "cu" | "vu">("vu");
 
   useEffect(() => {
     getSetting<string>("theme", "light").then((saved) => {
@@ -55,7 +59,17 @@ export default function App() {
 
   const loadTemplate = useDocumentStore((s) => s.loadTemplate);
   const markSaved = useDocumentStore((s) => s.markSaved);
+  const source = useDocumentStore((s) => s.source);
   const { addRecentFile } = useRecentFiles();
+
+  // De visuele designer-pane bestaat voor sheets met een parametrisch beeld.
+  const designerPane = source.includes("Voetplaatverbinding") ? <VoetplaatDesigner />
+    : source.includes("Balklaag") ? <BalklaagDesigner />
+    : null;
+  const hasDesigner = designerPane !== null;
+  const mode = hasDesigner ? splitMode : "cu";
+  const leftPane = mode === "vu" ? designerPane : <Editor />;
+  const rightPane = mode === "cv" ? designerPane : <Preview />;
 
   const handleBrowse = useCallback(async () => {
     try {
@@ -131,13 +145,24 @@ export default function App() {
       <DocumentBar />
       <main className="main-view" style={{ flex: 1, minHeight: 0, display: "flex" }}>
         <ProjectBrowser />
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           {activeView === "ifc" ? (
             <IfcViewerPanel />
           ) : activeIsWizard ? (
             <Preview />
           ) : (
-            <SplitPane left={<Editor />} right={<Preview />} />
+            <>
+              {hasDesigner && (
+                <div className="split-tabs">
+                  <button className={`split-tab${mode === "cv" ? " active" : ""}`} onClick={() => setSplitMode("cv")}>Code + Visueel</button>
+                  <button className={`split-tab${mode === "cu" ? " active" : ""}`} onClick={() => setSplitMode("cu")}>Code + Uitwerking</button>
+                  <button className={`split-tab${mode === "vu" ? " active" : ""}`} onClick={() => setSplitMode("vu")}>Visueel + Uitwerking</button>
+                </div>
+              )}
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <SplitPane left={leftPane} right={rightPane} />
+              </div>
+            </>
           )}
         </div>
       </main>

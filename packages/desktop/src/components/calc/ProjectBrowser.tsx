@@ -70,11 +70,12 @@ function TreeNodeView({ node, level, selectedId, onSelect }: TreeProps) {
 
   const isSelected = selectedId === node.id;
   const hasTemplate = !!node.templateId;
+  const isEmphasis = node.kind === "item" && node.emphasis;
   return (
     <div
       role="button"
       tabIndex={0}
-      className={`tree-item${isSelected ? " selected" : ""}${hasTemplate ? "" : " tree-item-disabled"}`}
+      className={`tree-item${isSelected ? " selected" : ""}${hasTemplate ? "" : " tree-item-disabled"}${isEmphasis ? " tree-item-emphasis" : ""}`}
       style={{ paddingLeft: 16 + level * 12 }}
       onClick={() => onSelect(node.id, node.templateId, node.label)}
       onKeyDown={(e) => {
@@ -105,7 +106,7 @@ function TreeNodeView({ node, level, selectedId, onSelect }: TreeProps) {
         document.body.classList.remove("ocs-dragging-template");
       }}
     >
-      <span className="tree-item-icon">{hasTemplate ? "○" : "□"}</span>
+      {!isEmphasis && <span className="tree-item-icon">{hasTemplate ? "○" : "□"}</span>}
       <span className="tree-item-label">{node.label}</span>
     </div>
   );

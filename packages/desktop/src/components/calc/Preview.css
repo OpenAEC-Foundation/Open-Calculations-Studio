@@ -31,6 +31,16 @@
   -ms-overflow-style: none; /* IE/Edge legacy */
 }
 
+/* KaTeX display-blokken: laat ze wrappen ipv één lange regel te forceren. */
+.calc-preview-content .calc-line,
+.calc-preview-content .katex-display {
+  max-width: 100%;
+}
+
+.calc-preview-content .katex-display {
+  overflow-x: hidden;
+}
+
 .calc-preview-content::-webkit-scrollbar {
   display: none; /* Chrome/Edge/Safari */
 }

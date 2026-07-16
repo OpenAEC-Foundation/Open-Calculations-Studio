@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--workspace=@openaec/calculations-studio"],
       "port": 3021
+    },
+    {
+      "name": "web-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace=@openaec/calculations-studio", "--", "--port", "3030", "--strictPort"],
+      "port": 3030
     }
   ]
 }

@@ -45,6 +45,13 @@ interface LoadCaseState {
   getActiveValues: () => SelectValues;
   /** write a value into the active case */
   setActiveValue: (name: string, value: string) => void;
+  /**
+   * Seed missing keys in the active case; existing (user-set) values are
+   * preserved. Used by visual designers to push their displayed defaults into
+   * the shared store, so the evaluator and the designer agree on untouched
+   * inputs instead of each falling back to its own defaults.
+   */
+  seedActiveValues: (defaults: SelectValues) => void;
 }
 
 // Debounced persistence — coalesce rapid writes (e.g. while user types in a
@@ -106,6 +113,21 @@ export const useLoadCaseStore = create<LoadCaseState>((set, get) => ({
           [s.activeId]: { ...current, [name]: value },
         },
       };
+    }),
+
+  seedActiveValues: (defaults) =>
+    set((s) => {
+      const current = s.valuesByCase[s.activeId] ?? {};
+      let changed = false;
+      const merged: SelectValues = { ...current };
+      for (const [k, v] of Object.entries(defaults)) {
+        if (merged[k] === undefined || merged[k] === "") {
+          merged[k] = v;
+          changed = true;
+        }
+      }
+      if (!changed) return s; // no missing keys → no update, avoids render loop
+      return { valuesByCase: { ...s.valuesByCase, [s.activeId]: merged } };
     }),
 }));
 

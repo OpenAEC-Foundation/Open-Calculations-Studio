@@ -1,0 +1,283 @@
+/* Parametrisch beeld — zelfstandig vol paneel (eigen tab/pane). */
+
+.vd-panel {
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--theme-bg-surface, #fff);
+  color: var(--theme-text, #1f2937);
+}
+
+.vd-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--theme-border-subtle, #e5e7eb);
+  background: var(--theme-bg-canvas, #f8fafc);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.vd-head strong { font-size: 13px; }
+
+/* 2-pane keuze-tabs boven de werkruimte */
+.split-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--theme-border-subtle, #e5e7eb);
+  background: var(--theme-bg-canvas, #f8fafc);
+  flex: 0 0 auto;
+}
+.split-tab {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border: 1px solid var(--theme-border-subtle, #d1d5db);
+  border-radius: 14px;
+  background: var(--theme-bg-surface, #fff);
+  color: var(--theme-text-muted, #6b7280);
+  cursor: pointer;
+}
+.split-tab:hover { border-color: #93c5fd; }
+.split-tab.active {
+  background: #1e40af;
+  border-color: #1e40af;
+  color: #fff;
+}
+.vd-uc {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+.vd-uc.ok { color: #047857; background: #d1fae5; }
+.vd-uc.bad { color: #b91c1c; background: #fee2e2; }
+
+/* werkruimte: controls links onder elkaar, tekeningen centraal */
+.vd-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 14px 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.vd-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 0 0 auto;
+  width: 210px;
+}
+.vd-controls label {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--theme-text-muted, #6b7280);
+  gap: 3px;
+}
+.vd-controls select,
+.vd-controls input {
+  font-size: 13px;
+  padding: 5px 6px;
+  border: 1px solid var(--theme-border-subtle, #d1d5db);
+  border-radius: 5px;
+  background: var(--theme-bg-surface, #fff);
+  color: var(--theme-text, #1f2937);
+  width: 100%;
+  box-sizing: border-box;
+}
+.vd-preview {
+  border: 1px solid var(--theme-border-subtle, #e5e7eb);
+  border-radius: 6px;
+  background: var(--theme-bg-canvas, #f8fafc);
+  padding: 4px;
+  line-height: 0;
+  align-self: center;
+}
+.vd-ctrl-h {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--theme-text-muted, #6b7280);
+  margin-top: 8px;
+  border-bottom: 1px solid var(--theme-border-subtle, #e5e7eb);
+  padding-bottom: 2px;
+}
+.vd-ctrl-h:first-child { margin-top: 0; }
+
+/* compacte invoer — label links, smal veld rechts (referentie-look) */
+.vd-compact { width: 258px; gap: 3px; }
+.vd-compact label {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.15;
+}
+.vd-compact label > select,
+.vd-compact label > input {
+  width: 94px;
+  flex: 0 0 auto;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+.vd-compact .vd-ctrl-h { margin-top: 6px; }
+
+.vd-layouts {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.vd-layouts-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.vd-layouts-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.vd-layout-thumb {
+  position: relative;
+  padding: 3px;
+  background: var(--canvas-bg, #f8fafc);
+  border: 2px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  cursor: pointer;
+  line-height: 0;
+}
+.vd-layout-thumb:hover { border-color: #93c5fd; }
+.vd-layout-thumb.active {
+  border-color: #1e40af;
+  box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.2);
+}
+.vd-layout-num {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #1e3a8a;
+  line-height: 1;
+}
+.vd-layouts-active {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text, #374151);
+}
+
+.vd-canvases {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.vd-canvas { display: flex; flex-direction: column; align-items: center; }
+.vd-caption {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.vd-stage {
+  position: relative;
+  background: var(--canvas-bg, #f8fafc);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+}
+.vd-svg { position: absolute; inset: 0; }
+
+/* tekening-elementen */
+.vd-concrete { fill: #e5e7eb; stroke: #9ca3af; stroke-width: 1.5; }
+.vd-grout { fill: #d1d5db; stroke: #9ca3af; stroke-width: 1; }
+.vd-plate { fill: #9ca3af; stroke: #4b5563; stroke-width: 1.5; }
+.vd-plate2 { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.5; }
+.vd-col { fill: #dbeafe; stroke: #1e40af; stroke-width: 2; }
+.vd-web { stroke: #1e40af; stroke-width: 2; }
+.vd-steel { fill: #bfdbfe; stroke: #1e40af; stroke-width: 1.5; }
+.vd-anchor { fill: none; stroke: #525252; stroke-width: 3; }
+.vd-bolt { fill: #fff; stroke: #525252; stroke-width: 2; }
+.vd-load { fill: none; stroke: #dc2626; stroke-width: 3; }
+.vd-loadfill { fill: #dc2626; stroke: none; }
+
+/* maatlijnen (blauw, CAD-look) */
+.vd-dimline line { stroke: #2563eb; stroke-width: 1; }
+.vd-dimext { stroke: #2563eb; stroke-width: 1; }
+.vd-dimmeasure { stroke: #2563eb; stroke-width: 1; }
+.vd-dimarrow { fill: none; stroke: #2563eb; stroke-width: 1.2; }
+.vd-dim-ro {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: #1d4ed8;
+  background: var(--theme-bg-canvas, #f8fafc);
+  padding: 0 4px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* compacte, klikbare maatgetallen — alleen het getal */
+.vd-dim { position: absolute; transform: translate(-50%, -50%); z-index: 1; }
+.vd-dim-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1d4ed8;
+  background: var(--theme-bg-canvas, #f8fafc);
+  border: none;
+  padding: 0 3px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.vd-dim-num:hover { background: #dbeafe; outline: 1px solid #93c5fd; }
+.vd-dim-input {
+  width: 58px;
+  font-size: 12px;
+  padding: 2px 4px;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+}
+
+/* bewerkbare krachtlabels (rood) */
+.vd-force { position: absolute; transform: translate(-50%, -50%); z-index: 1; }
+.vd-force-num {
+  font-size: 12px;
+  font-weight: 800;
+  color: #dc2626;
+  background: var(--theme-bg-canvas, #f8fafc);
+  border: none;
+  padding: 0 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.vd-force-num small { font-size: 9px; margin-left: 1px; font-weight: 700; }
+.vd-force-num:hover { background: #fee2e2; outline: 1px solid #fca5a5; }
+
+.vd-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border, #e5e7eb);
+  font-size: 11px;
+  color: var(--text-muted, #6b7280);
+}
+.vd-live { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text, #374151); }
