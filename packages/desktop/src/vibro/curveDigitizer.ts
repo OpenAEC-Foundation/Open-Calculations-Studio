@@ -71,6 +71,13 @@ export function digitizeQcCurve(
       bounds.right,
       persistentDarkColumns,
     ));
+  const allCandidates = rawCandidatesByRow.flat();
+  if (
+    allCandidates.length > 0
+    && allCandidates.every((candidate) => candidate.persistentThin)
+  ) {
+    return ambiguousPersistentLineResult(calibration, bounds);
+  }
   const hasBroaderCurveCandidate = rawCandidatesByRow.some((candidates) =>
     candidates.some((candidate) => !candidate.persistentThin));
   const candidatesByRow = hasBroaderCurveCandidate
@@ -106,6 +113,23 @@ function emptyResult(): CurveDigitizationResult {
     coverage: 0,
     warnings: [],
     uncertainDepthRanges: [],
+  };
+}
+
+function ambiguousPersistentLineResult(
+  calibration: CptCalibration,
+  bounds: ReturnType<typeof boundedPlot>,
+): CurveDigitizationResult {
+  return {
+    points: [],
+    coverage: 0,
+    warnings: [
+      "Alleen persistente dunne verticale lijnen gevonden; de curve is niet betrouwbaar te onderscheiden",
+    ],
+    uncertainDepthRanges: [{
+      topNapM: pixelToDepthNap(bounds.top, calibration),
+      bottomNapM: pixelToDepthNap(bounds.bottom, calibration),
+    }],
   };
 }
 
@@ -246,7 +270,12 @@ function traceRouteSegment(
       const predecessor = previousStates
         .filter((state) => Math.abs(state.candidate.x - candidate.x) <= maxJumpPx)
         .reduce<RouteState | undefined>(
-          (best, state) => best === undefined || state.score > best.score ? state : best,
+          (best, state) =>
+            best === undefined
+            || routeScoreWithTransition(state, candidate, maxJumpPx)
+              > routeScoreWithTransition(best, candidate, maxJumpPx)
+              ? state
+              : best,
           undefined,
         );
       const alternativeScore = row.candidates
@@ -264,7 +293,9 @@ function traceRouteSegment(
           maxJumpPx,
         ),
         rowIndex: row.rowIndex,
-        score: candidateScore(candidate) + (predecessor?.score ?? 0),
+        score: candidateScore(candidate)
+          + (predecessor?.score ?? 0)
+          + routeContinuityScore(candidate, predecessor, maxJumpPx),
         previous: predecessor,
       };
     });
@@ -293,6 +324,29 @@ function candidateScore(candidate: CandidatePixel): number {
   return candidate.darkness
     + Math.min(candidate.strokeWidth, 3) * 0.1
     - persistentLinePenalty;
+}
+
+function routeContinuityScore(
+  candidate: CandidatePixel,
+  predecessor: RouteState | undefined,
+  maxJumpPx: number,
+): number {
+  if (predecessor === undefined) {
+    return 0;
+  }
+
+  const distanceRatio = Math.abs(predecessor.candidate.x - candidate.x)
+    / Math.max(maxJumpPx, 1);
+  return 0.5 * (1 - Math.min(1, distanceRatio));
+}
+
+function routeScoreWithTransition(
+  predecessor: RouteState,
+  candidate: CandidatePixel,
+  maxJumpPx: number,
+): number {
+  return predecessor.score
+    + routeContinuityScore(candidate, predecessor, maxJumpPx);
 }
 
 function directConfidence(

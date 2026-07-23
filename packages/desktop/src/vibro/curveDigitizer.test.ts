@@ -141,6 +141,19 @@ describe("digitizeQcCurve", () => {
     expect(result.points[result.points.length - 1]?.qcMpa).toBeCloseTo(12, 0);
   });
 
+  it("verkiest een lichtere vloeiende route boven een donkerdere springende route", () => {
+    const image = createWhiteImage();
+    for (let y = 0; y < HEIGHT; y += 1) {
+      drawThreePixelStroke(image.data, 70, y, 30);
+      drawThreePixelStroke(image.data, y % 2 === 0 ? 90 : 110, y, 0);
+    }
+
+    const result = digitizeQcCurve(image, calibration);
+
+    expect(result.coverage).toBe(1);
+    expect(result.points.every((point) => Math.abs(point.qcMpa - 5) < 0.2)).toBe(true);
+  });
+
   it("vindt de curve opnieuw na een lang gat en een sprong groter dan maxJumpPx", () => {
     const image = createWhiteImage();
     for (let y = 0; y < 60; y += 1) {
@@ -171,7 +184,20 @@ describe("digitizeQcCurve", () => {
     expect(result.points.every((point) => Math.abs(point.qcMpa - 5) < 0.2)).toBe(true);
   });
 
-  it("wist een legitieme een-pixelbrede verticale curve niet", () => {
+  it("behoudt een legitieme bijna-verticale een-pixelcurve met variatie", () => {
+    const image = createWhiteImage();
+    for (let y = 0; y < HEIGHT; y += 1) {
+      setGray(image.data, y < HEIGHT / 2 ? 70 : 71, y, 10);
+    }
+
+    const result = digitizeQcCurve(image, calibration);
+
+    expect(result.coverage).toBe(1);
+    expect(result.warnings).toEqual([]);
+    expect(result.points.every((point) => Math.abs(point.qcMpa - 5.05) < 0.1)).toBe(true);
+  });
+
+  it("markeert een beeld met alleen een persistente dunne lijn als onzeker", () => {
     const image = createWhiteImage();
     for (let y = 0; y < HEIGHT; y += 1) {
       setGray(image.data, 70, y, 10);
@@ -179,8 +205,13 @@ describe("digitizeQcCurve", () => {
 
     const result = digitizeQcCurve(image, calibration);
 
-    expect(result.coverage).toBe(1);
-    expect(result.points.every((point) => Math.abs(point.qcMpa - 5) < 0.1)).toBe(true);
+    expect(result.coverage).toBe(0);
+    expect(result.points).toEqual([]);
+    expect(result.uncertainDepthRanges).toEqual([
+      { topNapM: 0, bottomNapM: -3.18 },
+    ]);
+    expect(result.warnings.some((warning) => warning.includes("niet betrouwbaar")))
+      .toBe(true);
   });
 
   it("geeft zwakke directe kandidaten minder confidence dan donkere kandidaten", () => {
