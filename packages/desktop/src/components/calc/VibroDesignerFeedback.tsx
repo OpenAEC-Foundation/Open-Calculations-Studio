@@ -1,13 +1,8 @@
 import type { CurveDigitizationResult } from "../../vibro/curveDigitizer";
 import type { DigitizationQuality } from "../../vibro/designerQuality";
+import type { DesignerStage } from "../../store/vibroDesignerStore";
 
-export type DesignerStage =
-  | "empty"
-  | "loading"
-  | "calibrating"
-  | "review"
-  | "ready"
-  | "error";
+export type { DesignerStage } from "../../store/vibroDesignerStore";
 
 export function StageBadge({ stage }: { stage: DesignerStage }) {
   const labels: Record<DesignerStage, string> = {

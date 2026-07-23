@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const pdfMocks = vi.hoisted(() => ({
   destroy: vi.fn(async () => undefined),
+  loadingDestroy: vi.fn(async () => undefined),
   getDocument: vi.fn(),
   getPage: vi.fn(),
   getViewport: vi.fn(),
@@ -35,6 +36,7 @@ describe("renderPdfPage", () => {
       render: pdfMocks.render,
     });
     pdfMocks.getDocument.mockReturnValue({
+      destroy: pdfMocks.loadingDestroy,
       promise: Promise.resolve({
         numPages: 4,
         getPage: pdfMocks.getPage,
@@ -106,5 +108,32 @@ describe("renderPdfPage", () => {
     await expect(renderPdfPage(new Uint8Array([1]), 0, 0))
       .rejects.toThrow(/renderschaal/i);
     expect(pdfMocks.getDocument).not.toHaveBeenCalled();
+  });
+
+  it("weigert renderschalen boven de veilige bovengrens", async () => {
+    await expect(renderPdfPage(new Uint8Array([1]), 0, 4.01))
+      .rejects.toThrow(/0,5.*4/i);
+    expect(pdfMocks.getDocument).not.toHaveBeenCalled();
+  });
+
+  it("vernietigt de loading task wanneer het PDF-document niet geladen kan worden", async () => {
+    let rejectLoading!: (error: Error) => void;
+    const loadingPromise = new Promise<never>((_resolve, reject) => {
+      rejectLoading = reject;
+    });
+    pdfMocks.getDocument.mockReturnValue({
+      destroy: pdfMocks.loadingDestroy,
+      promise: loadingPromise,
+    });
+
+    const rendering = renderPdfPage(new Uint8Array([1]), 0, 1);
+    await vi.waitFor(() => expect(pdfMocks.getDocument).toHaveBeenCalledOnce());
+    rejectLoading(new Error("Beschadigd document"));
+
+    await expect(rendering)
+      .rejects.toThrow("Beschadigd document");
+
+    expect(pdfMocks.loadingDestroy).toHaveBeenCalledOnce();
+    expect(pdfMocks.destroy).not.toHaveBeenCalled();
   });
 });

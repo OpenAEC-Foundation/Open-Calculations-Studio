@@ -1,5 +1,8 @@
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
+export const MIN_PDF_RENDER_SCALE = 0.5;
+export const MAX_PDF_RENDER_SCALE = 4;
+
 export interface RenderedPdfPage {
   canvas: HTMLCanvasElement;
   width: number;
@@ -12,8 +15,9 @@ export async function renderPdfPage(
   pageIndex: number,
   scale: number,
 ): Promise<RenderedPdfPage> {
-  if (!Number.isFinite(scale) || scale <= 0) {
-    throw new RangeError("De PDF-renderschaal moet groter zijn dan nul");
+  const scaleError = getPdfRenderScaleError(scale);
+  if (scaleError !== null) {
+    throw new RangeError(scaleError);
   }
   if (!Number.isInteger(pageIndex) || pageIndex < 0) {
     throw new RangeError("De PDF-pagina-index moet een positief geheel getal zijn");
@@ -25,7 +29,13 @@ export async function renderPdfPage(
   const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
   GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
   const loadingTask = getDocument({ data: sourceBytes.slice() });
-  const pdf = await loadingTask.promise;
+  let pdf;
+  try {
+    pdf = await loadingTask.promise;
+  } catch (error) {
+    await loadingTask.destroy();
+    throw error;
+  }
 
   try {
     if (pageIndex >= pdf.numPages) {
@@ -59,6 +69,14 @@ export async function renderPdfPage(
   } finally {
     await pdf.destroy();
   }
+}
+
+export function getPdfRenderScaleError(scale: number): string | null {
+  return Number.isFinite(scale)
+    && scale >= MIN_PDF_RENDER_SCALE
+    && scale <= MAX_PDF_RENDER_SCALE
+    ? null
+    : "De PDF-renderschaal moet tussen 0,5 en 4 liggen";
 }
 
 async function readLocalPdf(path: string): Promise<Uint8Array> {

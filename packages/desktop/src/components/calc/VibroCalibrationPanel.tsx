@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { RelevantDepthRange } from "../../vibro/designerQuality";
 import type { RenderedPdfPage } from "../../vibro/pdfPage";
 import type { CptCalibration, PlotBoundsPx } from "../../vibro/types";
@@ -15,6 +15,7 @@ interface VibroCalibrationPanelProps {
   calibration: CptCalibration;
   pageIndex: number;
   renderScale: number;
+  renderScaleError: string;
   relevantRange: RelevantDepthRange;
   canAccept: boolean;
   onPageChange: (pageIndex: number) => void;
@@ -33,6 +34,7 @@ export default function VibroCalibrationPanel({
   calibration,
   pageIndex,
   renderScale,
+  renderScaleError,
   relevantRange,
   canAccept,
   onPageChange,
@@ -67,6 +69,7 @@ export default function VibroCalibrationPanel({
           min={0.5}
           max={4}
           step={0.25}
+          error={renderScaleError}
           onCommit={onRenderScaleChange}
         />
       </ControlSection>
@@ -190,6 +193,7 @@ function NumberField({
   min,
   max,
   step = 1,
+  error = "",
   onChange,
   onCommit,
 }: {
@@ -198,10 +202,12 @@ function NumberField({
   min?: number;
   max?: number;
   step?: number;
+  error?: string;
   onChange?: (value: number) => void;
   onCommit?: (value: number) => void;
 }) {
   const [draft, setDraft] = useState(String(value));
+  const errorId = useId();
 
   useEffect(() => {
     setDraft(String(value));
@@ -226,6 +232,8 @@ function NumberField({
         min={min}
         max={max}
         step={step}
+        aria-invalid={error !== ""}
+        aria-describedby={error !== "" ? errorId : undefined}
         onChange={(event) => {
           setDraft(event.target.value);
           if (onChange !== undefined && event.target.value.trim() !== "") {
@@ -240,6 +248,9 @@ function NumberField({
           }
         }}
       />
+      {error !== "" && (
+        <small className="vibro-field-error" id={errorId}>{error}</small>
+      )}
     </label>
   );
 }

@@ -1,21 +1,18 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useVibroDesignerStore } from "../../store/vibroDesignerStore";
 import { validateCalibration } from "../../vibro/calibration";
 import {
   digitizeQcCurve,
-  type CurveDigitizationResult,
 } from "../../vibro/curveDigitizer";
 import {
   evaluateDigitizationQuality,
-  type RelevantDepthRange,
 } from "../../vibro/designerQuality";
 import {
+  getPdfRenderScaleError,
   renderPdfPage,
   type RenderedPdfPage,
 } from "../../vibro/pdfPage";
-import type {
-  CptCalibration,
-  DigitizedCptPoint,
-} from "../../vibro/types";
+import type { CptCalibration } from "../../vibro/types";
 import VibroCalibrationPanel, {
   type CalibrationNumberField,
 } from "./VibroCalibrationPanel";
@@ -23,7 +20,6 @@ import {
   EmptyOrLoadingState,
   QualityPanel,
   StageBadge,
-  type DesignerStage,
 } from "./VibroDesignerFeedback";
 import VibroPdfViewport from "./VibroPdfViewport";
 import "./VibroPileDesigner.css";
@@ -35,25 +31,24 @@ interface PickedPdf {
   name: string;
 }
 
-const DEFAULT_RENDER_SCALE = 2;
-
 export default function VibroPileDesigner() {
-  const [stage, setStage] = useState<DesignerStage>("empty");
-  const [pdfSource, setPdfSource] = useState<string | Uint8Array | null>(null);
-  const [pdfName, setPdfName] = useState("");
-  const [pageIndex, setPageIndex] = useState(0);
-  const [renderScale, setRenderScale] = useState(DEFAULT_RENDER_SCALE);
-  const [renderedPage, setRenderedPage] = useState<RenderedPdfPage | null>(null);
-  const [calibration, setCalibration] = useState<CptCalibration | null>(null);
-  const [relevantRange, setRelevantRange] = useState<RelevantDepthRange>({
-    topNapM: 1,
-    bottomNapM: -25,
-  });
-  const [digitization, setDigitization] =
-    useState<CurveDigitizationResult | null>(null);
-  const [acceptedPoints, setAcceptedPoints] =
-    useState<DigitizedCptPoint[]>([]);
-  const [errorMessage, setErrorMessage] = useState("");
+  const {
+    stage,
+    pdfSource,
+    pdfName,
+    pageIndex,
+    renderScale,
+    renderScaleError,
+    renderedPage,
+    calibration,
+    relevantRange,
+    digitization,
+    acceptedPoints,
+    errorMessage,
+    updateWorkflow,
+    beginRenderRequest,
+    isCurrentRenderRequest,
+  } = useVibroDesignerStore();
 
   const quality = useMemo(
     () => digitization === null
@@ -67,9 +62,12 @@ export default function VibroPileDesigner() {
       const picked = await pickPdf();
       if (picked === null) return;
 
-      setPdfSource(picked.source);
-      setPdfName(picked.name);
-      setPageIndex(0);
+      updateWorkflow({
+        pdfSource: picked.source,
+        pdfName: picked.name,
+        pageIndex: 0,
+        renderScaleError: "",
+      });
       await loadPage(picked.source, 0, renderScale);
     } catch (error) {
       showError(error);
@@ -81,69 +79,88 @@ export default function VibroPileDesigner() {
     nextPageIndex: number,
     nextScale: number,
   ) => {
-    setStage("loading");
-    setErrorMessage("");
+    const requestId = beginRenderRequest();
+    updateWorkflow({ stage: "loading", errorMessage: "" });
     try {
       const page = await renderPdfPage(source, nextPageIndex, nextScale);
+      if (!isCurrentRenderRequest(requestId)) return;
+
       const nextCalibration = defaultCalibration(
         page,
         nextPageIndex,
       );
-      setRenderedPage(page);
-      setCalibration(nextCalibration);
-      setRelevantRange({
-        topNapM: nextCalibration.depthTopNapM,
-        bottomNapM: nextCalibration.depthBottomNapM,
+      updateWorkflow({
+        pageIndex: nextPageIndex,
+        renderedPage: page,
+        calibration: nextCalibration,
+        relevantRange: {
+          topNapM: nextCalibration.depthTopNapM,
+          bottomNapM: nextCalibration.depthBottomNapM,
+        },
+        digitization: null,
+        acceptedPoints: [],
+        stage: "calibrating",
+        errorMessage: "",
       });
-      setDigitization(null);
-      setAcceptedPoints([]);
-      setStage("calibrating");
     } catch (error) {
-      showError(error);
+      if (isCurrentRenderRequest(requestId)) {
+        showError(error);
+      }
     }
   };
 
   const showError = (error: unknown) => {
-    setErrorMessage(
-      error instanceof Error ? error.message : "De PDF kon niet worden verwerkt.",
-    );
-    setStage("error");
+    updateWorkflow({
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "De PDF kon niet worden verwerkt.",
+      stage: "error",
+    });
   };
 
   const changePage = (nextPageIndex: number) => {
     if (pdfSource === null) return;
-    setPageIndex(nextPageIndex);
+    updateWorkflow({ pageIndex: nextPageIndex });
     void loadPage(pdfSource, nextPageIndex, renderScale);
   };
 
   const changeRenderScale = (value: number) => {
-    setRenderScale(value);
-    if (pdfSource !== null && Number.isFinite(value) && value > 0) {
-      void loadPage(pdfSource, pageIndex, value);
+    const validationError = getPdfRenderScaleError(value);
+    if (validationError !== null) {
+      updateWorkflow({ renderScaleError: validationError });
+      return;
     }
+
+    updateWorkflow({
+      renderScale: value,
+      renderScaleError: "",
+      errorMessage: "",
+    });
+    if (pdfSource !== null) void loadPage(pdfSource, pageIndex, value);
   };
 
   const changeCalibration = (
     field: CalibrationNumberField,
     value: number,
   ) => {
-    setCalibration((current) => {
-      if (current === null) return current;
-      if (field in current.plotBoundsPx) {
-        return {
-          ...current,
-          plotBoundsPx: {
-            ...current.plotBoundsPx,
-            [field]: value,
-          },
-        };
+    if (calibration === null) return;
+    const nextCalibration = field in calibration.plotBoundsPx
+      ? {
+        ...calibration,
+        plotBoundsPx: {
+          ...calibration.plotBoundsPx,
+          [field]: value,
+        },
       }
-      return { ...current, [field]: value };
+      : { ...calibration, [field]: value };
+    updateWorkflow({
+      calibration: nextCalibration,
+      digitization: null,
+      acceptedPoints: [],
+      errorMessage: "",
+      stage: "calibrating",
     });
-    setDigitization(null);
-    setAcceptedPoints([]);
-    setErrorMessage("");
-    setStage("calibrating");
   };
 
   const determineCurve = () => {
@@ -176,10 +193,12 @@ export default function VibroPileDesigner() {
         renderedPage.width,
         renderedPage.height,
       );
-      setDigitization(digitizeQcCurve(image, calibration));
-      setAcceptedPoints([]);
-      setStage("review");
-      setErrorMessage("");
+      updateWorkflow({
+        digitization: digitizeQcCurve(image, calibration),
+        acceptedPoints: [],
+        stage: "review",
+        errorMessage: "",
+      });
     } catch (error) {
       showError(error);
     }
@@ -193,8 +212,10 @@ export default function VibroPileDesigner() {
     ) {
       return;
     }
-    setAcceptedPoints(digitization.points.map((point) => ({ ...point })));
-    setStage("ready");
+    updateWorkflow({
+      acceptedPoints: digitization.points.map((point) => ({ ...point })),
+      stage: "ready",
+    });
   };
 
   return (
@@ -206,6 +227,19 @@ export default function VibroPileDesigner() {
         </div>
         <StageBadge stage={stage} />
       </header>
+      <span
+        className="vibro-sr-status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-label="PDF-laadstatus"
+      >
+        {stage === "loading"
+          ? renderedPage === null
+            ? "PDF-pagina wordt geladen."
+            : "PDF-pagina wordt opnieuw geladen."
+          : ""}
+      </span>
 
       <div className="vibro-designer-toolbar">
         <button
@@ -238,6 +272,7 @@ export default function VibroPileDesigner() {
               calibration={calibration}
               pageIndex={pageIndex}
               renderScale={renderScale}
+              renderScaleError={renderScaleError}
               relevantRange={relevantRange}
               canAccept={
                 digitization !== null
@@ -248,9 +283,11 @@ export default function VibroPileDesigner() {
               onRenderScaleChange={changeRenderScale}
               onCalibrationChange={changeCalibration}
               onRelevantRangeChange={(range) => {
-                setRelevantRange(range);
-                setAcceptedPoints([]);
-                setStage(digitization === null ? "calibrating" : "review");
+                updateWorkflow({
+                  relevantRange: range,
+                  acceptedPoints: [],
+                  stage: digitization === null ? "calibrating" : "review",
+                });
               }}
               onDetermineCurve={determineCurve}
               onAcceptCalibration={acceptCalibration}
