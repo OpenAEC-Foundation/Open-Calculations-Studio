@@ -12,6 +12,7 @@ import ProjectBrowser from "./components/calc/ProjectBrowser";
 import IfcViewerPanel from "./components/calc/IfcViewerPanel";
 import VoetplaatDesigner from "./components/calc/VoetplaatDesigner";
 import BalklaagDesigner from "./components/calc/BalklaagDesigner";
+import VibroPileDesigner from "./components/calc/VibroPileDesigner";
 import { getSetting } from "./store";
 import { useDocumentStore } from "./store/documentStore";
 import { useRecentFiles } from "./hooks/useRecentFiles";
@@ -62,9 +63,13 @@ export default function App() {
   const { addRecentFile } = useRecentFiles();
 
   // De visuele designer-pane bestaat voor sheets met een parametrisch beeld.
-  const designerPane = source.includes("Voetplaatverbinding") ? <VoetplaatDesigner />
-    : source.includes("Balklaag") ? <BalklaagDesigner />
-    : null;
+  const designerPane = source.includes("VIBRO-paaldraagvermogen")
+    ? <VibroPileDesigner />
+    : source.includes("Voetplaatverbinding")
+      ? <VoetplaatDesigner />
+      : source.includes("Balklaag")
+        ? <BalklaagDesigner />
+        : null;
   const hasDesigner = designerPane !== null;
   const mode = hasDesigner ? splitMode : "cu";
   const leftPane = mode === "vu" ? designerPane : <Editor />;
