@@ -3,6 +3,7 @@ dist/
 .vite/
 *.tsbuildinfo
 PROMPTS.md
+.worktrees/
 
 # Debug scripts (rendered html / scratch)
 scripts/debug-*.mjs
