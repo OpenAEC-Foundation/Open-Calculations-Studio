@@ -9,7 +9,9 @@ import VibroPileDesigner from "./VibroPileDesigner";
 
 describe("VibroPileDesigner", () => {
   it("toont in de lege toestand de PDF-keuze en kalibratie-uitleg", () => {
-    const markup = renderToStaticMarkup(<VibroPileDesigner />);
+    const markup = renderToStaticMarkup(
+      <VibroPileDesigner documentRevision={0} />,
+    );
 
     expect(markup).toContain("VIBRO-paal");
     expect(markup).toContain("Grondonderzoek-PDF kiezen");

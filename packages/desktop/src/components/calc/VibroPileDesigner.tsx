@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo } from "react";
 import { useVibroDesignerStore } from "../../store/vibroDesignerStore";
 import { validateCalibration } from "../../vibro/calibration";
 import {
@@ -31,9 +31,17 @@ interface PickedPdf {
   name: string;
 }
 
-export default function VibroPileDesigner() {
+interface VibroPileDesignerProps {
+  documentRevision: number;
+}
+
+export default function VibroPileDesigner({
+  documentRevision,
+}: VibroPileDesignerProps) {
   const {
+    documentRevision: workflowDocumentRevision,
     stage,
+    isReloading,
     pdfSource,
     pdfName,
     pageIndex,
@@ -46,9 +54,14 @@ export default function VibroPileDesigner() {
     acceptedPoints,
     errorMessage,
     updateWorkflow,
+    bindDocument,
     beginRenderRequest,
     isCurrentRenderRequest,
   } = useVibroDesignerStore();
+
+  useLayoutEffect(() => {
+    bindDocument(documentRevision);
+  }, [bindDocument, documentRevision]);
 
   const quality = useMemo(
     () => digitization === null
@@ -60,7 +73,13 @@ export default function VibroPileDesigner() {
   const choosePdf = async () => {
     try {
       const picked = await pickPdf();
-      if (picked === null) return;
+      if (
+        picked === null
+        || useVibroDesignerStore.getState().documentRevision
+          !== documentRevision
+      ) {
+        return;
+      }
 
       updateWorkflow({
         pdfSource: picked.source,
@@ -70,7 +89,12 @@ export default function VibroPileDesigner() {
       });
       await loadPage(picked.source, 0, renderScale);
     } catch (error) {
-      showError(error);
+      if (
+        useVibroDesignerStore.getState().documentRevision
+        === documentRevision
+      ) {
+        showError(error);
+      }
     }
   };
 
@@ -80,7 +104,18 @@ export default function VibroPileDesigner() {
     nextScale: number,
   ) => {
     const requestId = beginRenderRequest();
-    updateWorkflow({ stage: "loading", errorMessage: "" });
+    const reloadInProgress = useVibroDesignerStore.getState();
+    updateWorkflow({
+      stage: "loading",
+      isReloading:
+        reloadInProgress.renderedPage !== null
+        || reloadInProgress.isReloading,
+      renderedPage: null,
+      calibration: null,
+      digitization: null,
+      acceptedPoints: [],
+      errorMessage: "",
+    });
     try {
       const page = await renderPdfPage(source, nextPageIndex, nextScale);
       if (!isCurrentRenderRequest(requestId)) return;
@@ -100,6 +135,7 @@ export default function VibroPileDesigner() {
         digitization: null,
         acceptedPoints: [],
         stage: "calibrating",
+        isReloading: false,
         errorMessage: "",
       });
     } catch (error) {
@@ -116,6 +152,7 @@ export default function VibroPileDesigner() {
           ? error.message
           : "De PDF kon niet worden verwerkt.",
       stage: "error",
+      isReloading: false,
     });
   };
 
@@ -164,6 +201,13 @@ export default function VibroPileDesigner() {
   };
 
   const determineCurve = () => {
+    if (
+      stage !== "calibrating"
+      && stage !== "review"
+      && stage !== "ready"
+    ) {
+      return;
+    }
     if (renderedPage === null || calibration === null) return;
     try {
       const errors = validateCalibration(calibration);
@@ -206,7 +250,9 @@ export default function VibroPileDesigner() {
 
   const acceptCalibration = () => {
     if (
-      digitization === null
+      stage !== "review"
+      || workflowDocumentRevision !== documentRevision
+      || digitization === null
       || quality === null
       || quality.blockers.length > 0
     ) {
@@ -235,9 +281,9 @@ export default function VibroPileDesigner() {
         aria-label="PDF-laadstatus"
       >
         {stage === "loading"
-          ? renderedPage === null
-            ? "PDF-pagina wordt geladen."
-            : "PDF-pagina wordt opnieuw geladen."
+          ? isReloading
+            ? "PDF-pagina wordt opnieuw geladen."
+            : "PDF-pagina wordt geladen."
           : ""}
       </span>
 
@@ -275,7 +321,8 @@ export default function VibroPileDesigner() {
               renderScaleError={renderScaleError}
               relevantRange={relevantRange}
               canAccept={
-                digitization !== null
+                stage === "review"
+                && digitization !== null
                 && quality !== null
                 && quality.blockers.length === 0
               }

@@ -38,4 +38,24 @@ describe("vibroDesignerStore", () => {
     expect(useVibroDesignerStore.getState().isCurrentRenderRequest(request))
       .toBe(false);
   });
+
+  it("begint leeg en maakt lopende requests ongeldig voor een ander document", () => {
+    useVibroDesignerStore.getState().updateWorkflow({
+      stage: "ready",
+      pdfName: "sondering.pdf",
+      acceptedPoints: [{ depthNapM: -1, qcMpa: 8, confidence: 0.9 }],
+    });
+    const request = useVibroDesignerStore.getState().beginRenderRequest();
+    const nextRevision =
+      useVibroDesignerStore.getState().documentRevision + 1;
+
+    useVibroDesignerStore.getState().bindDocument(nextRevision);
+
+    const state = useVibroDesignerStore.getState();
+    expect(state.documentRevision).toBe(nextRevision);
+    expect(state.stage).toBe("empty");
+    expect(state.pdfName).toBe("");
+    expect(state.acceptedPoints).toEqual([]);
+    expect(state.isCurrentRenderRequest(request)).toBe(false);
+  });
 });

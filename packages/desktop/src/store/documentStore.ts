@@ -11,6 +11,7 @@ interface PersistedDoc {
 }
 
 interface DocumentState {
+  documentRevision: number;
   source: string;
   selectValues: SelectValues;
   filePath: string | null;
@@ -23,6 +24,7 @@ interface DocumentState {
 }
 
 export const useDocumentStore = create<DocumentState>((set) => ({
+  documentRevision: 0,
   source: paalExample,
   selectValues: {},
   filePath: "Paaldraagvermogen",
@@ -31,7 +33,13 @@ export const useDocumentStore = create<DocumentState>((set) => ({
   setSelectValue: (id, value) =>
     set((s) => ({ selectValues: { ...s.selectValues, [id]: value } })),
   loadTemplate: (src, name) =>
-    set({ source: src, selectValues: {}, filePath: name ?? null, dirty: false }),
+    set((state) => ({
+      documentRevision: state.documentRevision + 1,
+      source: src,
+      selectValues: {},
+      filePath: name ?? null,
+      dirty: false,
+    })),
   markSaved: (filePath) =>
     set({ filePath, dirty: false }),
 }));

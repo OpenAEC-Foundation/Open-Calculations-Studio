@@ -60,11 +60,12 @@ export default function App() {
   const loadTemplate = useDocumentStore((s) => s.loadTemplate);
   const markSaved = useDocumentStore((s) => s.markSaved);
   const source = useDocumentStore((s) => s.source);
+  const documentRevision = useDocumentStore((s) => s.documentRevision);
   const { addRecentFile } = useRecentFiles();
 
   // De visuele designer-pane bestaat voor sheets met een parametrisch beeld.
   const designerPane = source.includes("VIBRO-paaldraagvermogen")
-    ? <VibroPileDesigner />
+    ? <VibroPileDesigner documentRevision={documentRevision} />
     : source.includes("Voetplaatverbinding")
       ? <VoetplaatDesigner />
       : source.includes("Balklaag")

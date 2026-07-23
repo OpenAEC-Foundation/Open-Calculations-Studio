@@ -103,6 +103,7 @@ function deferred<T>() {
 }
 
 beforeEach(() => {
+  useVibroDesignerStore.getState().bindDocument(0);
   useVibroDesignerStore.getState().resetWorkflow();
   pdfMocks.renderPdfPage.mockReset();
 });
@@ -119,11 +120,17 @@ describe("VibroPileDesigner workflow", () => {
     pdfMocks.renderPdfPage
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
-    render(<VibroPileDesigner />);
+    render(<VibroPileDesigner documentRevision={0} />);
 
-    const pageSelect = screen.getByLabelText("PDF-pagina");
-    fireEvent.change(pageSelect, { target: { value: "1" } });
-    fireEvent.change(pageSelect, { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText("PDF-pagina"), {
+      target: { value: "1" },
+    });
+    act(() => {
+      seedWorkflow();
+    });
+    fireEvent.change(screen.getByLabelText("PDF-pagina"), {
+      target: { value: "2" },
+    });
 
     expect(screen.getByLabelText("PDF-laadstatus").textContent).toContain(
       "PDF-pagina wordt opnieuw geladen.",
@@ -156,8 +163,8 @@ describe("VibroPileDesigner workflow", () => {
             Wissel paneel
           </button>
           {right
-            ? <div data-testid="right-pane"><VibroPileDesigner /></div>
-            : <div data-testid="left-pane"><VibroPileDesigner /></div>}
+            ? <div data-testid="right-pane"><VibroPileDesigner documentRevision={0} /></div>
+            : <div data-testid="left-pane"><VibroPileDesigner documentRevision={0} /></div>}
         </>
       );
     }
@@ -176,7 +183,7 @@ describe("VibroPileDesigner workflow", () => {
 
   it("weigert een renderschaal buiten 0,5 tot 4 zonder state of canvas te wijzigen", () => {
     seedWorkflow();
-    render(<VibroPileDesigner />);
+    render(<VibroPileDesigner documentRevision={0} />);
 
     const scaleInput = screen.getByLabelText("Renderschaal");
     fireEvent.change(scaleInput, { target: { value: "40" } });
@@ -194,7 +201,7 @@ describe("VibroPileDesigner workflow", () => {
     seedWorkflow();
     const nextPage = deferred<RenderedPdfPage>();
     pdfMocks.renderPdfPage.mockReturnValueOnce(nextPage.promise);
-    render(<VibroPileDesigner />);
+    render(<VibroPileDesigner documentRevision={0} />);
 
     fireEvent.change(screen.getByLabelText("PDF-pagina"), {
       target: { value: "1" },
@@ -228,7 +235,7 @@ describe("VibroPileDesigner workflow", () => {
   it("toont de errorfase wanneer de nieuwste paginarender faalt", async () => {
     seedWorkflow();
     pdfMocks.renderPdfPage.mockRejectedValueOnce(new Error("PDF is beschadigd"));
-    render(<VibroPileDesigner />);
+    render(<VibroPileDesigner documentRevision={0} />);
 
     fireEvent.change(screen.getByLabelText("PDF-pagina"), {
       target: { value: "1" },
@@ -238,5 +245,74 @@ describe("VibroPileDesigner workflow", () => {
       "PDF is beschadigd",
     );
     expect(useVibroDesignerStore.getState().stage).toBe("error");
+  });
+
+  it("wist de workflow en negeert een lopende render bij een documentwissel", async () => {
+    seedWorkflow("ready");
+    const pendingPage = deferred<RenderedPdfPage>();
+    pdfMocks.renderPdfPage.mockReturnValueOnce(pendingPage.promise);
+    const view = render(<VibroPileDesigner documentRevision={0} />);
+
+    fireEvent.change(screen.getByLabelText("PDF-pagina"), {
+      target: { value: "1" },
+    });
+    const requestIdBeforeSwitch =
+      useVibroDesignerStore.getState().renderRequestId;
+
+    view.rerender(<VibroPileDesigner documentRevision={1} />);
+
+    const switchedState = useVibroDesignerStore.getState();
+    expect(switchedState.documentRevision).toBe(1);
+    expect(switchedState.renderRequestId).toBeGreaterThan(requestIdBeforeSwitch);
+    expect(switchedState.stage).toBe("empty");
+    expect(switchedState.pdfSource).toBeNull();
+    expect(switchedState.calibration).toBeNull();
+    expect(switchedState.digitization).toBeNull();
+    expect(switchedState.acceptedPoints).toEqual([]);
+
+    await act(async () => {
+      pendingPage.resolve(renderedPage(999));
+      await pendingPage.promise;
+    });
+
+    expect(useVibroDesignerStore.getState().stage).toBe("empty");
+    expect(useVibroDesignerStore.getState().renderedPage).toBeNull();
+  });
+
+  it("invalideert oude meetdata direct en houdt acceptatie geblokkeerd na een laadfout", async () => {
+    seedWorkflow("ready");
+    const failedPage = deferred<RenderedPdfPage>();
+    pdfMocks.renderPdfPage.mockReturnValueOnce(failedPage.promise);
+    render(<VibroPileDesigner documentRevision={0} />);
+
+    fireEvent.change(screen.getByLabelText("PDF-pagina"), {
+      target: { value: "1" },
+    });
+
+    const loadingState = useVibroDesignerStore.getState();
+    expect(loadingState.stage).toBe("loading");
+    expect(loadingState.renderedPage).toBeNull();
+    expect(loadingState.calibration).toBeNull();
+    expect(loadingState.digitization).toBeNull();
+    expect(loadingState.acceptedPoints).toEqual([]);
+
+    await act(async () => {
+      failedPage.reject(new Error("PDF is beschadigd"));
+      try {
+        await failedPage.promise;
+      } catch {
+        // De component verwerkt deze fout naar de errorfase.
+      }
+    });
+
+    const errorState = useVibroDesignerStore.getState();
+    expect(errorState.stage).toBe("error");
+    expect(errorState.renderedPage).toBeNull();
+    expect(errorState.calibration).toBeNull();
+    expect(errorState.digitization).toBeNull();
+    expect(errorState.acceptedPoints).toEqual([]);
+    expect(screen.queryByRole("button", {
+      name: "Kalibratie accepteren",
+    })).toBeNull();
   });
 });

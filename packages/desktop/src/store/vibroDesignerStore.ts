@@ -16,7 +16,9 @@ export type DesignerStage =
   | "error";
 
 export interface VibroDesignerWorkflow {
+  documentRevision: number;
   stage: DesignerStage;
+  isReloading: boolean;
   pdfSource: string | Uint8Array | null;
   pdfName: string;
   pageIndex: number;
@@ -34,12 +36,15 @@ export interface VibroDesignerWorkflow {
 interface VibroDesignerActions {
   updateWorkflow: (patch: Partial<VibroDesignerWorkflow>) => void;
   resetWorkflow: () => void;
+  bindDocument: (documentRevision: number) => void;
   beginRenderRequest: () => number;
   isCurrentRenderRequest: (requestId: number) => boolean;
 }
 
 const INITIAL_WORKFLOW: VibroDesignerWorkflow = {
+  documentRevision: 0,
   stage: "empty",
+  isReloading: false,
   pdfSource: null,
   pdfName: "",
   pageIndex: 0,
@@ -64,8 +69,17 @@ export const useVibroDesignerStore = create<
   updateWorkflow: (patch) => set(patch),
   resetWorkflow: () => set((state) => ({
     ...INITIAL_WORKFLOW,
+    documentRevision: state.documentRevision,
     renderRequestId: state.renderRequestId + 1,
   })),
+  bindDocument: (documentRevision) => {
+    if (get().documentRevision === documentRevision) return;
+    set((state) => ({
+      ...INITIAL_WORKFLOW,
+      documentRevision,
+      renderRequestId: state.renderRequestId + 1,
+    }));
+  },
   beginRenderRequest: () => {
     const requestId = get().renderRequestId + 1;
     set({ renderRequestId: requestId });
