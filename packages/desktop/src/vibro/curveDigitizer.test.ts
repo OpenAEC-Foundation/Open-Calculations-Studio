@@ -68,6 +68,17 @@ function setGray(data: Uint8ClampedArray, x: number, y: number, value: number): 
   data[offset + 3] = 255;
 }
 
+function drawThreePixelStroke(
+  data: Uint8ClampedArray,
+  x: number,
+  y: number,
+  value = 10,
+): void {
+  setGray(data, x - 1, y, value + 15);
+  setGray(data, x, y, value);
+  setGray(data, x + 1, y, value + 15);
+}
+
 describe("digitizeQcCurve", () => {
   it("volgt een donkere doorlopende curve door een grijs raster", () => {
     const result = digitizeQcCurve(createCurveImage(), calibration);
@@ -80,11 +91,19 @@ describe("digitizeQcCurve", () => {
 
   it("interpoleert een onderbreking van drie pixels met lagere zekerheid", () => {
     const result = digitizeQcCurve(createCurveImage(new Set([78, 79, 80])), calibration);
-    const interpolatedPoints = result.points.filter((point) => point.confidence < 1);
+    const interpolatedPoints = result.points.filter(
+      (point) => point.depthNapM <= -1.56 && point.depthNapM >= -1.6,
+    );
 
-    expect(result.coverage).toBeGreaterThan(0.95);
+    expect(result.coverage).toBeCloseTo(157 / 160, 8);
     expect(interpolatedPoints.length).toBeGreaterThan(0);
-    expect(interpolatedPoints.every((point) => point.confidence > 0)).toBe(true);
+    expect(interpolatedPoints.every(
+      (point) => point.confidence > 0 && point.confidence <= 0.5,
+    )).toBe(true);
+    expect(result.uncertainDepthRanges).toHaveLength(1);
+    expect(result.uncertainDepthRanges[0]?.topNapM).toBeCloseTo(-1.56, 8);
+    expect(result.uncertainDepthRanges[0]?.bottomNapM).toBeCloseTo(-1.6, 8);
+    expect(result.warnings).toHaveLength(1);
   });
 
   it("retourneert nul dekking voor een leeg beeld", () => {
@@ -108,4 +127,138 @@ describe("digitizeQcCurve", () => {
       (warning) => warning.includes("-1.20") && warning.includes("-1.80"),
     )).toBe(true);
   });
+
+  it("verkiest een lange curve boven een tijdelijke donkere tekstlokker", () => {
+    const image = createCurveImage();
+    for (let y = 0; y <= 20; y += 1) {
+      drawThreePixelStroke(image.data, 30, y, 0);
+    }
+
+    const result = digitizeQcCurve(image, calibration);
+
+    expect(result.coverage).toBeGreaterThan(0.95);
+    expect(result.points[0]?.qcMpa).toBeCloseTo(4, 0);
+    expect(result.points[result.points.length - 1]?.qcMpa).toBeCloseTo(12, 0);
+  });
+
+  it("vindt de curve opnieuw na een lang gat en een sprong groter dan maxJumpPx", () => {
+    const image = createWhiteImage();
+    for (let y = 0; y < 60; y += 1) {
+      drawThreePixelStroke(image.data, 60, y);
+    }
+    for (let y = 90; y < HEIGHT; y += 1) {
+      drawThreePixelStroke(image.data, 160, y);
+    }
+
+    const result = digitizeQcCurve(image, calibration);
+
+    expect(result.coverage).toBeCloseTo(130 / 160, 8);
+    expect(result.points[0]?.qcMpa).toBeCloseTo(4, 8);
+    expect(result.points[result.points.length - 1]?.qcMpa).toBeCloseTo(14, 8);
+  });
+
+  it("behoudt een vrijwel verticale curve naast een dunne rasterkolom", () => {
+    const image = createWhiteImage();
+    for (let y = 0; y < HEIGHT; y += 1) {
+      drawThreePixelStroke(image.data, 70, y);
+      setGray(image.data, 110, y, 0);
+    }
+
+    const result = digitizeQcCurve(image, calibration);
+
+    expect(result.coverage).toBe(1);
+    expect(result.points.length).toBeGreaterThan(100);
+    expect(result.points.every((point) => Math.abs(point.qcMpa - 5) < 0.2)).toBe(true);
+  });
+
+  it("wist een legitieme een-pixelbrede verticale curve niet", () => {
+    const image = createWhiteImage();
+    for (let y = 0; y < HEIGHT; y += 1) {
+      setGray(image.data, 70, y, 10);
+    }
+
+    const result = digitizeQcCurve(image, calibration);
+
+    expect(result.coverage).toBe(1);
+    expect(result.points.every((point) => Math.abs(point.qcMpa - 5) < 0.1)).toBe(true);
+  });
+
+  it("geeft zwakke directe kandidaten minder confidence dan donkere kandidaten", () => {
+    const darkImage = createWhiteImage();
+    const weakImage = createWhiteImage();
+    for (let y = 0; y < HEIGHT; y += 1) {
+      drawThreePixelStroke(darkImage.data, 70, y, 10);
+      drawThreePixelStroke(weakImage.data, 70, y, 110);
+    }
+
+    const darkResult = digitizeQcCurve(darkImage, calibration);
+    const weakResult = digitizeQcCurve(weakImage, calibration);
+    const darkConfidence = averageConfidence(darkResult.points);
+    const weakConfidence = averageConfidence(weakResult.points);
+
+    expect(weakConfidence).toBeLessThan(darkConfidence - 0.2);
+    expect(darkResult.points.every((point) => point.confidence < 1)).toBe(true);
+  });
+
+  it("verlaagt confidence op een rij met een gelijkwaardige kandidaat", () => {
+    const image = createWhiteImage();
+    for (let y = 0; y < HEIGHT; y += 1) {
+      drawThreePixelStroke(image.data, 70, y);
+    }
+    drawThreePixelStroke(image.data, 85, 80);
+
+    const result = digitizeQcCurve(image, calibration);
+    const ambiguous = closestPoint(result.points, -1.6);
+    const preceding = closestPoint(result.points, -1.58);
+
+    expect(ambiguous.confidence).toBeLessThan(preceding.confidence - 0.1);
+  });
+
+  it.each([
+    ["links", { left: -1 }],
+    ["boven", { top: -1 }],
+    ["rechts", { right: WIDTH }],
+    ["onder", { bottom: HEIGHT }],
+  ])("weigert een plotgrens buiten het beeld aan de %s-rand", (_edge, change) => {
+    const invalidCalibration: CptCalibration = {
+      ...calibration,
+      plotBoundsPx: { ...calibration.plotBoundsPx, ...change },
+    };
+
+    expect(() => digitizeQcCurve(createWhiteImage(), invalidCalibration))
+      .toThrowError(new RangeError("plotBoundsPx moet volledig binnen het beeld vallen"));
+  });
+
+  it("extrapoleert niet over ontbrekende rijen aan begin en einde", () => {
+    const edgeGaps = new Set([0, 1, 2, 157, 158, 159]);
+    const result = digitizeQcCurve(createCurveImage(edgeGaps), calibration);
+
+    expect(result.coverage).toBeCloseTo(154 / 160, 8);
+    expect(result.points[0]?.depthNapM).toBeCloseTo(-0.06, 8);
+    expect(result.points[result.points.length - 1]?.depthNapM).toBeCloseTo(-3.12, 8);
+    expect(result.uncertainDepthRanges).toHaveLength(2);
+  });
 });
+
+function averageConfidence(points: ReadonlyArray<{ confidence: number }>): number {
+  return points.reduce((sum, point) => sum + point.confidence, 0) / points.length;
+}
+
+function closestPoint<T extends { depthNapM: number }>(
+  points: readonly T[],
+  targetDepthNapM: number,
+): T {
+  const point = points.reduce<T | undefined>(
+    (closest, candidate) =>
+      closest === undefined
+      || Math.abs(candidate.depthNapM - targetDepthNapM)
+        < Math.abs(closest.depthNapM - targetDepthNapM)
+        ? candidate
+        : closest,
+    undefined,
+  );
+  if (point === undefined) {
+    throw new Error("Geen gedigitaliseerd punt gevonden");
+  }
+  return point;
+}

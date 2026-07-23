@@ -26,6 +26,22 @@ interface TracedPixel {
   y: number;
   x: number;
   confidence: number;
+  source: "observed" | "interpolated";
+}
+
+interface CandidatePixel {
+  x: number;
+  darkness: number;
+  persistentThin: boolean;
+  strokeWidth: number;
+}
+
+interface RouteState {
+  candidate: CandidatePixel;
+  confidence: number;
+  rowIndex: number;
+  score: number;
+  previous?: RouteState;
 }
 
 const DARK_LUMINANCE = 128;
@@ -38,40 +54,40 @@ export function digitizeQcCurve(
 ): CurveDigitizationResult {
   const maxJumpPx = options.maxJumpPx ?? 24;
   const maxGapRows = options.maxGapRows ?? 5;
-  const bounds = boundedPlot(calibration, image);
+  assertPlotWithinImage(calibration, image);
+  const bounds = boundedPlot(calibration);
   const rowCount = Math.max(0, bounds.bottom - bounds.top + 1);
 
   if (rowCount === 0) {
     return emptyResult();
   }
 
-  const suppressedColumns = findPersistentDarkColumns(image, bounds);
-  const traced: Array<TracedPixel | undefined> = [];
-  let previousX: number | undefined;
-
-  for (let y = bounds.top; y <= bounds.bottom; y += 1) {
-    const candidate = chooseCandidate(
+  const persistentDarkColumns = findPersistentDarkColumns(image, bounds);
+  const rawCandidatesByRow = Array.from({ length: rowCount }, (_, rowIndex) =>
+    findRowCandidates(
       image,
-      y,
+      bounds.top + rowIndex,
       bounds.left,
       bounds.right,
-      suppressedColumns,
-      previousX,
-      maxJumpPx,
-    );
-
-    if (candidate !== undefined) {
-      traced.push({ y, x: candidate, confidence: 1 });
-      previousX = candidate;
-    } else {
-      traced.push(undefined);
-    }
-  }
+      persistentDarkColumns,
+    ));
+  const hasBroaderCurveCandidate = rawCandidatesByRow.some((candidates) =>
+    candidates.some((candidate) => !candidate.persistentThin));
+  const candidatesByRow = hasBroaderCurveCandidate
+    ? rawCandidatesByRow.map((candidates) =>
+      candidates.filter((candidate) => !candidate.persistentThin))
+    : rawCandidatesByRow;
+  const traced = traceBestRoutes(
+    candidatesByRow,
+    bounds.top,
+    maxJumpPx,
+    maxGapRows,
+  );
 
   interpolateShortGaps(traced, maxGapRows);
 
   const uncertainDepthRanges = collectUncertainRanges(traced, calibration, bounds.top);
-  const coveredRows = traced.filter((point) => point !== undefined).length;
+  const coveredRows = traced.filter((point) => point?.source === "observed").length;
 
   return {
     points: aggregatePoints(traced, calibration, bounds.top),
@@ -93,13 +109,29 @@ function emptyResult(): CurveDigitizationResult {
   };
 }
 
-function boundedPlot(calibration: CptCalibration, image: ImageDataLike) {
+function boundedPlot(calibration: CptCalibration) {
   return {
-    left: Math.max(0, Math.ceil(calibration.plotBoundsPx.left)),
-    top: Math.max(0, Math.ceil(calibration.plotBoundsPx.top)),
-    right: Math.min(image.width - 1, Math.floor(calibration.plotBoundsPx.right)),
-    bottom: Math.min(image.height - 1, Math.floor(calibration.plotBoundsPx.bottom)),
+    left: Math.ceil(calibration.plotBoundsPx.left),
+    top: Math.ceil(calibration.plotBoundsPx.top),
+    right: Math.floor(calibration.plotBoundsPx.right),
+    bottom: Math.floor(calibration.plotBoundsPx.bottom),
   };
+}
+
+function assertPlotWithinImage(
+  calibration: CptCalibration,
+  image: ImageDataLike,
+): void {
+  const { left, top, right, bottom } = calibration.plotBoundsPx;
+  if (
+    ![left, top, right, bottom].every(Number.isFinite)
+    || left < 0
+    || top < 0
+    || right > image.width - 1
+    || bottom > image.height - 1
+  ) {
+    throw new RangeError("plotBoundsPx moet volledig binnen het beeld vallen");
+  }
 }
 
 function findPersistentDarkColumns(
@@ -124,43 +156,170 @@ function findPersistentDarkColumns(
   return suppressed;
 }
 
-function chooseCandidate(
+function findRowCandidates(
   image: ImageDataLike,
   y: number,
   left: number,
   right: number,
-  suppressedColumns: ReadonlySet<number>,
-  previousX: number | undefined,
-  maxJumpPx: number,
-): number | undefined {
-  let bestX: number | undefined;
-  let bestScore = Number.NEGATIVE_INFINITY;
+  persistentDarkColumns: ReadonlySet<number>,
+): CandidatePixel[] {
+  const candidates: CandidatePixel[] = [];
+  let x = left;
 
-  for (let x = left; x <= right; x += 1) {
-    if (suppressedColumns.has(x)) {
+  while (x <= right) {
+    if (luminanceAt(image, x, y) >= DARK_LUMINANCE) {
+      x += 1;
       continue;
     }
 
-    const luminance = luminanceAt(image, x, y);
-    if (luminance >= DARK_LUMINANCE) {
-      continue;
+    const start = x;
+    const weights: number[] = [];
+    while (x <= right && luminanceAt(image, x, y) < DARK_LUMINANCE) {
+      weights.push((DARK_LUMINANCE - luminanceAt(image, x, y)) / DARK_LUMINANCE);
+      x += 1;
     }
+    const strokeWidth = x - start;
+    const persistentThin = strokeWidth === 1
+      && persistentDarkColumns.has(start);
 
-    const distance = previousX === undefined ? 0 : Math.abs(x - previousX);
-    if (distance > maxJumpPx) {
-      continue;
-    }
-
-    const darknessScore = (DARK_LUMINANCE - luminance) / DARK_LUMINANCE;
-    const continuityScore = previousX === undefined ? 0 : 1 - distance / maxJumpPx;
-    const score = darknessScore + continuityScore;
-    if (score > bestScore) {
-      bestScore = score;
-      bestX = x;
-    }
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    const weightedX = weights.reduce(
+      (sum, weight, offset) => sum + (start + offset) * weight,
+      0,
+    ) / totalWeight;
+    candidates.push({
+      x: weightedX,
+      darkness: totalWeight / weights.length,
+      persistentThin,
+      strokeWidth,
+    });
   }
 
-  return bestX;
+  return candidates;
+}
+
+function traceBestRoutes(
+  candidatesByRow: ReadonlyArray<ReadonlyArray<CandidatePixel>>,
+  firstY: number,
+  maxJumpPx: number,
+  maxGapRows: number,
+): Array<TracedPixel | undefined> {
+  const traced: Array<TracedPixel | undefined> = Array(candidatesByRow.length);
+  const candidateRows = candidatesByRow
+    .map((candidates, rowIndex) => ({ candidates, rowIndex }))
+    .filter(({ candidates }) => candidates.length > 0);
+  let segmentStart = 0;
+
+  while (segmentStart < candidateRows.length) {
+    let segmentEnd = segmentStart + 1;
+    while (
+      segmentEnd < candidateRows.length
+      && candidateRows[segmentEnd].rowIndex
+        - candidateRows[segmentEnd - 1].rowIndex
+        - 1 <= maxGapRows
+    ) {
+      segmentEnd += 1;
+    }
+
+    traceRouteSegment(
+      candidateRows.slice(segmentStart, segmentEnd),
+      traced,
+      firstY,
+      maxJumpPx,
+    );
+    segmentStart = segmentEnd;
+  }
+
+  return traced;
+}
+
+function traceRouteSegment(
+  rows: ReadonlyArray<{ candidates: ReadonlyArray<CandidatePixel>; rowIndex: number }>,
+  traced: Array<TracedPixel | undefined>,
+  firstY: number,
+  maxJumpPx: number,
+): void {
+  let previousStates: RouteState[] = [];
+
+  for (const row of rows) {
+    const states = row.candidates.map((candidate): RouteState => {
+      const predecessor = previousStates
+        .filter((state) => Math.abs(state.candidate.x - candidate.x) <= maxJumpPx)
+        .reduce<RouteState | undefined>(
+          (best, state) => best === undefined || state.score > best.score ? state : best,
+          undefined,
+        );
+      const alternativeScore = row.candidates
+        .filter((alternative) => alternative !== candidate)
+        .reduce(
+          (highest, alternative) => Math.max(highest, candidateScore(alternative)),
+          Number.NEGATIVE_INFINITY,
+        );
+      return {
+        candidate,
+        confidence: directConfidence(
+          candidate,
+          predecessor,
+          alternativeScore,
+          maxJumpPx,
+        ),
+        rowIndex: row.rowIndex,
+        score: candidateScore(candidate) + (predecessor?.score ?? 0),
+        previous: predecessor,
+      };
+    });
+    previousStates = states;
+  }
+
+  let state = previousStates.reduce<RouteState | undefined>(
+    (best, candidate) => best === undefined || candidate.score > best.score
+      ? candidate
+      : best,
+    undefined,
+  );
+  while (state !== undefined) {
+    traced[state.rowIndex] = {
+      y: firstY + state.rowIndex,
+      x: state.candidate.x,
+      confidence: state.confidence,
+      source: "observed",
+    };
+    state = state.previous;
+  }
+}
+
+function candidateScore(candidate: CandidatePixel): number {
+  const persistentLinePenalty = candidate.persistentThin ? 0.35 : 0;
+  return candidate.darkness
+    + Math.min(candidate.strokeWidth, 3) * 0.1
+    - persistentLinePenalty;
+}
+
+function directConfidence(
+  candidate: CandidatePixel,
+  predecessor: RouteState | undefined,
+  alternativeScore: number,
+  maxJumpPx: number,
+): number {
+  const continuity = predecessor === undefined
+    ? 0.75
+    : 1 - Math.min(
+      1,
+      Math.abs(predecessor.candidate.x - candidate.x) / Math.max(maxJumpPx, 1),
+    );
+  const ambiguity = Number.isFinite(alternativeScore)
+    ? clamp((candidateScore(candidate) - alternativeScore) / 0.25, 0, 1)
+    : 1;
+
+  return clamp(
+    0.1 + 0.45 * candidate.darkness + 0.25 * continuity + 0.15 * ambiguity,
+    0.05,
+    0.95,
+  );
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
 }
 
 function interpolateShortGaps(
@@ -194,6 +353,7 @@ function interpolateShortGaps(
         y: before.y + offset,
         x: before.x + fraction * (after.x - before.x),
         confidence: 0.5,
+        source: "interpolated",
       };
     }
   }
@@ -208,13 +368,13 @@ function collectUncertainRanges(
   let index = 0;
 
   while (index < traced.length) {
-    if (traced[index] !== undefined) {
+    if (traced[index]?.source === "observed") {
       index += 1;
       continue;
     }
 
     const start = index;
-    while (index < traced.length && traced[index] === undefined) {
+    while (index < traced.length && traced[index]?.source !== "observed") {
       index += 1;
     }
     ranges.push({
