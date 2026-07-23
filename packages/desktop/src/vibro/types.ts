@@ -1,3 +1,5 @@
+export const VIBRO_TYPES_SCHEMA_VERSION = 1;
+
 export interface DigitizedCptPoint {
   depthNapM: number;
   qcMpa: number;
