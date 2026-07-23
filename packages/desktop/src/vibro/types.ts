@@ -32,6 +32,11 @@ export interface NegativeSkinLayer {
   gamma: number;
 }
 
+export interface PositiveShaftLayer {
+  bottomNapM: number;
+  topNapM: number;
+}
+
 export interface VibroPileInput {
   shaftDiameterMm: number;
   baseDiameterMm: number;
@@ -46,6 +51,7 @@ export interface VibroPileInput {
   gammaB: number;
   gammaS: number;
   designLoadKn: number;
+  positiveShaftLayers: PositiveShaftLayer[];
   negativeSkinLayers: NegativeSkinLayer[];
 }
 
@@ -54,10 +60,34 @@ export interface QcAverages {
   qcIIAvgMpa: number;
   qcIIIAvgMpa: number;
   qcShaftAvgMpa: number;
+  criticalDepthM: number;
+  qcIBottomNapM: number;
+  qcIIRoute: QcRoutePoint[];
+  qcIIIRoute: QcRoutePoint[];
+  qcShaftLayers: ShaftQcLayerResult[];
+}
+
+export interface QcRoutePoint {
+  depthNapM: number;
+  qcMpa: number;
+}
+
+export interface ShaftQcLayerResult extends PositiveShaftLayer {
+  thicknessM: number;
+  rawMinimumMpa: number;
+  cutoffMpa: number | null;
+  limitedAverageMpa: number;
+}
+
+export interface ShaftQcProfileResult {
+  profile: QcRoutePoint[];
+  layers: ShaftQcLayerResult[];
+  qcShaftAvgMpa: number;
 }
 
 export interface PileResistanceResult extends QcAverages {
   pileTipNapM: number;
+  qbRawMpa: number;
   qbMaxMpa: number;
   rbCalKn: number;
   rsCalKn: number;

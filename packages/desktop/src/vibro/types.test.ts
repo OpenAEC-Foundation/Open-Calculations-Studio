@@ -49,6 +49,9 @@ describe("VIBRO gegevensmodellen", () => {
       gammaB: 1.2,
       gammaS: 1.2,
       designLoadKn: 850,
+      positiveShaftLayers: [
+        { bottomNapM: -18.5, topNapM: -14.25 },
+      ],
       negativeSkinLayers: [
         {
           topNapM: -0.9,

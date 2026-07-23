@@ -5,29 +5,58 @@ import {
   calculateNegativeSkinFriction,
   calculatePileResistance,
   calculateQcAverages,
+  calculateShaftQcProfile,
+  constructMinimumRoute,
   validateCoverage,
 } from "./geotechnical";
 
-function point(depthNapM: number, qcMpa: number): DigitizedCptPoint {
-  return { depthNapM, qcMpa, confidence: 1 };
+function point(
+  depthNapM: number,
+  qcMpa: number,
+  confidence = 1,
+): DigitizedCptPoint {
+  return { depthNapM, qcMpa, confidence };
+}
+
+function sampleCurve(
+  bottomNapM: number,
+  topNapM: number,
+  qcAt: (depthNapM: number) => number,
+): DigitizedCptPoint[] {
+  const spacingM = 0.05;
+  const intervals = Math.ceil((topNapM - bottomNapM) / spacingM);
+  return Array.from({ length: intervals + 1 }, (_, index) => {
+    const depthNapM = index === intervals
+      ? topNapM
+      : bottomNapM + index * spacingM;
+    return point(depthNapM, qcAt(depthNapM));
+  });
 }
 
 function withInput(changes: Partial<VibroPileInput> = {}): VibroPileInput {
-  return {
+  const input = {
     ...vibroReferenceInput,
     designLoadKn: 500,
     ...changes,
   };
+  if (
+    changes.positiveShaftLayers === undefined
+    && (
+      changes.pileTipNapM !== undefined
+      || changes.positiveShaftStartNapM !== undefined
+    )
+  ) {
+    input.positiveShaftLayers = [{
+      bottomNapM: input.pileTipNapM,
+      topNapM: input.positiveShaftStartNapM,
+    }];
+  }
+  return input;
 }
 
 describe("calculateQcAverages", () => {
   it("integreert een constante curve over alle vereiste trajecten", () => {
-    const points = [
-      point(-20, 10),
-      point(-18.5, 10),
-      point(-17, 10),
-      point(-14, 10),
-    ];
+    const points = sampleCurve(-20, -14, () => 10);
 
     const qc = calculateQcAverages(points, withInput());
 
@@ -41,9 +70,7 @@ describe("calculateQcAverages", () => {
     const input = withInput();
     const qcAt = (depthNapM: number) =>
       10 + 2 * (depthNapM - input.pileTipNapM);
-    const points = [-20.2, -19.1, -18.1, -16.2, -14].map(
-      (depthNapM) => point(depthNapM, qcAt(depthNapM)),
-    );
+    const points = sampleCurve(-20.2, -14, qcAt);
 
     const qc = calculateQcAverages(points, input);
     const diameterM = input.baseDiameterMm / 1000;
@@ -53,7 +80,19 @@ describe("calculateQcAverages", () => {
     expect(qc.qcIIAvgMpa).toBeCloseTo(10 - 8 * diameterM, 8);
     expect(qc.qcIIAvgMpa).toBeLessThan(simpleAverageBelowTip);
     expect(qc.qcIIIAvgMpa).toBeCloseTo(10 - 8 * diameterM, 8);
-    expect(qc.qcShaftAvgMpa).toBeCloseTo(14.25, 8);
+    expect(qc.qcShaftAvgMpa).toBeCloseTo(10, 8);
+    expect(qc.qcShaftLayers[0]?.cutoffMpa).toBeCloseTo(10, 8);
+    expect(qc.criticalDepthM).toBeCloseTo(4 * diameterM, 8);
+    expect(qc.qcIBottomNapM)
+      .toBeCloseTo(input.pileTipNapM - 4 * diameterM, 8);
+    expect(qc.qcIIRoute[0]?.depthNapM).toBeCloseTo(qc.qcIBottomNapM, 8);
+    expect(qc.qcIIRoute[qc.qcIIRoute.length - 1]?.depthNapM)
+      .toBeCloseTo(input.pileTipNapM, 8);
+    expect(qc.qcIIRoute.every(
+      (routePoint, index) =>
+        index === 0
+        || routePoint.qcMpa <= qc.qcIIRoute[index - 1]!.qcMpa + 1e-12,
+    )).toBe(true);
   });
 
   it("weigert een curve die niet alle rekentrajecten dekt", () => {
@@ -67,6 +106,136 @@ describe("calculateQcAverages", () => {
     );
     expect(() => calculateQcAverages(points, withInput()))
       .toThrowError(/onvoldoende dekking/i);
+  });
+
+  it("weigert een intern gat groter dan het expliciete interpolatie-interval", () => {
+    const points = sampleCurve(-20, -14, () => 10).filter(
+      ({ depthNapM }) => depthNapM < -17.2 || depthNapM > -16.9,
+    );
+
+    expect(validateCoverage(points, withInput())).toEqual(
+      expect.arrayContaining([expect.stringContaining("intern gat")]),
+    );
+    expect(() => calculateQcAverages(points, withInput()))
+      .toThrowError(/intern gat/);
+  });
+
+  it.each([
+    ["qc-I/II", -19.5],
+    ["qc-III", -17],
+    ["positieve schacht", -14.5],
+  ])("weigert confidence nul binnen het %s-traject", (_label, targetNapM) => {
+    const points = sampleCurve(-20, -14, () => 10).map((curvePoint) =>
+      Math.abs(curvePoint.depthNapM - targetNapM) < 1e-8
+        ? { ...curvePoint, confidence: 0 }
+        : curvePoint
+    );
+
+    expect(validateCoverage(points, withInput())).toEqual(
+      expect.arrayContaining([expect.stringContaining("onbetrouwbaar")]),
+    );
+    expect(() => calculateQcAverages(points, withInput()))
+      .toThrowError(/onbetrouwbaar/);
+  });
+});
+
+describe("constructMinimumRoute", () => {
+  it("maakt daling, interne kruising en herstel afzonderlijk observeerbaar", () => {
+    const result = constructMinimumRoute([
+      point(-2, 8),
+      point(-1.5, 12),
+      point(-1, 6),
+      point(-0.5, 10),
+      point(0, 4),
+    ]);
+
+    const expectedRoute = [
+      [-2, 8],
+      [-1.5, 8],
+      [-7 / 6, 8],
+      [-1, 6],
+      [-0.5, 6],
+      [-1 / 6, 6],
+      [0, 4],
+    ];
+    expect(result.route).toHaveLength(expectedRoute.length);
+    result.route.forEach((routePoint, index) => {
+      expect(routePoint.depthNapM).toBeCloseTo(expectedRoute[index]![0]!, 12);
+      expect(routePoint.qcMpa).toBeCloseTo(expectedRoute[index]![1]!, 12);
+    });
+    expect(result.endMinimumMpa).toBe(4);
+    expect(result.integralMpaM).toBeCloseTo(41 / 3, 8);
+  });
+});
+
+describe("calculateShaftQcProfile", () => {
+  it("snuit een piek in een laag korter dan 1 m af op 12 MPa", () => {
+    const points = sampleCurve(
+      -18.5,
+      -17.7,
+      (depthNapM) =>
+        depthNapM >= -18.25 && depthNapM <= -18 ? 20 : 10,
+    );
+
+    const result = calculateShaftQcProfile(points, [
+      { bottomNapM: -18.5, topNapM: -17.7 },
+    ]);
+
+    expect(result.layers[0]?.thicknessM).toBeCloseTo(0.8, 8);
+    expect(result.layers[0]?.cutoffMpa).toBe(12);
+    expect(Math.max(...result.profile.map(({ qcMpa }) => qcMpa))).toBe(12);
+    expect(result.qcShaftAvgMpa).toBeGreaterThan(10);
+    expect(result.qcShaftAvgMpa).toBeLessThan(12);
+  });
+
+  it("voegt een exact kruispunt toe waar een lineair segment 12 MPa passeert", () => {
+    const points = sampleCurve(
+      -18.5,
+      -17.7,
+      (depthNapM) => 10 + 12.5 * (depthNapM + 18.5),
+    );
+
+    const result = calculateShaftQcProfile(points, [
+      { bottomNapM: -18.5, topNapM: -17.7 },
+    ]);
+
+    expect(result.profile.some(
+      ({ depthNapM, qcMpa }) =>
+        Math.abs(depthNapM - -18.34) < 1e-10
+        && qcMpa === 12,
+    )).toBe(true);
+    expect(result.qcShaftAvgMpa).toBeCloseTo(11.8, 8);
+  });
+
+  it("snuit een hoge laag vanaf exact 1 m af op maximaal 15 MPa", () => {
+    const points = sampleCurve(-18.5, -17.5, () => 20);
+
+    const result = calculateShaftQcProfile(points, [
+      { bottomNapM: -18.5, topNapM: -17.5 },
+    ]);
+
+    expect(result.layers[0]?.thicknessM).toBeCloseTo(1, 8);
+    expect(result.layers[0]?.rawMinimumMpa).toBe(20);
+    expect(result.layers[0]?.cutoffMpa).toBe(15);
+    expect(result.qcShaftAvgMpa).toBeCloseTo(15, 8);
+  });
+
+  it("gebruikt in een dikke pieklaag de laagste gemeten zone als afsnijwaarde", () => {
+    const points = sampleCurve(
+      -18.5,
+      -16.5,
+      (depthNapM) => depthNapM <= -18.25 ? 13 : 20,
+    );
+
+    const result = calculateShaftQcProfile(points, [
+      { bottomNapM: -18.5, topNapM: -16.5 },
+    ]);
+
+    expect(result.layers[0]?.rawMinimumMpa).toBe(13);
+    expect(result.layers[0]?.cutoffMpa).toBe(13);
+    expect(result.qcShaftAvgMpa).toBeCloseTo(13, 8);
+    expect(result.profile.every((profilePoint) => profilePoint.qcMpa <= 13))
+      .toBe(true);
   });
 });
 
@@ -160,7 +329,7 @@ describe("calculatePileResistance", () => {
         },
       ],
     });
-    const points = [point(-20, 10), point(-18.5, 10), point(-10, 10)];
+    const points = sampleCurve(-20, -10, () => 10);
 
     const result = calculatePileResistance(points, input);
     const baseAreaM2 = Math.PI * (input.baseDiameterMm / 1000) ** 2 / 4;
@@ -186,5 +355,19 @@ describe("calculatePileResistance", () => {
       .toBeCloseTo(result.rcDesignKn - result.negativeSkinDesignKn, 8);
     expect(result.unityCheck)
       .toBeCloseTo(input.designLoadKn / result.rcNetDesignKn, 8);
+  });
+
+  it("begrensd de maximale puntweerstand op 15 MPa en bewaart de ruwe waarde", () => {
+    const input = withInput();
+    const points = sampleCurve(-20, -14, () => 40);
+
+    const result = calculatePileResistance(points, input);
+
+    expect(result.qbRawMpa).toBeCloseTo(28, 8);
+    expect(result.qbMaxMpa).toBe(15);
+    expect(result.rbCalKn).toBeCloseTo(
+      Math.PI * (input.baseDiameterMm / 1000) ** 2 / 4 * 15 * 1000,
+      8,
+    );
   });
 });

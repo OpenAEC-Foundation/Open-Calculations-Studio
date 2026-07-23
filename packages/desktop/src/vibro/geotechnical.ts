@@ -1,11 +1,18 @@
 import type {
   DigitizedCptPoint,
   PileResistanceResult,
+  PositiveShaftLayer,
   QcAverages,
+  QcRoutePoint,
+  ShaftQcLayerResult,
+  ShaftQcProfileResult,
   VibroPileInput,
 } from "./types";
 
 const DEPTH_TOLERANCE_M = 1e-9;
+// De digitaliseerder levert 20-mm dieptebins. Vijf opeenvolgende bins is het
+// maximaal expliciet interpoleerbare kerninterval; grotere stappen zijn gaten.
+export const MAX_CPT_POINT_SPACING_M = 0.1;
 
 export interface NegativeSkinLayerResult {
   topNapM: number;
@@ -45,28 +52,85 @@ export function calculateQcAverages(
     integrateCurve(curve, criticalBottomNapM, input.pileTipNapM) / criticalDepthM;
 
   const trajectoryII = clipCurve(curve, criticalBottomNapM, input.pileTipNapM);
-  const qcII = integrateRunningMinimum(trajectoryII);
+  const qcII = constructMinimumRoute(trajectoryII);
   const trajectoryIIILengthM = 8 * baseDiameterM;
   const trajectoryIII = clipCurve(
     curve,
     input.pileTipNapM,
     input.pileTipNapM + trajectoryIIILengthM,
   );
-  const qcIII = integrateRunningMinimum(trajectoryIII, qcII.endMinimumMpa);
-  const positiveShaftLengthM =
-    input.positiveShaftStartNapM - input.pileTipNapM;
-  const qcShaftAvgMpa =
-    integrateCurve(
-      curve,
-      input.pileTipNapM,
-      input.positiveShaftStartNapM,
-    ) / positiveShaftLengthM;
+  const qcIII = constructMinimumRoute(trajectoryIII, qcII.endMinimumMpa);
+  const shaftQc = calculateShaftQcProfile(curve, input.positiveShaftLayers);
 
   return {
     qcIAvgMpa,
     qcIIAvgMpa: qcII.integralMpaM / criticalDepthM,
     qcIIIAvgMpa: qcIII.integralMpaM / trajectoryIIILengthM,
-    qcShaftAvgMpa,
+    qcShaftAvgMpa: shaftQc.qcShaftAvgMpa,
+    criticalDepthM,
+    qcIBottomNapM: criticalBottomNapM,
+    qcIIRoute: qcII.route,
+    qcIIIRoute: qcIII.route,
+    qcShaftLayers: shaftQc.layers,
+  };
+}
+
+/**
+ * Past de expliciete qc;z;a-afsnijregel per opgegeven grondlaag toe.
+ *
+ * Alleen lagen met een ruwe qc-piek boven 12 MPa worden begrensd. Voor een
+ * laag dunner dan 1 m is de afsnijwaarde 12 MPa. Voor een laag van ten minste
+ * 1 m is de afsnijwaarde de laagste lineair geïnterpoleerde qc in die laag,
+ * met een absoluut maximum van 15 MPa. De begrenzing wordt vóór de
+ * trapeziumintegratie punt voor punt toegepast.
+ */
+export function calculateShaftQcProfile(
+  points: DigitizedCptPoint[],
+  layers: PositiveShaftLayer[],
+): ShaftQcProfileResult {
+  if (layers.length === 0) {
+    throw new RangeError("Minimaal één positieve-schachtlaag is vereist");
+  }
+  const curve = sortCurve(points);
+  const sortedLayers = [...layers].sort(
+    (first, second) => first.bottomNapM - second.bottomNapM,
+  );
+  validateStandaloneShaftLayers(sortedLayers);
+
+  const profile: QcRoutePoint[] = [];
+  const layerResults: ShaftQcLayerResult[] = [];
+  let totalIntegralMpaM = 0;
+  let totalLengthM = 0;
+
+  for (const layer of sortedLayers) {
+    const rawLayer = clipCurve(curve, layer.bottomNapM, layer.topNapM);
+    const thicknessM = layer.topNapM - layer.bottomNapM;
+    const rawMinimumMpa = Math.min(...rawLayer.map((point) => point.qcMpa));
+    const containsPeak = rawLayer.some((point) => point.qcMpa > 12);
+    const cutoffMpa = containsPeak
+      ? thicknessM < 1 - DEPTH_TOLERANCE_M
+        ? 12
+        : Math.min(rawMinimumMpa, 15)
+      : null;
+    const limitedLayer = limitCurveAtCutoff(rawLayer, cutoffMpa);
+    const layerIntegralMpaM = integrateRoute(limitedLayer);
+
+    profile.push(...limitedLayer);
+    totalIntegralMpaM += layerIntegralMpaM;
+    totalLengthM += thicknessM;
+    layerResults.push({
+      ...layer,
+      thicknessM,
+      rawMinimumMpa,
+      cutoffMpa,
+      limitedAverageMpa: layerIntegralMpaM / thicknessM,
+    });
+  }
+
+  return {
+    profile,
+    layers: layerResults,
+    qcShaftAvgMpa: totalIntegralMpaM / totalLengthM,
   };
 }
 
@@ -127,12 +191,13 @@ export function calculatePileResistance(
   const shaftCircumferenceM = Math.PI * shaftDiameterM;
   const positiveShaftLengthM =
     input.positiveShaftStartNapM - input.pileTipNapM;
-  const qbMaxMpa =
+  const qbRawMpa =
     0.5
     * input.alphaP
     * input.beta
     * input.shapeFactor
     * (((qc.qcIAvgMpa + qc.qcIIAvgMpa) / 2) + qc.qcIIIAvgMpa);
+  const qbMaxMpa = Math.min(qbRawMpa, 15);
   const rbCalKn = baseAreaM2 * qbMaxMpa * 1000;
   const rsCalKn =
     shaftCircumferenceM
@@ -150,6 +215,7 @@ export function calculatePileResistance(
   return {
     ...qc,
     pileTipNapM: input.pileTipNapM,
+    qbRawMpa,
     qbMaxMpa,
     rbCalKn,
     rsCalKn,
@@ -220,6 +286,37 @@ export function validateCoverage(
         `Curve mist dekking aan de bovenzijde tot NAP ${requiredTopNapM.toFixed(3)} m`,
       );
     }
+
+    const sortedPoints = [...finitePoints].sort(
+      (first, second) => first.depthNapM - second.depthNapM,
+    );
+    const unreliablePoint = sortedPoints.find(
+      (point) =>
+        point.depthNapM >= requiredBottomNapM - DEPTH_TOLERANCE_M
+        && point.depthNapM <= requiredTopNapM + DEPTH_TOLERANCE_M
+        && point.confidence <= 0,
+    );
+    if (unreliablePoint !== undefined) {
+      errors.push(
+        `Curve bevat een onbetrouwbaar punt op NAP ${unreliablePoint.depthNapM.toFixed(3)} m`,
+      );
+    }
+    for (let index = 1; index < sortedPoints.length; index += 1) {
+      const lower = sortedPoints[index - 1]!;
+      const upper = sortedPoints[index]!;
+      const intersectsRequiredRange =
+        lower.depthNapM < requiredTopNapM - DEPTH_TOLERANCE_M
+        && upper.depthNapM > requiredBottomNapM + DEPTH_TOLERANCE_M;
+      if (
+        intersectsRequiredRange
+        && upper.depthNapM - lower.depthNapM
+          > MAX_CPT_POINT_SPACING_M + DEPTH_TOLERANCE_M
+      ) {
+        errors.push(
+          `Curve bevat een intern gat van ${(upper.depthNapM - lower.depthNapM).toFixed(3)} m tussen NAP ${lower.depthNapM.toFixed(3)} m en ${upper.depthNapM.toFixed(3)} m`,
+        );
+      }
+    }
   }
 
   return errors;
@@ -272,7 +369,55 @@ function validatePileInput(input: VibroPileInput): string[] {
   if (input.designLoadKn < 0) {
     errors.push("Ontwerpbelasting mag niet negatief zijn");
   }
+  errors.push(...validateInputShaftLayers(input));
 
+  return errors;
+}
+
+function validateInputShaftLayers(input: VibroPileInput): string[] {
+  const errors: string[] = [];
+  if (!Array.isArray(input.positiveShaftLayers)) {
+    return ["Positieve-schachtlagen ontbreken"];
+  }
+  const layers = [...input.positiveShaftLayers].sort(
+    (first, second) => first.bottomNapM - second.bottomNapM,
+  );
+  if (layers.length === 0) {
+    return ["Minimaal één positieve-schachtlaag is vereist"];
+  }
+  for (const layer of layers) {
+    if (
+      !Number.isFinite(layer.bottomNapM)
+      || !Number.isFinite(layer.topNapM)
+      || layer.topNapM <= layer.bottomNapM
+    ) {
+      errors.push("Positieve-schachtlagen moeten eindig en positief dik zijn");
+    }
+  }
+  if (
+    Math.abs(layers[0]!.bottomNapM - input.pileTipNapM)
+      > DEPTH_TOLERANCE_M
+  ) {
+    errors.push("Positieve-schachtlagen moeten aansluiten op de paalpunt");
+  }
+  for (let index = 1; index < layers.length; index += 1) {
+    const previousTopNapM = layers[index - 1]!.topNapM;
+    const currentBottomNapM = layers[index]!.bottomNapM;
+    if (currentBottomNapM > previousTopNapM + DEPTH_TOLERANCE_M) {
+      errors.push("Positieve-schachtlagen bevatten een gat");
+    } else if (currentBottomNapM < previousTopNapM - DEPTH_TOLERANCE_M) {
+      errors.push("Positieve-schachtlagen bevatten overlap");
+    }
+  }
+  if (
+    Math.abs(
+      layers[layers.length - 1]!.topNapM - input.positiveShaftStartNapM,
+    ) > DEPTH_TOLERANCE_M
+  ) {
+    errors.push(
+      "Positieve-schachtlagen moeten aansluiten op de positieve-schachtstart",
+    );
+  }
   return errors;
 }
 
@@ -470,6 +615,7 @@ function clipCurve(
   if (lowerNapM >= upperNapM) {
     throw new RangeError("Rekentraject moet een positieve lengte hebben");
   }
+  assertReliableCurveSegment(curve, lowerNapM, upperNapM);
 
   return [
     {
@@ -532,15 +678,21 @@ function interpolateProperty(
   return lower[property] + fraction * (upper[property] - lower[property]);
 }
 
-function integrateRunningMinimum(
+export function constructMinimumRoute(
   points: DigitizedCptPoint[],
   initialMinimumMpa?: number,
-): { integralMpaM: number; endMinimumMpa: number } {
+): {
+  integralMpaM: number;
+  endMinimumMpa: number;
+  route: QcRoutePoint[];
+} {
   let runningMinimumMpa = Math.min(
     initialMinimumMpa ?? points[0]!.qcMpa,
     points[0]!.qcMpa,
   );
-  let integralMpaM = 0;
+  const route: QcRoutePoint[] = [
+    { depthNapM: points[0]!.depthNapM, qcMpa: runningMinimumMpa },
+  ];
 
   for (let index = 1; index < points.length; index += 1) {
     const previous = points[index - 1]!;
@@ -548,24 +700,137 @@ function integrateRunningMinimum(
     const lengthM = current.depthNapM - previous.depthNapM;
 
     if (current.qcMpa >= previous.qcMpa) {
-      integralMpaM += runningMinimumMpa * lengthM;
+      route.push({ depthNapM: current.depthNapM, qcMpa: runningMinimumMpa });
     } else if (runningMinimumMpa <= current.qcMpa) {
-      integralMpaM += runningMinimumMpa * lengthM;
+      route.push({ depthNapM: current.depthNapM, qcMpa: runningMinimumMpa });
     } else if (runningMinimumMpa >= previous.qcMpa) {
-      integralMpaM += (previous.qcMpa + current.qcMpa) / 2 * lengthM;
+      route.push({ depthNapM: current.depthNapM, qcMpa: current.qcMpa });
     } else {
       const fractionToCrossing =
         (previous.qcMpa - runningMinimumMpa)
         / (previous.qcMpa - current.qcMpa);
-      const constantLengthM = lengthM * fractionToCrossing;
-      const descendingLengthM = lengthM - constantLengthM;
-      integralMpaM +=
-        runningMinimumMpa * constantLengthM
-        + (runningMinimumMpa + current.qcMpa) / 2 * descendingLengthM;
+      route.push({
+        depthNapM: previous.depthNapM + lengthM * fractionToCrossing,
+        qcMpa: runningMinimumMpa,
+      });
+      route.push({ depthNapM: current.depthNapM, qcMpa: current.qcMpa });
     }
 
     runningMinimumMpa = Math.min(runningMinimumMpa, current.qcMpa);
   }
 
-  return { integralMpaM, endMinimumMpa: runningMinimumMpa };
+  return {
+    integralMpaM: integrateRoute(route),
+    endMinimumMpa: runningMinimumMpa,
+    route,
+  };
+}
+
+function validateStandaloneShaftLayers(layers: PositiveShaftLayer[]): void {
+  for (const layer of layers) {
+    if (
+      !Number.isFinite(layer.bottomNapM)
+      || !Number.isFinite(layer.topNapM)
+      || layer.topNapM <= layer.bottomNapM
+    ) {
+      throw new RangeError(
+        "Positieve-schachtlagen moeten eindig en positief dik zijn",
+      );
+    }
+  }
+  for (let index = 1; index < layers.length; index += 1) {
+    const previousTopNapM = layers[index - 1]!.topNapM;
+    const currentBottomNapM = layers[index]!.bottomNapM;
+    if (
+      Math.abs(previousTopNapM - currentBottomNapM) > DEPTH_TOLERANCE_M
+    ) {
+      throw new RangeError(
+        currentBottomNapM > previousTopNapM
+          ? "Positieve-schachtlagen bevatten een gat"
+          : "Positieve-schachtlagen bevatten overlap",
+      );
+    }
+  }
+}
+
+function limitCurveAtCutoff(
+  curve: DigitizedCptPoint[],
+  cutoffMpa: number | null,
+): QcRoutePoint[] {
+  if (cutoffMpa === null) {
+    return curve.map(({ depthNapM, qcMpa }) => ({ depthNapM, qcMpa }));
+  }
+
+  const limited: QcRoutePoint[] = [{
+    depthNapM: curve[0]!.depthNapM,
+    qcMpa: Math.min(curve[0]!.qcMpa, cutoffMpa),
+  }];
+  for (let index = 1; index < curve.length; index += 1) {
+    const previous = curve[index - 1]!;
+    const current = curve[index]!;
+    if (
+      (previous.qcMpa - cutoffMpa) * (current.qcMpa - cutoffMpa) < 0
+    ) {
+      const crossingFraction =
+        (cutoffMpa - previous.qcMpa) / (current.qcMpa - previous.qcMpa);
+      limited.push({
+        depthNapM:
+          previous.depthNapM
+          + crossingFraction * (current.depthNapM - previous.depthNapM),
+        qcMpa: cutoffMpa,
+      });
+    }
+    limited.push({
+      depthNapM: current.depthNapM,
+      qcMpa: Math.min(current.qcMpa, cutoffMpa),
+    });
+  }
+  return limited;
+}
+
+function assertReliableCurveSegment(
+  curve: DigitizedCptPoint[],
+  lowerNapM: number,
+  upperNapM: number,
+): void {
+  const relevantPoints = curve.filter(
+    (point) =>
+      point.depthNapM >= lowerNapM - DEPTH_TOLERANCE_M
+      && point.depthNapM <= upperNapM + DEPTH_TOLERANCE_M,
+  );
+  if (relevantPoints.some((point) => point.confidence <= 0)) {
+    throw new RangeError("Rekentraject bevat een onbetrouwbaar meetpunt");
+  }
+  for (let index = 1; index < curve.length; index += 1) {
+    const lower = curve[index - 1]!;
+    const upper = curve[index]!;
+    const intersectsSegment =
+      lower.depthNapM < upperNapM - DEPTH_TOLERANCE_M
+      && upper.depthNapM > lowerNapM + DEPTH_TOLERANCE_M;
+    if (
+      intersectsSegment
+      && upper.depthNapM - lower.depthNapM
+        > MAX_CPT_POINT_SPACING_M + DEPTH_TOLERANCE_M
+    ) {
+      throw new RangeError("Rekentraject bevat een te groot intern gat");
+    }
+  }
+  const lowerConfidence = interpolateConfidence(curve, lowerNapM);
+  const upperConfidence = interpolateConfidence(curve, upperNapM);
+  if (lowerConfidence <= 0 || upperConfidence <= 0) {
+    throw new RangeError("Rekentrajectgrens is onbetrouwbaar");
+  }
+}
+
+function integrateRoute(route: QcRoutePoint[]): number {
+  let integralMpaM = 0;
+  for (let index = 1; index < route.length; index += 1) {
+    const previous = route[index - 1]!;
+    const current = route[index]!;
+    integralMpaM +=
+      (current.depthNapM - previous.depthNapM)
+      * (previous.qcMpa + current.qcMpa)
+      / 2;
+  }
+  return integralMpaM;
 }

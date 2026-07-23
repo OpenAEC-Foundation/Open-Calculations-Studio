@@ -14,5 +14,8 @@ export const vibroReferenceInput: VibroPileInput = {
   gammaB: 1.2,
   gammaS: 1.2,
   designLoadKn: 0,
+  positiveShaftLayers: [
+    { bottomNapM: -18.5, topNapM: -14.25 },
+  ],
   negativeSkinLayers: [],
 };
