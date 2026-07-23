@@ -29,6 +29,34 @@ describe("CPT-diagramkalibratie", () => {
     expect(depthNapToPixel(-18.5, calibration)).toBeCloseTo(750, 8);
   });
 
+  it("weigert x-pixels buiten de gekalibreerde plotbreedte", () => {
+    expect(() => pixelToQc(-1, calibration)).toThrow(RangeError);
+    expect(() => pixelToQc(1001, calibration)).toThrow(RangeError);
+  });
+
+  it("weigert y-pixels buiten de gekalibreerde plothoogte", () => {
+    expect(() => pixelToDepthNap(249, calibration)).toThrow(RangeError);
+    expect(() => pixelToDepthNap(1251, calibration)).toThrow(RangeError);
+  });
+
+  it("weigert qc-waarden buiten de gekalibreerde schaal", () => {
+    expect(() => qcToPixel(-0.1, calibration)).toThrow(RangeError);
+    expect(() => qcToPixel(20.1, calibration)).toThrow(RangeError);
+  });
+
+  it("weigert NAP-waarden buiten beide richtingen van de diepteschaal", () => {
+    expect(() => depthNapToPixel(-27.1, calibration)).toThrow(RangeError);
+    expect(() => depthNapToPixel(-9.9, calibration)).toThrow(RangeError);
+
+    const oplopendeDiepteschaal = {
+      ...calibration,
+      depthTopNapM: -27,
+      depthBottomNapM: -10,
+    };
+    expect(() => depthNapToPixel(-27.1, oplopendeDiepteschaal)).toThrow(RangeError);
+    expect(() => depthNapToPixel(-9.9, oplopendeDiepteschaal)).toThrow(RangeError);
+  });
+
   it("meldt ongeldige kalibratieparameters", () => {
     expect(validateCalibration({ ...calibration, qcMaxMpa: 0 }))
       .toContain("qcMaxMpa moet groter zijn dan qcMinMpa");

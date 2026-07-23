@@ -2,6 +2,7 @@ import type { CptCalibration } from "./types";
 
 export function pixelToQc(xPx: number, calibration: CptCalibration): number {
   const { left, right } = calibration.plotBoundsPx;
+  assertWithinRange(xPx, left, right, "xPx");
   const tx = (xPx - left) / (right - left);
 
   return calibration.qcMinMpa + tx * (calibration.qcMaxMpa - calibration.qcMinMpa);
@@ -9,6 +10,7 @@ export function pixelToQc(xPx: number, calibration: CptCalibration): number {
 
 export function pixelToDepthNap(yPx: number, calibration: CptCalibration): number {
   const { top, bottom } = calibration.plotBoundsPx;
+  assertWithinRange(yPx, top, bottom, "yPx");
   const ty = (yPx - top) / (bottom - top);
 
   return calibration.depthTopNapM
@@ -17,6 +19,7 @@ export function pixelToDepthNap(yPx: number, calibration: CptCalibration): numbe
 
 export function qcToPixel(qcMpa: number, calibration: CptCalibration): number {
   const { left, right } = calibration.plotBoundsPx;
+  assertWithinRange(qcMpa, calibration.qcMinMpa, calibration.qcMaxMpa, "qcMpa");
   const tq = (qcMpa - calibration.qcMinMpa)
     / (calibration.qcMaxMpa - calibration.qcMinMpa);
 
@@ -25,6 +28,12 @@ export function qcToPixel(qcMpa: number, calibration: CptCalibration): number {
 
 export function depthNapToPixel(depthNapM: number, calibration: CptCalibration): number {
   const { top, bottom } = calibration.plotBoundsPx;
+  assertWithinRange(
+    depthNapM,
+    calibration.depthTopNapM,
+    calibration.depthBottomNapM,
+    "depthNapM",
+  );
   const td = (depthNapM - calibration.depthTopNapM)
     / (calibration.depthBottomNapM - calibration.depthTopNapM);
 
@@ -61,4 +70,18 @@ export function validateCalibration(calibration: CptCalibration): string[] {
   }
 
   return errors;
+}
+
+function assertWithinRange(
+  value: number,
+  firstEndpoint: number,
+  secondEndpoint: number,
+  name: string,
+): void {
+  const minimum = Math.min(firstEndpoint, secondEndpoint);
+  const maximum = Math.max(firstEndpoint, secondEndpoint);
+
+  if (value < minimum || value > maximum) {
+    throw new RangeError(`${name} ligt buiten het gekalibreerde bereik`);
+  }
 }
