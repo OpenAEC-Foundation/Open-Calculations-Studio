@@ -47,6 +47,20 @@ export const projectTree: TreeNode[] = [
     children: [
   {
     kind: "category",
+    id: "foundations",
+    label: "Funderingen",
+    defaultExpanded: true,
+    children: [
+      {
+        kind: "item",
+        id: "vibro-paaldraagvermogen",
+        label: "VIBRO-paaldraagvermogen",
+        templateId: "vibro-paaldraagvermogen",
+      },
+    ],
+  },
+  {
+    kind: "category",
     id: "books",
     label: "Books",
     defaultExpanded: false,

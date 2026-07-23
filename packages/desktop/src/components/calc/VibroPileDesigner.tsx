@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo } from "react";
+import { useDocumentStore } from "../../store/documentStore";
 import { useVibroDesignerStore } from "../../store/vibroDesignerStore";
 import { validateCalibration } from "../../vibro/calibration";
 import {
@@ -7,11 +8,14 @@ import {
 import {
   evaluateDigitizationQuality,
 } from "../../vibro/designerQuality";
+import { calculatePileResistance } from "../../vibro/geotechnical";
 import {
   getPdfRenderScaleError,
   renderPdfPage,
   type RenderedPdfPage,
 } from "../../vibro/pdfPage";
+import { vibroReferenceInput } from "../../vibro/referenceCase";
+import { generateVibroPileSheet } from "../../vibro/sheetGenerator";
 import type { CptCalibration } from "../../vibro/types";
 import VibroCalibrationPanel, {
   type CalibrationNumberField,
@@ -38,6 +42,7 @@ interface VibroPileDesignerProps {
 export default function VibroPileDesigner({
   documentRevision,
 }: VibroPileDesignerProps) {
+  const loadTemplate = useDocumentStore((state) => state.loadTemplate);
   const {
     documentRevision: workflowDocumentRevision,
     stage,
@@ -264,6 +269,42 @@ export default function VibroPileDesigner({
     });
   };
 
+  const generateSheet = () => {
+    if (
+      stage !== "ready"
+      || calibration === null
+      || acceptedPoints.length === 0
+      || pdfName === ""
+    ) {
+      return;
+    }
+    try {
+      const pileTipsNapM = Array.from(
+        { length: 8 },
+        (_, index) => -18.5 - index * 0.5,
+      );
+      const results = pileTipsNapM.map((pileTipNapM) =>
+        calculatePileResistance(acceptedPoints, {
+          ...vibroReferenceInput,
+          pileTipNapM,
+          positiveShaftLayers: [{
+            bottomNapM: pileTipNapM,
+            topNapM: vibroReferenceInput.positiveShaftStartNapM,
+          }],
+        }));
+      const source = generateVibroPileSheet({
+        sourceFileName: pdfName,
+        calibration,
+        points: acceptedPoints,
+        input: vibroReferenceInput,
+        results,
+      });
+      loadTemplate(source, "VIBRO-paal sondering 1");
+    } catch (error) {
+      showError(error);
+    }
+  };
+
   return (
     <section className="vibro-designer" data-stage={stage}>
       <header className="vibro-designer-header">
@@ -299,6 +340,15 @@ export default function VibroPileDesigner({
         </button>
         {pdfName !== "" && (
           <span className="vibro-file-name" title={pdfName}>{pdfName}</span>
+        )}
+        {stage === "ready" && (
+          <button
+            className="vibro-button vibro-button-primary"
+            type="button"
+            onClick={generateSheet}
+          >
+            Rekensheet genereren
+          </button>
         )}
       </div>
 

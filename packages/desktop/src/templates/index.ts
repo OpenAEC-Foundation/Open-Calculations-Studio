@@ -6,6 +6,7 @@ import { stalenGevelkolom } from "./stalenGevelkolom";
 import { verticaalWindverband } from "./verticaalWindverband";
 import { voetplaatverbinding } from "./voetplaatverbinding";
 import { balklaag } from "./balklaag";
+import { vibroPaal } from "./vibroPaal";
 import {
   ec5Buiging, ec5Afschuiving, ec5Druk, ec5DrukLoodrecht,
   ec5Knik, ec5Doorbuiging, ec5HoutenBalk,
@@ -42,6 +43,7 @@ export const templates: Record<string, string> = {
   "verticaal-windverband": verticaalWindverband,
   "voetplaatverbinding": voetplaatverbinding,
   "balklaag": balklaag,
+  "vibro-paaldraagvermogen": vibroPaal,
   "calcpad-demo": calcpadDemo,
   ...calcpadSamples,
   "paaldraagvermogen": paalExample,

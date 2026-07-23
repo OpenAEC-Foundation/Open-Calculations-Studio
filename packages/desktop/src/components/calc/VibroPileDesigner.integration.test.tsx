@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { useState } from "react";
+import { evaluate, parse } from "@ifc-calc/core";
 import {
   act,
   cleanup,
@@ -18,6 +19,7 @@ import {
 } from "vitest";
 import type { RenderedPdfPage } from "../../vibro/pdfPage";
 import { useVibroDesignerStore } from "../../store/vibroDesignerStore";
+import { useDocumentStore } from "../../store/documentStore";
 
 const pdfMocks = vi.hoisted(() => ({
   renderPdfPage: vi.fn(),
@@ -103,6 +105,13 @@ function deferred<T>() {
 }
 
 beforeEach(() => {
+  useDocumentStore.setState({
+    documentRevision: 0,
+    source: "# VIBRO-paaldraagvermogen",
+    selectValues: {},
+    filePath: null,
+    dirty: false,
+  });
   useVibroDesignerStore.getState().bindDocument(0);
   useVibroDesignerStore.getState().resetWorkflow();
   pdfMocks.renderPdfPage.mockReset();
@@ -314,5 +323,46 @@ describe("VibroPileDesigner workflow", () => {
     expect(screen.queryByRole("button", {
       name: "Kalibratie accepteren",
     })).toBeNull();
+  });
+
+  it("genereert na acceptatie acht paalpuntblokken via de documentstore", () => {
+    const acceptedPoints = Array.from({ length: 201 }, (_, index) => ({
+      depthNapM: -24 + index * 0.05,
+      qcMpa: 8 + index / 100,
+      confidence: 0.95,
+    }));
+    seedWorkflow("ready");
+    act(() => {
+      useVibroDesignerStore.getState().updateWorkflow({
+        pdfName: "sondering-01.pdf",
+        calibration: {
+          pageIndex: 0,
+          plotBoundsPx: { left: 60, top: 80, right: 400, bottom: 700 },
+          qcMinMpa: 0,
+          qcMaxMpa: 20,
+          depthTopNapM: -14,
+          depthBottomNapM: -24,
+        },
+        acceptedPoints,
+      });
+    });
+    render(<VibroPileDesigner documentRevision={0} />);
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "Rekensheet genereren",
+    }));
+
+    const document = useDocumentStore.getState();
+    expect(document.source).toContain("# VIBRO-paaldraagvermogen");
+    expect(document.source).toContain("sondering-01.pdf");
+    expect(document.source.match(/^### Paalpunt NAP /gm)).toHaveLength(8);
+    expect(document.filePath).toBe("VIBRO-paal sondering 1");
+    expect(document.dirty).toBe(false);
+    expect(document.documentRevision).toBe(1);
+    expect(evaluate(parse(document.source)).filter(
+      (node) =>
+        node.type === "assignment"
+        && node.result.startsWith("Error:"),
+    )).toEqual([]);
   });
 });
