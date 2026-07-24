@@ -17,6 +17,16 @@ import {
   renderPdfPage,
   type RenderedPdfPage,
 } from "../../vibro/pdfPage";
+import {
+  compareReferenceResults,
+  createReferenceCalibration,
+  isolateReferenceQcCurve,
+  REFERENCE_METRIC_KEYS,
+  vibroReferenceResults,
+  type ReferenceComparison,
+  type ReferenceComparisonStatus,
+  type ReferenceMetricKey,
+} from "../../vibro/referenceCase";
 import { generateVibroPileSheet } from "../../vibro/sheetGenerator";
 import type {
   CptCalibration,
@@ -82,6 +92,34 @@ export default function VibroPileDesigner({
       : evaluateDigitizationQuality(digitization, relevantRange),
     [digitization, relevantRange],
   );
+  const referenceComparisons = useMemo(() => {
+    if (
+      stage !== "ready"
+      || acceptedPoints.length === 0
+      || calibration === null
+    ) {
+      return null;
+    }
+    try {
+      const actual = vibroReferenceResults.map(({ pileTipNapM }) =>
+        calculatePileResistance(acceptedPoints, {
+          ...pileInput,
+          pileTipNapM,
+          positiveShaftLayers: clipPositiveShaftLayers(
+            pileInput.positiveShaftLayers,
+            pileTipNapM,
+            pileInput.positiveShaftStartNapM,
+          ),
+        }));
+      return compareReferenceResults(
+        actual,
+        vibroReferenceResults,
+        calibration,
+      );
+    } catch {
+      return null;
+    }
+  }, [acceptedPoints, calibration, pileInput, stage]);
 
   const choosePdf = async () => {
     try {
@@ -250,8 +288,21 @@ export default function VibroPileDesigner({
         renderedPage.width,
         renderedPage.height,
       );
+      const digitizationImage = pageIndex === 0
+        ? isolateReferenceQcCurve(image)
+        : image;
       updateWorkflow({
-        digitization: digitizeQcCurve(image, calibration),
+        digitization: digitizeQcCurve(
+          digitizationImage,
+          calibration,
+          pageIndex === 0
+            ? {
+              maxJumpPx:
+                calibration.plotBoundsPx.right
+                - calibration.plotBoundsPx.left,
+            }
+            : undefined,
+        ),
         acceptedPoints: [],
         stage: "review",
         errorMessage: "",
@@ -390,6 +441,13 @@ export default function VibroPileDesigner({
           {errorMessage !== "" && (
             <div className="vibro-inline-error" role="alert">{errorMessage}</div>
           )}
+          {pageIndex === 0 && (
+            <div className="vibro-calibration-proposal" role="note">
+              Voorstel voor de bekende pagina-indeling. Controleer en corrigeer
+              de grenzen links, rechts, boven en onder voordat je de kalibratie
+              accepteert.
+            </div>
+          )}
           <div className="vibro-workbench">
             <VibroCalibrationPanel
               renderedPage={renderedPage}
@@ -439,6 +497,11 @@ export default function VibroPileDesigner({
                 acceptedPointCount={acceptedPoints.length}
                 stage={stage}
               />
+              {referenceComparisons !== null && (
+                <ReferenceComparisonTable
+                  comparisons={referenceComparisons}
+                />
+              )}
             </main>
           </div>
         </>
@@ -778,6 +841,13 @@ function defaultCalibration(
   page: RenderedPdfPage,
   pageIndex: number,
 ): CptCalibration {
+  if (pageIndex === 0) {
+    return createReferenceCalibration({
+      width: page.width,
+      height: page.height,
+      pageIndex,
+    });
+  }
   return {
     pageIndex,
     plotBoundsPx: {
@@ -791,6 +861,129 @@ function defaultCalibration(
     depthTopNapM: 1,
     depthBottomNapM: -25,
   };
+}
+
+const REFERENCE_METRIC_LABELS: Record<
+  ReferenceMetricKey,
+  { label: string; unit: string }
+> = {
+  qcIAvgMpa: { label: "qc-I", unit: "MPa" },
+  qcIIAvgMpa: { label: "qc-II", unit: "MPa" },
+  qcShaftAvgMpa: { label: "qc-schacht", unit: "MPa" },
+  qbMaxMpa: { label: "qb;max", unit: "MPa" },
+  rbCalKn: { label: "Rb;cal", unit: "kN" },
+  rsCalKn: { label: "Rs;cal", unit: "kN" },
+  rcDesignKn: { label: "Rc;d", unit: "kN" },
+  rcNetDesignKn: { label: "Rc;netto;d", unit: "kN" },
+};
+
+const REFERENCE_STATUS_LABELS: Record<
+  ReferenceComparisonStatus,
+  string
+> = {
+  "within-pixel": "Binnen 1 pixel",
+  "curve-reading": "Verklaarbaar door curvelezing",
+  investigate: "Onderzoeken",
+};
+
+export function ReferenceComparisonTable({
+  comparisons,
+}: {
+  comparisons: readonly ReferenceComparison[];
+}) {
+  return (
+    <section
+      className="vibro-reference-comparison"
+      aria-labelledby="vibro-reference-title"
+    >
+      <div className="vibro-reference-heading">
+        <div>
+          <span className="vibro-kicker">Sondering 1 · acht niveaus</span>
+          <h3 id="vibro-reference-title">Afwijking referentierapport</h3>
+        </div>
+        <div className="vibro-reference-status-legend" aria-label="Statuslegenda">
+          {(["within-pixel", "curve-reading", "investigate"] as const).map(
+            (status) => (
+              <span data-status={status} key={status}>
+                {REFERENCE_STATUS_LABELS[status]}
+              </span>
+            ),
+          )}
+        </div>
+      </div>
+      <p className="vibro-reference-note">
+        De groene grens is één horizontale beeldpixel plus de afronding van
+        de gepubliceerde waarde. Oranje staat voor maximaal twee pixels.
+      </p>
+      <div className="vibro-reference-table-scroll">
+        <table className="vibro-reference-table">
+          <thead>
+            <tr>
+              <th rowSpan={2} scope="col">Paalpunt<br />m NAP</th>
+              {REFERENCE_METRIC_KEYS.map((key) => (
+                <th colSpan={2} scope="colgroup" key={key}>
+                  {REFERENCE_METRIC_LABELS[key].label}
+                  <small>{REFERENCE_METRIC_LABELS[key].unit}</small>
+                </th>
+              ))}
+            </tr>
+            <tr>
+              {REFERENCE_METRIC_KEYS.flatMap((key) => [
+                <th scope="col" key={`${key}-absolute`}>Absoluut</th>,
+                <th scope="col" key={`${key}-percentage`}>Procentueel</th>,
+              ])}
+            </tr>
+          </thead>
+          <tbody>
+            {comparisons.map((comparison) => (
+              <tr key={comparison.pileTipNapM}>
+                <th scope="row">{comparison.pileTipNapM.toFixed(1)}</th>
+                {REFERENCE_METRIC_KEYS.flatMap((key) => {
+                  const metric = comparison.metrics[key];
+                  const title = [
+                    REFERENCE_STATUS_LABELS[metric.status],
+                    `1-pixeltolerantie ${formatMetricValue(
+                      metric.pixelTolerance,
+                      key,
+                    )}`,
+                    `curveleesmarge ${formatMetricValue(
+                      metric.readingTolerance,
+                      key,
+                    )}`,
+                    `werkelijk ${formatMetricValue(metric.actual, key)}`,
+                    `referentie ${formatMetricValue(metric.expected, key)}`,
+                  ].join(" · ");
+                  return [
+                    <td
+                      data-status={metric.status}
+                      title={title}
+                      key={`${key}-absolute`}
+                    >
+                      {formatMetricValue(metric.absoluteDifference, key)}
+                    </td>,
+                    <td
+                      data-status={metric.status}
+                      title={title}
+                      key={`${key}-percentage`}
+                    >
+                      {metric.percentageDifference.toFixed(1)}%
+                    </td>,
+                  ];
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function formatMetricValue(
+  value: number,
+  key: ReferenceMetricKey,
+): string {
+  return key.endsWith("Mpa") ? value.toFixed(2) : value.toFixed(1);
 }
 
 function PdfIcon() {
