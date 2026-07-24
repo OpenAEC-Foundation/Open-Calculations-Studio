@@ -18,11 +18,16 @@ import {
   type RenderedPdfPage,
 } from "../../vibro/pdfPage";
 import {
+  calculateReferenceResults,
   compareReferenceResults,
   createReferenceCalibration,
+  deriveReferencePixelTolerances,
+  isReferencePage,
   isolateReferenceQcCurve,
   REFERENCE_METRIC_KEYS,
+  vibroReferenceInput,
   vibroReferenceResults,
+  withReferencePixelResolution,
   type ReferenceComparison,
   type ReferenceComparisonStatus,
   type ReferenceMetricKey,
@@ -92,34 +97,42 @@ export default function VibroPileDesigner({
       : evaluateDigitizationQuality(digitization, relevantRange),
     [digitization, relevantRange],
   );
+  const isActiveReferencePage =
+    renderedPage !== null
+    && matchesReferencePage(renderedPage, pageIndex);
   const referenceComparisons = useMemo(() => {
     if (
       stage !== "ready"
       || acceptedPoints.length === 0
       || calibration === null
+      || !isActiveReferencePage
     ) {
       return null;
     }
     try {
-      const actual = vibroReferenceResults.map(({ pileTipNapM }) =>
-        calculatePileResistance(acceptedPoints, {
-          ...pileInput,
-          pileTipNapM,
-          positiveShaftLayers: clipPositiveShaftLayers(
-            pileInput.positiveShaftLayers,
-            pileTipNapM,
-            pileInput.positiveShaftStartNapM,
-          ),
-        }));
+      const actual = calculateReferenceResults(
+        acceptedPoints,
+        vibroReferenceInput,
+      );
+      const tolerance = deriveReferencePixelTolerances(
+        acceptedPoints,
+        withReferencePixelResolution(calibration),
+        vibroReferenceInput,
+      );
       return compareReferenceResults(
         actual,
         vibroReferenceResults,
-        calibration,
+        tolerance,
       );
     } catch {
       return null;
     }
-  }, [acceptedPoints, calibration, pileInput, stage]);
+  }, [
+    acceptedPoints,
+    calibration,
+    isActiveReferencePage,
+    stage,
+  ]);
 
   const choosePdf = async () => {
     try {
@@ -288,14 +301,14 @@ export default function VibroPileDesigner({
         renderedPage.width,
         renderedPage.height,
       );
-      const digitizationImage = pageIndex === 0
+      const digitizationImage = isActiveReferencePage
         ? isolateReferenceQcCurve(image)
         : image;
       updateWorkflow({
         digitization: digitizeQcCurve(
           digitizationImage,
           calibration,
-          pageIndex === 0
+          isActiveReferencePage
             ? {
               maxJumpPx:
                 calibration.plotBoundsPx.right
@@ -441,7 +454,7 @@ export default function VibroPileDesigner({
           {errorMessage !== "" && (
             <div className="vibro-inline-error" role="alert">{errorMessage}</div>
           )}
-          {pageIndex === 0 && (
+          {isActiveReferencePage && (
             <div className="vibro-calibration-proposal" role="note">
               Voorstel voor de bekende pagina-indeling. Controleer en corrigeer
               de grenzen links, rechts, boven en onder voordat je de kalibratie
@@ -841,7 +854,7 @@ function defaultCalibration(
   page: RenderedPdfPage,
   pageIndex: number,
 ): CptCalibration {
-  if (pageIndex === 0) {
+  if (matchesReferencePage(page, pageIndex)) {
     return createReferenceCalibration({
       width: page.width,
       height: page.height,
@@ -861,6 +874,23 @@ function defaultCalibration(
     depthTopNapM: 1,
     depthBottomNapM: -25,
   };
+}
+
+function matchesReferencePage(
+  page: RenderedPdfPage,
+  pageIndex: number,
+): boolean {
+  return page.sourceSha256 !== undefined
+    && page.pageText !== undefined
+    && page.sourceWidth !== undefined
+    && page.sourceHeight !== undefined
+    && isReferencePage({
+      sourceSha256: page.sourceSha256,
+      pageText: page.pageText,
+      width: page.sourceWidth,
+      height: page.sourceHeight,
+      pageIndex,
+    });
 }
 
 const REFERENCE_METRIC_LABELS: Record<
@@ -912,8 +942,9 @@ export function ReferenceComparisonTable({
         </div>
       </div>
       <p className="vibro-reference-note">
-        De groene grens is één horizontale beeldpixel plus de afronding van
-        de gepubliceerde waarde. Oranje staat voor maximaal twee pixels.
+        De groene grens volgt de formulegevoeligheid voor één beeldpixel in
+        qc- en diepterichting. Oranje staat voor dezelfde gevoeligheid bij
+        twee pixels.
       </p>
       <div className="vibro-reference-table-scroll">
         <table className="vibro-reference-table">

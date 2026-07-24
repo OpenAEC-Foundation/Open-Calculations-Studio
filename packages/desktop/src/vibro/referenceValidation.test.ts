@@ -6,16 +6,23 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ReferenceComparisonTable } from "../components/calc/VibroPileDesigner";
 import { digitizeQcCurve } from "./curveDigitizer";
+import { validateCoverage } from "./geotechnical";
 import {
-  calculatePileResistance,
-  validateCoverage,
-} from "./geotechnical";
-import {
+  REFERENCE_METRIC_KEYS,
+  calculateReferenceResults,
   compareReferenceResults,
   createReferenceCalibration,
+  deriveReferencePixelTolerances,
   isolateReferenceQcCurve,
+  isReferencePdfBytes,
+  isReferencePage,
   vibroReferenceInput,
   vibroReferenceResults,
+  vibroReferenceSource,
+} from "./referenceCase";
+import type {
+  ReferencePixelTolerance,
+  ReferenceComparisonStatus,
 } from "./referenceCase";
 import type { PileResistanceResult } from "./types";
 
@@ -119,31 +126,62 @@ describe("referentievergelijking", () => {
     ]);
   });
 
-  it("rapporteert absolute en procentuele afwijkingen met zichtbare tolerantie", () => {
+  it("legt de rekeninvoer en negatieve-kleefbron zonder terugkalibratie vast", () => {
+    expect(vibroReferenceInput.alphaS).toBe(0.014);
+    expect(vibroReferenceInput.positiveShaftStartNapM).toBe(-17.25);
+    expect(vibroReferenceInput.positiveShaftLayers).toEqual([
+      { bottomNapM: -18.5, topNapM: -17.25 },
+    ]);
+    expect(vibroReferenceSource.reportFields).toEqual({
+      alphaS: 0.014,
+      firstPileTipNapM: -18.5,
+      firstShaftLengthM: 1.25,
+      positiveShaftStartNapM: -17.25,
+      negativeSkinMaxDesignProfile1Kn: 247,
+      negativeSkinMaxDesignProfile2Kn: 0,
+      negativeSkinDesignKn: 245,
+    });
+
+    const publishedFirstRsKn =
+      Math.PI * 0.323 * 1.25 * 0.014 * 10.6 * 1_000;
+    expect(publishedFirstRsKn).toBeCloseTo(188.2, 1);
+  });
+
+  it("rapporteert verschillen tegen uitsluitend aangeleverde pixeltoleranties", () => {
     const expected = vibroReferenceResults.slice(0, 2);
     const actual = expected.map((row, index) => ({
       ...row,
       rcNetDesignKn: row.rcNetDesignKn + (index === 0 ? 2 : 20),
     })) as PileResistanceResult[];
+    const tolerances = expected.map((row): ReferencePixelTolerance => ({
+      pileTipNapM: row.pileTipNapM,
+      metrics: Object.fromEntries(
+        REFERENCE_METRIC_KEYS.map((key) => [
+          key,
+          key === "rcNetDesignKn"
+            ? { pixel: 3, reading: 6 }
+            : { pixel: 0.1, reading: 0.2 },
+        ]),
+      ) as ReferencePixelTolerance["metrics"],
+    }));
 
-    const comparison = compareReferenceResults(actual, expected);
+    const comparison = compareReferenceResults(
+      actual,
+      expected,
+      tolerances,
+    );
 
-    expect(comparison).toHaveLength(2);
     expect(comparison[0]!.metrics.rcNetDesignKn).toMatchObject({
       absoluteDifference: 2,
       percentageDifference: 2 / 189 * 100,
+      pixelTolerance: 3,
+      readingTolerance: 6,
       status: "within-pixel",
     });
-    expect(comparison[0]!.metrics.rcNetDesignKn.pixelTolerance).toBeGreaterThan(0);
-    expect(comparison[0]!.metrics.rcNetDesignKn.readingTolerance)
-      .toBeGreaterThan(comparison[0]!.metrics.rcNetDesignKn.pixelTolerance);
-    expect(comparison[1]!.metrics.rcNetDesignKn).toMatchObject({
-      absoluteDifference: 20,
-      status: "investigate",
-    });
+    expect(comparison[1]!.metrics.rcNetDesignKn.status).toBe("investigate");
   });
 
-  it("schaalt het vaste paginavoorstel en maakt de pixelresolutie expliciet", () => {
+  it("schaalt het vaste paginavoorstel en maakt beide pixelresoluties expliciet", () => {
     const calibration = createReferenceCalibration({
       width: 842,
       height: 1190,
@@ -159,6 +197,7 @@ describe("referentievergelijking", () => {
     expect(calibration.depthTopNapM).toBe(0);
     expect(calibration.depthBottomNapM).toBe(-37);
     expect(calibration.qcMpaPerPixel).toBeCloseTo(35 / 485, 12);
+    expect(calibration.depthMPerPixel).toBeCloseTo(37 / 1028.5, 12);
   });
 
   it("isoleert de blauwe qc-curve van zwarte assen en rode hulplijnen", () => {
@@ -179,13 +218,44 @@ describe("referentievergelijking", () => {
     ]);
   });
 
-  it("toont per niveau de absolute en procentuele netto-afwijking", () => {
+  it("weigert een verkeerde bron of sondeerpagina", async () => {
+    const data = new TextEncoder().encode("verkeerde pdf");
+    expect(await isReferencePdfBytes(data)).toBe(false);
+    expect(isReferencePage({
+      sourceSha256: vibroReferenceSource.groundPdfSha256,
+      pageIndex: 0,
+      pageText: "Projectnr.: AA22485 Sondeernr.: 02",
+      width: 842,
+      height: 1190,
+    })).toBe(false);
+    expect(isReferencePage({
+      sourceSha256: "0".repeat(64),
+      pageIndex: 0,
+      pageText: "Projectnr.: AA22485 Sondeernr.: 01",
+      width: 842,
+      height: 1190,
+    })).toBe(false);
+  });
+
+  it("toont per niveau de absolute en procentuele afwijking", () => {
     const actual = vibroReferenceResults.map((row) => ({
       ...row,
     })) as PileResistanceResult[];
+    const tolerance = vibroReferenceResults.map(
+      (row): ReferencePixelTolerance => ({
+        pileTipNapM: row.pileTipNapM,
+        metrics: Object.fromEntries(
+          REFERENCE_METRIC_KEYS.map((key) => [
+            key,
+            { pixel: 0.1, reading: 0.2 },
+          ]),
+        ) as ReferencePixelTolerance["metrics"],
+      }),
+    );
     const comparisons = compareReferenceResults(
       actual,
       vibroReferenceResults,
+      tolerance,
     );
 
     const markup = renderToStaticMarkup(
@@ -202,14 +272,26 @@ describe("referentievergelijking", () => {
 });
 
 it.skipIf(referencePdfPath === undefined)(
-  "digitaliseert pagina 1 en rekent alle acht niveaus zonder ontbrekende dekking",
+  "bindt de juiste bron en valideert alle 64 tussenstapstatussen",
   async () => {
-    const data = await readFile(referencePdfPath!);
-    const loadingTask = getDocument({
-      data: new Uint8Array(data),
-    });
+    const data = new Uint8Array(await readFile(referencePdfPath!));
+    expect(await isReferencePdfBytes(data)).toBe(true);
+
+    const loadingTask = getDocument({ data: data.slice() });
     const pdf = await loadingTask.promise;
     const page = await pdf.getPage(1);
+    const pageTextContent = await page.getTextContent();
+    const pageText = pageTextContent.items
+      .map((item) => "str" in item ? item.str : "")
+      .join(" ");
+    expect(isReferencePage({
+      sourceSha256: vibroReferenceSource.groundPdfSha256,
+      pageIndex: 0,
+      pageText,
+      width: page.view[2],
+      height: page.view[3],
+    })).toBe(true);
+
     const viewport = page.getViewport({ scale: 2 });
     const canvas = createCanvas(
       Math.ceil(viewport.width),
@@ -232,62 +314,82 @@ it.skipIf(referencePdfPath === undefined)(
       isolateReferenceQcCurve(image),
       calibration,
       {
-      maxJumpPx:
-        calibration.plotBoundsPx.right - calibration.plotBoundsPx.left,
+        maxJumpPx:
+          calibration.plotBoundsPx.right - calibration.plotBoundsPx.left,
       },
     );
-    console.info({
-      calibration,
-      pointCount: digitization.points.length,
-      firstPoint: digitization.points[0],
-      lastPoint: digitization.points[digitization.points.length - 1],
-      coverage: digitization.coverage,
-      warnings: digitization.warnings,
-    });
-    const actual = vibroReferenceResults.map(({ pileTipNapM }) => {
-      const input = {
+    for (const { pileTipNapM } of vibroReferenceResults) {
+      expect(validateCoverage(digitization.points, {
         ...vibroReferenceInput,
         pileTipNapM,
         positiveShaftLayers: [{
           bottomNapM: pileTipNapM,
           topNapM: vibroReferenceInput.positiveShaftStartNapM,
         }],
-      };
-      expect(validateCoverage(digitization.points, input)).toEqual([]);
-      return calculatePileResistance(digitization.points, input);
-    });
+      })).toEqual([]);
+    }
+
+    const actual = calculateReferenceResults(digitization.points);
+    const tolerance = deriveReferencePixelTolerances(
+      digitization.points,
+      calibration,
+      vibroReferenceInput,
+    );
     const comparison = compareReferenceResults(
       actual,
       vibroReferenceResults,
-      calibration,
+      tolerance,
     );
+    const statusMatrix = comparison.map((row) =>
+      REFERENCE_METRIC_KEYS.map((key) => row.metrics[key].status));
 
-    console.table(comparison.map((row) => ({
-      pileTipNapM: row.pileTipNapM,
-      qcIActual: row.metrics.qcIAvgMpa.actual,
-      qcIExpected: row.metrics.qcIAvgMpa.expected,
-      qcIStatus: row.metrics.qcIAvgMpa.status,
-      rcNetActual: row.metrics.rcNetDesignKn.actual,
-      rcNetExpected: row.metrics.rcNetDesignKn.expected,
-      rcNetDifference: row.metrics.rcNetDesignKn.absoluteDifference,
-      rcNetStatus: row.metrics.rcNetDesignKn.status,
-    })));
     expect(digitization.points.length).toBeGreaterThan(1_000);
     expect(comparison).toHaveLength(8);
-    expect(comparison.every((row) =>
-      Object.values(row.metrics).every((metric) =>
-        Number.isFinite(metric.absoluteDifference)
-        && Number.isFinite(metric.percentageDifference)
-      )
+    expect(actual.every((row) =>
+      row.negativeSkinDesignKn === 245
+      && Math.abs(row.rcNetDesignKn - (row.rcDesignKn - 245)) < 1e-9
     )).toBe(true);
-    expect(comparison[2]!.metrics.qcIAvgMpa.status).toBe("within-pixel");
-    expect(comparison[3]!.metrics.qcIAvgMpa.status).toBe("curve-reading");
-    expect(comparison[3]!.metrics.rcNetDesignKn.status).toBe("within-pixel");
-    expect(comparison[0]!.metrics.rcNetDesignKn.status).toBe("investigate");
-    expect(comparison[0]!.metrics.qcIAvgMpa.pixelTolerance).toBeLessThan(0.09);
-    expect(comparison[0]!.metrics.qcIAvgMpa.readingTolerance).toBeLessThan(0.13);
+    expect(statusMatrix.flat()).toHaveLength(64);
+    expect(statusMatrix).toEqual(
+      EXPECTED_REFERENCE_STATUS_MATRIX,
+    );
 
     await pdf.destroy();
   },
   30_000,
 );
+
+const EXPECTED_REFERENCE_STATUS_MATRIX: ReferenceComparisonStatus[][] = [
+  [
+    "investigate", "within-pixel", "investigate", "within-pixel",
+    "within-pixel", "investigate", "investigate", "investigate",
+  ],
+  [
+    "curve-reading", "within-pixel", "investigate", "within-pixel",
+    "within-pixel", "investigate", "investigate", "investigate",
+  ],
+  [
+    "within-pixel", "within-pixel", "investigate", "within-pixel",
+    "within-pixel", "investigate", "investigate", "investigate",
+  ],
+  [
+    "curve-reading", "within-pixel", "investigate", "within-pixel",
+    "within-pixel", "investigate", "investigate", "investigate",
+  ],
+  [
+    "within-pixel", "within-pixel", "investigate", "within-pixel",
+    "within-pixel", "investigate", "investigate", "investigate",
+  ],
+  [
+    "investigate", "curve-reading", "investigate", "investigate",
+    "investigate", "investigate", "investigate", "investigate",
+  ],
+  [
+    "curve-reading", "curve-reading", "investigate", "within-pixel",
+    "within-pixel", "investigate", "investigate", "investigate",
+  ],
+  [
+    "curve-reading", "within-pixel", "investigate", "curve-reading",
+    "curve-reading", "investigate", "investigate", "investigate",
+  ],
+];

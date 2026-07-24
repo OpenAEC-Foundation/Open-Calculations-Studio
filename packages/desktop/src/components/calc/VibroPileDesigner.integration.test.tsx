@@ -18,6 +18,7 @@ import {
   vi,
 } from "vitest";
 import type { RenderedPdfPage } from "../../vibro/pdfPage";
+import { vibroReferenceSource } from "../../vibro/referenceCase";
 import { useVibroDesignerStore } from "../../store/vibroDesignerStore";
 import { useDocumentStore } from "../../store/documentStore";
 
@@ -44,6 +45,7 @@ function createCanvas(): HTMLCanvasElement {
 function renderedPage(
   width: number,
   pageCount = 3,
+  identity: Partial<RenderedPdfPage> = {},
 ): RenderedPdfPage {
   const canvas = createCanvas();
   canvas.width = width;
@@ -53,6 +55,7 @@ function renderedPage(
     width,
     height: 800,
     pageCount,
+    ...identity,
   };
 }
 
@@ -122,6 +125,38 @@ afterEach(() => {
 });
 
 describe("VibroPileDesigner workflow", () => {
+  it("activeert het referentievoorstel alleen voor het exacte bronbestand en de sondeeridentiteit", () => {
+    seedWorkflow();
+    act(() => {
+      useVibroDesignerStore.getState().updateWorkflow({
+        renderedPage: renderedPage(600, 3, {
+          sourceSha256: vibroReferenceSource.groundPdfSha256,
+          pageText: "Projectnr. : Sondeernr.: AA22485 01 1/2",
+          sourceWidth: 842,
+          sourceHeight: 1190,
+        }),
+      });
+    });
+    render(<VibroPileDesigner documentRevision={0} />);
+
+    expect(screen.getByRole("note").textContent).toMatch(
+      /bekende pagina-indeling/i,
+    );
+
+    act(() => {
+      useVibroDesignerStore.getState().updateWorkflow({
+        renderedPage: renderedPage(600, 3, {
+          sourceSha256: "0".repeat(64),
+          pageText: "Projectnr. : Sondeernr.: AA22485 01 1/2",
+          sourceWidth: 842,
+          sourceHeight: 1190,
+        }),
+      });
+    });
+
+    expect(screen.queryByRole("note")).toBeNull();
+  });
+
   it("houdt alleen het resultaat van de nieuwste paginarender actief", async () => {
     seedWorkflow();
     const first = deferred<RenderedPdfPage>();

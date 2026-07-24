@@ -1,9 +1,11 @@
 import type {
   CptCalibration,
+  DigitizedCptPoint,
   PileResistanceResult,
   VibroPileInput,
 } from "./types";
 import type { ImageDataLike } from "./curveDigitizer";
+import { calculatePileResistance } from "./geotechnical";
 
 export const REFERENCE_METRIC_KEYS = [
   "qcIAvgMpa",
@@ -55,10 +57,23 @@ export interface ReferenceCalibration extends CptCalibration {
   depthMPerPixel: number;
 }
 
-interface ReferencePage {
+export interface ReferencePixelTolerance {
+  pileTipNapM: number;
+  metrics: Record<
+    ReferenceMetricKey,
+    { pixel: number; reading: number }
+  >;
+}
+
+interface ReferencePageGeometry {
   width: number;
   height: number;
   pageIndex: number;
+}
+
+interface ReferencePageIdentity extends ReferencePageGeometry {
+  sourceSha256: string;
+  pageText: string;
 }
 
 const REFERENCE_PAGE_WIDTH = 842;
@@ -75,26 +90,48 @@ const STATUS_SEVERITY: Record<ReferenceComparisonStatus, number> = {
   "curve-reading": 1,
   investigate: 2,
 };
+const REFERENCE_PILE_TIPS_NAP_M = [
+  -18.5,
+  -19,
+  -19.5,
+  -20,
+  -20.5,
+  -21,
+  -21.5,
+  -22,
+] as const;
 
-const PUBLICATION_ROUNDING: Record<ReferenceMetricKey, number> = {
-  qcIAvgMpa: 0.05,
-  qcIIAvgMpa: 0.05,
-  qcShaftAvgMpa: 0.05,
-  qbMaxMpa: 0.005,
-  rbCalKn: 0.5,
-  rsCalKn: 0.5,
-  rcDesignKn: 0.5,
-  rcNetDesignKn: 0.5,
-};
+export const vibroReferenceSource = {
+  groundPdfSha256:
+    "c3c472a863c934ae05943776f860157a086abbd5ded0e2676c8ed38d91505c5e",
+  projectMarker: "AA22485",
+  cptNumber: "01",
+  reportFields: {
+    alphaS: 0.014,
+    firstPileTipNapM: -18.5,
+    firstShaftLengthM: 1.25,
+    positiveShaftStartNapM: -17.25,
+    negativeSkinMaxDesignProfile1Kn: 247,
+    negativeSkinMaxDesignProfile2Kn: 0,
+    negativeSkinDesignKn: 245,
+  },
+} as const;
+
+const REFERENCE_NEGATIVE_SKIN_BY_TIP = new Map<number, number>(
+  REFERENCE_PILE_TIPS_NAP_M.map((pileTipNapM) => [
+    pileTipNapM,
+    vibroReferenceSource.reportFields.negativeSkinDesignKn,
+  ]),
+);
 
 export const vibroReferenceInput: VibroPileInput = {
   shaftDiameterMm: 323,
   baseDiameterMm: 365,
   pileHeadNapM: -0.9,
   pileTipNapM: -18.5,
-  positiveShaftStartNapM: -14.25,
+  positiveShaftStartNapM: -17.25,
   alphaP: 0.7,
-  alphaS: 0.01,
+  alphaS: 0.014,
   beta: 1,
   shapeFactor: 1,
   xiSingleCpt: 1.3,
@@ -102,7 +139,7 @@ export const vibroReferenceInput: VibroPileInput = {
   gammaS: 1.2,
   designLoadKn: 0,
   positiveShaftLayers: [
-    { bottomNapM: -18.5, topNapM: -14.25 },
+    { bottomNapM: -18.5, topNapM: -17.25 },
   ],
   negativeSkinLayers: [],
 };
@@ -199,7 +236,7 @@ export const vibroReferenceResults: readonly VibroReferenceResult[] = [
 ];
 
 export function createReferenceCalibration(
-  page: ReferencePage,
+  page: ReferencePageGeometry,
 ): ReferenceCalibration {
   const scaleX = page.width / REFERENCE_PAGE_WIDTH;
   const scaleY = page.height / REFERENCE_PAGE_HEIGHT;
@@ -214,18 +251,35 @@ export function createReferenceCalibration(
   const depthTopNapM = 0;
   const depthBottomNapM = -37;
 
-  return {
+  return withReferencePixelResolution({
     pageIndex: page.pageIndex,
     plotBoundsPx,
     qcMinMpa,
     qcMaxMpa,
     depthTopNapM,
     depthBottomNapM,
+  });
+}
+
+export function withReferencePixelResolution(
+  calibration: CptCalibration,
+): ReferenceCalibration {
+  return {
+    ...calibration,
     qcMpaPerPixel:
-      (qcMaxMpa - qcMinMpa) / (plotBoundsPx.right - plotBoundsPx.left),
+      (calibration.qcMaxMpa - calibration.qcMinMpa)
+      / (
+        calibration.plotBoundsPx.right
+        - calibration.plotBoundsPx.left
+      ),
     depthMPerPixel:
-      (depthTopNapM - depthBottomNapM)
-      / (plotBoundsPx.bottom - plotBoundsPx.top),
+      Math.abs(
+        calibration.depthTopNapM - calibration.depthBottomNapM,
+      )
+      / (
+        calibration.plotBoundsPx.bottom
+        - calibration.plotBoundsPx.top
+      ),
   };
 }
 
@@ -255,18 +309,116 @@ export function isolateReferenceQcCurve(
   };
 }
 
+export async function sha256Hex(data: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", data.slice().buffer);
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function isReferencePdfBytes(
+  data: Uint8Array,
+): Promise<boolean> {
+  return await sha256Hex(data) === vibroReferenceSource.groundPdfSha256;
+}
+
+export function isReferencePage(page: ReferencePageIdentity): boolean {
+  const normalizedText = page.pageText.replace(/\s+/g, " ").trim();
+  const identityPattern = new RegExp(
+    `${vibroReferenceSource.projectMarker}\\s+`
+      + `${vibroReferenceSource.cptNumber}\\s+1/2(?:\\D|$)`,
+  );
+
+  return page.sourceSha256 === vibroReferenceSource.groundPdfSha256
+    && page.pageIndex === 0
+    && Math.abs(page.width - REFERENCE_PAGE_WIDTH) < 0.5
+    && Math.abs(page.height - REFERENCE_PAGE_HEIGHT) < 0.5
+    && normalizedText.includes("Sondeernr.:")
+    && identityPattern.test(normalizedText);
+}
+
+export function calculateReferenceResults(
+  points: DigitizedCptPoint[],
+  input: VibroPileInput = vibroReferenceInput,
+): PileResistanceResult[] {
+  return vibroReferenceResults.map(({ pileTipNapM }) => {
+    const negativeSkinDesignKn =
+      REFERENCE_NEGATIVE_SKIN_BY_TIP.get(pileTipNapM);
+    if (negativeSkinDesignKn === undefined) {
+      throw new RangeError(
+        `Gepubliceerde negatieve kleef ontbreekt voor NAP ${pileTipNapM}`,
+      );
+    }
+    const gross = calculatePileResistance(points, {
+      ...input,
+      pileTipNapM,
+      positiveShaftLayers: [{
+        bottomNapM: pileTipNapM,
+        topNapM: input.positiveShaftStartNapM,
+      }],
+      negativeSkinLayers: [],
+    });
+    const rcNetDesignKn = gross.rcDesignKn - negativeSkinDesignKn;
+
+    return {
+      ...gross,
+      negativeSkinDesignKn,
+      rcNetDesignKn,
+      unityCheck: input.designLoadKn / rcNetDesignKn,
+    };
+  });
+}
+
+export function deriveReferencePixelTolerances(
+  points: DigitizedCptPoint[],
+  calibration: ReferenceCalibration,
+  input: VibroPileInput,
+): ReferencePixelTolerance[] {
+  const baseline = calculateReferenceResults(points, input);
+  const onePixel = perturbedReferenceResults(
+    points,
+    calibration,
+    input,
+    1,
+  );
+  const twoPixels = perturbedReferenceResults(
+    points,
+    calibration,
+    input,
+    2,
+  );
+
+  return baseline.map((baselineRow) => {
+    const onePixelRows = onePixel.map((variant) =>
+      findResult(variant, baselineRow.pileTipNapM));
+    const twoPixelRows = twoPixels.map((variant) =>
+      findResult(variant, baselineRow.pileTipNapM));
+
+    return {
+      pileTipNapM: baselineRow.pileTipNapM,
+      metrics: Object.fromEntries(
+        REFERENCE_METRIC_KEYS.map((key) => [
+          key,
+          {
+            pixel: maximumDifference(
+              baselineRow[key],
+              onePixelRows.map((row) => row[key]),
+            ),
+            reading: maximumDifference(
+              baselineRow[key],
+              twoPixelRows.map((row) => row[key]),
+            ),
+          },
+        ]),
+      ) as ReferencePixelTolerance["metrics"],
+    };
+  });
+}
+
 export function compareReferenceResults(
   actual: readonly PileResistanceResult[],
   expected: readonly VibroReferenceResult[],
-  calibration: CptCalibration = createReferenceCalibration({
-    width: REFERENCE_PAGE_WIDTH,
-    height: REFERENCE_PAGE_HEIGHT,
-    pageIndex: 0,
-  }),
+  tolerance: readonly ReferencePixelTolerance[],
 ): ReferenceComparison[] {
-  const qcMpaPerPixel =
-    (calibration.qcMaxMpa - calibration.qcMinMpa)
-    / (calibration.plotBoundsPx.right - calibration.plotBoundsPx.left);
   return expected.map((expectedRow) => {
     const actualRow = actual.find(
       (candidate) =>
@@ -278,15 +430,20 @@ export function compareReferenceResults(
       );
     }
 
-    const tolerances = metricTolerances(
-      expectedRow.pileTipNapM,
-      qcMpaPerPixel,
+    const tolerances = tolerance.find(
+      (candidate) =>
+        Math.abs(candidate.pileTipNapM - expectedRow.pileTipNapM) < 1e-9,
     );
+    if (tolerances === undefined) {
+      throw new RangeError(
+        `Pixeltolerantie voor NAP ${expectedRow.pileTipNapM.toFixed(2)} m ontbreekt`,
+      );
+    }
     const metrics = Object.fromEntries(
       REFERENCE_METRIC_KEYS.map((key) => {
         const absoluteDifference = Math.abs(actualRow[key] - expectedRow[key]);
-        const pixelTolerance = tolerances[key].pixel;
-        const readingTolerance = tolerances[key].reading;
+        const pixelTolerance = tolerances.metrics[key].pixel;
+        const readingTolerance = tolerances.metrics[key].reading;
         const status: ReferenceComparisonStatus =
           absoluteDifference <= pixelTolerance
             ? "within-pixel"
@@ -322,89 +479,49 @@ export function compareReferenceResults(
   });
 }
 
-function metricTolerances(
+function perturbedReferenceResults(
+  points: DigitizedCptPoint[],
+  calibration: ReferenceCalibration,
+  input: VibroPileInput,
+  pixelCount: number,
+): PileResistanceResult[][] {
+  const qcDelta = calibration.qcMpaPerPixel * pixelCount;
+  const depthDelta = calibration.depthMPerPixel * pixelCount;
+  return [
+    points.map((point) => ({ ...point, qcMpa: point.qcMpa + qcDelta })),
+    points.map((point) => ({
+      ...point,
+      qcMpa: Math.max(0, point.qcMpa - qcDelta),
+    })),
+    points.map((point) => ({
+      ...point,
+      depthNapM: point.depthNapM + depthDelta,
+    })),
+    points.map((point) => ({
+      ...point,
+      depthNapM: point.depthNapM - depthDelta,
+    })),
+  ].map((variant) => calculateReferenceResults(variant, input));
+}
+
+function findResult(
+  results: PileResistanceResult[],
   pileTipNapM: number,
-  qcMpaPerPixel: number,
-): Record<ReferenceMetricKey, { pixel: number; reading: number }> {
-  const baseAreaM2 =
-    Math.PI * (vibroReferenceInput.baseDiameterMm / 1000) ** 2 / 4;
-  const shaftCircumferenceM =
-    Math.PI * vibroReferenceInput.shaftDiameterMm / 1000;
-  const shaftLengthM =
-    vibroReferenceInput.positiveShaftStartNapM - pileTipNapM;
-  const qbPerQcMpa = vibroReferenceInput.alphaP
-    * vibroReferenceInput.beta
-    * vibroReferenceInput.shapeFactor;
+): PileResistanceResult {
+  const result = results.find(
+    (candidate) => Math.abs(candidate.pileTipNapM - pileTipNapM) < 1e-9,
+  );
+  if (result === undefined) {
+    throw new RangeError(`Rekenresultaat voor NAP ${pileTipNapM} ontbreekt`);
+  }
+  return result;
+}
 
-  const atPixels = (pixelCount: number) => {
-    const qcTolerance =
-      pixelCount * qcMpaPerPixel + PUBLICATION_ROUNDING.qcIAvgMpa;
-    const qbTolerance =
-      pixelCount * qcMpaPerPixel * qbPerQcMpa
-      + PUBLICATION_ROUNDING.qbMaxMpa;
-    const rbTolerance =
-      baseAreaM2 * qbTolerance * 1_000
-      + PUBLICATION_ROUNDING.rbCalKn;
-    const rsTolerance =
-      shaftCircumferenceM
-      * shaftLengthM
-      * vibroReferenceInput.alphaS
-      * pixelCount
-      * qcMpaPerPixel
-      * 1_000
-      + PUBLICATION_ROUNDING.rsCalKn;
-    const rcTolerance =
-      rbTolerance
-        / vibroReferenceInput.xiSingleCpt
-        / vibroReferenceInput.gammaB
-      + rsTolerance
-        / vibroReferenceInput.xiSingleCpt
-        / vibroReferenceInput.gammaS
-      + PUBLICATION_ROUNDING.rcDesignKn;
-
-    return {
-      qcTolerance,
-      qbTolerance,
-      rbTolerance,
-      rsTolerance,
-      rcTolerance,
-    };
-  };
-  const pixel = atPixels(1);
-  const reading = atPixels(2);
-
-  return {
-    qcIAvgMpa: {
-      pixel: pixel.qcTolerance,
-      reading: reading.qcTolerance,
-    },
-    qcIIAvgMpa: {
-      pixel: pixel.qcTolerance,
-      reading: reading.qcTolerance,
-    },
-    qcShaftAvgMpa: {
-      pixel: pixel.qcTolerance,
-      reading: reading.qcTolerance,
-    },
-    qbMaxMpa: {
-      pixel: pixel.qbTolerance,
-      reading: reading.qbTolerance,
-    },
-    rbCalKn: {
-      pixel: pixel.rbTolerance,
-      reading: reading.rbTolerance,
-    },
-    rsCalKn: {
-      pixel: pixel.rsTolerance,
-      reading: reading.rsTolerance,
-    },
-    rcDesignKn: {
-      pixel: pixel.rcTolerance,
-      reading: reading.rcTolerance,
-    },
-    rcNetDesignKn: {
-      pixel: pixel.rcTolerance,
-      reading: reading.rcTolerance,
-    },
-  };
+function maximumDifference(
+  baseline: number,
+  alternatives: number[],
+): number {
+  return Math.max(
+    ...alternatives.map((alternative) => Math.abs(alternative - baseline)),
+  );
 }

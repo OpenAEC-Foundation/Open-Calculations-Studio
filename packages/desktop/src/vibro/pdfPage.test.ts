@@ -6,6 +6,7 @@ const pdfMocks = vi.hoisted(() => ({
   getDocument: vi.fn(),
   getPage: vi.fn(),
   getViewport: vi.fn(),
+  getTextContent: vi.fn(),
   render: vi.fn(),
   workerOptions: { workerSrc: "" },
 }));
@@ -30,9 +31,16 @@ describe("renderPdfPage", () => {
     vi.clearAllMocks();
     pdfMocks.workerOptions.workerSrc = "";
     pdfMocks.getViewport.mockReturnValue({ width: 612, height: 792 });
+    pdfMocks.getTextContent.mockResolvedValue({
+      items: [
+        { str: "Projectnr. : Sondeernr.:" },
+        { str: "AA22485 01 1/2" },
+      ],
+    });
     pdfMocks.render.mockReturnValue({ promise: Promise.resolve() });
     pdfMocks.getPage.mockResolvedValue({
       getViewport: pdfMocks.getViewport,
+      getTextContent: pdfMocks.getTextContent,
       render: pdfMocks.render,
     });
     pdfMocks.getDocument.mockReturnValue({
@@ -75,6 +83,11 @@ describe("renderPdfPage", () => {
       width: 612,
       height: 792,
       pageCount: 4,
+      sourceSha256:
+        "315d429b7714cedb6ad04ac31240145257692630457f3c88253c5beceac76027",
+      pageText: "Projectnr. : Sondeernr.: AA22485 01 1/2",
+      sourceWidth: 408,
+      sourceHeight: 528,
     });
     expect(pdfMocks.destroy).toHaveBeenCalledOnce();
   });

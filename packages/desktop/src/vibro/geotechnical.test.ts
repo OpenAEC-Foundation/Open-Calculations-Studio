@@ -96,7 +96,7 @@ describe("calculateQcAverages", () => {
   });
 
   it("weigert een curve die niet alle rekentrajecten dekt", () => {
-    const points = [point(-19.9, 10), point(-14.3, 10)];
+    const points = [point(-19.9, 10), point(-15.7, 10)];
 
     expect(validateCoverage(points, withInput())).toEqual(
       expect.arrayContaining([
@@ -123,7 +123,7 @@ describe("calculateQcAverages", () => {
   it.each([
     ["qc-I/II", -19.5],
     ["qc-III", -17],
-    ["positieve schacht", -14.5],
+    ["positieve schacht", -17.5],
   ])("weigert confidence nul binnen het %s-traject", (_label, targetNapM) => {
     const points = sampleCurve(-20, -14, () => 10).map((curvePoint) =>
       Math.abs(curvePoint.depthNapM - targetNapM) < 1e-8
