@@ -29,6 +29,23 @@ export interface NegativeSkinResult {
   negativeSkinDesignKn: number;
 }
 
+export function clipPositiveShaftLayers(
+  layers: PositiveShaftLayer[],
+  pileTipNapM: number,
+  positiveShaftStartNapM: number,
+): PositiveShaftLayer[] {
+  return [...layers]
+    .sort((first, second) => first.bottomNapM - second.bottomNapM)
+    .map((layer) => ({
+      bottomNapM: Math.max(layer.bottomNapM, pileTipNapM),
+      topNapM: Math.min(layer.topNapM, positiveShaftStartNapM),
+    }))
+    .filter(
+      (layer) =>
+        layer.topNapM - layer.bottomNapM > DEPTH_TOLERANCE_M,
+    );
+}
+
 export function calculateQcAverages(
   points: DigitizedCptPoint[],
   input: VibroPileInput,

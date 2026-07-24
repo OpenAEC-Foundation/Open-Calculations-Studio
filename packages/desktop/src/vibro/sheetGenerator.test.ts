@@ -8,13 +8,17 @@ import { describe, expect, it } from "vitest";
 import type {
   CptCalibration,
   DigitizedCptPoint,
+  PositiveShaftLayer,
   VibroPileInput,
 } from "./types";
 import {
   generateVibroPileSheet,
   type VibroSheetModel,
 } from "./sheetGenerator";
-import { calculatePileResistance } from "./geotechnical";
+import {
+  calculatePileResistance,
+  clipPositiveShaftLayers,
+} from "./geotechnical";
 import { templates } from "../templates";
 import { projectTree, type TreeNode } from "../components/calc/projectTree";
 
@@ -141,14 +145,15 @@ function completeModel(): VibroSheetModel {
 
 function crossCheckModel(
   qcAtDepth: (depthNapM: number) => number,
+  positiveShaftLayers: PositiveShaftLayer[] = [
+    { bottomNapM: -22, topNapM: -15.1 },
+    { bottomNapM: -15.1, topNapM: -14.25 },
+  ],
 ): VibroSheetModel {
   const crossCheckInput: VibroPileInput = {
     ...input,
     pileTipNapM: -22,
-    positiveShaftLayers: [
-      { bottomNapM: -22, topNapM: -15.1 },
-      { bottomNapM: -15.1, topNapM: -14.25 },
-    ],
+    positiveShaftLayers,
   };
   const crossCheckPoints = Array.from({ length: 101 }, (_, index) => {
     const depthNapM = -24 + index * 0.1;
@@ -163,12 +168,11 @@ function crossCheckModel(
     return calculatePileResistance(crossCheckPoints, {
       ...crossCheckInput,
       pileTipNapM,
-      positiveShaftLayers: crossCheckInput.positiveShaftLayers
-        .map((layer) => ({
-          bottomNapM: Math.max(layer.bottomNapM, pileTipNapM),
-          topNapM: layer.topNapM,
-        }))
-        .filter((layer) => layer.topNapM > layer.bottomNapM),
+      positiveShaftLayers: clipPositiveShaftLayers(
+        crossCheckInput.positiveShaftLayers,
+        pileTipNapM,
+        crossCheckInput.positiveShaftStartNapM,
+      ),
     });
   });
   return {
@@ -332,6 +336,32 @@ describe("generateVibroPileSheet", () => {
       });
     }
   }, 20_000);
+
+  it("filtert een volledig inactieve schachtlaag vóór formulegeneratie", () => {
+    const model = crossCheckModel(
+      (depthNapM) => 9.5 + 2.3 * Math.cos((depthNapM + 22) * 1.4),
+      [
+        { bottomNapM: -22, topNapM: -19.75 },
+        { bottomNapM: -19.75, topNapM: -14.25 },
+      ],
+    );
+
+    const source = generateVibroPileSheet(model);
+    const evaluated = evaluate(parse(source));
+
+    expect(source).toContain("qc_z_a_1_layer_1_lo = -18.5");
+    expect(source).not.toContain("qc_z_a_1_layer_2_lo");
+    expect(collectEvaluationErrors(evaluated)).toEqual([]);
+    model.results.forEach((expected, index) => {
+      const suffix = index + 1;
+      expectSheetValue(
+        evaluated,
+        `qc_z_a_gem_${suffix}`,
+        expected.qcShaftAvgMpa,
+      );
+      expectSheetValue(evaluated, `R_s_cal_${suffix}`, expected.rsCalKn);
+    });
+  }, 10_000);
 
   it("blokkeert generatie wanneer de sheet van de rekenkern afwijkt", () => {
     const model = crossCheckModel((depthNapM) =>

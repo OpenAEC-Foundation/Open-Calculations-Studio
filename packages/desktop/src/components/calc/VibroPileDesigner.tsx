@@ -8,7 +8,10 @@ import {
 import {
   evaluateDigitizationQuality,
 } from "../../vibro/designerQuality";
-import { calculatePileResistance } from "../../vibro/geotechnical";
+import {
+  calculatePileResistance,
+  clipPositiveShaftLayers,
+} from "../../vibro/geotechnical";
 import {
   getPdfRenderScaleError,
   renderPdfPage,
@@ -292,9 +295,10 @@ export default function VibroPileDesigner({
         calculatePileResistance(acceptedPoints, {
           ...pileInput,
           pileTipNapM,
-          positiveShaftLayers: positiveShaftLayersForTip(
-            pileInput,
+          positiveShaftLayers: clipPositiveShaftLayers(
+            pileInput.positiveShaftLayers,
             pileTipNapM,
+            pileInput.positiveShaftStartNapM,
           ),
         }));
       const source = generateVibroPileSheet({
@@ -768,21 +772,6 @@ function createNegativeSkinLayer(
     tanDelta: 0.35,
     gamma: 1,
   };
-}
-
-function positiveShaftLayersForTip(
-  input: VibroPileInput,
-  pileTipNapM: number,
-) {
-  return input.positiveShaftLayers
-    .map((layer) => ({
-      bottomNapM: Math.max(layer.bottomNapM, pileTipNapM),
-      topNapM: Math.min(
-        layer.topNapM,
-        input.positiveShaftStartNapM,
-      ),
-    }))
-    .filter((layer) => layer.topNapM > layer.bottomNapM);
 }
 
 function defaultCalibration(

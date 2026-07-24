@@ -3,8 +3,10 @@ import type {
   CptCalibration,
   DigitizedCptPoint,
   PileResistanceResult,
+  PositiveShaftLayer,
   VibroPileInput,
 } from "./types";
+import { clipPositiveShaftLayers } from "./geotechnical";
 
 export interface VibroSheetModel {
   sourceFileName: string;
@@ -271,7 +273,14 @@ function resultFormulaBlock(
     `${tip} + trajectory_III_length_${suffix}_m`,
     `qc_II_${suffix}_running_min`,
   );
-  const shaft = shaftQcBlock(suffix, tip, input);
+  const shaft = shaftQcBlock(
+    suffix,
+    clipPositiveShaftLayers(
+      input.positiveShaftLayers,
+      pileTipNapM,
+      input.positiveShaftStartNapM,
+    ),
+  );
 
   return [
     `### Paalpunt NAP ${number(pileTipNapM, 2)} m`,
@@ -364,21 +373,20 @@ function minimumRouteBlock(
 
 function shaftQcBlock(
   suffix: number,
-  tip: string,
-  input: VibroPileInput,
+  layers: PositiveShaftLayer[],
 ): string[] {
   const lines = [
     `qc_z_a_integral_${suffix} = 0`,
     `qc_z_a_length_${suffix}_m = 0`,
   ];
 
-  input.positiveShaftLayers.forEach((_, layerIndex) => {
+  layers.forEach((activeLayer, layerIndex) => {
     const layer = layerIndex + 1;
     const prefix = `qc_z_a_${suffix}_layer_${layer}`;
     lines.push(
-      `${prefix}_lo = max(${tip}, shaft_bottom_${layer})`,
-      `${prefix}_hi = min(positive_shaft_start_NAP_m, shaft_top_${layer})`,
-      `${prefix}_h = max(${prefix}_hi - ${prefix}_lo, 0)`,
+      `${prefix}_lo = ${number(activeLayer.bottomNapM)}`,
+      `${prefix}_hi = ${number(activeLayer.topNapM)}`,
+      `${prefix}_h = ${prefix}_hi - ${prefix}_lo`,
       `${prefix}_raw_min = min(qc_at(${prefix}_lo), qc_at(${prefix}_hi))`,
       `${prefix}_has_peak = 0`,
       `#if max(qc_at(${prefix}_lo), qc_at(${prefix}_hi)) > 12`,
