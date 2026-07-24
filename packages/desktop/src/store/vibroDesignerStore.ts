@@ -5,6 +5,7 @@ import type { RenderedPdfPage } from "../vibro/pdfPage";
 import type {
   CptCalibration,
   DigitizedCptPoint,
+  VibroPileInput,
 } from "../vibro/types";
 
 export type DesignerStage =
@@ -29,6 +30,8 @@ export interface VibroDesignerWorkflow {
   relevantRange: RelevantDepthRange;
   digitization: CurveDigitizationResult | null;
   acceptedPoints: DigitizedCptPoint[];
+  pileInput: VibroPileInput;
+  inputError: string;
   errorMessage: string;
   renderRequestId: number;
 }
@@ -58,6 +61,8 @@ const INITIAL_WORKFLOW: VibroDesignerWorkflow = {
   },
   digitization: null,
   acceptedPoints: [],
+  pileInput: createInitialVibroPileInput(),
+  inputError: "",
   errorMessage: "",
   renderRequestId: 0,
 };
@@ -69,6 +74,7 @@ export const useVibroDesignerStore = create<
   updateWorkflow: (patch) => set(patch),
   resetWorkflow: () => set((state) => ({
     ...INITIAL_WORKFLOW,
+    pileInput: createInitialVibroPileInput(),
     documentRevision: state.documentRevision,
     renderRequestId: state.renderRequestId + 1,
   })),
@@ -76,6 +82,7 @@ export const useVibroDesignerStore = create<
     if (get().documentRevision === documentRevision) return;
     set((state) => ({
       ...INITIAL_WORKFLOW,
+      pileInput: createInitialVibroPileInput(),
       documentRevision,
       renderRequestId: state.renderRequestId + 1,
     }));
@@ -88,3 +95,34 @@ export const useVibroDesignerStore = create<
   isCurrentRenderRequest: (requestId) =>
     get().renderRequestId === requestId,
 }));
+
+export function createInitialVibroPileInput(): VibroPileInput {
+  return {
+    shaftDiameterMm: 323,
+    baseDiameterMm: 365,
+    pileHeadNapM: -0.9,
+    pileTipNapM: -22,
+    positiveShaftStartNapM: -14.25,
+    alphaP: 0.7,
+    alphaS: 0.01,
+    beta: 1,
+    shapeFactor: 1,
+    xiSingleCpt: 1.3,
+    gammaB: 1.2,
+    gammaS: 1.2,
+    designLoadKn: 500,
+    positiveShaftLayers: [{
+      bottomNapM: -22,
+      topNapM: -14.25,
+    }],
+    negativeSkinLayers: [{
+      topNapM: -0.9,
+      bottomNapM: -14.25,
+      effectiveStressTopKpa: 0,
+      effectiveStressBottomKpa: 85,
+      k0: 0.5,
+      tanDelta: 0.35,
+      gamma: 1,
+    }],
+  };
+}

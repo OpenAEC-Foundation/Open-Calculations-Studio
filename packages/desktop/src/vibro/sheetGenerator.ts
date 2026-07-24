@@ -1,3 +1,4 @@
+import { evaluate, parse, type EvaluatedNode } from "@ifc-calc/core";
 import type {
   CptCalibration,
   DigitizedCptPoint,
@@ -87,7 +88,61 @@ export function generateVibroPileSheet(model: VibroSheetModel): string {
     "",
   ];
 
-  return lines.join("\n");
+  const source = lines.join("\n");
+  assertSheetMatchesResults(source, model.results);
+  return source;
+}
+
+function assertSheetMatchesResults(
+  source: string,
+  results: PileResistanceResult[],
+): void {
+  const evaluated = evaluate(parse(source));
+  const expectedValues = results.flatMap((result, index) => {
+    const suffix = index + 1;
+    return [
+      [`qc_I_gem_${suffix}`, result.qcIAvgMpa],
+      [`qc_II_gem_${suffix}`, result.qcIIAvgMpa],
+      [`qc_III_gem_${suffix}`, result.qcIIIAvgMpa],
+      [`qc_z_a_gem_${suffix}`, result.qcShaftAvgMpa],
+      [`R_b_cal_${suffix}`, result.rbCalKn],
+      [`R_s_cal_${suffix}`, result.rsCalKn],
+      [`R_c_d_${suffix}`, result.rcDesignKn],
+      [`F_nk_d_${suffix}`, result.negativeSkinDesignKn],
+      [`R_c_net_d_${suffix}`, result.rcNetDesignKn],
+      [`unity_check_${suffix}`, result.unityCheck],
+    ] as Array<[string, number]>;
+  });
+
+  for (const [name, expected] of expectedValues) {
+    const assignment = findEvaluatedAssignment(evaluated, name);
+    if (assignment === undefined || assignment.result.startsWith("Error:")) {
+      throw new RangeError(
+        `Sheetafwijking: ${name} kon niet eindig worden geëvalueerd`,
+      );
+    }
+    const actual = Number(assignment.result);
+    const tolerance = Math.max(1e-3, Math.abs(expected) * 5e-4);
+    if (!Number.isFinite(actual) || Math.abs(actual - expected) > tolerance) {
+      throw new RangeError(
+        `Sheetafwijking bij ${name}: sheet ${assignment.result}, rekenkern ${number(expected)}`,
+      );
+    }
+  }
+}
+
+function findEvaluatedAssignment(
+  nodes: EvaluatedNode[],
+  name: string,
+): Extract<EvaluatedNode, { type: "assignment" }> | undefined {
+  for (const node of nodes) {
+    if (node.type === "assignment" && node.name === name) return node;
+    if (node.type === "conditional-branch") {
+      const nested = findEvaluatedAssignment(node.children, name);
+      if (nested !== undefined) return nested;
+    }
+  }
+  return undefined;
 }
 
 function calibrationAssignments(calibration: CptCalibration): string[] {
@@ -224,7 +279,6 @@ function resultFormulaBlock(
     `${tip} = ${number(pileTipNapM)}`,
     `critical_depth_min_${suffix}_m = 0.7 * d_b_m`,
     `critical_depth_max_${suffix}_m = 4 * d_b_m`,
-    `qc_I_scan_steps_${suffix} = 16`,
     `trajectory_III_length_${suffix}_m = 8 * d_b_m`,
     "#hide",
     ...critical,
@@ -251,29 +305,13 @@ function resultFormulaBlock(
 }
 
 function criticalDepthBlock(suffix: number, tip: string): string[] {
-  const candidatePrefix = `qc_I_candidate_${suffix}`;
   return [
-    `critical_depth_${suffix}_m = critical_depth_min_${suffix}_m`,
+    `critical_depth_${suffix}_m = linear_average_min_depth(qc_data, ${tip}, critical_depth_min_${suffix}_m, critical_depth_max_${suffix}_m, 1, 2)`,
     ...trapezoidIntegralBlock(
       `qc_I_integral_${suffix}`,
       `${tip} - critical_depth_${suffix}_m`,
       tip,
     ),
-    `qc_I_minimum_average_${suffix} = qc_I_integral_${suffix} / critical_depth_${suffix}_m`,
-    `#repeat qc_I_scan_steps_${suffix} + 1`,
-    `${candidatePrefix}_depth_m = critical_depth_min_${suffix}_m + (_i - 1) * (critical_depth_max_${suffix}_m - critical_depth_min_${suffix}_m) / qc_I_scan_steps_${suffix}`,
-    ...trapezoidIntegralBlock(
-      `${candidatePrefix}_integral`,
-      `${tip} - ${candidatePrefix}_depth_m`,
-      tip,
-    ),
-    `${candidatePrefix}_average = ${candidatePrefix}_integral / ${candidatePrefix}_depth_m`,
-    `#if ${candidatePrefix}_average < qc_I_minimum_average_${suffix}`,
-    `qc_I_minimum_average_${suffix} = ${candidatePrefix}_average`,
-    `critical_depth_${suffix}_m = ${candidatePrefix}_depth_m`,
-    `qc_I_integral_${suffix} = ${candidatePrefix}_integral`,
-    "#end if",
-    "#end repeat",
     `qc_I_bottom_${suffix}_NAP_m = ${tip} - critical_depth_${suffix}_m`,
   ];
 }
@@ -369,16 +407,7 @@ function shaftQcBlock(
       `${prefix}_cutoff = min(${prefix}_raw_min, 15)`,
       "#end if",
       "#end if",
-      `${prefix}_integral = 0`,
-      `#repeat ${prefix}_end_row - ${prefix}_start_row`,
-      `${prefix}_row = ${prefix}_start_row + _i - 1`,
-      `${prefix}_seg_lo = max(${prefix}_lo, get(${prefix}_row, 1, qc_data))`,
-      `${prefix}_seg_hi = min(${prefix}_hi, get(${prefix}_row + 1, 1, qc_data))`,
-      `${prefix}_seg_h = max(${prefix}_seg_hi - ${prefix}_seg_lo, 0)`,
-      `${prefix}_q_lo = min(qc_at(${prefix}_seg_lo), ${prefix}_cutoff)`,
-      `${prefix}_q_hi = min(qc_at(${prefix}_seg_hi), ${prefix}_cutoff)`,
-      `${prefix}_integral = ${prefix}_integral + ${prefix}_seg_h * (${prefix}_q_lo + ${prefix}_q_hi) / 2`,
-      "#end repeat",
+      `${prefix}_integral = integrate_linear_limited(qc_data, ${prefix}_lo, ${prefix}_hi, ${prefix}_cutoff, 1, 2)`,
       `qc_z_a_integral_${suffix} = qc_z_a_integral_${suffix} + ${prefix}_integral`,
       `qc_z_a_length_${suffix}_m = qc_z_a_length_${suffix}_m + ${prefix}_h`,
     );

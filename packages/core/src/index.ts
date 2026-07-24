@@ -3,6 +3,15 @@ export { evaluate, setAngleMode } from './evaluator.js';
 export type { SelectValues, AngleMode } from './evaluator.js';
 export { render, defaultStyles } from './renderer.js';
 export { exprToLatex, nameToLatex } from './latex.js';
+export {
+  findLinearAverageMinimumDepth,
+  integrateLimitedLinearTable,
+  integrateLinearTable,
+  interpolateLinearTable,
+  lookupLinearTableRow,
+  type DimensionlessNumericTable,
+  type LookupDirection,
+} from './linear-table.js';
 export { parseGef, type GefData } from './gef-parser.js';
 export {
   generateIfcx,

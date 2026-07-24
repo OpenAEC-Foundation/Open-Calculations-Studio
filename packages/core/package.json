@@ -12,7 +12,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "test": "vitest run"
   },
   "dependencies": {
     "katex": "^0.16.28",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@types/katex": "^0.16.8",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^3.2.4"
   }
 }

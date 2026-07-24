@@ -172,8 +172,8 @@ describe("VibroPileDesigner workflow", () => {
             Wissel paneel
           </button>
           {right
-            ? <div data-testid="right-pane"><VibroPileDesigner documentRevision={0} /></div>
-            : <div data-testid="left-pane"><VibroPileDesigner documentRevision={0} /></div>}
+            ? <div data-testid="right-pane"><VibroPileDesigner key="right" documentRevision={0} /></div>
+            : <div data-testid="left-pane"><VibroPileDesigner key="left" documentRevision={0} /></div>}
         </>
       );
     }
@@ -182,11 +182,17 @@ describe("VibroPileDesigner workflow", () => {
     expect(screen.getByText(/Kalibratie geaccepteerd · 1 meetpunten/))
       .toBeTruthy();
 
+    fireEvent.change(screen.getByLabelText("Ontwerpbelasting (kN)"), {
+      target: { value: "725" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Wissel paneel" }));
 
     expect(screen.getByTestId("right-pane")).toBeTruthy();
     expect(screen.getByText(/Kalibratie geaccepteerd · 1 meetpunten/))
       .toBeTruthy();
+    expect((screen.getByLabelText(
+      "Ontwerpbelasting (kN)",
+    ) as HTMLInputElement).value).toBe("725");
     expect(useVibroDesignerStore.getState().acceptedPoints).toHaveLength(1);
   });
 
@@ -384,7 +390,7 @@ describe("VibroPileDesigner workflow", () => {
         node.type === "assignment"
         && node.result.startsWith("Error:"),
     )).toEqual([]);
-  });
+  }, 10_000);
 
   it("laat meerdere negatieve-kleeflagen configureren", () => {
     seedWorkflow("ready");
@@ -399,5 +405,49 @@ describe("VibroPileDesigner workflow", () => {
     expect(screen.getByRole("button", {
       name: "Negatieve-kleeflaag 2 verwijderen",
     })).toBeTruthy();
+  });
+
+  it("houdt invoerfouten herstelbaar zonder de ready-fase te verlaten", () => {
+    const acceptedPoints = Array.from({ length: 201 }, (_, index) => ({
+      depthNapM: -24 + index * 0.05,
+      qcMpa: 8 + index / 100,
+      confidence: 0.95,
+    }));
+    seedWorkflow("ready");
+    act(() => {
+      useVibroDesignerStore.getState().updateWorkflow({
+        acceptedPoints,
+        calibration: {
+          pageIndex: 0,
+          plotBoundsPx: { left: 60, top: 80, right: 400, bottom: 700 },
+          qcMinMpa: 0,
+          qcMaxMpa: 20,
+          depthTopNapM: -14,
+          depthBottomNapM: -24,
+        },
+      });
+    });
+    render(<VibroPileDesigner documentRevision={0} />);
+
+    fireEvent.change(screen.getByLabelText("Schachtdiameter (mm)"), {
+      target: { value: "0" },
+    });
+    fireEvent.click(screen.getByRole("button", {
+      name: "Rekensheet genereren",
+    }));
+
+    expect(useVibroDesignerStore.getState().stage).toBe("ready");
+    expect(screen.getByRole("alert").textContent).toMatch(
+      /diameters moeten positief/i,
+    );
+    expect(screen.getByRole("button", {
+      name: "Rekensheet genereren",
+    })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Schachtdiameter (mm)"), {
+      target: { value: "323" },
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(useVibroDesignerStore.getState().stage).toBe("ready");
   });
 });

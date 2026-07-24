@@ -1,5 +1,12 @@
 import { create, all, type MathJsInstance, type MathNode } from 'mathjs';
 import type { AstNode, ConditionalNode, EvaluatedNode } from './types.js';
+import {
+  findLinearAverageMinimumDepth,
+  integrateLimitedLinearTable,
+  integrateLinearTable,
+  interpolateLinearTable,
+  lookupLinearTableRow,
+} from './linear-table.js';
 
 const math: MathJsInstance = create(all, {});
 
@@ -109,116 +116,25 @@ function lookupHelper(args: unknown[], mode: 'eq' | 'ge' | 'le'): unknown {
   return best ?? 0;
 }
 
-function interpolateLinearHelper(args: unknown[]): unknown {
-  if (args.length === 0) return 0;
-  const matrix = toArrayLike(args[0]);
-  if (!matrix) return 0;
-  const target = asNumber(args[1] ?? 0);
-  const lookupCol = Math.max(1, Math.trunc(asNumber(args[2] ?? 1)));
-  const returnCol = Math.max(1, Math.trunc(asNumber(args[3] ?? lookupCol)));
-
-  let lowerKey = -Infinity;
-  let lowerValue = 0;
-  let upperKey = Infinity;
-  let upperValue = 0;
-  for (const row of matrix) {
-    const cells = toArrayLike(row);
-    if (!cells) continue;
-    const key = asNumber(cells[lookupCol - 1]);
-    const value = asNumber(cells[returnCol - 1]);
-    if (!Number.isFinite(key) || !Number.isFinite(value)) continue;
-    if (key <= target && key > lowerKey) {
-      lowerKey = key;
-      lowerValue = value;
-    }
-    if (key >= target && key < upperKey) {
-      upperKey = key;
-      upperValue = value;
-    }
+function dimensionlessTable(value: unknown): number[][] {
+  const matrix = toArrayLike(value);
+  if (!matrix) {
+    throw new TypeError("Lineaire tabel moet een dimensieloze numerieke matrix zijn");
   }
-
-  if (lowerKey === -Infinity) return upperValue;
-  if (upperKey === Infinity) return lowerValue;
-  if (upperKey === lowerKey) return lowerValue;
-  return lowerValue
-    + (target - lowerKey) * (upperValue - lowerValue) / (upperKey - lowerKey);
-}
-
-function integrateLinearHelper(args: unknown[]): unknown {
-  if (args.length === 0) return 0;
-  const matrix = toArrayLike(args[0]);
-  if (!matrix) return 0;
-  const lower = asNumber(args[1] ?? 0);
-  const upper = asNumber(args[2] ?? lower);
-  const lookupCol = Math.max(1, Math.trunc(asNumber(args[3] ?? 1)));
-  const returnCol = Math.max(1, Math.trunc(asNumber(args[4] ?? lookupCol)));
-  if (!Number.isFinite(lower) || !Number.isFinite(upper) || upper <= lower) {
-    return 0;
-  }
-
-  const rows = matrix.flatMap((row) => {
+  return matrix.map((row) => {
     const cells = toArrayLike(row);
-    if (!cells) return [];
-    const key = asNumber(cells[lookupCol - 1]);
-    const value = asNumber(cells[returnCol - 1]);
-    return Number.isFinite(key) && Number.isFinite(value)
-      ? [{ key, value }]
-      : [];
-  }).sort((first, second) => first.key - second.key);
-  if (rows.length === 0) return 0;
-
-  const valueAt = (target: number): number => {
-    if (target <= rows[0]!.key) return rows[0]!.value;
-    if (target >= rows[rows.length - 1]!.key) {
-      return rows[rows.length - 1]!.value;
+    if (!cells) {
+      throw new TypeError("Lineaire tabel moet een tweedimensionale matrix zijn");
     }
-    const upperIndex = rows.findIndex((row) => row.key >= target);
-    const lowerRow = rows[upperIndex - 1]!;
-    const upperRow = rows[upperIndex]!;
-    if (upperRow.key === target) return upperRow.value;
-    return lowerRow.value
-      + (target - lowerRow.key)
-        * (upperRow.value - lowerRow.value)
-        / (upperRow.key - lowerRow.key);
-  };
-
-  const clipped = [
-    { key: lower, value: valueAt(lower) },
-    ...rows.filter((row) => row.key > lower && row.key < upper),
-    { key: upper, value: valueAt(upper) },
-  ];
-  let integral = 0;
-  for (let index = 1; index < clipped.length; index += 1) {
-    const previous = clipped[index - 1]!;
-    const current = clipped[index]!;
-    integral +=
-      (current.key - previous.key) * (previous.value + current.value) / 2;
-  }
-  return integral;
-}
-
-function lookupRowHelper(args: unknown[], mode: 'ge' | 'le'): number {
-  if (args.length === 0) return 0;
-  const matrix = toArrayLike(args[0]);
-  if (!matrix) return 0;
-  const target = asNumber(args[1] ?? 0);
-  const lookupCol = Math.max(1, Math.trunc(asNumber(args[2] ?? 1)));
-  let bestRow = 0;
-  let bestDelta = Infinity;
-  matrix.forEach((row, index) => {
-    const cells = toArrayLike(row);
-    if (!cells) return;
-    const key = asNumber(cells[lookupCol - 1]);
-    if (!Number.isFinite(key)) return;
-    if (mode === 'ge' && key < target) return;
-    if (mode === 'le' && key > target) return;
-    const delta = Math.abs(key - target);
-    if (delta < bestDelta) {
-      bestDelta = delta;
-      bestRow = index + 1;
-    }
+    return cells as number[];
   });
-  return bestRow;
+}
+
+function dimensionlessNumber(value: unknown, name: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new TypeError(`${name} moet een eindig dimensieloos getal zijn`);
+  }
+  return value;
 }
 
 math.import(
@@ -264,16 +180,57 @@ math.import(
     hlookup_ge: function (...args: unknown[]) { return lookupHelper(args, 'ge'); },
     hlookup_le: function (...args: unknown[]) { return lookupHelper(args, 'le'); },
     interpolate_linear: function (...args: unknown[]) {
-      return interpolateLinearHelper(args);
+      return interpolateLinearTable(
+        dimensionlessTable(args[0]),
+        dimensionlessNumber(args[1], "Zoekwaarde"),
+        dimensionlessNumber(args[2], "Zoekkolom"),
+        dimensionlessNumber(args[3], "Retourkolom"),
+      );
     },
     integrate_linear: function (...args: unknown[]) {
-      return integrateLinearHelper(args);
+      return integrateLinearTable(
+        dimensionlessTable(args[0]),
+        dimensionlessNumber(args[1], "Ondergrens"),
+        dimensionlessNumber(args[2], "Bovengrens"),
+        dimensionlessNumber(args[3], "Zoekkolom"),
+        dimensionlessNumber(args[4], "Retourkolom"),
+      );
+    },
+    integrate_linear_limited: function (...args: unknown[]) {
+      return integrateLimitedLinearTable(
+        dimensionlessTable(args[0]),
+        dimensionlessNumber(args[1], "Ondergrens"),
+        dimensionlessNumber(args[2], "Bovengrens"),
+        dimensionlessNumber(args[3], "Afsnijwaarde"),
+        dimensionlessNumber(args[4], "Zoekkolom"),
+        dimensionlessNumber(args[5], "Retourkolom"),
+      );
+    },
+    linear_average_min_depth: function (...args: unknown[]) {
+      return findLinearAverageMinimumDepth(
+        dimensionlessTable(args[0]),
+        dimensionlessNumber(args[1], "Puntniveau"),
+        dimensionlessNumber(args[2], "Minimale diepte"),
+        dimensionlessNumber(args[3], "Maximale diepte"),
+        dimensionlessNumber(args[4], "Zoekkolom"),
+        dimensionlessNumber(args[5], "Retourkolom"),
+      );
     },
     lookup_row_ge: function (...args: unknown[]) {
-      return lookupRowHelper(args, 'ge');
+      return lookupLinearTableRow(
+        dimensionlessTable(args[0]),
+        dimensionlessNumber(args[1], "Zoekwaarde"),
+        dimensionlessNumber(args[2], "Zoekkolom"),
+        "ge",
+      );
     },
     lookup_row_le: function (...args: unknown[]) {
-      return lookupRowHelper(args, 'le');
+      return lookupLinearTableRow(
+        dimensionlessTable(args[0]),
+        dimensionlessNumber(args[1], "Zoekwaarde"),
+        dimensionlessNumber(args[2], "Zoekkolom"),
+        "le",
+      );
     },
     n_rows: function (v: unknown) {
       const a = toArrayLike(v);

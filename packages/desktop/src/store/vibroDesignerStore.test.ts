@@ -20,6 +20,22 @@ describe("vibroDesignerStore", () => {
     expect(remountedState.acceptedPoints).toHaveLength(1);
   });
 
+  it("bewaart gewijzigde paalinvoer voor hetzelfde document", () => {
+    const initial = useVibroDesignerStore.getState().pileInput;
+    useVibroDesignerStore.getState().updateWorkflow({
+      pileInput: { ...initial, designLoadKn: 725, alphaP: 0.62 },
+    });
+
+    useVibroDesignerStore.getState().bindDocument(
+      useVibroDesignerStore.getState().documentRevision,
+    );
+
+    expect(useVibroDesignerStore.getState().pileInput).toMatchObject({
+      designLoadKn: 725,
+      alphaP: 0.62,
+    });
+  });
+
   it("maakt alleen de nieuwste renderrequest actueel", () => {
     const firstRequest = useVibroDesignerStore.getState().beginRenderRequest();
     const secondRequest = useVibroDesignerStore.getState().beginRenderRequest();
@@ -56,6 +72,7 @@ describe("vibroDesignerStore", () => {
     expect(state.stage).toBe("empty");
     expect(state.pdfName).toBe("");
     expect(state.acceptedPoints).toEqual([]);
+    expect(state.pileInput.designLoadKn).toBe(500);
     expect(state.isCurrentRenderRequest(request)).toBe(false);
   });
 });

@@ -46,9 +46,6 @@ export default function VibroPileDesigner({
   documentRevision,
 }: VibroPileDesignerProps) {
   const loadTemplate = useDocumentStore((state) => state.loadTemplate);
-  const [pileInput, setPileInput] = useState<VibroPileInput>(
-    createInitialPileInput,
-  );
   const {
     documentRevision: workflowDocumentRevision,
     stage,
@@ -63,6 +60,8 @@ export default function VibroPileDesigner({
     relevantRange,
     digitization,
     acceptedPoints,
+    pileInput,
+    inputError,
     errorMessage,
     updateWorkflow,
     bindDocument,
@@ -72,7 +71,6 @@ export default function VibroPileDesigner({
 
   useLayoutEffect(() => {
     bindDocument(documentRevision);
-    setPileInput(createInitialPileInput());
   }, [bindDocument, documentRevision]);
 
   const quality = useMemo(
@@ -306,9 +304,15 @@ export default function VibroPileDesigner({
         input: pileInput,
         results,
       });
+      updateWorkflow({ inputError: "" });
       loadTemplate(source, "VIBRO-paal sondering 1");
     } catch (error) {
-      showError(error);
+      updateWorkflow({
+        inputError:
+          error instanceof Error
+            ? error.message
+            : "De paal- en grondinvoer is ongeldig.",
+      });
     }
   };
 
@@ -362,8 +366,14 @@ export default function VibroPileDesigner({
       {calibration !== null && (
         <PileInputPanel
           input={pileInput}
-          onChange={setPileInput}
+          onChange={(nextInput) => updateWorkflow({
+            pileInput: nextInput,
+            inputError: "",
+          })}
         />
+      )}
+      {inputError !== "" && (
+        <div className="vibro-inline-error" role="alert">{inputError}</div>
       )}
 
       {renderedPage === null || calibration === null ? (
@@ -743,29 +753,6 @@ function PileNumberField({
       />
     </label>
   );
-}
-
-function createInitialPileInput(): VibroPileInput {
-  return {
-    shaftDiameterMm: 323,
-    baseDiameterMm: 365,
-    pileHeadNapM: -0.9,
-    pileTipNapM: -18.5,
-    positiveShaftStartNapM: -14.25,
-    alphaP: 0.7,
-    alphaS: 0.01,
-    beta: 1,
-    shapeFactor: 1,
-    xiSingleCpt: 1.3,
-    gammaB: 1.2,
-    gammaS: 1.2,
-    designLoadKn: 500,
-    positiveShaftLayers: [{
-      bottomNapM: -22,
-      topNapM: -14.25,
-    }],
-    negativeSkinLayers: [createNegativeSkinLayer(-0.9, -14.25)],
-  };
 }
 
 function createNegativeSkinLayer(

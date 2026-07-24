@@ -1,3 +1,4 @@
+import { findLinearAverageMinimumDepth } from "@ifc-calc/core";
 import type {
   DigitizedCptPoint,
   PileResistanceResult,
@@ -493,98 +494,14 @@ function findCriticalDepth(
   minimumDepthM: number,
   maximumDepthM: number,
 ): number {
-  const segmentBoundaries = curve
-    .map((point) => pileTipNapM - point.depthNapM)
-    .filter(
-      (depthM) =>
-        depthM > minimumDepthM + DEPTH_TOLERANCE_M
-        && depthM < maximumDepthM - DEPTH_TOLERANCE_M,
-    )
-    .sort((first, second) => first - second);
-  const boundaries = [minimumDepthM, ...segmentBoundaries, maximumDepthM];
-  const candidates = [...boundaries];
-
-  for (let index = 0; index < boundaries.length - 1; index += 1) {
-    const startDepthM = boundaries[index]!;
-    const endDepthM = boundaries[index + 1]!;
-    const startGradient = averageGradientNumerator(
-      curve,
-      pileTipNapM,
-      startDepthM,
-    );
-    const endGradient = averageGradientNumerator(
-      curve,
-      pileTipNapM,
-      endDepthM,
-    );
-    if (startGradient * endGradient < 0) {
-      candidates.push(findGradientRoot(
-        curve,
-        pileTipNapM,
-        startDepthM,
-        endDepthM,
-      ));
-    }
-  }
-
-  let criticalDepthM = candidates[0]!;
-  let minimumAverageMpa = averageBelowTip(curve, pileTipNapM, criticalDepthM);
-  for (const candidateDepthM of candidates.slice(1)) {
-    const averageMpa = averageBelowTip(curve, pileTipNapM, candidateDepthM);
-    if (averageMpa < minimumAverageMpa - 1e-12) {
-      criticalDepthM = candidateDepthM;
-      minimumAverageMpa = averageMpa;
-    }
-  }
-
-  return criticalDepthM;
-}
-
-function findGradientRoot(
-  curve: DigitizedCptPoint[],
-  pileTipNapM: number,
-  initialLowerM: number,
-  initialUpperM: number,
-): number {
-  let lowerM = initialLowerM;
-  let upperM = initialUpperM;
-  let lowerGradient = averageGradientNumerator(curve, pileTipNapM, lowerM);
-
-  for (let iteration = 0; iteration < 60; iteration += 1) {
-    const middleM = (lowerM + upperM) / 2;
-    const middleGradient =
-      averageGradientNumerator(curve, pileTipNapM, middleM);
-    if (Math.abs(middleGradient) <= 1e-14) {
-      return middleM;
-    }
-    if (lowerGradient * middleGradient <= 0) {
-      upperM = middleM;
-    } else {
-      lowerM = middleM;
-      lowerGradient = middleGradient;
-    }
-  }
-
-  return (lowerM + upperM) / 2;
-}
-
-function averageGradientNumerator(
-  curve: DigitizedCptPoint[],
-  pileTipNapM: number,
-  depthM: number,
-): number {
-  const boundaryQcMpa = interpolateQc(curve, pileTipNapM - depthM);
-  const integralMpaM =
-    integrateCurve(curve, pileTipNapM - depthM, pileTipNapM);
-  return boundaryQcMpa * depthM - integralMpaM;
-}
-
-function averageBelowTip(
-  curve: DigitizedCptPoint[],
-  pileTipNapM: number,
-  depthM: number,
-): number {
-  return integrateCurve(curve, pileTipNapM - depthM, pileTipNapM) / depthM;
+  return findLinearAverageMinimumDepth(
+    curve.map((point) => [point.depthNapM, point.qcMpa]),
+    pileTipNapM,
+    minimumDepthM,
+    maximumDepthM,
+    1,
+    2,
+  );
 }
 
 function integrateCurve(
