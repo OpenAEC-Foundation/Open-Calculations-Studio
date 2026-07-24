@@ -184,6 +184,15 @@ function inputAssignments(input: VibroPileInput): string[] {
 }
 
 function negativeSkinAssignments(input: VibroPileInput): string[] {
+  if (input.fixedNegativeSkinDesignKn !== undefined) {
+    return [
+      "Vaste gepubliceerde ontwerpwaarde voor negatieve kleef [kN].",
+      "negatieve_kleeflaag_data = []",
+      "n_negatieve_kleeflagen = 0",
+      `F_nk_d_basis = ${number(input.fixedNegativeSkinDesignKn)}`,
+    ];
+  }
+
   const rows = input.negativeSkinLayers.map((layer) => [
     layer.topNapM,
     layer.bottomNapM,

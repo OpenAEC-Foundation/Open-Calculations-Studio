@@ -34,9 +34,18 @@ function sampleCurve(
 }
 
 function withInput(changes: Partial<VibroPileInput> = {}): VibroPileInput {
+  const {
+    fixedNegativeSkinDesignKn: _referenceFixedValue,
+    ...referenceBase
+  } = vibroReferenceInput;
   const input = {
-    ...vibroReferenceInput,
+    ...referenceBase,
+    pileTipNapM: -18.5,
     designLoadKn: 500,
+    positiveShaftLayers: [{
+      bottomNapM: -18.5,
+      topNapM: referenceBase.positiveShaftStartNapM,
+    }],
     ...changes,
   };
   if (

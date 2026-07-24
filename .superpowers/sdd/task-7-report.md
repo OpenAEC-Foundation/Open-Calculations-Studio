@@ -12,27 +12,34 @@
 - De gepubliceerde ontwerpwaarde voor negatieve kleef is 245 kN voor alle
   acht rijen. Deze waarde wordt rechtstreeks uit de rapporttabel toegepast;
   hij wordt niet uit het gewenste netto eindresultaat teruggerekend.
-- De UI toont de referentiekalibratie, kleurisolatie en vergelijking alleen
-  wanneer de volledige bronidentiteit klopt. Een willekeurige PDF op pagina
-  1 krijgt de generieke kalibratieroute.
+- De vergelijking rekent met de actuele zichtbare paalinvoer. Bij een
+  afwijkende configuratie toont de UI een waarschuwing en geen
+  referentiestatus. De gebruiker kan de expliciete referentie-invoer
+  toepassen.
 
-## Herkomst van de invoer
+## Herkomst en consistentie van de invoer
 
 Het referentierapport publiceert voor bodemprofiel 1 en 2 respectievelijk
 `Fnk;max;d = 247 kN` en `0 kN`. De rijwaarde `Fnk;d = 245 kN` staat voor
 ieder van de acht paalpuntniveaus in de resultatenkolom.
 
 De onderliggende laagparameters voor een onafhankelijke reconstructie van
-negatieve kleef worden niet in het rapport gepubliceerd. Daarom gebruikt de
-referentieketen de expliciet gepubliceerde rijwaarde 245 kN. Zo blijft de
-herkomst controleerbaar en wordt het netto resultaat niet gekalibreerd.
+negatieve kleef worden niet in het rapport gepubliceerd. Daarom bevat de
+actuele invoer een expliciet veld voor de gepubliceerde ontwerpwaarde
+`Fnk;d = 245 kN`. De rekenkern en gegenereerde sheet lezen hetzelfde veld.
+Zo blijft de herkomst controleerbaar en wordt het netto resultaat niet
+teruggerekend.
+
+De referentiestatus wordt alleen berekend wanneer alle actuele
+paalparameters, factoren, positieve-schachtlagen, negatieve-kleefinvoer en
+ontwerpbelasting exact met de referentieconfiguratie overeenkomen. Bij een
+afwijking blijft de tabel verborgen en verschijnt
+`Referentieconfiguratie wijkt af`.
 
 ## Bronbinding
 
 Bron:
 `C:\Users\rickd\Documents\GitHub\verification-files\Constructieberekeningen\Funderingspaal\Vibro\AA22485resultaten grondonderzoek.pdf`
-
-De bronbinding controleert:
 
 | Kenmerk | Vereiste |
 |---|---|
@@ -55,22 +62,29 @@ Het vaste voorstel op renderschaal 1 gebruikt:
 | qc-bereik | 0 - 35 MPa |
 | dieptebereik | NAP 0 - -37 m |
 
-De toleranties bevatten uitsluitend de formulegevoeligheid voor
-pixelonzekerheid:
+De pixelsensitiviteit wordt door de productierekenroute bepaald voor alle
+acht combinaties van `qc = -1, 0, +1 pixel` en
+`diepte = -1, 0, +1 pixel`, met uitzondering van de ongewijzigde combinatie.
+Lokale horizontale pixelwijzigingen liggen door de monotone qc-formules
+binnen de gelijktijdige plus/min-envelop. Dezelfde route wordt voor twee
+pixels herhaald.
 
-- groen: maximale uitkomstverandering door plus of min één pixel in qc- of
-  diepterichting;
-- oranje: dezelfde berekening voor plus of min twee pixels;
-- rood: groter dan de tweepixelgevoeligheid.
+Publicatieafronding blijft een afzonderlijke component:
 
-Er wordt geen tolerantie voor publicatieafronding of vaste invoer opgeteld.
+- qc-gemiddelden: 0,05 MPa;
+- `qb;max`: 0,005 MPa;
+- gepubliceerde gehele kN-waarden: 0,5 kN.
+
+Groen is de eenpixelgevoeligheid plus publicatieafronding. Oranje is de
+tweepixelgevoeligheid plus dezelfde publicatieafronding. Er wordt geen
+andere vaste invoermarge toegevoegd.
 
 ## Echte-PDF-keten
 
 De echte bron-PDF wordt gerenderd, de blauwe qc-curve wordt geïsoleerd en
 gedigitaliseerd, en alle acht rekentrajecten worden op dekking gecontroleerd.
-De ontwerpwaarde voor negatieve kleef is in iedere rij 245 kN en
-`Rc;netto;d = Rc;d - 245`.
+De actuele referentie-invoer, rekenkern en sheet gebruiken in iedere rij
+dezelfde ontwerpwaarde 245 kN en `Rc;netto;d = Rc;d - 245`.
 
 | NAP (m) | Rc;d berekend (kN) | Rc;d rapport (kN) | Rc;netto;d berekend (kN) | Rc;netto;d rapport (kN) | status netto |
 |---:|---:|---:|---:|---:|---|
@@ -83,16 +97,17 @@ De ontwerpwaarde voor negatieve kleef is in iedere rij 245 kN en
 | -21,5 | 822,862 | 1026 | 577,862 | 782 | onderzoeken |
 | -22,0 | 488,299 | 737 | 243,299 | 493 | onderzoeken |
 
-De rode uitkomsten blijven zichtbaar. Ze worden niet met verruimde
-toleranties of een aangepaste negatieve-kleefwaarde weggefilterd.
+De rode uitkomsten blijven zichtbaar. Ze worden niet met een aangepaste
+negatieve-kleefwaarde of niet-herleidbare marge weggefilterd.
 
 ## TDD en verificatie
 
-- De bronidentiteitstest faalde eerst omdat de renderlaag nog geen hash,
-  paginatekst en bronafmetingen doorgaf.
-- De referentietest valideert de invoerherkomst, bronbinding, kleurisolatie,
-  kalibratieresolutie, tolerantieherkomst en alle 64 statussen.
-- De integratietest bewijst dat een verkeerde bestandshash de
-  referentieroute uitschakelt.
-- De volledige desktop-suite is geslaagd: 13 testbestanden en 92 tests.
+- De 2D-hoektest faalde eerst aantoonbaar met een te krappe envelop:
+  4,210 kN tegenover een benodigde 5,889 kN.
+- De sheetconsistentietest faalde eerst met sheetwaarde 0 kN tegenover
+  rekenkernwaarde 245 kN.
+- Match- en mismatchtests controleren dat alleen actuele, exact
+  overeenkomende invoer een statusoordeel krijgt.
+- De echte-PDF-test valideert alle 64 tussenstapstatussen.
+- De volledige desktop-suite is geslaagd: 13 testbestanden en 97 tests.
 - De TypeScript- en Vite-productiebouw is geslaagd.

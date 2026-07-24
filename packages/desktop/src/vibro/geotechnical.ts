@@ -155,6 +155,22 @@ export function calculateShaftQcProfile(
 export function calculateNegativeSkinFriction(
   input: VibroPileInput,
 ): NegativeSkinResult {
+  if (input.fixedNegativeSkinDesignKn !== undefined) {
+    if (
+      !Number.isFinite(input.fixedNegativeSkinDesignKn)
+      || input.fixedNegativeSkinDesignKn < 0
+    ) {
+      throw new RangeError(
+        "De vaste ontwerpwaarde voor negatieve kleef moet eindig en niet-negatief zijn",
+      );
+    }
+    return {
+      layers: [],
+      negativeSkinCharacteristicKn: input.fixedNegativeSkinDesignKn,
+      negativeSkinDesignKn: input.fixedNegativeSkinDesignKn,
+    };
+  }
+
   const errors = validateNegativeSkinLayers(input);
   if (errors.length > 0) {
     throw new RangeError(`Ongeldige negatieve-kleeflagen: ${errors.join("; ")}`);

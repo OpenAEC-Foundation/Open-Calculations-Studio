@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { ReferenceComparisonTable } from "../components/calc/VibroPileDesigner";
 import { digitizeQcCurve } from "./curveDigitizer";
 import { validateCoverage } from "./geotechnical";
+import { generateVibroPileSheet } from "./sheetGenerator";
 import {
   REFERENCE_METRIC_KEYS,
   calculateReferenceResults,
@@ -130,8 +131,9 @@ describe("referentievergelijking", () => {
     expect(vibroReferenceInput.alphaS).toBe(0.014);
     expect(vibroReferenceInput.positiveShaftStartNapM).toBe(-17.25);
     expect(vibroReferenceInput.positiveShaftLayers).toEqual([
-      { bottomNapM: -18.5, topNapM: -17.25 },
+      { bottomNapM: -22, topNapM: -17.25 },
     ]);
+    expect(vibroReferenceInput.fixedNegativeSkinDesignKn).toBe(245);
     expect(vibroReferenceSource.reportFields).toEqual({
       alphaS: 0.014,
       firstPileTipNapM: -18.5,
@@ -159,8 +161,8 @@ describe("referentievergelijking", () => {
         REFERENCE_METRIC_KEYS.map((key) => [
           key,
           key === "rcNetDesignKn"
-            ? { pixel: 3, reading: 6 }
-            : { pixel: 0.1, reading: 0.2 },
+            ? { pixel: 3, reading: 6, publication: 0 }
+            : { pixel: 0.1, reading: 0.2, publication: 0 },
         ]),
       ) as ReferencePixelTolerance["metrics"],
     }));
@@ -198,6 +200,125 @@ describe("referentievergelijking", () => {
     expect(calibration.depthBottomNapM).toBe(-37);
     expect(calibration.qcMpaPerPixel).toBeCloseTo(35 / 485, 12);
     expect(calibration.depthMPerPixel).toBeCloseTo(37 / 1028.5, 12);
+  });
+
+  it("omsluit alle qc/dieptehoeken en lokale qc-pixelwijzigingen", () => {
+    const points = Array.from({ length: 201 }, (_, index) => {
+      const depthNapM = -24 + index * 0.05;
+      return {
+        depthNapM,
+        qcMpa: 7 + (depthNapM + 24) * 0.8,
+        confidence: 1,
+      };
+    });
+    const calibration = createReferenceCalibration({
+      width: 842,
+      height: 1190,
+      pageIndex: 0,
+    });
+    const baseline = calculateReferenceResults(
+      points,
+      vibroReferenceInput,
+    );
+    const tolerance = deriveReferencePixelTolerances(
+      points,
+      calibration,
+      vibroReferenceInput,
+    );
+    const qcDelta = calibration.qcMpaPerPixel;
+    const depthDelta = calibration.depthMPerPixel;
+    const cornerResults = [-1, 1].flatMap((qcSign) =>
+      [-1, 1].map((depthSign) =>
+        calculateReferenceResults(
+          points.map((point) => ({
+            ...point,
+            qcMpa: Math.max(0, point.qcMpa + qcSign * qcDelta),
+            depthNapM: point.depthNapM + depthSign * depthDelta,
+          })),
+          vibroReferenceInput,
+        )));
+    const localPixelResult = calculateReferenceResults(
+      points.map((point, index) => ({
+        ...point,
+        qcMpa: Math.max(
+          0,
+          point.qcMpa + (index % 2 === 0 ? qcDelta : -qcDelta),
+        ),
+      })),
+      vibroReferenceInput,
+    );
+    const baselineFirst = baseline[0]!;
+    const cornerMaximum = Math.max(
+      ...[...cornerResults, localPixelResult].map((rows) =>
+        Math.abs(rows[0]!.rcDesignKn - baselineFirst.rcDesignKn)),
+    );
+
+    expect(tolerance[0]!.metrics.rcDesignKn.pixel)
+      .toBeGreaterThanOrEqual(cornerMaximum - 1e-9);
+  });
+
+  it("houdt publicatieafronding afzonderlijk naast de pixelsensitiviteit", () => {
+    const points = Array.from({ length: 201 }, (_, index) => ({
+      depthNapM: -24 + index * 0.05,
+      qcMpa: 10,
+      confidence: 1,
+    }));
+    const tolerance = deriveReferencePixelTolerances(
+      points,
+      createReferenceCalibration({
+        width: 842,
+        height: 1190,
+        pageIndex: 0,
+      }),
+      vibroReferenceInput,
+    );
+    const publication = Object.fromEntries(
+      REFERENCE_METRIC_KEYS.map((key) => [
+        key,
+        (tolerance[0]!.metrics[key] as { publication?: number }).publication,
+      ]),
+    );
+
+    expect(publication).toEqual({
+      qcIAvgMpa: 0.05,
+      qcIIAvgMpa: 0.05,
+      qcShaftAvgMpa: 0.05,
+      qbMaxMpa: 0.005,
+      rbCalKn: 0.5,
+      rsCalKn: 0.5,
+      rcDesignKn: 0.5,
+      rcNetDesignKn: 0.5,
+    });
+  });
+
+  it("gebruikt voor referentie en sheet exact dezelfde actuele invoer", () => {
+    const points = Array.from({ length: 201 }, (_, index) => ({
+      depthNapM: -24 + index * 0.05,
+      qcMpa: 10,
+      confidence: 1,
+    }));
+    const calibration = createReferenceCalibration({
+      width: 842,
+      height: 1190,
+      pageIndex: 0,
+    });
+    const results = calculateReferenceResults(
+      points,
+      vibroReferenceInput,
+    );
+
+    const sheet = generateVibroPileSheet({
+      sourceFileName: "referentie.pdf",
+      calibration,
+      points,
+      input: vibroReferenceInput,
+      results,
+    });
+
+    expect(results.every((row) => row.negativeSkinDesignKn === 245))
+      .toBe(true);
+    expect(sheet).toContain("F_nk_d_basis = 245");
+    expect(sheet.match(/F_nk_d_[0-9]+ = F_nk_d_basis/g)).toHaveLength(8);
   });
 
   it("isoleert de blauwe qc-curve van zwarte assen en rode hulplijnen", () => {
@@ -247,7 +368,7 @@ describe("referentievergelijking", () => {
         metrics: Object.fromEntries(
           REFERENCE_METRIC_KEYS.map((key) => [
             key,
-            { pixel: 0.1, reading: 0.2 },
+            { pixel: 0.1, reading: 0.2, publication: 0 },
           ]),
         ) as ReferencePixelTolerance["metrics"],
       }),
@@ -361,10 +482,6 @@ it.skipIf(referencePdfPath === undefined)(
 
 const EXPECTED_REFERENCE_STATUS_MATRIX: ReferenceComparisonStatus[][] = [
   [
-    "investigate", "within-pixel", "investigate", "within-pixel",
-    "within-pixel", "investigate", "investigate", "investigate",
-  ],
-  [
     "curve-reading", "within-pixel", "investigate", "within-pixel",
     "within-pixel", "investigate", "investigate", "investigate",
   ],
@@ -373,7 +490,7 @@ const EXPECTED_REFERENCE_STATUS_MATRIX: ReferenceComparisonStatus[][] = [
     "within-pixel", "investigate", "investigate", "investigate",
   ],
   [
-    "curve-reading", "within-pixel", "investigate", "within-pixel",
+    "within-pixel", "within-pixel", "investigate", "within-pixel",
     "within-pixel", "investigate", "investigate", "investigate",
   ],
   [
@@ -381,15 +498,19 @@ const EXPECTED_REFERENCE_STATUS_MATRIX: ReferenceComparisonStatus[][] = [
     "within-pixel", "investigate", "investigate", "investigate",
   ],
   [
-    "investigate", "curve-reading", "investigate", "investigate",
+    "within-pixel", "within-pixel", "investigate", "within-pixel",
+    "within-pixel", "investigate", "investigate", "investigate",
+  ],
+  [
+    "investigate", "within-pixel", "investigate", "investigate",
     "investigate", "investigate", "investigate", "investigate",
   ],
   [
-    "curve-reading", "curve-reading", "investigate", "within-pixel",
+    "within-pixel", "within-pixel", "investigate", "within-pixel",
     "within-pixel", "investigate", "investigate", "investigate",
   ],
   [
-    "curve-reading", "within-pixel", "investigate", "curve-reading",
-    "curve-reading", "investigate", "investigate", "investigate",
+    "within-pixel", "within-pixel", "investigate", "within-pixel",
+    "within-pixel", "investigate", "investigate", "investigate",
   ],
 ];

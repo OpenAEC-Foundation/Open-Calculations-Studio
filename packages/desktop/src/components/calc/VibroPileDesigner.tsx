@@ -23,6 +23,7 @@ import {
   createReferenceCalibration,
   deriveReferencePixelTolerances,
   isReferencePage,
+  isReferencePileInput,
   isolateReferenceQcCurve,
   REFERENCE_METRIC_KEYS,
   vibroReferenceInput,
@@ -100,24 +101,27 @@ export default function VibroPileDesigner({
   const isActiveReferencePage =
     renderedPage !== null
     && matchesReferencePage(renderedPage, pageIndex);
+  const isActiveReferenceConfiguration =
+    isReferencePileInput(pileInput);
   const referenceComparisons = useMemo(() => {
     if (
       stage !== "ready"
       || acceptedPoints.length === 0
       || calibration === null
       || !isActiveReferencePage
+      || !isActiveReferenceConfiguration
     ) {
       return null;
     }
     try {
       const actual = calculateReferenceResults(
         acceptedPoints,
-        vibroReferenceInput,
+        pileInput,
       );
       const tolerance = deriveReferencePixelTolerances(
         acceptedPoints,
         withReferencePixelResolution(calibration),
-        vibroReferenceInput,
+        pileInput,
       );
       return compareReferenceResults(
         actual,
@@ -130,7 +134,9 @@ export default function VibroPileDesigner({
   }, [
     acceptedPoints,
     calibration,
+    isActiveReferenceConfiguration,
     isActiveReferencePage,
+    pileInput,
     stage,
   ]);
 
@@ -461,6 +467,24 @@ export default function VibroPileDesigner({
               accepteert.
             </div>
           )}
+          {isActiveReferencePage && !isActiveReferenceConfiguration && (
+            <div className="vibro-inline-error" role="alert">
+              <strong>Referentieconfiguratie wijkt af.</strong>{" "}
+              Er wordt geen statusoordeel getoond zolang de actuele
+              paal- en grondinvoer niet exact overeenkomt, inclusief de
+              gepubliceerde Fnk;d van 245 kN.
+              <button
+                className="vibro-button vibro-button-secondary"
+                type="button"
+                onClick={() => updateWorkflow({
+                  pileInput: clonePileInput(vibroReferenceInput),
+                  inputError: "",
+                })}
+              >
+                Referentie-invoer toepassen
+              </button>
+            </div>
+          )}
           <div className="vibro-workbench">
             <VibroCalibrationPanel
               renderedPage={renderedPage}
@@ -525,7 +549,9 @@ export default function VibroPileDesigner({
 
 type PileScalarField = Exclude<
   keyof VibroPileInput,
-  "positiveShaftLayers" | "negativeSkinLayers"
+  | "positiveShaftLayers"
+  | "negativeSkinLayers"
+  | "fixedNegativeSkinDesignKn"
 >;
 
 interface PileInputPanelProps {
@@ -726,7 +752,46 @@ function PileInputPanel({
 
         <fieldset className="vibro-control-section vibro-negative-skin">
           <legend>Negatieve kleef</legend>
-          {input.negativeSkinLayers.map((layer, index) => {
+          {input.fixedNegativeSkinDesignKn !== undefined ? (
+            <>
+              <p>
+                De vaste ontwerpwaarde wordt rechtstreeks in de rekenkern
+                en de rekensheet gebruikt.
+              </p>
+              <div className="vibro-field-grid">
+                <PileNumberField
+                  label="Vaste negatieve kleef Fnk;d (kN)"
+                  value={input.fixedNegativeSkinDesignKn}
+                  onChange={(value) => onChange({
+                    ...input,
+                    fixedNegativeSkinDesignKn: value,
+                  })}
+                />
+              </div>
+              <button
+                className="vibro-button vibro-button-secondary"
+                type="button"
+                onClick={() => {
+                  const {
+                    fixedNegativeSkinDesignKn: _removed,
+                    ...withoutOverride
+                  } = input;
+                  onChange({
+                    ...withoutOverride,
+                    negativeSkinLayers:
+                      withoutOverride.negativeSkinLayers.length > 0
+                        ? withoutOverride.negativeSkinLayers
+                        : [createNegativeSkinLayer(
+                          withoutOverride.pileHeadNapM,
+                          withoutOverride.positiveShaftStartNapM,
+                        )],
+                  });
+                }}
+              >
+                Negatieve kleef uit lagen berekenen
+              </button>
+            </>
+          ) : input.negativeSkinLayers.map((layer, index) => {
             const layerNumber = index + 1;
             return (
               <div className="vibro-layer-card" key={index}>
@@ -798,13 +863,15 @@ function PileInputPanel({
               </div>
             );
           })}
-          <button
-            className="vibro-button vibro-button-secondary"
-            type="button"
-            onClick={addNegativeLayer}
-          >
-            Negatieve-kleeflaag toevoegen
-          </button>
+          {input.fixedNegativeSkinDesignKn === undefined && (
+            <button
+              className="vibro-button vibro-button-secondary"
+              type="button"
+              onClick={addNegativeLayer}
+            >
+              Negatieve-kleeflaag toevoegen
+            </button>
+          )}
         </fieldset>
       </div>
     </details>
@@ -890,7 +957,19 @@ function matchesReferencePage(
       width: page.sourceWidth,
       height: page.sourceHeight,
       pageIndex,
-    });
+  });
+}
+
+function clonePileInput(input: VibroPileInput): VibroPileInput {
+  return {
+    ...input,
+    positiveShaftLayers: input.positiveShaftLayers.map(
+      (layer) => ({ ...layer }),
+    ),
+    negativeSkinLayers: input.negativeSkinLayers.map(
+      (layer) => ({ ...layer }),
+    ),
+  };
 }
 
 const REFERENCE_METRIC_LABELS: Record<
@@ -942,9 +1021,10 @@ export function ReferenceComparisonTable({
         </div>
       </div>
       <p className="vibro-reference-note">
-        De groene grens volgt de formulegevoeligheid voor één beeldpixel in
-        qc- en diepterichting. Oranje staat voor dezelfde gevoeligheid bij
-        twee pixels.
+        De groene grens combineert de formulegevoeligheid voor één
+        beeldpixel in qc- en diepterichting met de afzonderlijke
+        publicatieafronding. Oranje gebruikt twee pixels plus dezelfde
+        publicatieafronding.
       </p>
       <div className="vibro-reference-table-scroll">
         <table className="vibro-reference-table">
@@ -979,6 +1059,10 @@ export function ReferenceComparisonTable({
                     )}`,
                     `curveleesmarge ${formatMetricValue(
                       metric.readingTolerance,
+                      key,
+                    )}`,
+                    `publicatieafronding ${formatMetricValue(
+                      metric.publicationTolerance,
                       key,
                     )}`,
                     `werkelijk ${formatMetricValue(metric.actual, key)}`,

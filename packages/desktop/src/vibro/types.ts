@@ -53,6 +53,7 @@ export interface VibroPileInput {
   designLoadKn: number;
   positiveShaftLayers: PositiveShaftLayer[];
   negativeSkinLayers: NegativeSkinLayer[];
+  fixedNegativeSkinDesignKn?: number;
 }
 
 export interface QcAverages {

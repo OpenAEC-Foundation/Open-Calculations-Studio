@@ -18,7 +18,10 @@ import {
   vi,
 } from "vitest";
 import type { RenderedPdfPage } from "../../vibro/pdfPage";
-import { vibroReferenceSource } from "../../vibro/referenceCase";
+import {
+  vibroReferenceInput,
+  vibroReferenceSource,
+} from "../../vibro/referenceCase";
 import { useVibroDesignerStore } from "../../store/vibroDesignerStore";
 import { useDocumentStore } from "../../store/documentStore";
 
@@ -155,6 +158,88 @@ describe("VibroPileDesigner workflow", () => {
     });
 
     expect(screen.queryByRole("note")).toBeNull();
+  });
+
+  it("geeft geen referentiestatus wanneer de actuele paalinvoer afwijkt", () => {
+    const acceptedPoints = Array.from({ length: 201 }, (_, index) => ({
+      depthNapM: -24 + index * 0.05,
+      qcMpa: 10,
+      confidence: 1,
+    }));
+    seedWorkflow("ready");
+    act(() => {
+      useVibroDesignerStore.getState().updateWorkflow({
+        renderedPage: renderedPage(600, 3, {
+          sourceSha256: vibroReferenceSource.groundPdfSha256,
+          pageText: "Projectnr. : Sondeernr.: AA22485 01 1/2",
+          sourceWidth: 842,
+          sourceHeight: 1190,
+        }),
+        acceptedPoints,
+        pileInput: {
+          ...vibroReferenceInput,
+          positiveShaftLayers: vibroReferenceInput.positiveShaftLayers.map(
+            (layer) => ({ ...layer }),
+          ),
+          negativeSkinLayers: [],
+          fixedNegativeSkinDesignKn: 244,
+        },
+      });
+    });
+    render(<VibroPileDesigner documentRevision={0} />);
+
+    expect(screen.getByText(/referentieconfiguratie wijkt af/i))
+      .toBeTruthy();
+    expect(screen.queryByRole("heading", {
+      name: "Afwijking referentierapport",
+    })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", {
+      name: "Referentie-invoer toepassen",
+    }));
+
+    expect(screen.queryByText(/referentieconfiguratie wijkt af/i)).toBeNull();
+    expect(screen.getByLabelText(
+      "Vaste negatieve kleef Fnk;d (kN)",
+    )).toHaveProperty("value", "245");
+    expect(screen.getByRole("heading", {
+      name: "Afwijking referentierapport",
+    })).toBeTruthy();
+  });
+
+  it("toont de referentiestatus alleen bij exact overeenkomende actuele invoer", () => {
+    const acceptedPoints = Array.from({ length: 201 }, (_, index) => ({
+      depthNapM: -24 + index * 0.05,
+      qcMpa: 10,
+      confidence: 1,
+    }));
+    seedWorkflow("ready");
+    act(() => {
+      useVibroDesignerStore.getState().updateWorkflow({
+        renderedPage: renderedPage(600, 3, {
+          sourceSha256: vibroReferenceSource.groundPdfSha256,
+          pageText: "Projectnr. : Sondeernr.: AA22485 01 1/2",
+          sourceWidth: 842,
+          sourceHeight: 1190,
+        }),
+        acceptedPoints,
+        pileInput: {
+          ...vibroReferenceInput,
+          positiveShaftLayers: vibroReferenceInput.positiveShaftLayers.map(
+            (layer) => ({ ...layer }),
+          ),
+          negativeSkinLayers: vibroReferenceInput.negativeSkinLayers.map(
+            (layer) => ({ ...layer }),
+          ),
+        },
+      });
+    });
+    render(<VibroPileDesigner documentRevision={0} />);
+
+    expect(screen.queryByText(/referentieconfiguratie wijkt af/i)).toBeNull();
+    expect(screen.getByRole("heading", {
+      name: "Afwijking referentierapport",
+    })).toBeTruthy();
   });
 
   it("houdt alleen het resultaat van de nieuwste paginarender actief", async () => {
