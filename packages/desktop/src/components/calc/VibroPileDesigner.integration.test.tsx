@@ -348,6 +348,20 @@ describe("VibroPileDesigner workflow", () => {
     });
     render(<VibroPileDesigner documentRevision={0} />);
 
+    fireEvent.change(screen.getByLabelText("Ontwerpbelasting (kN)"), {
+      target: { value: "650" },
+    });
+    fireEvent.change(screen.getByLabelText("Alpha p"), {
+      target: { value: "0.65" },
+    });
+    fireEvent.change(screen.getByLabelText("K0 laag 1"), {
+      target: { value: "0.6" },
+    });
+    fireEvent.change(screen.getByLabelText(
+      "Effectieve spanning onder laag 1 (kPa)",
+    ), {
+      target: { value: "90" },
+    });
     fireEvent.click(screen.getByRole("button", {
       name: "Rekensheet genereren",
     }));
@@ -356,6 +370,12 @@ describe("VibroPileDesigner workflow", () => {
     expect(document.source).toContain("# VIBRO-paaldraagvermogen");
     expect(document.source).toContain("sondering-01.pdf");
     expect(document.source.match(/^### Paalpunt NAP /gm)).toHaveLength(8);
+    expect(document.source).toContain("F_design_kN = 650");
+    expect(document.source).toContain("alpha_p = 0.65");
+    expect(document.source).toContain(
+      "negatieve_kleeflaag_data = [[-0.9, -14.25, 0, 90, 0.6, 0.35, 1]]",
+    );
+    expect(document.source).not.toContain("F_nk_d_basis = 0");
     expect(document.filePath).toBe("VIBRO-paal sondering 1");
     expect(document.dirty).toBe(false);
     expect(document.documentRevision).toBe(1);
@@ -364,5 +384,20 @@ describe("VibroPileDesigner workflow", () => {
         node.type === "assignment"
         && node.result.startsWith("Error:"),
     )).toEqual([]);
+  });
+
+  it("laat meerdere negatieve-kleeflagen configureren", () => {
+    seedWorkflow("ready");
+    render(<VibroPileDesigner documentRevision={0} />);
+
+    expect(screen.getByLabelText("K0 laag 1")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", {
+      name: "Negatieve-kleeflaag toevoegen",
+    }));
+
+    expect(screen.getByLabelText("K0 laag 2")).toBeTruthy();
+    expect(screen.getByRole("button", {
+      name: "Negatieve-kleeflaag 2 verwijderen",
+    })).toBeTruthy();
   });
 });

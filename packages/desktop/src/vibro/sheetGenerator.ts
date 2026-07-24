@@ -13,16 +13,29 @@ export interface VibroSheetModel {
   results: PileResistanceResult[];
 }
 
-const RESULT_COUNT = 8;
+const REQUIRED_LEVELS_NAP_M = [
+  -18.5,
+  -19,
+  -19.5,
+  -20,
+  -20.5,
+  -21,
+  -21.5,
+  -22,
+] as const;
+const LEVEL_TOLERANCE_M = 1e-9;
 
 export function generateVibroPileSheet(model: VibroSheetModel): string {
   validateModel(model);
 
+  const points = [...model.points].sort(
+    (first, second) => first.depthNapM - second.depthNapM,
+  );
   const sourceFileName = model.sourceFileName.replace(/\s+/g, " ").trim();
   const lines = [
     "# VIBRO-paaldraagvermogen",
     "",
-    "Zelfstandige, auditbare berekening op basis van een gedigitaliseerde qc-curve.",
+    "Zelfstandige, auditbare berekening vanuit qc_data en expliciete invoer.",
     `Bronbestand: ${sourceFileName}`,
     `Bronpagina: ${model.calibration.pageIndex + 1}`,
     "",
@@ -33,12 +46,15 @@ export function generateVibroPileSheet(model: VibroSheetModel): string {
     "## Meetpuntendata",
     "",
     "Kolommen: diepte [m NAP], qc [MPa], betrouwbaarheid [-].",
-    `qc_data = ${matrix(model.points.map((point) => [
+    `qc_data = ${matrix(points.map((point) => [
       point.depthNapM,
       point.qcMpa,
       point.confidence,
     ]))}`,
-    `n_qc_meetpunten = ${model.points.length}`,
+    `n_qc_meetpunten = ${points.length}`,
+    "",
+    "Lineaire interpolatie leest bij iedere evaluatie rechtstreeks uit qc_data.",
+    ...qcInterpolationFunctions(),
     "",
     "## Paal- en rekeninvoer",
     "",
@@ -52,24 +68,22 @@ export function generateVibroPileSheet(model: VibroSheetModel): string {
     "",
     ...positiveShaftAssignments(model.input),
     "",
+    "## Resultaten en auditformules",
+    "",
+    ...model.results.flatMap((result, index) =>
+      resultFormulaBlock(result.pileTipNapM, index + 1, model.input)),
+    "",
+    "## Resultatentabel",
+    "",
+    renderResultTable(),
+    "",
     "## qc-curve en rekentrajecten",
     "",
-    renderCurveSvg(model),
+    ...svgAssignments(points.length),
+    renderCurveSvg(points.length),
     "",
-    "## Resultaten en audit",
-    "",
-    renderResultTable(model.results),
-    "",
-    ...model.results.flatMap((result, index) =>
-      resultBlock(result, index + 1)),
-    "",
-    "## Auditgegevens per traject",
-    "",
-    ...model.results.flatMap((result, index) =>
-      routeAudit(result, index + 1)),
-    "",
-    "De berekening bevat de oorspronkelijke invoer, meetpunten, trajecten,",
-    "tussenwaarden en vergelijkingswaarden uit de ontwerper.",
+    "De zichtbare tabel en SVG gebruiken dezelfde geëvalueerde variabelen als",
+    "de formuleblokken. Alleen qc_data, kalibratie en invoer zijn vaste brondata.",
     "",
   ];
 
@@ -128,7 +142,7 @@ function negativeSkinAssignments(input: VibroPileInput): string[] {
     `n_negatieve_kleeflagen = ${rows.length}`,
   ];
 
-  if (input.negativeSkinLayers.length === 0) {
+  if (rows.length === 0) {
     assignments.push("F_nk_d_basis = 0");
     return assignments;
   }
@@ -172,67 +186,207 @@ function positiveShaftAssignments(input: VibroPileInput): string[] {
     assignments.push(
       `shaft_bottom_${suffix} = ${number(layer.bottomNapM)}`,
       `shaft_top_${suffix} = ${number(layer.topNapM)}`,
-      `shaft_h_${suffix} = shaft_top_${suffix} - shaft_bottom_${suffix}`,
     );
   });
   return assignments;
 }
 
-function resultBlock(
-  result: PileResistanceResult,
-  suffix: number,
-): string[] {
+function qcInterpolationFunctions(): string[] {
   return [
-    `### Paalpunt NAP ${number(result.pileTipNapM, 2)} m`,
+    "qc_at(z) = interpolate_linear(qc_data, z, 1, 2)",
+  ];
+}
+
+function resultFormulaBlock(
+  pileTipNapM: number,
+  suffix: number,
+  input: VibroPileInput,
+): string[] {
+  const tip = `pile_tip_${suffix}_NAP_m`;
+  const critical = criticalDepthBlock(suffix, tip);
+  const qcII = minimumRouteBlock(
+    `qc_II_${suffix}`,
+    `${tip} - critical_depth_${suffix}_m`,
+    tip,
+    `qc_at(${tip} - critical_depth_${suffix}_m)`,
+  );
+  const qcIII = minimumRouteBlock(
+    `qc_III_${suffix}`,
+    tip,
+    `${tip} + trajectory_III_length_${suffix}_m`,
+    `qc_II_${suffix}_running_min`,
+  );
+  const shaft = shaftQcBlock(suffix, tip, input);
+
+  return [
+    `### Paalpunt NAP ${number(pileTipNapM, 2)} m`,
     "",
-    `pile_tip_${suffix}_NAP_m = ${number(result.pileTipNapM)}`,
-    `critical_depth_${suffix}_m = ${number(result.criticalDepthM)}`,
-    `qc_I_bottom_${suffix}_NAP_m = ${number(result.qcIBottomNapM)}`,
-    `positive_shaft_length_${suffix}_m = positive_shaft_start_NAP_m - pile_tip_${suffix}_NAP_m`,
+    `${tip} = ${number(pileTipNapM)}`,
+    `critical_depth_min_${suffix}_m = 0.7 * d_b_m`,
+    `critical_depth_max_${suffix}_m = 4 * d_b_m`,
+    `qc_I_scan_steps_${suffix} = 16`,
     `trajectory_III_length_${suffix}_m = 8 * d_b_m`,
-    `qc_I_integral_${suffix} = ${number(result.qcIAvgMpa * result.criticalDepthM)}`,
+    "#hide",
+    ...critical,
+    ...qcII,
+    ...qcIII,
+    ...shaft,
+    "#show",
     `qc_I_gem_${suffix} = qc_I_integral_${suffix} / critical_depth_${suffix}_m`,
-    `qc_II_integral_${suffix} = ${trapezoidExpression(result.qcIIRoute)}`,
-    `qc_II_gem_${suffix} = qc_II_integral_${suffix} / critical_depth_${suffix}_m`,
-    `qc_III_integral_${suffix} = ${trapezoidExpression(result.qcIIIRoute)}`,
-    `qc_III_gem_${suffix} = qc_III_integral_${suffix} / trajectory_III_length_${suffix}_m`,
-    `qc_z_a_integral_${suffix} = ${shaftIntegralExpression(result)}`,
-    `qc_z_a_gem_${suffix} = qc_z_a_integral_${suffix} / positive_shaft_length_${suffix}_m`,
+    `qc_II_gem_${suffix} = qc_II_${suffix}_integral / critical_depth_${suffix}_m`,
+    `qc_III_gem_${suffix} = qc_III_${suffix}_integral / trajectory_III_length_${suffix}_m`,
+    `qc_z_a_gem_${suffix} = qc_z_a_integral_${suffix} / qc_z_a_length_${suffix}_m`,
     `q_b_raw_${suffix} = 0.5 * alpha_p * beta * shape_factor * (((qc_I_gem_${suffix} + qc_II_gem_${suffix}) / 2) + qc_III_gem_${suffix})`,
     `q_b_max_${suffix} = min(q_b_raw_${suffix}, 15)`,
     `R_b_cal_${suffix} = A_b_m2 * q_b_max_${suffix} * 1000`,
-    `R_s_cal_${suffix} = u_s_m * positive_shaft_length_${suffix}_m * alpha_s * qc_z_a_gem_${suffix} * 1000`,
+    `R_s_cal_${suffix} = u_s_m * alpha_s * qc_z_a_integral_${suffix} * 1000`,
     `R_c_cal_${suffix} = R_b_cal_${suffix} + R_s_cal_${suffix}`,
     `R_c_k_${suffix} = R_c_cal_${suffix} / xi_single_CPT`,
     `R_c_d_${suffix} = R_b_cal_${suffix} / xi_single_CPT / gamma_b + R_s_cal_${suffix} / xi_single_CPT / gamma_s`,
     `F_nk_d_${suffix} = F_nk_d_basis`,
     `R_c_net_d_${suffix} = R_c_d_${suffix} - F_nk_d_${suffix}`,
     `unity_check_${suffix} = F_design_kN / R_c_net_d_${suffix}`,
-    `qc_I_gem_audit_${suffix} = ${number(result.qcIAvgMpa)}`,
-    `qc_II_gem_audit_${suffix} = ${number(result.qcIIAvgMpa)}`,
-    `qc_III_gem_audit_${suffix} = ${number(result.qcIIIAvgMpa)}`,
-    `qc_z_a_gem_audit_${suffix} = ${number(result.qcShaftAvgMpa)}`,
-    `q_b_raw_audit_${suffix} = ${number(result.qbRawMpa)}`,
-    `q_b_max_audit_${suffix} = ${number(result.qbMaxMpa)}`,
-    `R_b_cal_audit_${suffix} = ${number(result.rbCalKn)}`,
-    `R_s_cal_audit_${suffix} = ${number(result.rsCalKn)}`,
-    `R_c_cal_audit_${suffix} = ${number(result.rcCalKn)}`,
-    `R_c_k_audit_${suffix} = ${number(result.rcCharacteristicKn)}`,
-    `R_c_d_audit_${suffix} = ${number(result.rcDesignKn)}`,
-    `F_nk_d_audit_${suffix} = ${number(result.negativeSkinDesignKn)}`,
-    `R_c_net_d_audit_${suffix} = ${number(result.rcNetDesignKn)}`,
-    `unity_check_audit_${suffix} = ${number(result.unityCheck)}`,
-    `delta_qc_I_gem_${suffix} = qc_I_gem_${suffix} - qc_I_gem_audit_${suffix}`,
-    `delta_qc_II_gem_${suffix} = qc_II_gem_${suffix} - qc_II_gem_audit_${suffix}`,
-    `delta_qc_III_gem_${suffix} = qc_III_gem_${suffix} - qc_III_gem_audit_${suffix}`,
-    `delta_qc_z_a_gem_${suffix} = qc_z_a_gem_${suffix} - qc_z_a_gem_audit_${suffix}`,
-    `delta_R_c_net_d_${suffix} = R_c_net_d_${suffix} - R_c_net_d_audit_${suffix}`,
-    `delta_unity_check_${suffix} = unity_check_${suffix} - unity_check_audit_${suffix}`,
     "",
   ];
 }
 
-function renderResultTable(results: PileResistanceResult[]): string {
+function criticalDepthBlock(suffix: number, tip: string): string[] {
+  const candidatePrefix = `qc_I_candidate_${suffix}`;
+  return [
+    `critical_depth_${suffix}_m = critical_depth_min_${suffix}_m`,
+    ...trapezoidIntegralBlock(
+      `qc_I_integral_${suffix}`,
+      `${tip} - critical_depth_${suffix}_m`,
+      tip,
+    ),
+    `qc_I_minimum_average_${suffix} = qc_I_integral_${suffix} / critical_depth_${suffix}_m`,
+    `#repeat qc_I_scan_steps_${suffix} + 1`,
+    `${candidatePrefix}_depth_m = critical_depth_min_${suffix}_m + (_i - 1) * (critical_depth_max_${suffix}_m - critical_depth_min_${suffix}_m) / qc_I_scan_steps_${suffix}`,
+    ...trapezoidIntegralBlock(
+      `${candidatePrefix}_integral`,
+      `${tip} - ${candidatePrefix}_depth_m`,
+      tip,
+    ),
+    `${candidatePrefix}_average = ${candidatePrefix}_integral / ${candidatePrefix}_depth_m`,
+    `#if ${candidatePrefix}_average < qc_I_minimum_average_${suffix}`,
+    `qc_I_minimum_average_${suffix} = ${candidatePrefix}_average`,
+    `critical_depth_${suffix}_m = ${candidatePrefix}_depth_m`,
+    `qc_I_integral_${suffix} = ${candidatePrefix}_integral`,
+    "#end if",
+    "#end repeat",
+    `qc_I_bottom_${suffix}_NAP_m = ${tip} - critical_depth_${suffix}_m`,
+  ];
+}
+
+function trapezoidIntegralBlock(
+  resultName: string,
+  lowerExpression: string,
+  upperExpression: string,
+): string[] {
+  return [
+    `${resultName} = integrate_linear(qc_data, ${lowerExpression}, ${upperExpression}, 1, 2)`,
+  ];
+}
+
+function minimumRouteBlock(
+  prefix: string,
+  lowerExpression: string,
+  upperExpression: string,
+  initialMinimumExpression: string,
+): string[] {
+  return [
+    `${prefix}_integral = 0`,
+    `${prefix}_running_min = ${initialMinimumExpression}`,
+    `${prefix}_start_row = lookup_row_le(qc_data, ${lowerExpression}, 1)`,
+    `${prefix}_end_row = lookup_row_ge(qc_data, ${upperExpression}, 1)`,
+    `#repeat ${prefix}_end_row - ${prefix}_start_row`,
+    `${prefix}_row = ${prefix}_start_row + _i - 1`,
+    `${prefix}_lo = max(${lowerExpression}, get(${prefix}_row, 1, qc_data))`,
+    `${prefix}_hi = min(${upperExpression}, get(${prefix}_row + 1, 1, qc_data))`,
+    `${prefix}_h = max(${prefix}_hi - ${prefix}_lo, 0)`,
+    `#if ${prefix}_h > 0`,
+    `${prefix}_q_lo = qc_at(${prefix}_lo)`,
+    `${prefix}_q_hi = qc_at(${prefix}_hi)`,
+    `#if ${prefix}_q_hi >= ${prefix}_q_lo`,
+    `${prefix}_segment_integral = ${prefix}_running_min * ${prefix}_h`,
+    `#else if ${prefix}_running_min <= ${prefix}_q_hi`,
+    `${prefix}_segment_integral = ${prefix}_running_min * ${prefix}_h`,
+    `#else if ${prefix}_running_min >= ${prefix}_q_lo`,
+    `${prefix}_segment_integral = (${prefix}_q_lo + ${prefix}_q_hi) * ${prefix}_h / 2`,
+    "#else",
+    `${prefix}_crossing = ${prefix}_lo + ${prefix}_h * (${prefix}_q_lo - ${prefix}_running_min) / (${prefix}_q_lo - ${prefix}_q_hi)`,
+    `${prefix}_segment_integral = ${prefix}_running_min * (${prefix}_crossing - ${prefix}_lo) + (${prefix}_running_min + ${prefix}_q_hi) * (${prefix}_hi - ${prefix}_crossing) / 2`,
+    "#end if",
+    `${prefix}_integral = ${prefix}_integral + ${prefix}_segment_integral`,
+    `${prefix}_running_min = min(${prefix}_running_min, ${prefix}_q_hi)`,
+    "#end if",
+    "#end repeat",
+  ];
+}
+
+function shaftQcBlock(
+  suffix: number,
+  tip: string,
+  input: VibroPileInput,
+): string[] {
+  const lines = [
+    `qc_z_a_integral_${suffix} = 0`,
+    `qc_z_a_length_${suffix}_m = 0`,
+  ];
+
+  input.positiveShaftLayers.forEach((_, layerIndex) => {
+    const layer = layerIndex + 1;
+    const prefix = `qc_z_a_${suffix}_layer_${layer}`;
+    lines.push(
+      `${prefix}_lo = max(${tip}, shaft_bottom_${layer})`,
+      `${prefix}_hi = min(positive_shaft_start_NAP_m, shaft_top_${layer})`,
+      `${prefix}_h = max(${prefix}_hi - ${prefix}_lo, 0)`,
+      `${prefix}_raw_min = min(qc_at(${prefix}_lo), qc_at(${prefix}_hi))`,
+      `${prefix}_has_peak = 0`,
+      `#if max(qc_at(${prefix}_lo), qc_at(${prefix}_hi)) > 12`,
+      `${prefix}_has_peak = 1`,
+      "#end if",
+      `${prefix}_start_row = lookup_row_le(qc_data, ${prefix}_lo, 1)`,
+      `${prefix}_end_row = lookup_row_ge(qc_data, ${prefix}_hi, 1)`,
+      `#repeat ${prefix}_end_row - ${prefix}_start_row + 1`,
+      `${prefix}_point_row = ${prefix}_start_row + _i - 1`,
+      `${prefix}_point_depth = get(${prefix}_point_row, 1, qc_data)`,
+      `#if ${prefix}_point_depth >= ${prefix}_lo`,
+      `#if ${prefix}_point_depth <= ${prefix}_hi`,
+      `${prefix}_point_qc = get(${prefix}_point_row, 2, qc_data)`,
+      `${prefix}_raw_min = min(${prefix}_raw_min, ${prefix}_point_qc)`,
+      `#if ${prefix}_point_qc > 12`,
+      `${prefix}_has_peak = 1`,
+      "#end if",
+      "#end if",
+      "#end if",
+      "#end repeat",
+      `${prefix}_cutoff = 1000000`,
+      `#if ${prefix}_has_peak > 0`,
+      `#if ${prefix}_h < 1`,
+      `${prefix}_cutoff = 12`,
+      "#else",
+      `${prefix}_cutoff = min(${prefix}_raw_min, 15)`,
+      "#end if",
+      "#end if",
+      `${prefix}_integral = 0`,
+      `#repeat ${prefix}_end_row - ${prefix}_start_row`,
+      `${prefix}_row = ${prefix}_start_row + _i - 1`,
+      `${prefix}_seg_lo = max(${prefix}_lo, get(${prefix}_row, 1, qc_data))`,
+      `${prefix}_seg_hi = min(${prefix}_hi, get(${prefix}_row + 1, 1, qc_data))`,
+      `${prefix}_seg_h = max(${prefix}_seg_hi - ${prefix}_seg_lo, 0)`,
+      `${prefix}_q_lo = min(qc_at(${prefix}_seg_lo), ${prefix}_cutoff)`,
+      `${prefix}_q_hi = min(qc_at(${prefix}_seg_hi), ${prefix}_cutoff)`,
+      `${prefix}_integral = ${prefix}_integral + ${prefix}_seg_h * (${prefix}_q_lo + ${prefix}_q_hi) / 2`,
+      "#end repeat",
+      `qc_z_a_integral_${suffix} = qc_z_a_integral_${suffix} + ${prefix}_integral`,
+      `qc_z_a_length_${suffix}_m = qc_z_a_length_${suffix}_m + ${prefix}_h`,
+    );
+  });
+  return lines;
+}
+
+function renderResultTable(): string {
   const headers = [
     "Paalpunt [m NAP]",
     "qc;I",
@@ -247,159 +401,69 @@ function renderResultTable(results: PileResistanceResult[]): string {
     "Unity check",
   ];
   const head = headers.map((header) => `<th>${header}</th>`).join("");
-  const body = results.map((result) => {
-    const values = [
-      number(result.pileTipNapM, 3),
-      number(result.qcIAvgMpa, 3),
-      number(result.qcIIAvgMpa, 3),
-      number(result.qcIIIAvgMpa, 3),
-      number(result.qcShaftAvgMpa, 3),
-      number(result.rbCalKn, 1),
-      number(result.rsCalKn, 1),
-      number(result.rcDesignKn, 1),
-      number(result.negativeSkinDesignKn, 1),
-      number(result.rcNetDesignKn, 1),
-      number(result.unityCheck, 3),
+  const rows = REQUIRED_LEVELS_NAP_M.map((_, index) => {
+    const suffix = index + 1;
+    const variables = [
+      `pile_tip_${suffix}_NAP_m`,
+      `qc_I_gem_${suffix}`,
+      `qc_II_gem_${suffix}`,
+      `qc_III_gem_${suffix}`,
+      `qc_z_a_gem_${suffix}`,
+      `R_b_cal_${suffix}`,
+      `R_s_cal_${suffix}`,
+      `R_c_d_${suffix}`,
+      `F_nk_d_${suffix}`,
+      `R_c_net_d_${suffix}`,
+      `unity_check_${suffix}`,
     ];
-    return `<tr>${values.map((value) => `<td>${value}</td>`).join("")}</tr>`;
+    return `<tr>${variables.map((variable) =>
+      `<td>'${variable}'</td>`).join("")}</tr>`;
   }).join("");
-  return `'<table class="vibro-result-table"><caption>qc in MPa, weerstanden in kN en unity check dimensieloos</caption><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  return `'<table class="vibro-result-table"><caption>qc in MPa, weerstanden in kN en unity check dimensieloos</caption><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-function trapezoidExpression(
-  route: PileResistanceResult["qcIIRoute"],
-): string {
-  const sorted = [...route].sort(
-    (first, second) => first.depthNapM - second.depthNapM,
+function svgAssignments(pointCount: number): string[] {
+  const lines: string[] = [];
+  for (let row = 1; row <= pointCount; row += 1) {
+    lines.push(
+      `svg_qc_x_${row} = 76 + (get(${row}, 2, qc_data) - qc_min_MPa) / (qc_max_MPa - qc_min_MPa) * 536`,
+      `svg_depth_y_${row} = 28 + (depth_top_NAP_m - get(${row}, 1, qc_data)) / (depth_top_NAP_m - depth_bottom_NAP_m) * 450`,
+    );
+  }
+  lines.push(
+    "svg_qc_I_top_y = 28 + (depth_top_NAP_m - pile_tip_1_NAP_m) / (depth_top_NAP_m - depth_bottom_NAP_m) * 450",
+    "svg_qc_I_bottom_y = 28 + (depth_top_NAP_m - qc_I_bottom_1_NAP_m) / (depth_top_NAP_m - depth_bottom_NAP_m) * 450",
+    "svg_qc_III_top_y = 28 + (depth_top_NAP_m - (pile_tip_1_NAP_m + trajectory_III_length_1_m)) / (depth_top_NAP_m - depth_bottom_NAP_m) * 450",
+    "svg_shaft_top_y = 28 + (depth_top_NAP_m - positive_shaft_start_NAP_m) / (depth_top_NAP_m - depth_bottom_NAP_m) * 450",
   );
-  if (sorted.length < 2) return "0";
-  return sorted.slice(1).map((point, index) => {
-    const previous = sorted[index]!;
-    return `((${number(previous.qcMpa)} + ${number(point.qcMpa)}) / 2) * (${number(point.depthNapM)} - ${number(previous.depthNapM)})`;
-  }).join(" + ");
-}
-
-function shaftIntegralExpression(result: PileResistanceResult): string {
-  if (result.qcShaftLayers.length === 0) return "0";
-  return result.qcShaftLayers.map((layer) =>
-    `${number(layer.thicknessM)} * ${number(layer.limitedAverageMpa)}`)
-    .join(" + ");
-}
-
-function routeAudit(
-  result: PileResistanceResult,
-  suffix: number,
-): string[] {
-  const lines = [
-    `### Audit traject ${suffix}`,
-    "",
-    "Kolommen traject II en III: diepte [m NAP], begrensde qc [MPa].",
-    `qc_II_route_${suffix} = ${matrix(result.qcIIRoute.map((point) => [
-      point.depthNapM,
-      point.qcMpa,
-    ]))}`,
-    `qc_III_route_${suffix} = ${matrix(result.qcIIIRoute.map((point) => [
-      point.depthNapM,
-      point.qcMpa,
-    ]))}`,
-    "Kolommen schachtaudit: onderkant, bovenkant [m NAP], dikte [m], ruwe minimum-qc, afsnijwaarde en begrensd gemiddelde [MPa].",
-    `qc_z_a_layers_${suffix} = ${matrix(result.qcShaftLayers.map((layer) => [
-      layer.bottomNapM,
-      layer.topNapM,
-      layer.thicknessM,
-      layer.rawMinimumMpa,
-      layer.cutoffMpa ?? 0,
-      layer.limitedAverageMpa,
-    ]))}`,
-    "",
-  ];
   return lines;
 }
 
-function renderCurveSvg(model: VibroSheetModel): string {
-  const width = 640;
-  const height = 520;
-  const margin = { left: 76, top: 28, right: 28, bottom: 42 };
-  const plotWidth = width - margin.left - margin.right;
-  const plotHeight = height - margin.top - margin.bottom;
-  const calibration = model.calibration;
-  const qcSpan = calibration.qcMaxMpa - calibration.qcMinMpa;
-  const depthSpan =
-    calibration.depthTopNapM - calibration.depthBottomNapM;
-  const x = (qcMpa: number) =>
-    margin.left
-    + ((qcMpa - calibration.qcMinMpa) / qcSpan) * plotWidth;
-  const y = (depthNapM: number) =>
-    margin.top
-    + ((calibration.depthTopNapM - depthNapM) / depthSpan) * plotHeight;
-  const curvePoints = [...model.points]
-    .sort((first, second) => second.depthNapM - first.depthNapM)
-    .map((point) => `${number(x(point.qcMpa), 2)},${number(y(point.depthNapM), 2)}`)
-    .join(" ");
-  const first = model.results[0];
-  const trajectory = (
-    name: string,
-    topNapM: number,
-    bottomNapM: number,
-    color: string,
-    offset: number,
-  ) => {
-    const yTop = y(Math.max(topNapM, bottomNapM));
-    const yBottom = y(Math.min(topNapM, bottomNapM));
-    return `<rect data-traject="${name}" x="${margin.left + offset}" y="${number(yTop, 2)}" width="8" height="${number(Math.max(2, yBottom - yTop), 2)}" fill="${color}" opacity="0.8"/>`;
-  };
-  const svgLines = [
+function renderCurveSvg(pointCount: number): string {
+  const curvePoints = Array.from(
+    { length: pointCount },
+    (_, index) => `{{svg_qc_x_${index + 1}}},{{svg_depth_y_${index + 1}}}`,
+  ).reverse().join(" ");
+  return [
     "@svg",
-    `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="qc-curve met rekentrajecten">`,
-    `<rect x="${margin.left}" y="${margin.top}" width="${plotWidth}" height="${plotHeight}" fill="#f8fafc" stroke="#94a3b8"/>`,
-    trajectory(
-      "qc-I",
-      first.pileTipNapM,
-      first.qcIBottomNapM,
-      "#2563eb",
-      4,
-    ),
-    trajectory(
-      "qc-II",
-      first.pileTipNapM,
-      first.qcIBottomNapM,
-      "#7c3aed",
-      16,
-    ),
-    trajectory(
-      "qc-III",
-      first.pileTipNapM + 8 * model.input.baseDiameterMm / 1000,
-      first.pileTipNapM,
-      "#ea580c",
-      28,
-    ),
-    trajectory(
-      "qc-z-a",
-      model.input.positiveShaftStartNapM,
-      first.pileTipNapM,
-      "#16a34a",
-      40,
-    ),
+    '<svg viewBox="0 0 640 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="qc-curve met rekentrajecten">',
+    '<rect x="76" y="28" width="536" height="450" fill="#f8fafc" stroke="#94a3b8"/>',
+    '<line data-traject="qc-I" x1="80" x2="80" y1="{{svg_qc_I_top_y}}" y2="{{svg_qc_I_bottom_y}}" stroke="#2563eb" stroke-width="8"/>',
+    '<line data-traject="qc-II" x1="92" x2="92" y1="{{svg_qc_I_top_y}}" y2="{{svg_qc_I_bottom_y}}" stroke="#7c3aed" stroke-width="8"/>',
+    '<line data-traject="qc-III" x1="104" x2="104" y1="{{svg_qc_I_top_y}}" y2="{{svg_qc_III_top_y}}" stroke="#ea580c" stroke-width="8"/>',
+    '<line data-traject="qc-z-a" x1="116" x2="116" y1="{{svg_qc_I_top_y}}" y2="{{svg_shaft_top_y}}" stroke="#16a34a" stroke-width="8"/>',
     `<polyline data-curve="qc" points="${curvePoints}" fill="none" stroke="#0f172a" stroke-width="2.5" stroke-linejoin="round"/>`,
-    `<text x="${margin.left}" y="${height - 12}" fill="#334155">qc [MPa]</text>`,
-    `<text x="12" y="${margin.top + 12}" fill="#334155">NAP [m]</text>`,
+    '<text x="76" y="508" fill="#334155">qc [MPa]</text>',
+    '<text x="12" y="40" fill="#334155">NAP [m]</text>',
     "</svg>",
     "@end",
-  ];
-  return svgLines.join("\n");
+  ].join("\n");
 }
 
 function validateModel(model: VibroSheetModel): void {
   if (model.sourceFileName.trim() === "") {
     throw new RangeError("Een bronbestandsnaam is vereist");
   }
-  if (model.points.length === 0) {
-    throw new RangeError("Minimaal één meetpunt is vereist");
-  }
-  if (model.results.length !== RESULT_COUNT) {
-    throw new RangeError(`Precies ${RESULT_COUNT} paalpuntresultaten zijn vereist`);
-  }
-
   const numericValues: number[] = [];
   collectFiniteNumbers(model.calibration, numericValues);
   collectFiniteNumbers(model.points, numericValues);
@@ -408,11 +472,39 @@ function validateModel(model: VibroSheetModel): void {
   if (!numericValues.every(Number.isFinite)) {
     throw new RangeError("Het sheetmodel mag uitsluitend eindige getallen bevatten");
   }
+  if (model.points.length < 2) {
+    throw new RangeError("Minimaal twee meetpunten zijn vereist");
+  }
+  if (model.results.length !== REQUIRED_LEVELS_NAP_M.length) {
+    throw new RangeError(
+      `Precies ${REQUIRED_LEVELS_NAP_M.length} paalpuntresultaten zijn vereist`,
+    );
+  }
+  const levelsAreExact = model.results.every((result, index) =>
+    Math.abs(result.pileTipNapM - REQUIRED_LEVELS_NAP_M[index])
+      <= LEVEL_TOLERANCE_M);
+  if (!levelsAreExact) {
+    throw new RangeError(
+      "De paalpunt-niveaureeks moet exact NAP -18,5 tot en met -22,0 m in stappen van 0,5 m zijn",
+    );
+  }
   if (
     model.calibration.qcMaxMpa <= model.calibration.qcMinMpa
     || model.calibration.depthTopNapM <= model.calibration.depthBottomNapM
   ) {
     throw new RangeError("De kalibratie moet positieve qc- en dieptebereiken hebben");
+  }
+  const sortedDepths = model.points
+    .map((point) => point.depthNapM)
+    .sort((first, second) => first - second);
+  if (sortedDepths.some(
+    (depth, index) =>
+      index > 0 && depth - sortedDepths[index - 1] <= LEVEL_TOLERANCE_M,
+  )) {
+    throw new RangeError("Meetpuntdieptes moeten strikt oplopend en uniek zijn");
+  }
+  if (model.input.positiveShaftLayers.length === 0) {
+    throw new RangeError("Minimaal één positieve-schachtlaag is vereist");
   }
 }
 

@@ -148,6 +148,24 @@ function collectEvaluationErrors(nodes: EvaluatedNode[]): string[] {
   });
 }
 
+function evaluatedNumber(nodes: EvaluatedNode[], name: string): number {
+  const assignments = nodes.flatMap((node): EvaluatedNode[] =>
+    node.type === "conditional-branch"
+      ? node.children
+      : [node]);
+  const matches = assignments
+    .filter((node) => node.type === "assignment" && node.name === name);
+  const assignment = matches[matches.length - 1];
+  if (assignment?.type !== "assignment") {
+    throw new Error(`Assignment ${name} ontbreekt`);
+  }
+  const value = Number(assignment.result);
+  if (!Number.isFinite(value)) {
+    throw new Error(`Assignment ${name} is niet numeriek: ${assignment.result}`);
+  }
+  return value;
+}
+
 function flattenTree(nodes: TreeNode[]): TreeNode[] {
   return nodes.flatMap((node) => [
     node,
@@ -155,18 +173,22 @@ function flattenTree(nodes: TreeNode[]): TreeNode[] {
   ]);
 }
 
+function completeModel(): VibroSheetModel {
+  return {
+    sourceFileName: "sondering-01.pdf",
+    calibration,
+    points,
+    input,
+    results: Array.from(
+      { length: 8 },
+      (_, index) => result(-18.5 - index * 0.5, index),
+    ),
+  };
+}
+
 describe("generateVibroPileSheet", () => {
   it("genereert een complete Calcpad-rekensheet die zonder fouten evalueert", () => {
-    const model: VibroSheetModel = {
-      sourceFileName: "sondering-01.pdf",
-      calibration,
-      points,
-      input,
-      results: Array.from(
-        { length: 8 },
-        (_, index) => result(-18.5 - index * 0.5, index),
-      ),
-    };
+    const model = completeModel();
 
     const source = generateVibroPileSheet(model);
 
@@ -182,13 +204,13 @@ describe("generateVibroPileSheet", () => {
       "qc_I_gem_1 = qc_I_integral_1 / critical_depth_1_m",
     );
     expect(source).toContain(
-      "qc_II_gem_1 = qc_II_integral_1 / critical_depth_1_m",
+      "qc_II_gem_1 = qc_II_1_integral / critical_depth_1_m",
     );
     expect(source).toContain(
-      "qc_III_gem_1 = qc_III_integral_1 / trajectory_III_length_1_m",
+      "qc_III_gem_1 = qc_III_1_integral / trajectory_III_length_1_m",
     );
     expect(source).toContain(
-      "qc_z_a_gem_1 = qc_z_a_integral_1 / positive_shaft_length_1_m",
+      "qc_z_a_gem_1 = qc_z_a_integral_1 / qc_z_a_length_1_m",
     );
     expect(source).toContain("R_c_net_d");
     expect(source).toContain("@svg");
@@ -204,6 +226,18 @@ describe("generateVibroPileSheet", () => {
     expect(source).toContain("Rc;net;d");
     expect(source).toContain("Unity check");
     expect(source.match(/^### Paalpunt NAP /gm)).toHaveLength(8);
+    [
+      "-18.5",
+      "-19",
+      "-19.5",
+      "-20",
+      "-20.5",
+      "-21",
+      "-21.5",
+      "-22",
+    ].forEach((level) => {
+      expect(source).toContain(`### Paalpunt NAP ${level} m`);
+    });
     expect(source).not.toContain("NaN");
     expect(source).not.toContain("Infinity");
 
@@ -213,6 +247,35 @@ describe("generateVibroPileSheet", () => {
     const html = render(evaluated);
     expect(html).toContain("<table");
     expect(html).toContain("<th>qc;I</th>");
+  });
+
+  it("laat qc_data en rekenfactoren de qc-afleiding en netto weerstand sturen", () => {
+    const source = generateVibroPileSheet(completeModel());
+    const baseline = evaluate(parse(source));
+    const changedPointSource = source.replace(
+      "[-19, 14, 0.96]",
+      "[-19, 4, 0.96]",
+    );
+    expect(changedPointSource).not.toBe(source);
+    const changedPoint = evaluate(parse(changedPointSource));
+
+    expect(evaluatedNumber(changedPoint, "qc_I_gem_1")).not.toBeCloseTo(
+      evaluatedNumber(baseline, "qc_I_gem_1"),
+      8,
+    );
+    expect(evaluatedNumber(changedPoint, "R_c_net_d_1")).not.toBeCloseTo(
+      evaluatedNumber(baseline, "R_c_net_d_1"),
+      8,
+    );
+
+    const changedFactor = evaluate(parse(source.replace(
+      "alpha_p = 0.7",
+      "alpha_p = 0.5",
+    )));
+    expect(evaluatedNumber(changedFactor, "R_c_net_d_1")).not.toBeCloseTo(
+      evaluatedNumber(baseline, "R_c_net_d_1"),
+      8,
+    );
   });
 
   it("weigert een incompleet of niet-eindig model", () => {
@@ -234,6 +297,14 @@ describe("generateVibroPileSheet", () => {
         (_, index) => result(-18.5 - index * 0.5, index),
       ),
     })).toThrow(/eindige/i);
+
+    const wrongLevels = completeModel();
+    wrongLevels.results[3] = {
+      ...wrongLevels.results[3],
+      pileTipNapM: -20.25,
+    };
+    expect(() => generateVibroPileSheet(wrongLevels))
+      .toThrow(/niveaureeks/i);
   });
 
   it("registreert de starttemplate onder funderingen", () => {
