@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useProjectStore } from "../../store/projectStore";
-import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useActiefExemplaar, useAlleenLezen, useProjectGetal } from "../../store/actiefBlad";
 
 /**
  * Gedeelde bouwstenen voor de parametrische beelden.
@@ -31,6 +31,16 @@ export interface DesignerCtx {
   /** Naam van het veld dat nu bewerkt wordt (of null). */
   editing: string | null;
   setEditing: (naam: string | null) => void;
+  /**
+   * Volgt dit project de referentie-uitwerking op de splitspunten, of de norm?
+   *
+   * Een designer die zelf rekent — voor zijn beeld of voor de u.c. in zijn
+   * statusregel — moet dezelfde tak nemen als het rekenblad. Doet hij dat niet,
+   * dan staat er in het paneel een ander getal dan in de uitwerking, en dat is
+   * precies het soort verschil dat niemand opmerkt. Zie
+   * docs/afwijkingen-referentie.md.
+   */
+  xc: boolean;
 }
 
 /**
@@ -55,6 +65,7 @@ export function useDesigner(marker: string, defaults: Record<string, number>): D
   const [box, setBox] = useState({ w: 640, h: 520 });
 
   const actief = !!exemplaar?.source.includes(marker);
+  const xc = Math.round(useProjectGetal("rekenwijze", 1)) === 1;
 
   useEffect(() => {
     if (!actief) return;
@@ -86,7 +97,7 @@ export function useDesigner(marker: string, defaults: Record<string, number>): D
   };
   const set = (naam: string, waarde: number) => zetWaarde(activeId, naam, String(waarde));
 
-  return { actief, d, set, box, wrapRef, editing, setEditing };
+  return { actief, d, set, box, wrapRef, editing, setEditing, xc };
 }
 
 /** Nederlandse notatie: 1234.5 → "1234,5". */

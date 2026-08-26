@@ -55,7 +55,7 @@ const DEFAULTS: Record<string, number> = {
 export default function BoutDesigner() {
   const ctx = useDesigner(MARKER, DEFAULTS);
   if (!ctx.actief) return null;
-  const { d, set, box, wrapRef } = ctx;
+  const { d, set, box, wrapRef, xc } = ctx;
 
   const fy = Math.round(d("staalsoort"));
   const kwal = Math.round(d("boutkwaliteit"));
@@ -76,7 +76,11 @@ export default function BoutDesigner() {
   const A = (Math.PI * M * M) / 4;
   const f_ub = FUB[kwal] ?? 800;
   const f_u = FU[fy] ?? 360;
-  const d_m = ((SW[M] ?? M * 1.5) + (EW[M] ?? M * 1.7)) / 2;
+  // Splitspunt (register punt 6): §3.6.1(3) vraagt het gemiddelde van de maat
+  // over de platte kanten en over de hoeken; de referentie-uitwerking vult alleen de
+  // sleutelwijdte in. Dezelfde keuze als in templates/boutberekening.ts, anders
+  // toont dit paneel een andere B_p,Rd dan de uitwerking ernaast.
+  const d_m = xc ? (SW[M] ?? M * 1.5) : ((SW[M] ?? M * 1.5) + (EW[M] ?? M * 1.7)) / 2;
 
   const A_v = vlak === 1 ? A_s : A;
   const α_v = vlak === 1 ? (AV[kwal] ?? 0.6) : 0.6;
