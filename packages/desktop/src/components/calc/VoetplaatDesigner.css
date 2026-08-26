@@ -56,6 +56,8 @@
 }
 .vd-uc.ok { color: #047857; background: #d1fae5; }
 .vd-uc.bad { color: #b91c1c; background: #fee2e2; }
+/* Neutrale variant voor modules zonder toetsing (bv. de kruipfactor). */
+.vd-uc.info { color: #1d4ed8; background: #dbeafe; }
 
 /* werkruimte: controls links onder elkaar, tekeningen centraal */
 .vd-body {
@@ -130,6 +132,48 @@
   padding: 2px 4px;
 }
 .vd-compact .vd-ctrl-h { margin-top: 6px; }
+
+/* belasting-tabjes (referentie-look) */
+.gd-tabs { display: flex; gap: 2px; margin-top: 4px; }
+.gd-tab {
+  flex: 1 1 0;
+  padding: 4px 2px;
+  font-size: 10.5px;
+  border: 1px solid var(--theme-border-subtle, #d1d5db);
+  border-bottom: none;
+  background: var(--theme-surface-2, #eef0f3);
+  color: var(--theme-text-muted, #6b7280);
+  border-radius: 5px 5px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gd-tab.active {
+  background: var(--theme-surface, #fff);
+  color: var(--theme-text, #111827);
+  font-weight: 600;
+}
+.gd-tabbody {
+  border: 1px solid var(--theme-border-subtle, #d1d5db);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+.gd-note { font-size: 10px; color: var(--theme-text-muted, #6b7280); line-height: 1.3; }
+
+/* radio-rij (referentie-look: n = 2 / 3 / 4) */
+.mw-radios { display: flex; gap: 9px; align-items: center; flex: 0 0 auto; }
+.vd-compact .mw-radios label {
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.vd-controls .mw-radios input[type="radio"] { width: auto; flex: 0 0 auto; margin: 0; }
+.gd-chk { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.gd-chk input[type="checkbox"] { width: auto; flex: 0 0 auto; }
 
 .vd-layouts {
   display: flex;

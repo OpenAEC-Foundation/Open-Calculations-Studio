@@ -1,50 +1,145 @@
 /**
- * Project browser tree — sidebar voor de editor.
+ * Modulecatalogus en naslagbibliotheek voor het zijpaneel.
  *
- * Twee secties, gescheiden door een `section` node:
- *   • PROJECT (boven) — projectgegevens + de calc-sheets van dit project
- *   • LIBRARY (onder) — referentie-materiaal (boeken, NEN-EN, CalcPAD samples)
+ * Dit bestand beschrijft WAT je kunt invoegen, niet wat er in je project zit.
+ * De projectinhoud staat in `store/projectStore.ts`: een lijst exemplaren, elk
+ * met een eigen kopie van de rekentekst en eigen invoerwaarden. Een module uit
+ * deze catalogus kan dus meerdere keren in een project voorkomen.
  *
- * `templateId` matches a key in `src/templates/index.ts`.
+ *   - `moduleCatalogus` — rekenmodules, gegroepeerd per materiaal. Invoegen
+ *     maakt er een exemplaar van.
+ *   - `bibliotheek` — naslag: boeken, normuitwerkingen, CalcPAD-voorbeelden.
+ *     Ook invoegbaar, zodat je een normuitwerking in je berekening kunt
+ *     opnemen.
+ *
+ * `templateId` matcht een sleutel in `src/templates/index.ts`.
  */
+
+export type ModuleStatus =
+  /** Toetsing uitgewerkt én nagerekend op referentiebladen. */
+  | "gereed"
+  /** Toetsing staat er, maar is nog niet tegen referentiebladen gecontroleerd. */
+  | "controleren"
+  /** Alleen invoer en parametrisch beeld — de toetsing moet nog worden gemaakt. */
+  | "concept";
+
+export const STATUS_UITLEG: Record<ModuleStatus, string> = {
+  gereed: "Gecalibreerd — toetsing nagerekend op referentiebladen",
+  controleren: "Toetsing uitgewerkt, nog niet tegen referentiebladen gecontroleerd",
+  concept: "Nog uit te werken — alleen invoer en parametrisch beeld, geen toetsing",
+};
 
 export type TreeNode =
   | { kind: "section"; id: string; label: string; children: TreeNode[] }
   | { kind: "category"; id: string; label: string; defaultExpanded?: boolean; children: TreeNode[]; count?: number }
-  | { kind: "item"; id: string; label: string; templateId?: string; emphasis?: boolean };
+  | { kind: "item"; id: string; label: string; templateId?: string; emphasis?: boolean; status?: ModuleStatus };
 
 /**
- * Calc-sheets binnen het huidige project. Voor nu hardcoded; later vervangen
- * door dynamische projectstaat (persisted per project file).
+ * Calc-sheets binnen het huidige project, gegroepeerd per materiaal.
+ *
+ * Vijf categorieën — Algemeen, Staal, Beton, Hout, Metselwerk — elk met de
+ * modules die erbij horen. Binnen een categorie eerst de constructiedelen
+ * (kolom, ligger, wand), daarna de verbindingen en tot slot de losse toetsen.
+ *
+ * Een `▫` achter het label betekent: invoer en parametrisch beeld zijn er, de
+ * toetsing moet nog worden uitgewerkt.
+ *
+ * Voor nu hardcoded; later vervangen door dynamische projectstaat (persisted
+ * per project file).
  */
-const projectSheets: TreeNode[] = [
+export const moduleCatalogus: TreeNode[] = [
   {
-    kind: "item",
-    id: "project-metadata",
-    label: "📋 Projectgegevens",
-    templateId: "project-metadata",
-    emphasis: true,
+    kind: "category",
+    id: "cat-algemeen",
+    label: "Algemeen",
+    defaultExpanded: true,
+    count: 2,
+    children: [
+      { kind: "item", id: "sheet-spuwer", label: "Spuwer (noodoverlaat)", templateId: "spuwer", status: "gereed" },
+      { kind: "item", id: "sheet-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen", status: "controleren" },
+    ],
   },
-  { kind: "item", id: "sheet-stalen-gevelkolom", label: "Stalen gevelkolom (wind + N)", templateId: "stalen-gevelkolom" },
-  { kind: "item", id: "sheet-verticaal-windverband", label: "Verticaal windverband", templateId: "verticaal-windverband" },
-  { kind: "item", id: "sheet-voetplaatverbinding", label: "Voetplaatverbinding (kolomvoet)", templateId: "voetplaatverbinding" },
-  { kind: "item", id: "sheet-balklaag", label: "Balklaag (houten vloerbalken)", templateId: "balklaag" },
-  { kind: "item", id: "sheet-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen" },
-  { kind: "item", id: "sheet-stalen-ligger", label: "Stalen ligger IPE 300", templateId: "stalen-ligger" },
+  {
+    kind: "category",
+    id: "cat-staal",
+    label: "Staal",
+    defaultExpanded: true,
+    count: 12,
+    children: [
+      { kind: "item", id: "sheet-stalen-gevelkolom", label: "Stalen gevelkolom (wind + N)", templateId: "stalen-gevelkolom", status: "controleren" },
+      { kind: "item", id: "sheet-stalen-ligger", label: "Stalen ligger IPE 300", templateId: "stalen-ligger", status: "controleren" },
+      { kind: "item", id: "sheet-verticaal-windverband", label: "Verticaal windverband", templateId: "verticaal-windverband", status: "controleren" },
+      { kind: "item", id: "sheet-voetplaatverbinding", label: "Voetplaatverbinding (kolomvoet)", templateId: "voetplaatverbinding", status: "controleren" },
+      { kind: "item", id: "sheet-boutberekening", label: "Boutberekening", templateId: "boutberekening", status: "gereed" },
+      {
+        kind: "category",
+        id: "cat-staal-concept",
+        label: "Nog uit te werken",
+        defaultExpanded: true,
+        count: 7,
+        children: [
+          { kind: "item", id: "sheet-stalen-kolom", label: "Stalen kolom", templateId: "stalen-kolom", status: "concept" },
+          { kind: "item", id: "sheet-momentverbinding", label: "Momentverbinding", templateId: "momentverbinding", status: "concept" },
+          { kind: "item", id: "sheet-dwarskrachtverbinding", label: "Dwarskrachtverbinding", templateId: "dwarskrachtverbinding", status: "concept" },
+          { kind: "item", id: "sheet-schoorverbinding", label: "Schoorverbinding", templateId: "schoorverbinding", status: "concept" },
+          { kind: "item", id: "sheet-penverbinding", label: "Penverbinding", templateId: "penverbinding", status: "concept" },
+          { kind: "item", id: "sheet-lasberekening", label: "Lasberekening", templateId: "lasberekening", status: "concept" },
+          { kind: "item", id: "sheet-brandwerendheid", label: "Brandwerendheid", templateId: "brandwerendheid", status: "concept" },
+        ],
+      },
+    ],
+  },
+  {
+    kind: "category",
+    id: "cat-beton",
+    label: "Beton",
+    defaultExpanded: true,
+    count: 6,
+    children: [
+      { kind: "item", id: "sheet-kruipfactor", label: "Kruipfactor", templateId: "kruipfactor", status: "gereed" },
+      { kind: "item", id: "sheet-verankeringslengte", label: "Verankeringslengte", templateId: "verankeringslengte", status: "gereed" },
+      {
+        kind: "category",
+        id: "cat-beton-concept",
+        label: "Nog uit te werken",
+        defaultExpanded: true,
+        count: 4,
+        children: [
+          { kind: "item", id: "sheet-betondoorsnede", label: "Betondoorsnede", templateId: "betondoorsnede", status: "concept" },
+          { kind: "item", id: "sheet-betonkolom", label: "Betonkolom", templateId: "betonkolom", status: "concept" },
+          { kind: "item", id: "sheet-ponsberekening", label: "Pons", templateId: "ponsberekening", status: "concept" },
+          { kind: "item", id: "sheet-tweepaals-poer", label: "Tweepaals poer", templateId: "tweepaals-poer", status: "concept" },
+        ],
+      },
+    ],
+  },
+  {
+    kind: "category",
+    id: "cat-hout",
+    label: "Hout",
+    defaultExpanded: true,
+    count: 4,
+    children: [
+      { kind: "item", id: "sheet-kolom", label: "Kolom (houten kolom)", templateId: "kolom", status: "gereed" },
+      { kind: "item", id: "sheet-balklaag", label: "Balklaag (houten vloerbalken)", templateId: "balklaag", status: "gereed" },
+      { kind: "item", id: "sheet-gording", label: "Gording (dakgording)", templateId: "gording", status: "gereed" },
+      { kind: "item", id: "sheet-schijfwerking", label: "Schijfwerking (wandschijf)", templateId: "schijfwerking", status: "controleren" },
+    ],
+  },
+  {
+    kind: "category",
+    id: "cat-metselwerk",
+    label: "Metselwerk",
+    defaultExpanded: true,
+    count: 2,
+    children: [
+      { kind: "item", id: "sheet-metselwerkwand", label: "Dragende metselwerkwand", templateId: "metselwerkwand", status: "controleren" },
+      { kind: "item", id: "sheet-opleg-metselwerk", label: "Oplegging op metselwerk", templateId: "opleg-metselwerk", status: "controleren" },
+    ],
+  },
 ];
 
-export const projectTree: TreeNode[] = [
-  {
-    kind: "section",
-    id: "project",
-    label: "Project",
-    children: projectSheets,
-  },
-  {
-    kind: "section",
-    id: "library",
-    label: "Library",
-    children: [
+export const bibliotheek: TreeNode[] = [
   {
     kind: "category",
     id: "books",
@@ -170,7 +265,7 @@ export const projectTree: TreeNode[] = [
     id: "calcpad-samples",
     label: "CalcPAD voorbeelden",
     defaultExpanded: false,
-    count: 11,
+    count: 12,
     children: [
       { kind: "item", id: "cpd-2259-intertek", label: "2259 Intertek units (real-world)", templateId: "cpd-2259-intertek" },
       { kind: "item", id: "cpd-calcpad-demo", label: "CalcPAD syntax demo", templateId: "calcpad-demo" },
@@ -186,6 +281,38 @@ export const projectTree: TreeNode[] = [
       { kind: "item", id: "cpd-deep-beam", label: "Deep Beam (Elastic)", templateId: "cpd-deep-beam" },
     ],
   },
-    ],
-  },
 ];
+
+/** Wat de app van een sjabloon moet weten zodra het een exemplaar wordt. */
+export interface ModuleInfo {
+  templateId: string;
+  label: string;
+  status?: ModuleStatus;
+  /** Categorie waaronder hij in de catalogus staat (Staal, Beton, ...). */
+  categorie: string;
+}
+
+function verzamel(nodes: TreeNode[], categorie: string, uit: Record<string, ModuleInfo>) {
+  for (const node of nodes) {
+    if (node.kind === "item") {
+      if (node.templateId && !uit[node.templateId]) {
+        uit[node.templateId] = {
+          templateId: node.templateId,
+          label: node.label,
+          status: node.status,
+          categorie,
+        };
+      }
+    } else {
+      verzamel(node.children, node.kind === "category" ? node.label : categorie, uit);
+    }
+  }
+}
+
+/** Sjabloon-id naar label en status, voor de naamgeving van nieuwe exemplaren. */
+export const modulesPerTemplate: Record<string, ModuleInfo> = (() => {
+  const uit: Record<string, ModuleInfo> = {};
+  verzamel(moduleCatalogus, "Algemeen", uit);
+  verzamel(bibliotheek, "Bibliotheek", uit);
+  return uit;
+})();

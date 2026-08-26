@@ -1,11 +1,31 @@
 import { paalExample, exampleDoc } from "./examples";
 import { calcpadDemo } from "./calcpad-demo";
 import { calcpadSamples } from "./calcpad-samples";
-import { projectMetadata } from "./projectMetadata";
 import { stalenGevelkolom } from "./stalenGevelkolom";
 import { verticaalWindverband } from "./verticaalWindverband";
 import { voetplaatverbinding } from "./voetplaatverbinding";
 import { balklaag } from "./balklaag";
+import { oplegMetselwerk } from "./oplegMetselwerk";
+import { schijfwerking } from "./schijfwerking";
+import { gording } from "./gording";
+import { kolom } from "./kolom";
+import { metselwerkwand } from "./metselwerkwand";
+import { spuwer } from "./spuwer";
+import { kruipfactor } from "./kruipfactor";
+import { boutberekening } from "./boutberekening";
+// Visuele modules — invoer en parametrisch beeld, toetsing volgt nog.
+import { lasberekening } from "./lasberekening";
+import { schoorverbinding } from "./schoorverbinding";
+import { penverbinding } from "./penverbinding";
+import { stalenKolom } from "./stalenKolom";
+import { brandwerendheid } from "./brandwerendheid";
+import { momentverbinding } from "./momentverbinding";
+import { dwarskrachtverbinding } from "./dwarskrachtverbinding";
+import { betondoorsnede } from "./betondoorsnede";
+import { betonkolom } from "./betonkolom";
+import { ponsberekening } from "./ponsberekening";
+import { tweepaalsPoer } from "./tweepaalsPoer";
+import { verankeringslengte } from "./verankeringslengte";
 import {
   ec5Buiging, ec5Afschuiving, ec5Druk, ec5DrukLoodrecht,
   ec5Knik, ec5Doorbuiging, ec5HoutenBalk,
@@ -37,11 +57,30 @@ import {
 } from "./en1992";
 
 export const templates: Record<string, string> = {
-  "project-metadata": projectMetadata,
   "stalen-gevelkolom": stalenGevelkolom,
   "verticaal-windverband": verticaalWindverband,
   "voetplaatverbinding": voetplaatverbinding,
   "balklaag": balklaag,
+  "opleg-metselwerk": oplegMetselwerk,
+  "schijfwerking": schijfwerking,
+  "gording": gording,
+  "kolom": kolom,
+  "metselwerkwand": metselwerkwand,
+  "spuwer": spuwer,
+  "kruipfactor": kruipfactor,
+  "boutberekening": boutberekening,
+  "lasberekening": lasberekening,
+  "schoorverbinding": schoorverbinding,
+  "penverbinding": penverbinding,
+  "stalen-kolom": stalenKolom,
+  "brandwerendheid": brandwerendheid,
+  "momentverbinding": momentverbinding,
+  "dwarskrachtverbinding": dwarskrachtverbinding,
+  "betondoorsnede": betondoorsnede,
+  "betonkolom": betonkolom,
+  "ponsberekening": ponsberekening,
+  "tweepaals-poer": tweepaalsPoer,
+  "verankeringslengte": verankeringslengte,
   "calcpad-demo": calcpadDemo,
   ...calcpadSamples,
   "paaldraagvermogen": paalExample,

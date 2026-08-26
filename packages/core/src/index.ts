@@ -1,12 +1,16 @@
 export { parse, type ParseOptions } from './parser.js';
 export { evaluate, setAngleMode } from './evaluator.js';
-export type { SelectValues, AngleMode } from './evaluator.js';
+export type { SelectValues, AngleMode, Scope } from './evaluator.js';
 export { render, defaultStyles } from './renderer.js';
 export { exprToLatex, nameToLatex } from './latex.js';
 export { parseGef, type GefData } from './gef-parser.js';
 export {
   generateIfcx,
   generateIfc4x3Step,
+  generateProjectIfcx,
+  generateProjectIfc4x3Step,
+  type ElementRef,
+  type IfcCalcSheet,
   type IfcGenerationOptions,
   type IfcGenerationResult,
   type IfcxDocument,
@@ -16,7 +20,7 @@ export {
 export type * from './types.js';
 
 import { parse, type ParseOptions } from './parser.js';
-import { evaluate, type SelectValues } from './evaluator.js';
+import { evaluate, type SelectValues, type Scope } from './evaluator.js';
 import { render } from './renderer.js';
 
 /**
@@ -30,8 +34,9 @@ export function process(
   source: string,
   selectValues?: SelectValues,
   options?: ParseOptions,
+  initialScope?: Scope,
 ): string {
   const ast = parse(source, options);
-  const evaluated = evaluate(ast, selectValues);
+  const evaluated = evaluate(ast, selectValues, initialScope);
   return render(evaluated);
 }

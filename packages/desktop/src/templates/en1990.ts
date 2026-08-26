@@ -23,23 +23,17 @@ export const en1990Fundamenteel = `# Belastingcombinatie UGT -- EN 1990 $6.4.3.2
 In Nederland worden voor STR/GEO de vergelijkingen (6.10a) en (6.10b) gebruikt
 (Tabel NB.4 - A1.2(B), groep B). De maatgevende van beide is bepalend.
 
-@select gevolgklasse "Gevolgklasse (CC) -- Bijlage B, Tabel B3"
-CC1 -- Lage gevolgen (K_FI = 0.9) = 1
-CC2 -- Middelmatige gevolgen (K_FI = 1.0) = 2
-CC3 -- Grote gevolgen (K_FI = 1.1) = 3
-@end
-
 ### Partiele factoren (Tabel NB.4 en NB.5)
 
 Factor K_FI (tabel B3):
 
-#if gevolgklasse == 1
+#if CC == 1
 K_FI = 0.9
 #end if
-#if gevolgklasse == 2
+#if CC == 2
 K_FI = 1.0
 #end if
-#if gevolgklasse == 3
+#if CC == 3
 K_FI = 1.1
 #end if
 
@@ -117,19 +111,19 @@ gamma_Gsup_610b = 1.2
 xi = 0.89
 gamma_Q = 1.5
 
-Gecorrigeerde factoren voor de gekozen gevolgklasse:
+Gecorrigeerde factoren voor de gevolgklasse uit de projectgegevens:
 
-#if gevolgklasse == 1
+#if CC == 1
 gamma_Gsup_610a_CC = 1.2
 gamma_Gsup_610b_CC = 1.1
 gamma_Q_CC = 1.35
 #end if
-#if gevolgklasse == 2
+#if CC == 2
 gamma_Gsup_610a_CC = 1.35
 gamma_Gsup_610b_CC = 1.2
 gamma_Q_CC = 1.5
 #end if
-#if gevolgklasse == 3
+#if CC == 3
 gamma_Gsup_610a_CC = 1.5
 gamma_Gsup_610b_CC = 1.3
 gamma_Q_CC = 1.65
@@ -200,12 +194,6 @@ Controle of het destabiliserend belastingseffect niet groter is dan
 het stabiliserend belastingseffect (formule 6.7):
 
   E_d,dst <= E_d,stb
-
-@select gevolgklasse "Gevolgklasse (CC)"
-CC1 -- Lage gevolgen = 1
-CC2 -- Middelmatige gevolgen = 2
-CC3 -- Grote gevolgen = 3
-@end
 
 ### Partiele factoren EQU (Tabel NB.3 - A1.2(A))
 
@@ -560,12 +548,6 @@ E_qp = G_k + psi_2 * Q_k1 + psi_2_2 * Q_k2 to kN
 export const en1990Compleet = `# Belastingcombinaties -- NEN-EN 1990+NB:2019
 ## Volledig overzicht UGT en BGT voor gebouwen
 
-@select gevolgklasse "Gevolgklasse (CC) -- Bijlage B, Tabel B3"
-CC1 -- Lage gevolgen (K_FI = 0.9) = 1
-CC2 -- Middelmatige gevolgen (K_FI = 1.0) = 2
-CC3 -- Grote gevolgen (K_FI = 1.1) = 3
-@end
-
 @select belastingcategorie "Belastingcategorie overheersende veranderlijke belasting"
 Categorie A -- woon- en verblijfsruimtes = 1
 Categorie B -- kantoorruimtes = 2
@@ -634,19 +616,19 @@ psi_2 = 0
 
 ### Partiele factoren STR/GEO (Tabel NB.4 en NB.5)
 
-#if gevolgklasse == 1
+#if CC == 1
 gamma_Gsup_a = 1.2
 gamma_Gsup_b = 1.1
 gamma_Q_CC = 1.35
 K_FI = 0.9
 #end if
-#if gevolgklasse == 2
+#if CC == 2
 gamma_Gsup_a = 1.35
 gamma_Gsup_b = 1.2
 gamma_Q_CC = 1.5
 K_FI = 1.0
 #end if
-#if gevolgklasse == 3
+#if CC == 3
 gamma_Gsup_a = 1.5
 gamma_Gsup_b = 1.3
 gamma_Q_CC = 1.65
@@ -769,12 +751,6 @@ Groep C wordt gebruikt voor geotechnische belastingen bij:
 - damwandberekening
 
 Vergelijking (6.10) met gereduceerde partiele factoren.
-
-@select gevolgklasse "Gevolgklasse (CC)"
-CC1 -- Lage gevolgen = 1
-CC2 -- Middelmatige gevolgen = 2
-CC3 -- Grote gevolgen = 3
-@end
 
 ### Partiele factoren groep C (Tabel NB.6 - A1.2(C))
 

@@ -257,8 +257,21 @@ export interface SelectValues {
   [key: string]: string;
 }
 
-export function evaluate(nodes: AstNode[], selectValues?: SelectValues): EvaluatedNode[] {
-  const scope: Scope = {};
+/**
+ * Evaluate a parsed document.
+ *
+ * `initialScope` seeds the scope before the first line runs. De desktop-app
+ * gebruikt dat voor de projectgegevens: gevolgklasse, ontwerplevensduur en de
+ * projectkop staan één keer op projectniveau en zijn in elk rekenblad
+ * beschikbaar zonder dat ze in de bladtekst herhaald worden. Een blad mag de
+ * naam gewoon overschrijven — de seed is een startwaarde, geen slot.
+ */
+export function evaluate(
+  nodes: AstNode[],
+  selectValues?: SelectValues,
+  initialScope?: Scope,
+): EvaluatedNode[] {
+  const scope: Scope = { ...(initialScope ?? {}) };
   return evaluateNodes(nodes, scope, selectValues || {});
 }
 

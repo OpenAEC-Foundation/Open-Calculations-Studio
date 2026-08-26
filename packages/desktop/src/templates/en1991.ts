@@ -250,11 +250,7 @@ export const en1991Windbelasting = `# Windbelasting -- EN 1991-1-4 NB
 
 ## Windgebied (Tabel NB.1)
 
-@select windgebied "Windgebied Nederland (Tabel NB.1)"
-Gebied I -- Kust, Markermeer, IJsselmeer (v_b0 = 29.5) = 1
-Gebied II -- Noord-Holland, Groningen, Friesland, Flevoland, Zuid-Holland, Zeeland (v_b0 = 27.0) = 2
-Gebied III -- Overig Nederland (v_b0 = 24.5) = 3
-@end
+Het windgebied staat in de projectgegevens; het volgt uit de gemeente.
 
 Fundamentele waarde basiswindsnelheid (Tabel NB.1):
 
@@ -292,11 +288,8 @@ q_b = 0.5 * rho * v_b^2 / 1000 to kN/m^2
 
 ## Terreinruwheid (Tabel NB.3-4.1)
 
-@select terreincategorie "Terreincategorie (Tabel NB.3-4.1)"
-Categorie 0 -- Zee of kustgebied (z0=0.005, z_min=1) = 1
-Categorie II -- Onbebouwd gebied (z0=0.2, z_min=4) = 2
-Categorie III -- Bebouwd gebied (z0=0.5, z_min=7) = 3
-@end
+De terreincategorie staat in de projectgegevens; die volgt uit de omgeving
+van het gebouw.
 
 Terreinparameters:
 

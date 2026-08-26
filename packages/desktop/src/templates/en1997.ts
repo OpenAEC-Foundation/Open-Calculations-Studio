@@ -15,27 +15,21 @@ export const en1997Funderingsstrook = `# Draagvermogen Funderingsstrook — NEN 
 
 ## Gevolgklasse en partiele factoren
 
-@select gevolgklasse "Gevolgklasse (Bijlage A, tabel A.1)"
-CC1 — Lage gevolgen = 1
-CC2 — Middelmatige gevolgen = 2
-CC3 — Grote gevolgen = 3
-@end
-
 Partiele factoren grondweerstanden (Bijlage A, tabel A.3b):
 
-#if gevolgklasse == 1
+#if CC == 1
 gamma_Rv = 1.0
 gamma_phi = 1.15
 gamma_c = 1.5
 #end if
 
-#if gevolgklasse == 2
+#if CC == 2
 gamma_Rv = 1.0
 gamma_phi = 1.20
 gamma_c = 1.65
 #end if
 
-#if gevolgklasse == 3
+#if CC == 3
 gamma_Rv = 1.0
 gamma_phi = 1.25
 gamma_c = 1.8
@@ -256,12 +250,6 @@ export const en1997Paaldraagvermogen = `# Axiaal Draagvermogen Paalfundering —
 
 ## Gevolgklasse en partiele factoren
 
-@select gevolgklasse "Gevolgklasse (Bijlage A)"
-CC1 — Lage gevolgen = 1
-CC2 — Middelmatige gevolgen = 2
-CC3 — Grote gevolgen = 3
-@end
-
 @select paaltype "Type paal (tabel 7.b NB)"
 Grondverdringende paal (gedrukt) = 1
 Grondverdringende paal (geboord) = 2
@@ -271,17 +259,17 @@ Boorpaal = 4
 
 Partiele factoren paaldraagvermogen (tabel 7.b NB):
 
-#if gevolgklasse == 1
+#if CC == 1
 gamma_b = 1.2
 gamma_s = 1.2
 #end if
 
-#if gevolgklasse == 2
+#if CC == 2
 gamma_b = 1.25
 gamma_s = 1.25
 #end if
 
-#if gevolgklasse == 3
+#if CC == 3
 gamma_b = 1.3
 gamma_s = 1.3
 #end if
@@ -635,27 +623,21 @@ export const en1997Glijding = `# Glijdingscontrole — NEN 9997-1 §6.5.3
 
 ## Gevolgklasse
 
-@select gevolgklasse "Gevolgklasse"
-CC1 — Lage gevolgen = 1
-CC2 — Middelmatige gevolgen = 2
-CC3 — Grote gevolgen = 3
-@end
-
 Partiele factor grondweerstand (Bijlage A):
 
-#if gevolgklasse == 1
+#if CC == 1
 gamma_Rh = 1.0
 gamma_phi = 1.15
 gamma_c = 1.5
 #end if
 
-#if gevolgklasse == 2
+#if CC == 2
 gamma_Rh = 1.0
 gamma_phi = 1.20
 gamma_c = 1.65
 #end if
 
-#if gevolgklasse == 3
+#if CC == 3
 gamma_Rh = 1.0
 gamma_phi = 1.25
 gamma_c = 1.8

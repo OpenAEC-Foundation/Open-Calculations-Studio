@@ -1,0 +1,115 @@
+.pg-panel {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px 32px 48px;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: var(--font-body);
+}
+
+.pg-kop {
+  max-width: 620px;
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+}
+
+.pg-kop h1 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.pg-kop p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-text-secondary);
+}
+
+.pg-groep {
+  max-width: 620px;
+  margin-bottom: 22px;
+}
+
+.pg-groep h2 {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-accent, #d97706);
+}
+
+.pg-veld {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.pg-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 3px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.pg-var {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--theme-text-secondary);
+  background: var(--theme-bg-lighter);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.pg-veld input,
+.pg-veld select {
+  width: 100%;
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--theme-text);
+  background: var(--theme-bg-lighter);
+  border: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.2));
+  border-radius: 4px;
+}
+
+.pg-veld input:focus,
+.pg-veld select:focus {
+  outline: none;
+  border-color: var(--theme-accent, #d97706);
+}
+
+.pg-hint,
+.pg-afgeleid {
+  display: block;
+  margin-top: 3px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--theme-text-secondary);
+}
+
+.pg-afgeleid {
+  color: var(--theme-accent, #d97706);
+  font-family: var(--font-mono);
+}
+
+.pg-voet {
+  max-width: 620px;
+  margin: 28px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--theme-text-secondary);
+}
+
+.pg-voet code {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  background: var(--theme-bg-lighter);
+  padding: 1px 5px;
+  border-radius: 3px;
+}

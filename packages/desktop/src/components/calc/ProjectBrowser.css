@@ -182,9 +182,37 @@
   color: var(--theme-text-secondary);
 }
 
-.tree-item.selected .tree-item-icon {
+/* Alleen bolletjes zónder status volgen de accentkleur bij selectie. Een
+   statusbolletje moet zijn eigen kleur houden: de accentkleur is in meerdere
+   thema's dezelfde oranje als "nog controleren", waardoor de geselecteerde
+   module anders altijd als te controleren zou lezen. */
+.tree-item.selected .tree-item-icon:not([class*="tree-status-"]) {
   color: var(--theme-accent);
 }
+
+/* Status van een module — gevulde bol = toetsing bestaat, open bol = concept.
+   De kleur zegt of de toetsing ook is nagerekend op referentiebladen. */
+.tree-item-icon.tree-status-gereed { color: #16a34a; }
+.tree-item-icon.tree-status-controleren { color: #d97706; }
+.tree-item-icon.tree-status-concept { color: #9ca3af; }
+
+.tree-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  padding: 8px 10px 10px 14px;
+  margin-top: 4px;
+  border-top: 1px solid var(--theme-border-subtle, #d1d5db);
+  font-size: 9.5px;
+  color: var(--theme-text-secondary);
+}
+.tree-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.tree-legend .tree-item-icon { width: auto; font-size: 10px; }
 
 .tree-item-label {
   flex: 1;
@@ -253,4 +281,104 @@
 
 .tree-item-emphasis:hover {
   background: var(--theme-hover);
+}
+
+/* ─── Exemplaren (de rekenbladen in dit project) ─────────────── */
+
+/* Een rij is een container: de naam opent het blad, de knopjes rechts
+   verschijnen pas bij hover zodat de lijst rustig blijft. */
+.tree-item.exemplaar-rij {
+  padding: 0 4px 0 0;
+  gap: 0;
+}
+
+.exemplaar-open {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 3px 4px 3px 8px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: 11px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.exemplaar-acties {
+  display: none;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.tree-item.exemplaar-rij:hover .exemplaar-acties {
+  display: flex;
+}
+
+.exemplaar-acties button {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--theme-text-secondary);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.exemplaar-acties button:hover {
+  background: var(--theme-hover-strong, rgba(217, 119, 6, 0.15));
+  color: var(--theme-accent);
+}
+
+.exemplaar-naam-input {
+  flex: 1;
+  min-width: 0;
+  margin: 1px 4px 1px 0;
+  padding: 1px 4px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--theme-text);
+  background: var(--theme-bg-lighter);
+  border: 1px solid var(--theme-accent);
+  border-radius: 3px;
+}
+
+.project-leeg {
+  margin: 4px 10px 8px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--theme-text-secondary);
+}
+
+/* Plusje in de catalogus — laat zien dat klikken toevoegt, niet opent. */
+.tree-item-plus {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--theme-text-secondary);
+  opacity: 0;
+}
+
+.tree-item:hover .tree-item-plus {
+  opacity: 1;
+  color: var(--theme-accent);
+}
+
+.tree-section-toggle {
+  width: 100%;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.tree-section-toggle:hover {
+  background: var(--theme-hover, rgba(217, 119, 6, 0.08));
 }

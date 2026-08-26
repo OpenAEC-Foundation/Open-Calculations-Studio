@@ -9,6 +9,13 @@ edition = "2021"
 name = "open_calculations_studio_lib"
 crate-type = ["staticlib", "rlib"]
 
+[features]
+default = []
+# Bouwt de PDF-commando's mee die de OpenAEC-rapportengine gebruiken. Zonder
+# deze vlag print de app via de browser (zie components/calc/PrintDocument.tsx)
+# en geven de engine-commando's een nette foutmelding.
+rapportengine = ["dep:openaec-core"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -22,9 +29,18 @@ tauri-plugin-os = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 
-# OpenAEC report engine — local path dep to the openaec-reports workspace.
-# Provides ReportData schema + generate_pdf_bytes(&ReportData) -> Vec<u8>.
-openaec-core = { path = "../../../../openaec-reports/rust/crates/openaec-core" }
+# OpenAEC-rapportengine — optioneel, standaard uit.
+#
+# Stond hier eerder als pad naar een zusterrepo (`../../../../openaec-reports`).
+# Dat pad bestaat alleen op de machine waar die repo toevallig naast dit
+# project staat; overal elders faalde `cargo build` — en daarmee de hele
+# desktop-app, niet alleen de PDF. Nu wijst hij naar de publieke repo en is hij
+# bovendien optioneel, zodat dit project op zichzelf bouwt: zonder zusterrepo,
+# zonder netwerk.
+#
+# Aanzetten met:  cargo build --features rapportengine
+#                 npm run tauri build -- --features rapportengine
+openaec-core = { git = "https://github.com/OpenAEC-Foundation/openaec-reports", branch = "main", optional = true }
 
 # Release profile — reduce LTO + raise codegen-units so the linker fits in RAM
 # on dev machines (LLVM OOM otherwise). Trade-off: slightly bigger binary.
