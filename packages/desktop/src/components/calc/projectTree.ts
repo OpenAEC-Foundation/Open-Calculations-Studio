@@ -66,8 +66,11 @@ export const moduleCatalogus: TreeNode[] = [
     defaultExpanded: true,
     count: 12,
     children: [
+      // "Stalen ligger IPE 300" stond hier als module, maar is een uitgewerkt
+      // voorbeeld met de doorsnede hard ingetypt — geen profielkeuze, geen
+      // parametrisch beeld. De echte toetsing staat als "Volledige toetsing
+      // stalen ligger" in de bibliotheek hieronder.
       { kind: "item", id: "sheet-stalen-gevelkolom", label: "Stalen gevelkolom (wind + N)", templateId: "stalen-gevelkolom", status: "controleren" },
-      { kind: "item", id: "sheet-stalen-ligger", label: "Stalen ligger IPE 300", templateId: "stalen-ligger", status: "controleren" },
       { kind: "item", id: "sheet-verticaal-windverband", label: "Verticaal windverband", templateId: "verticaal-windverband", status: "controleren" },
       { kind: "item", id: "sheet-voetplaatverbinding", label: "Voetplaatverbinding (kolomvoet)", templateId: "voetplaatverbinding", status: "controleren" },
       { kind: "item", id: "sheet-boutberekening", label: "Boutberekening", templateId: "boutberekening", status: "gereed" },

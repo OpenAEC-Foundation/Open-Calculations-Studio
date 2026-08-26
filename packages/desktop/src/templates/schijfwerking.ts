@@ -1,8 +1,11 @@
 /**
  * Schijfwerking — houten wandschijf (racking) volgens NEN-EN 1995-1-1 §9.2.4.
  *
- * VOORLOPIG alleen invoer + parametrisch beeld (SchijfwerkingDesigner.tsx). De
- * rekenregels (schuifcapaciteit, verbindingsmiddelen, verankering) volgen nog.
+ * De rekenregels van §9.2.4.2 (methode A) staan erin: F_i,v,Rd volgens (9.21),
+ * plus toetsen op druk loodrecht op de vezel, plooi van de beplating, de
+ * maximale verbindingsmiddelafstand en de gedrukte zijstijl — vijf u.c.'s.
+ * Nog NIET tegen referentiebladen nagerekend; daarom staat de module op
+ * "controleren" en niet op "gereed".
  * Variabelenamen komen exact overeen met de designer, zodat beeld en sheet
  * dezelfde invoer delen (de waarden van dit exemplaar).
  */
@@ -11,7 +14,8 @@ export const schijfwerking = `"Schijfwerking — houten wandschijf (EN 1995-1-1 
 
 '<i>Wandschijf van stijl-en-regelwerk met beplating, belast door een horizontale
 'schuifkracht (racking). Dit blad bevat voorlopig alleen de invoer en het
-'parametrische beeld; de rekenregels (§9.2.4) volgen nog.</i>
+'parametrische beeld. De rekenregels van §9.2.4.2 zijn uitgewerkt maar nog niet
+'tegen referentiebladen nagerekend.</i>
 
 # 1. Verbinding & beplating
 
