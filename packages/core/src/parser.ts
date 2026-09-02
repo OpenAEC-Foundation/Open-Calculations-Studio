@@ -384,13 +384,20 @@ function foldIdentifierDots(source: string): string {
     // CalcPAD vector index by loop-variable: `name.i`, `name.j` (single
     // lowercase letter) → `name[i]`. Distinguishes from dotted identifiers
     // like `Cs.Cd` (uppercase / multi-char RHS) which still get folded.
+    //
+    // The trailing `.` in the lookahead keeps Dutch abbreviations intact:
+    // `t.o.v.` would otherwise fold to `t[o].v.` and `u.c.` to `u[c].`. A
+    // real vector index is never immediately followed by another dot.
     out = out.replace(
-      /(?<![\p{L}\p{N}_.])([\p{L}_][\p{L}\p{N}_]*)\.([a-z])(?![\p{L}\p{N}_])/gu,
+      /(?<![\p{L}\p{N}_.])([\p{L}_][\p{L}\p{N}_]*)\.([a-z])(?![\p{L}\p{N}_.])/gu,
       (_m, name, idx) => `${name}[${idx}]`,
     );
     // Identifier-cluster fold: `Cs.Cd`, `F_0.9G50%TotalWeight` → underscores.
+    //
+    // Same trailing-`.` guard, for the same reason: without it this rule
+    // catches what the one above now leaves alone (`t.o.v` → `t_o_v`).
     out = out.replace(
-      /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*(?:[.%][\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_])/gu,
+      /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*(?:[.%][\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_.])/gu,
       (match) => match.replace(/[.%]/g, '_'),
     );
     return out;
@@ -418,7 +425,13 @@ function foldIdentifierDots(source: string): string {
 function stripFormatSpecs(source: string): string {
   // Match `:F2`, `:N0`, `:G`, `:E3`, `:P0` where preceded by digit/letter/`)`
   // and followed by end-of-token (whitespace, EOL, or expression operator).
-  return source.replace(/(?<=[\p{L}\p{N}_)])\s*:\s*[FNGEPfngep]\d*(?=\s|$|[,;)+\-*/'])/gu, '');
+  // Whitespace around `:` must stay WITHIN the line ([^\S\n], not \s) —
+  // otherwise a prose line ending in `:` swallows the next statement when it
+  // happens to start with one of F/N/G/E/P (e.g. `n = N_Ed/N_plRd`).
+  return source.replace(
+    /(?<=[\p{L}\p{N}_)])[^\S\n]*:[^\S\n]*[FNGEPfngep]\d*(?=[^\S\n]|$|[,;)+\-*/'])/gmu,
+    '',
+  );
 }
 
 /**

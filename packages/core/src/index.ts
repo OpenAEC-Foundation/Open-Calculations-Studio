@@ -7,6 +7,10 @@ export { parseGef, type GefData } from './gef-parser.js';
 export {
   generateIfcx,
   generateIfc4x3Step,
+  generateProjectIfcx,
+  generateProjectIfc4x3Step,
+  type ElementRef,
+  type IfcCalcSheet,
   type IfcGenerationOptions,
   type IfcGenerationResult,
   type IfcxDocument,
@@ -38,8 +42,9 @@ export function process(
   source: string,
   selectValues?: SelectValues,
   options?: ProcessOptions,
+  initialScope?: Scope,
 ): string {
   const ast = parse(source, options);
-  const evaluated = evaluate(ast, selectValues, options?.initialScope);
+  const evaluated = evaluate(ast, selectValues, initialScope ?? options?.initialScope);
   return render(evaluated);
 }

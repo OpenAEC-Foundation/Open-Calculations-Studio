@@ -1,40 +1,33 @@
-import { useEffect, useRef, useState } from "react";
-import { projectTree, type TreeNode } from "./projectTree";
+import { useState } from "react";
+import {
+  moduleCatalogus,
+  bibliotheek,
+  modulesPerTemplate,
+  STATUS_UITLEG,
+  type TreeNode,
+} from "./projectTree";
 import { templates } from "../../templates";
-import { useDocumentStore } from "../../store/documentStore";
-import { useProjectStore, type SheetType } from "../../store/projectStore";
-import { wizards } from "../wizards";
+import { useProjectStore, PROJECT_ID, type Exemplaar } from "../../store/projectStore";
 import "./ProjectBrowser.css";
 
 interface TreeProps {
   node: TreeNode;
   level: number;
-  selectedId: string | null;
-  onSelect: (id: string, templateId: string | undefined, label: string) => void;
+  onInsert: (templateId: string, label: string) => void;
 }
 
-function TreeNodeView({ node, level, selectedId, onSelect }: TreeProps) {
+/** Catalogus-tak: klikken voegt een exemplaar toe aan het project. */
+function CatalogusNode({ node, level, onInsert }: TreeProps) {
   const [expanded, setExpanded] = useState(
-    node.kind === "category" ? !!node.defaultExpanded : node.kind === "section",
+    node.kind === "category" ? !!node.defaultExpanded : true,
   );
 
   if (node.kind === "section") {
     return (
-      <div className="tree-section">
-        <div className="tree-section-header">
-          <span className="tree-section-label">{node.label}</span>
-        </div>
-        <div className="tree-section-children">
-          {node.children.map((child) => (
-            <TreeNodeView
-              key={child.id}
-              node={child}
-              level={0}
-              selectedId={selectedId}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
+      <div className="tree-section-children">
+        {node.children.map((child) => (
+          <CatalogusNode key={child.id} node={child} level={level} onInsert={onInsert} />
+        ))}
       </div>
     );
   }
@@ -54,13 +47,7 @@ function TreeNodeView({ node, level, selectedId, onSelect }: TreeProps) {
         {expanded && (
           <div className="tree-children">
             {node.children.map((child) => (
-              <TreeNodeView
-                key={child.id}
-                node={child}
-                level={level + 1}
-                selectedId={selectedId}
-                onSelect={onSelect}
-              />
+              <CatalogusNode key={child.id} node={child} level={level + 1} onInsert={onInsert} />
             ))}
           </div>
         )}
@@ -68,286 +55,151 @@ function TreeNodeView({ node, level, selectedId, onSelect }: TreeProps) {
     );
   }
 
-  const isSelected = selectedId === node.id;
-  const hasTemplate = !!node.templateId;
-  const isEmphasis = node.kind === "item" && node.emphasis;
+  const heeftSjabloon = !!node.templateId && !!templates[node.templateId];
+  const status = node.status;
+  const bolletje = status === "concept" ? "○" : status ? "●" : heeftSjabloon ? "○" : "□";
+  const uitleg = status
+    ? `${node.label} — ${STATUS_UITLEG[status]}\nKlik om toe te voegen aan het project`
+    : heeftSjabloon
+      ? `${node.label} — klik om toe te voegen aan het project`
+      : `${node.label} (nog niet beschikbaar)`;
+
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      className={`tree-item${isSelected ? " selected" : ""}${hasTemplate ? "" : " tree-item-disabled"}${isEmphasis ? " tree-item-emphasis" : ""}`}
+    <button
+      className={`tree-item${heeftSjabloon ? "" : " tree-item-disabled"}`}
       style={{ paddingLeft: 16 + level * 12 }}
-      onClick={() => onSelect(node.id, node.templateId, node.label)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect(node.id, node.templateId, node.label);
-        }
-      }}
-      title={
-        hasTemplate
-          ? `Klik om in actieve sheet te laden — of sleep naar PROJECT om als nieuwe sheet toe te voegen.`
-          : `${node.label} (nog niet beschikbaar)`
-      }
-      draggable={hasTemplate}
-      onDragStart={(e) => {
-        if (!hasTemplate || !node.templateId) return;
-        const payload = JSON.stringify({ templateId: node.templateId, label: node.label });
-        // Set BOTH a custom MIME type AND a text/plain fallback. Sommige browsers
-        // (en Tauri's WebView2) tonen `.types` alleen na het zetten van text/plain.
-        e.dataTransfer.setData("application/x-ocs-template", payload);
-        e.dataTransfer.setData("text/plain", payload);
-        e.dataTransfer.effectAllowed = "copy";
-        // Globale class op body zodat de drop-zone in PROJECT zichtbaar wordt
-        // vanaf het moment dat het slepen begint (zonder over hem te hoeven).
-        document.body.classList.add("ocs-dragging-template");
-      }}
-      onDragEnd={() => {
-        document.body.classList.remove("ocs-dragging-template");
-      }}
+      onClick={() => heeftSjabloon && node.templateId && onInsert(node.templateId, node.label)}
+      title={uitleg}
     >
-      {!isEmphasis && <span className="tree-item-icon">{hasTemplate ? "○" : "□"}</span>}
+      <span className={`tree-item-icon${status ? ` tree-status-${status}` : ""}`}>{bolletje}</span>
       <span className="tree-item-label">{node.label}</span>
-    </div>
+      {heeftSjabloon && <span className="tree-item-plus">+</span>}
+    </button>
   );
 }
 
-/** Sheet-type menu items shown when "+ Voeg sheet toe" is clicked.
- *  templateId is `string` voor calcpad-templates, of `"wizard:<id>"` voor
- *  een wizard. Een `null` templateId staat voor een lege berekening. */
-const SHEET_PRESETS: Array<{
-  type: SheetType;
-  templateId: string | null;
-  label: string;
-  icon: string;
-}> = [
-  { type: "cover", templateId: "voorblad", label: "Voorblad", icon: "▤" },
-  { type: "calc", templateId: "project-metadata", label: "Projectgegevens", icon: "≡" },
-  { type: "calc", templateId: "stalen-gevelkolom", label: "Stalen gevelkolom", icon: "│" },
-  { type: "calc", templateId: "verticaal-windverband", label: "Verticaal windverband", icon: "✕" },
-  { type: "calc", templateId: "houten-balklaag", label: "Houten balklaag", icon: "▤" },
-  { type: "calc", templateId: "houten-kolom", label: "Houten kolom (knik)", icon: "║" },
-  { type: "calc", templateId: "oplegging-metselwerk", label: "Oplegging op metselwerk", icon: "⊥" },
-  { type: "calc", templateId: "permanente-vuurlast", label: "Permanente vuurlast", icon: "🔥" },
-  { type: "calc", templateId: "paaldraagvermogen", label: "Paaldraagvermogen", icon: "⫯" },
-  { type: "calc", templateId: "stalen-ligger", label: "Stalen ligger", icon: "─" },
-  { type: "wizard", templateId: "wizard:spuwer", label: "Spuwer (wizard)", icon: "💧" },
-  { type: "calc", templateId: null, label: "Lege berekening", icon: "+" },
-];
-
-function AddSheetButton() {
-  const addSheet = useProjectStore((s) => s.addSheet);
-  const addWizardSheet = useProjectStore((s) => s.addWizardSheet);
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [open]);
-
-  const onPick = (preset: typeof SHEET_PRESETS[number]) => {
-    if (preset.type === "wizard" && preset.templateId?.startsWith("wizard:")) {
-      const wizardId = preset.templateId.slice("wizard:".length);
-      addWizardSheet(wizardId, preset.label);
-    } else {
-      addSheet(preset.templateId, preset.type, preset.label);
-    }
-    setOpen(false);
+/** Eén rekenblad in het project, met hernoemen en de knopjes ernaast. */
+function ExemplaarRij({
+  ex,
+  geselecteerd,
+  metNaamInvoer,
+  onNaamKlaar,
+}: {
+  ex: Exemplaar;
+  geselecteerd: boolean;
+  /** Net ingevoegd: begin direct in de naamgeef-stand. */
+  metNaamInvoer: boolean;
+  onNaamKlaar: () => void;
+}) {
+  const selecteer = useProjectStore((s) => s.selecteer);
+  const hernoem = useProjectStore((s) => s.hernoem);
+  const dupliceer = useProjectStore((s) => s.dupliceer);
+  const verwijder = useProjectStore((s) => s.verwijder);
+  const verplaats = useProjectStore((s) => s.verplaats);
+  const [zelfBewerken, setZelfBewerken] = useState(false);
+  const bewerken = zelfBewerken || metNaamInvoer;
+  const stopBewerken = () => {
+    setZelfBewerken(false);
+    onNaamKlaar();
   };
 
+  const info = modulesPerTemplate[ex.templateId];
+  const status = info?.status;
+  const bolletje = status === "concept" ? "○" : status ? "●" : "○";
+
+  if (bewerken) {
+    return (
+      <div className="tree-item exemplaar-rij selected">
+        <span className={`tree-item-icon${status ? ` tree-status-${status}` : ""}`}>{bolletje}</span>
+        <input
+          className="exemplaar-naam-input"
+          defaultValue={ex.naam}
+          autoFocus
+          // Alles geselecteerd, zodat je bij een vers blad meteen "Dak" kunt
+          // typen zonder eerst de voorgestelde naam weg te halen.
+          onFocus={(e) => e.target.select()}
+          onBlur={(e) => {
+            const naam = e.target.value.trim();
+            if (naam) hernoem(ex.id, naam);
+            stopBewerken();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Escape") stopBewerken();
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="sheet-add" ref={ref}>
+    <div className={`tree-item exemplaar-rij${geselecteerd ? " selected" : ""}`}>
       <button
-        className="sheet-add-trigger"
-        onClick={() => setOpen((o) => !o)}
-        title="Voeg een sheet toe aan het project"
+        className="exemplaar-open"
+        onClick={() => selecteer(ex.id)}
+        onDoubleClick={() => setZelfBewerken(true)}
+        title={`${ex.naam}${info ? ` — ${info.label}` : ""}\nDubbelklik om te hernoemen`}
       >
-        + Voeg sheet toe
+        <span className={`tree-item-icon${status ? ` tree-status-${status}` : ""}`}>{bolletje}</span>
+        <span className="tree-item-label">{ex.naam}</span>
       </button>
-      {open && (
-        <div className="sheet-add-menu">
-          {SHEET_PRESETS.map((p, i) => (
-            <button key={i} className="sheet-add-item" onClick={() => onPick(p)}>
-              <span className="sheet-add-icon">{p.icon}</span>
-              <span className="sheet-add-label">{p.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      <span className="exemplaar-acties">
+        <button title="Omhoog" onClick={() => verplaats(ex.id, -1)}>↑</button>
+        <button title="Omlaag" onClick={() => verplaats(ex.id, 1)}>↓</button>
+        <button title="Hernoemen" onClick={() => setZelfBewerken(true)}>✎</button>
+        <button title="Dupliceren (kopie met dezelfde invoer)" onClick={() => dupliceer(ex.id)}>⧉</button>
+        <button
+          title="Verwijderen"
+          onClick={() => {
+            if (confirm(`"${ex.naam}" uit het project verwijderen?`)) verwijder(ex.id);
+          }}
+        >
+          ✕
+        </button>
+      </span>
     </div>
   );
 }
 
-function ProjectSection() {
-  const sheets = useProjectStore((s) => s.sheets);
-  const activeSheetId = useProjectStore((s) => s.activeSheetId);
-  const switchTo = useProjectStore((s) => s.switchTo);
-  const removeSheet = useProjectStore((s) => s.removeSheet);
-  const moveSheet = useProjectStore((s) => s.moveSheet);
-  const addSheet = useProjectStore((s) => s.addSheet);
-  const addWizardSheet = useProjectStore((s) => s.addWizardSheet);
-  const [dragOver, setDragOver] = useState(false);
-
-  const onDragOver = (e: React.DragEvent) => {
-    // Accept either our custom MIME or a text/plain fallback (some browsers
-    // mask custom types until drop). Just preventDefault to enable dropping.
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-    if (!dragOver) setDragOver(true);
-  };
-  const onDragLeave = (e: React.DragEvent) => {
-    // Only clear when leaving the container itself (not bubbling from children).
-    if (e.currentTarget === e.target) setDragOver(false);
-  };
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    document.body.classList.remove("ocs-dragging-template");
-    const raw =
-      e.dataTransfer.getData("application/x-ocs-template") ||
-      e.dataTransfer.getData("text/plain");
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw) as { templateId?: string; label?: string };
-      if (parsed.templateId && parsed.label) {
-        if (parsed.templateId.startsWith("wizard:")) {
-          addWizardSheet(parsed.templateId.slice("wizard:".length), parsed.label);
-        } else {
-          addSheet(parsed.templateId, "calc", parsed.label);
-        }
-      }
-    } catch { /* ignore malformed drop payload */ }
-  };
-
+/** Verklaring van de bolletjes, onder aan de boom. */
+function StatusLegenda() {
   return (
-    <div
-      className={`tree-section${dragOver ? " drop-target" : ""}`}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-    >
-      <div className="tree-section-header">
-        <span className="tree-section-label">Project</span>
-        {dragOver && <span className="tree-section-drop-hint">sleep om toe te voegen</span>}
-      </div>
-      <div className="tree-section-children">
-        {sheets.map((sheet, idx) => {
-          const isActive = sheet.id === activeSheetId;
-          return (
-            <div
-              key={sheet.id}
-              className={`project-sheet-row${isActive ? " active" : ""}`}
-            >
-              <button
-                className="project-sheet-pick"
-                onClick={() => switchTo(sheet.id)}
-                title={`Schakel naar ${sheet.label}`}
-              >
-                <span className="project-sheet-icon">
-                  {sheet.type === "cover"
-                    ? "▤"
-                    : sheet.type === "wizard"
-                    ? (wizards[sheet.wizardId ?? ""]?.icon ?? "✦")
-                    : "○"}
-                </span>
-                <span className="project-sheet-label">{sheet.label}</span>
-              </button>
-              <div className="project-sheet-actions">
-                {sheet.templateId && templates[sheet.templateId] && (
-                  <button
-                    className="project-sheet-act"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (sheet.templateId && templates[sheet.templateId]) {
-                        // Activeer eerst de sheet, daarna source vervangen
-                        if (sheet.id !== activeSheetId) switchTo(sheet.id);
-                        useDocumentStore.getState().setSource(templates[sheet.templateId]);
-                      }
-                    }}
-                    title={`Herstel naar template (${sheet.templateId})`}
-                  >↻</button>
-                )}
-                <button
-                  className="project-sheet-act"
-                  onClick={(e) => { e.stopPropagation(); moveSheet(sheet.id, "up"); }}
-                  disabled={idx === 0}
-                  title="Omhoog"
-                >▲</button>
-                <button
-                  className="project-sheet-act"
-                  onClick={(e) => { e.stopPropagation(); moveSheet(sheet.id, "down"); }}
-                  disabled={idx === sheets.length - 1}
-                  title="Omlaag"
-                >▼</button>
-                <button
-                  className="project-sheet-act danger"
-                  onClick={(e) => { e.stopPropagation(); removeSheet(sheet.id); }}
-                  disabled={sheets.length <= 1}
-                  title="Verwijder"
-                >×</button>
-              </div>
-            </div>
-          );
-        })}
-        <AddSheetButton />
-      </div>
+    <div className="tree-legend">
+      {(["gereed", "controleren", "concept"] as const).map((s) => (
+        <span key={s} className="tree-legend-row" title={STATUS_UITLEG[s]}>
+          <span className={`tree-item-icon tree-status-${s}`}>{s === "concept" ? "○" : "●"}</span>
+          {s === "gereed" ? "gecalibreerd" : s === "controleren" ? "nog controleren" : "nog uit te werken"}
+        </span>
+      ))}
     </div>
   );
 }
 
 export default function ProjectBrowser() {
   const [collapsed, setCollapsed] = useState(false);
-  const filePath = useDocumentStore((s) => s.filePath);
-  const setSource = useDocumentStore((s) => s.setSource);
-  const addWizardSheet = useProjectStore((s) => s.addWizardSheet);
-  const addSheet = useProjectStore((s) => s.addSheet);
-  const [librarySelectedId, setLibrarySelectedId] = useState<string | null>(null);
+  const [toonCatalogus, setToonCatalogus] = useState(true);
+  // Een vers ingevoegd blad opent meteen met de naam in bewerkstand: in een
+  // project heet een balklaag eerder "Dak" of "Verdiepingsvloer" dan
+  // "Balklaag 1". Typ je niets, dan blijft de voorgestelde naam staan.
+  const [nieuwId, setNieuwId] = useState<string | null>(null);
+  const [toonBibliotheek, setToonBibliotheek] = useState(false);
 
-  // Library section: clicking a template inserts/replaces the active sheet's
-  // source. Wizards en de Projectgegevens-sheet zijn beschermd:
-  //   • Wizard-klik → voegt NIEUWE wizard-sheet toe aan PROJECT
-  //   • Klik terwijl Projectgegevens actief is → voegt NIEUWE calc-sheet toe
-  //     (anders overschrijft de gebruiker per ongeluk z'n metadata)
-  const onLibrarySelect = (id: string, templateId: string | undefined, label: string) => {
-    setLibrarySelectedId(id);
-    if (!templateId) return;
+  const exemplaren = useProjectStore((s) => s.exemplaren);
+  const activeId = useProjectStore((s) => s.activeId);
+  const selecteer = useProjectStore((s) => s.selecteer);
+  const voegToe = useProjectStore((s) => s.voegToe);
+  const projectNaam = useProjectStore((s) => s.projectNaam);
 
-    if (templateId.startsWith("wizard:")) {
-      const wizardId = templateId.slice("wizard:".length);
-      const w = wizards[wizardId];
-      if (w) addWizardSheet(wizardId, label.replace(/^[^A-Za-z0-9]+/, "").trim() || w.label);
-      return;
-    }
-
-    if (!templates[templateId]) return;
-
-    // Is de actieve sheet de Projectgegevens? → nooit overschrijven, voeg toe.
-    const { sheets, activeSheetId } = useProjectStore.getState();
-    const active = sheets.find((s) => s.id === activeSheetId);
-    const isMetadataActive =
-      active?.templateId === "project-metadata" ||
-      /@select\s+WindGebied\b/.test(active?.source ?? "");
-
-    if (isMetadataActive && templateId !== "project-metadata") {
-      addSheet(templateId, "calc", label);
-    } else {
-      setSource(templates[templateId]);
-    }
+  const onInsert = (templateId: string, label: string) => {
+    const bron = templates[templateId];
+    if (!bron) return;
+    // De catalogus draagt een toelichting in het label ("Balklaag (houten
+    // vloerbalken)"); als naam van een blad is dat te lang. De korte vorm is
+    // toch maar een voorstel — je typt er meteen "Dak" of "Verdiepingsvloer"
+    // overheen.
+    const kort = label.replace(/\s*\([^)]*\)\s*$/, "").trim() || label;
+    setNieuwId(voegToe(templateId, kort, bron));
   };
-
-  // Suppress unused — kept for future "dirty" indicator
-  void filePath;
-
-  // Library = everything in projectTree EXCEPT the legacy hard-coded Project
-  // section (which is now driven by projectStore).
-  const libraryNodes = projectTree.filter(
-    (n) => n.kind !== "section" || n.id !== "project",
-  );
 
   return (
     <aside className={`project-browser${collapsed ? " collapsed" : ""}`}>
@@ -361,18 +213,77 @@ export default function ProjectBrowser() {
           {collapsed ? "▶" : "◀"}
         </button>
       </div>
+
       {!collapsed && (
         <div className="project-browser-tree">
-          <ProjectSection />
-          {libraryNodes.map((node) => (
-            <TreeNodeView
-              key={node.id}
-              node={node}
-              level={0}
-              selectedId={librarySelectedId}
-              onSelect={onLibrarySelect}
-            />
-          ))}
+          {/* Het project zelf: de bladen die je hebt toegevoegd. */}
+          <div className="tree-section">
+            <div className="tree-section-header">
+              <span className="tree-section-label">{projectNaam || "Project"}</span>
+            </div>
+            <div className="tree-section-children">
+              <button
+                className={`tree-item tree-item-emphasis${activeId === PROJECT_ID ? " selected" : ""}`}
+                onClick={() => selecteer(PROJECT_ID)}
+                title="Projectgegevens — gelden voor alle bladen in dit project"
+              >
+                <span className="tree-item-label">Projectgegevens</span>
+              </button>
+
+              {exemplaren.length === 0 && (
+                <p className="project-leeg">
+                  Nog geen rekenbladen. Kies hieronder een module om er een toe te voegen.
+                </p>
+              )}
+
+              {exemplaren.map((ex) => (
+                <ExemplaarRij
+                  key={ex.id}
+                  ex={ex}
+                  geselecteerd={ex.id === activeId}
+                  metNaamInvoer={ex.id === nieuwId}
+                  onNaamKlaar={() => setNieuwId(null)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* De catalogus: klikken voegt een nieuw exemplaar toe. */}
+          <div className="tree-section">
+            <button
+              className="tree-section-header tree-section-toggle"
+              onClick={() => setToonCatalogus((v) => !v)}
+            >
+              <span className={`tree-chevron${toonCatalogus ? " expanded" : ""}`}>▶</span>
+              <span className="tree-section-label">Modules toevoegen</span>
+            </button>
+            {toonCatalogus && (
+              <div className="tree-section-children">
+                {moduleCatalogus.map((node) => (
+                  <CatalogusNode key={node.id} node={node} level={0} onInsert={onInsert} />
+                ))}
+                <StatusLegenda />
+              </div>
+            )}
+          </div>
+
+          {/* Naslag — ook invoegbaar, bijvoorbeeld een normuitwerking als bijlage. */}
+          <div className="tree-section">
+            <button
+              className="tree-section-header tree-section-toggle"
+              onClick={() => setToonBibliotheek((v) => !v)}
+            >
+              <span className={`tree-chevron${toonBibliotheek ? " expanded" : ""}`}>▶</span>
+              <span className="tree-section-label">Bibliotheek</span>
+            </button>
+            {toonBibliotheek && (
+              <div className="tree-section-children">
+                {bibliotheek.map((node) => (
+                  <CatalogusNode key={node.id} node={node} level={0} onInsert={onInsert} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </aside>

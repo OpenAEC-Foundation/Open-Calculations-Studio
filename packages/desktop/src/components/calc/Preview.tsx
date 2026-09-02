@@ -1,14 +1,14 @@
-import { useEffect, useRef, useMemo, useState } from "react";
-import { process, parse, extractScope, defaultStyles } from "@ifc-calc/core";
-import { useDocumentStore } from "../../store/documentStore";
-import { useLoadCaseStore } from "../../store/loadCaseStore";
+import { useEffect, useRef, useMemo } from "react";
+import { process, defaultStyles } from "@ifc-calc/core";
+import {
+  useActieveBron,
+  useActieveWaarden,
+  useProjectScope,
+  useZetActieveWaarde,
+} from "../../store/actiefBlad";
 import { useZoom } from "../../hooks/useZoom";
-import { useDebouncedValue } from "../../hooks/useDebouncedValue";
-import { useProjectStore } from "../../store/projectStore";
 import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
 import HelpPanel from "./HelpPanel";
-import WindAreaMap from "./WindAreaMap";
-import { WizardHost } from "../wizards";
 import "katex/dist/katex.min.css";
 import "./Preview.css";
 
@@ -23,55 +23,33 @@ function ensureCoreStyles() {
 }
 
 export default function Preview() {
-  const source = useDocumentStore((s) => s.source);
-  // Debounce the source so re-render fires only after the user pauses typing
-  // for ~250 ms — keeps the editor snappy on long sheets.
-  const debouncedSource = useDebouncedValue(source, 250);
-  // Prompt + select values are stored per-load-case. The active case's values
-  // drive the evaluator; switching the case re-renders the preview.
-  const activeId = useLoadCaseStore((s) => s.activeId);
-  const valuesByCase = useLoadCaseStore((s) => s.valuesByCase);
-  const setActiveValue = useLoadCaseStore((s) => s.setActiveValue);
-  const selectValues = valuesByCase[activeId] ?? {};
-  const setSelectValue = setActiveValue;
+  const source = useActieveBron();
+  // Invoerwaarden horen bij het blad dat openstaat, niet bij de app. Twee
+  // exemplaren van dezelfde module hebben dus elk hun eigen set.
+  const selectValues = useActieveWaarden();
+  const setSelectValue = useZetActieveWaarde();
+  // De projectgegevens (gevolgklasse, levensduur, ...) staan als variabelen
+  // klaar voordat de eerste regel van het blad draait.
+  const projectScope = useProjectScope();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     ensureCoreStyles();
   }, []);
 
-  // Globals from the projectMetadata sheet — every other sheet inherits
-  // CC_klasse, K_FI, WindGebied, Terrein, sneeuw, etc. as part of its
-  // initial scope. The metadata sheet is detected by its source content
-  // (`@select WindGebied`) zodat library-vervangingen niet langer als
-  // metadata-sheet worden gezien.
-  const projectMetadataSource = useProjectStore((s) => {
-    const meta = s.sheets.find((sh) => /@select\s+WindGebied\b/.test(sh.source));
-    return meta?.source ?? null;
-  });
-  const isMetadataSheetSource = projectMetadataSource !== null && debouncedSource === projectMetadataSource;
-  const initialScope = useMemo(() => {
-    if (!projectMetadataSource || isMetadataSheetSource) return undefined;
-    try {
-      const ast = parse(projectMetadataSource, { includes: calcpadIncludes, imageUrls: calcpadImageUrls });
-      return extractScope(ast, selectValues);
-    } catch {
-      return undefined;
-    }
-  }, [projectMetadataSource, isMetadataSheetSource, selectValues]);
-
   const html = useMemo(() => {
     try {
-      return process(debouncedSource, selectValues, {
-        includes: calcpadIncludes,
-        imageUrls: calcpadImageUrls,
-        initialScope,
-      });
+      return process(
+        source,
+        selectValues,
+        { includes: calcpadIncludes, imageUrls: calcpadImageUrls },
+        projectScope,
+      );
     } catch (err) {
       const msg = (err as Error).message;
       return `<div class="ifc-calc"><p class="calc-text" style="color:#dc2626;">Render error: ${msg}</p></div>`;
     }
-  }, [debouncedSource, selectValues, initialScope]);
+  }, [source, selectValues, projectScope]);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -119,22 +97,7 @@ export default function Preview() {
   }, [html, selectValues, setSelectValue]);
 
   const { ref: zoomRef, zoom } = useZoom();
-  const isEmpty = debouncedSource.trim().length === 0;
-
-  // Wizard-mode: actieve sheet kan een wizard zijn — dan toont de preview
-  // de wizard-component i.p.v. de CalcPAD-render.
-  const activeSheet = useProjectStore((s) =>
-    s.sheets.find((sh) => sh.id === s.activeSheetId),
-  );
-  const wizardId =
-    activeSheet?.type === "wizard" ? activeSheet.wizardId : undefined;
-
-  // De windgebied-kaart is exclusief gekoppeld aan de project-metadata
-  // sheet. We detecteren dit op SOURCE-niveau (`@select WindGebied`-marker)
-  // ipv via templateId zodat hij ook verdwijnt wanneer de gebruiker een
-  // library-template over de actieve sheet heen laadt.
-  const isProjectMetadata = /@select\s+WindGebied\b/.test(debouncedSource);
-  const [mapVisible, setMapVisible] = useState(true);
+  const isEmpty = source.trim().length === 0;
 
   return (
     <div
@@ -142,11 +105,7 @@ export default function Preview() {
       ref={zoomRef}
       style={{ fontSize: `${zoom * 100}%` }}
     >
-      {wizardId ? (
-        <div className="calc-preview-content calc-preview-wizard">
-          <WizardHost wizardId={wizardId} />
-        </div>
-      ) : isEmpty ? (
+      {isEmpty ? (
         <HelpPanel />
       ) : (
         <div
@@ -154,22 +113,6 @@ export default function Preview() {
           className="calc-preview-content"
           dangerouslySetInnerHTML={{ __html: html }}
         />
-      )}
-      {!wizardId && !isEmpty && isProjectMetadata && (
-        <div className="calc-preview-extras">
-          <div className="wind-map-header">
-            <h3 style={{ margin: 0, color: "var(--theme-accent)" }}>Windgebied — kaart</h3>
-            <button
-              type="button"
-              className="wind-map-toggle"
-              onClick={() => setMapVisible((v) => !v)}
-              title={mapVisible ? "Verberg kaart" : "Toon kaart"}
-            >
-              {mapVisible ? "− Verberg" : "+ Toon kaart"}
-            </button>
-          </div>
-          {mapVisible && <WindAreaMap />}
-        </div>
       )}
     </div>
   );

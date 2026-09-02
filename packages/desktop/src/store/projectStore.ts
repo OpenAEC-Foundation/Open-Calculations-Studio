@@ -1,246 +1,400 @@
 import { create } from "zustand";
-import { useDocumentStore } from "./documentStore";
-import { templates } from "../templates";
+import type { ElementRef } from "@ifc-calc/core";
 import { getSetting, setSetting } from "../store";
+import { legeGegevens, type ProjectGegevens } from "./projectGegevens";
+
+const STORE_KEY = "projectState";
+
+/** Vaste id van het projectgegevens-formulier; geen exemplaar, wel selecteerbaar. */
+export const PROJECT_ID = "__projectgegevens__";
 
 /**
- * Project = a user-composed ordered list of sheets. Each sheet is either a
- * calc-template (CalcPAD source) or a "cover" (voorblad) page.
+ * Eén rekenblad in het project.
  *
- * Active sheet's `source` is mirrored into documentStore.source so the editor
- * and preview keep working with a single shared `source` string. On switch,
- * the previous active sheet's source is captured from documentStore back
- * into the sheet record.
+ * Een exemplaar draagt zijn **eigen kopie** van de rekentekst en zijn **eigen**
+ * invoerwaarden. Drie balklagen naast elkaar zijn dus drie volledig losse
+ * berekeningen: wat je in de ene invult raakt de andere niet, ook al heten de
+ * variabelen hetzelfde. Dat is precies waar het oude model op stukliep — daar
+ * was er één platte waardenmap voor de hele app, zodat `N_Ed` van de kolom en
+ * `N_Ed` van de wand hetzelfde vakje waren.
+ *
+ * `templateId` is alleen herkomst: waaruit is dit exemplaar ontstaan. De tekst
+ * volgt het sjabloon niet meer zodra hij is ingevoegd — een opgeleverde
+ * berekening moet over vijf jaar nog hetzelfde uitrekenen, ook als het sjabloon
+ * intussen is verbeterd.
  */
-
-export type SheetType = "cover" | "calc" | "wizard";
-
-export interface ProjectSheet {
+export interface Exemplaar {
   id: string;
-  type: SheetType;
-  /** Display label in the sidebar. */
-  label: string;
-  /** Optional templateId for first-load. Once user edits, source is authoritative. */
-  templateId?: string;
-  /** Live CalcPAD source for this sheet (alleen voor "cover" / "calc"). */
+  naam: string;
+  templateId: string;
   source: string;
-  /** Wizard-id (e.g. "spuwer") — alleen voor type="wizard". */
-  wizardId?: string;
+  /** Invoerwaarden van dit exemplaar, per variabelenaam. */
+  waarden: Record<string, string>;
+  /**
+   * Elementen in een bronmodel waar dit blad over gaat.
+   *
+   * Leeg (of afwezig) betekent: losstaande berekening — de IFC-export maakt dan
+   * zelf een element aan onder de naam van dit exemplaar. Staat er wél iets in,
+   * dan draagt de export de toetsing over op díé elementen, zodat één balklaag-
+   * berekening aan alle balken van die laag hangt.
+   *
+   * Het aanwijzen zelf komt later, samen met het inladen van een model. De
+   * koppeling wordt bewust nooit geraden: welk element een toetsing beschrijft
+   * weet alleen de constructeur.
+   */
+  elementen?: ElementRef[];
+}
+
+interface Persisted {
+  projectNaam: string;
+  bestandspad: string | null;
+  gegevens: ProjectGegevens;
+  exemplaren: Exemplaar[];
+  activeId: string;
 }
 
 interface ProjectState {
-  sheets: ProjectSheet[];
-  activeSheetId: string | null;
+  projectNaam: string;
+  bestandspad: string | null;
+  gegevens: ProjectGegevens;
+  exemplaren: Exemplaar[];
+  /** Wat er in de werkruimte staat: een exemplaar-id of PROJECT_ID. */
+  activeId: string;
+  dirty: boolean;
+  /** Stapels voor ongedaan maken; niet opgeslagen, alleen voor deze sessie. */
+  verleden: Momentopname[];
+  toekomst: Momentopname[];
 
-  /** Replace the entire sheet list (used by file-open hydration). */
-  loadSheets: (sheets: ProjectSheet[], activeId?: string) => void;
-  /** Append a new sheet built from a template (or empty). */
-  addSheet: (templateId: string | null, type: SheetType, label: string) => void;
-  /** Append a new wizard-sheet (geen calcpad-source, draait via WizardHost). */
-  addWizardSheet: (wizardId: string, label: string) => void;
-  /** Remove a sheet by id. Active id slides to the previous (or next) sheet. */
-  removeSheet: (id: string) => void;
-  /** Move a sheet up/down in the order. */
-  moveSheet: (id: string, dir: "up" | "down") => void;
-  /** Switch the active sheet — flushes current docStore.source into the
-   *  previous sheet, then loads the new sheet's source into docStore. */
-  switchTo: (id: string) => void;
-  /** Read the source of the active sheet. */
-  getActiveSource: () => string;
-  /** Rename a sheet. */
-  renameSheet: (id: string, label: string) => void;
+  selecteer: (id: string) => void;
+  voegToe: (templateId: string, basisNaam: string, source: string) => string;
+  dupliceer: (id: string) => string | null;
+  hernoem: (id: string, naam: string) => void;
+  verwijder: (id: string) => void;
+  verplaats: (id: string, richting: -1 | 1) => void;
+
+  zetBron: (id: string, source: string) => void;
+  zetWaarde: (id: string, naam: string, waarde: string) => void;
+  /** Vult ontbrekende waarden aan; bestaande blijven staan. */
+  seedWaarden: (id: string, defaults: Record<string, string>) => void;
+
+  /** Legt vast welke elementen uit een bronmodel dit blad toetst. */
+  zetElementen: (id: string, elementen: ElementRef[]) => void;
+
+  zetGegeven: (naam: string, waarde: string) => void;
+  zetProjectNaam: (naam: string) => void;
+
+  ongedaan: () => void;
+  opnieuw: () => void;
+
+  nieuwProject: () => void;
+  laadProject: (p: Partial<Persisted>) => void;
+  markeerOpgeslagen: (bestandspad: string) => void;
 }
 
-function newId(): string {
-  return `sheet-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+/**
+ * Toestand waar "ongedaan maken" naar terugkeert.
+ *
+ * Alleen verwijzingen: omdat elke mutatie een nieuw object maakt en de rest
+ * ongemoeid laat, delen opeenvolgende momentopnamen bijna alles met elkaar.
+ * Honderd stappen geschiedenis kost daardoor nauwelijks geheugen.
+ */
+interface Momentopname {
+  exemplaren: Exemplaar[];
+  gegevens: ProjectGegevens;
+  activeId: string;
 }
 
-/** Build the project's default starter sheets — only Projectgegevens for new projects. */
-function defaultSheets(): ProjectSheet[] {
-  return [
-    {
-      id: "sheet-metadata",
-      type: "calc",
-      label: "Projectgegevens",
-      templateId: "project-metadata",
-      source: templates["project-metadata"] ?? "",
-    },
-  ];
+const MAX_GESCHIEDENIS = 200;
+/** Binnen deze tijd telt doortypen in hetzelfde veld als één stap. */
+const SAMENVOEG_MS = 700;
+
+let laatsteSleutel: string | null = null;
+let laatsteTijd = 0;
+
+/**
+ * Zet een punt in de geschiedenis vóór een wijziging.
+ *
+ * `sleutel` maakt samenvoegen mogelijk: typ je in hetzelfde veld door, dan is
+ * dat één stap en niet één per aanslag. Een `null`-sleutel is altijd een eigen
+ * stap — dat zijn de handelingen waarvan je wilt dat ze los terugdraaibaar
+ * zijn: invoegen, verwijderen, hernoemen, verplaatsen.
+ */
+function metGeschiedenis(s: ProjectState, sleutel: string | null) {
+  const nu = Date.now();
+  const samenvoegen =
+    sleutel !== null && sleutel === laatsteSleutel && nu - laatsteTijd < SAMENVOEG_MS;
+  laatsteSleutel = sleutel;
+  laatsteTijd = nu;
+  if (samenvoegen) return { toekomst: [] as Momentopname[] };
+  const punt: Momentopname = {
+    exemplaren: s.exemplaren,
+    gegevens: s.gegevens,
+    activeId: s.activeId,
+  };
+  return {
+    verleden: [...s.verleden, punt].slice(-MAX_GESCHIEDENIS),
+    toekomst: [] as Momentopname[],
+  };
 }
 
-const STORE_KEY = "projectSheets";
+let teller = 0;
+function nieuweId(): string {
+  teller += 1;
+  return `ex-${Date.now().toString(36)}-${teller.toString(36)}`;
+}
 
-let projectPersistTimer: ReturnType<typeof setTimeout> | null = null;
-function scheduleProjectPersist(snapshot: { sheets: ProjectSheet[]; activeSheetId: string | null }) {
-  if (projectPersistTimer) clearTimeout(projectPersistTimer);
-  projectPersistTimer = setTimeout(() => {
+/**
+ * "Balklaag" wordt "Balklaag 1", de volgende "Balklaag 2".
+ *
+ * Zoekt het eerste vrije nummer in plaats van te tellen: na het verwijderen van
+ * "Balklaag 1" zou tellen opnieuw "Balklaag 2" opleveren, en dan heb je twee
+ * bladen met dezelfde naam in je uitdraai.
+ */
+function vrijeNaam(exemplaren: Exemplaar[], basisNaam: string, altijdNummeren = true): string {
+  const bezet = new Set(exemplaren.map((e) => e.naam));
+  if (!altijdNummeren && !bezet.has(basisNaam)) return basisNaam;
+  for (let n = 1; ; n++) {
+    const kandidaat = `${basisNaam} ${n}`;
+    if (!bezet.has(kandidaat)) return kandidaat;
+  }
+}
+
+export const useProjectStore = create<ProjectState>((set, get) => ({
+  projectNaam: "Nieuw project",
+  bestandspad: null,
+  gegevens: legeGegevens(),
+  exemplaren: [],
+  activeId: PROJECT_ID,
+  dirty: false,
+  verleden: [],
+  toekomst: [],
+
+  selecteer: (id) => set({ activeId: id }),
+
+  voegToe: (templateId, basisNaam, source) => {
+    const id = nieuweId();
+    set((s) => ({
+      ...metGeschiedenis(s, null),
+      exemplaren: [
+        ...s.exemplaren,
+        {
+          id,
+          naam: vrijeNaam(s.exemplaren, basisNaam),
+          templateId,
+          source,
+          waarden: {},
+        },
+      ],
+      activeId: id,
+      dirty: true,
+    }));
+    return id;
+  },
+
+  dupliceer: (id) => {
+    const bron = get().exemplaren.find((e) => e.id === id);
+    if (!bron) return null;
+    const nieuw: Exemplaar = {
+      ...bron,
+      id: nieuweId(),
+      naam: vrijeNaam(get().exemplaren, `${bron.naam} (kopie)`, false),
+      waarden: { ...bron.waarden },
+    };
+    set((s) => {
+      const i = s.exemplaren.findIndex((e) => e.id === id);
+      const lijst = [...s.exemplaren];
+      lijst.splice(i + 1, 0, nieuw);
+      return { ...metGeschiedenis(s, null), exemplaren: lijst, activeId: nieuw.id, dirty: true };
+    });
+    return nieuw.id;
+  },
+
+  hernoem: (id, naam) =>
+    set((s) => ({
+      ...metGeschiedenis(s, null),
+      exemplaren: s.exemplaren.map((e) => (e.id === id ? { ...e, naam } : e)),
+      dirty: true,
+    })),
+
+  verwijder: (id) =>
+    set((s) => {
+      const i = s.exemplaren.findIndex((e) => e.id === id);
+      const rest = s.exemplaren.filter((e) => e.id !== id);
+      const active =
+        s.activeId !== id ? s.activeId : (rest[Math.min(i, rest.length - 1)]?.id ?? PROJECT_ID);
+      return { ...metGeschiedenis(s, null), exemplaren: rest, activeId: active, dirty: true };
+    }),
+
+  verplaats: (id, richting) =>
+    set((s) => {
+      const i = s.exemplaren.findIndex((e) => e.id === id);
+      const j = i + richting;
+      if (i < 0 || j < 0 || j >= s.exemplaren.length) return s;
+      const lijst = [...s.exemplaren];
+      const bewaar = lijst[i];
+      lijst[i] = lijst[j];
+      lijst[j] = bewaar;
+      return { ...metGeschiedenis(s, null), exemplaren: lijst, dirty: true };
+    }),
+
+  zetBron: (id, source) =>
+    set((s) => {
+      if (!s.exemplaren.some((e) => e.id === id)) return s;
+      return {
+      ...metGeschiedenis(s, `bron:${id}`),
+      exemplaren: s.exemplaren.map((e) => (e.id === id ? { ...e, source } : e)),
+      dirty: true,
+      };
+    }),
+
+  zetWaarde: (id, naam, waarde) =>
+    set((s) => {
+      if (!s.exemplaren.some((e) => e.id === id)) return s;
+      return {
+      ...metGeschiedenis(s, `waarde:${id}:${naam}`),
+      exemplaren: s.exemplaren.map((e) =>
+        e.id === id ? { ...e, waarden: { ...e.waarden, [naam]: waarde } } : e,
+      ),
+      dirty: true,
+      };
+    }),
+
+  seedWaarden: (id, defaults) =>
+    set((s) => {
+      const ex = s.exemplaren.find((e) => e.id === id);
+      if (!ex) return s;
+      let veranderd = false;
+      const samen = { ...ex.waarden };
+      for (const [k, v] of Object.entries(defaults)) {
+        if (samen[k] === undefined || samen[k] === "") {
+          samen[k] = v;
+          veranderd = true;
+        }
+      }
+      // Geen ontbrekende sleutels betekent geen update, anders blijft React
+      // rondpompen tussen designer en store.
+      if (!veranderd) return s;
+      return {
+        exemplaren: s.exemplaren.map((e) => (e.id === id ? { ...e, waarden: samen } : e)),
+      };
+    }),
+
+  zetElementen: (id, elementen) =>
+    set((s) => ({
+      ...metGeschiedenis(s, null),
+      exemplaren: s.exemplaren.map((e) => (e.id === id ? { ...e, elementen } : e)),
+      dirty: true,
+    })),
+
+  zetGegeven: (naam, waarde) =>
+    set((s) => ({
+      ...metGeschiedenis(s, `gegeven:${naam}`),
+      gegevens: { ...s.gegevens, [naam]: waarde },
+      dirty: true,
+    })),
+
+  zetProjectNaam: (naam) => set({ projectNaam: naam, dirty: true }),
+
+  ongedaan: () =>
+    set((s) => {
+      const vorige = s.verleden[s.verleden.length - 1];
+      if (!vorige) return s;
+      laatsteSleutel = null;
+      return {
+        verleden: s.verleden.slice(0, -1),
+        toekomst: [
+          ...s.toekomst,
+          { exemplaren: s.exemplaren, gegevens: s.gegevens, activeId: s.activeId },
+        ],
+        exemplaren: vorige.exemplaren,
+        gegevens: vorige.gegevens,
+        activeId: vorige.activeId,
+        dirty: true,
+      };
+    }),
+
+  opnieuw: () =>
+    set((s) => {
+      const volgende = s.toekomst[s.toekomst.length - 1];
+      if (!volgende) return s;
+      laatsteSleutel = null;
+      return {
+        toekomst: s.toekomst.slice(0, -1),
+        verleden: [
+          ...s.verleden,
+          { exemplaren: s.exemplaren, gegevens: s.gegevens, activeId: s.activeId },
+        ].slice(-MAX_GESCHIEDENIS),
+        exemplaren: volgende.exemplaren,
+        gegevens: volgende.gegevens,
+        activeId: volgende.activeId,
+        dirty: true,
+      };
+    }),
+
+  nieuwProject: () =>
+    set({
+      projectNaam: "Nieuw project",
+      bestandspad: null,
+      gegevens: legeGegevens(),
+      exemplaren: [],
+      activeId: PROJECT_ID,
+      dirty: false,
+      verleden: [],
+      toekomst: [],
+    }),
+
+  laadProject: (p) =>
+    set({
+      projectNaam: p.projectNaam ?? "Nieuw project",
+      bestandspad: p.bestandspad ?? null,
+      gegevens: { ...legeGegevens(), ...(p.gegevens ?? {}) },
+      exemplaren: p.exemplaren ?? [],
+      activeId: p.exemplaren?.[0]?.id ?? PROJECT_ID,
+      dirty: false,
+      verleden: [],
+      toekomst: [],
+    }),
+
+  markeerOpgeslagen: (bestandspad) => set({ bestandspad, dirty: false }),
+}));
+
+// Persistentie -------------------------------------------------------------
+// Debounced wegschrijven naar de Tauri-store, zodat de app opent waar je hem
+// achterliet. Het projectbestand op schijf is iets anders; zie tauri/fileOps.
+
+let timer: ReturnType<typeof setTimeout> | null = null;
+function schedulePersist(snapshot: Persisted) {
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(() => {
     void setSetting(STORE_KEY, snapshot);
-    projectPersistTimer = null;
+    timer = null;
   }, 400);
 }
 
-export const useProjectStore = create<ProjectState>((set, get) => {
-  const initial = defaultSheets();
-  return {
-    sheets: initial,
-    activeSheetId: initial[0].id,
-
-    loadSheets: (sheets, activeId) =>
-      set(() => {
-        const active = activeId && sheets.some((s) => s.id === activeId)
-          ? activeId
-          : (sheets[0]?.id ?? null);
-        // Push active sheet's source into documentStore so the editor reflects it.
-        const activeSheet = sheets.find((s) => s.id === active);
-        if (activeSheet) {
-          useDocumentStore.getState().setSource(activeSheet.source);
-        }
-        return { sheets, activeSheetId: active };
-      }),
-
-    addSheet: (templateId, type, label) =>
-      set((s) => {
-        const source = templateId ? (templates[templateId] ?? "") : "";
-        const sheet: ProjectSheet = {
-          id: newId(),
-          type,
-          label,
-          templateId: templateId ?? undefined,
-          source,
-        };
-        // Flush current source into old active before swapping.
-        const docSource = useDocumentStore.getState().source;
-        const sheets = s.sheets.map((x) =>
-          x.id === s.activeSheetId ? { ...x, source: docSource } : x,
-        );
-        useDocumentStore.getState().setSource(source);
-        return { sheets: [...sheets, sheet], activeSheetId: sheet.id };
-      }),
-
-    addWizardSheet: (wizardId, label) =>
-      set((s) => {
-        const sheet: ProjectSheet = {
-          id: newId(),
-          type: "wizard",
-          label,
-          wizardId,
-          source: "",
-        };
-        // Flush current source into old active before swapping.
-        const docSource = useDocumentStore.getState().source;
-        const sheets = s.sheets.map((x) =>
-          x.id === s.activeSheetId ? { ...x, source: docSource } : x,
-        );
-        // Bij switch naar wizard: editor source leeg laten zodat de
-        // CalcPAD-editor niets onzinnigs toont (al wordt hij niet gebruikt).
-        useDocumentStore.getState().setSource("");
-        return { sheets: [...sheets, sheet], activeSheetId: sheet.id };
-      }),
-
-    removeSheet: (id) =>
-      set((s) => {
-        if (s.sheets.length <= 1) return s;
-        const idx = s.sheets.findIndex((x) => x.id === id);
-        if (idx < 0) return s;
-        const remaining = s.sheets.filter((x) => x.id !== id);
-        let newActive = s.activeSheetId;
-        if (s.activeSheetId === id) {
-          const nextIdx = Math.min(idx, remaining.length - 1);
-          newActive = remaining[nextIdx]?.id ?? null;
-          if (newActive) {
-            const next = remaining.find((x) => x.id === newActive);
-            if (next) useDocumentStore.getState().setSource(next.source);
-          }
-        }
-        return { sheets: remaining, activeSheetId: newActive };
-      }),
-
-    moveSheet: (id, dir) =>
-      set((s) => {
-        const idx = s.sheets.findIndex((x) => x.id === id);
-        if (idx < 0) return s;
-        const target = dir === "up" ? idx - 1 : idx + 1;
-        if (target < 0 || target >= s.sheets.length) return s;
-        const sheets = [...s.sheets];
-        [sheets[idx], sheets[target]] = [sheets[target], sheets[idx]];
-        return { sheets };
-      }),
-
-    switchTo: (id) =>
-      set((s) => {
-        if (id === s.activeSheetId) return s;
-        const target = s.sheets.find((x) => x.id === id);
-        if (!target) return s;
-        // Flush current docStore source into previous active sheet.
-        const docSource = useDocumentStore.getState().source;
-        const sheets = s.sheets.map((x) =>
-          x.id === s.activeSheetId ? { ...x, source: docSource } : x,
-        );
-        useDocumentStore.getState().setSource(target.source);
-        return { sheets, activeSheetId: id };
-      }),
-
-    getActiveSource: () => {
-      const { sheets, activeSheetId } = get();
-      return sheets.find((s) => s.id === activeSheetId)?.source ?? "";
-    },
-
-    renameSheet: (id, label) =>
-      set((s) => ({
-        sheets: s.sheets.map((x) => (x.id === id ? { ...x, label } : x)),
-      })),
-  };
+void getSetting<Persisted | null>(STORE_KEY, null).then((saved) => {
+  // De opgeslagen staat komt asynchroon binnen. Heeft de gebruiker in die
+  // tussentijd al iets gedaan — een module toegevoegd, een veld ingevuld — dan
+  // zou terugzetten dat werk weggooien. Alleen hydrateren als er nog niets is
+  // gebeurd.
+  const nu = useProjectStore.getState();
+  const onaangeroerd = nu.exemplaren.length === 0 && !nu.dirty;
+  if (saved && Array.isArray(saved.exemplaren) && onaangeroerd) {
+    useProjectStore.setState({
+      projectNaam: saved.projectNaam ?? "Nieuw project",
+      bestandspad: saved.bestandspad ?? null,
+      gegevens: { ...legeGegevens(), ...(saved.gegevens ?? {}) },
+      exemplaren: saved.exemplaren,
+      activeId: saved.activeId ?? PROJECT_ID,
+      dirty: false,
+    });
+  }
+  useProjectStore.subscribe((s) =>
+    schedulePersist({
+      projectNaam: s.projectNaam,
+      bestandspad: s.bestandspad,
+      gegevens: s.gegevens,
+      exemplaren: s.exemplaren,
+      activeId: s.activeId,
+    }),
+  );
 });
-
-/**
- * Detecteert opgeslagen sheets die corrupt zijn geraakt door een eerdere
- * UX-bug: de actieve Projectgegevens-sheet kreeg een vreemde source als de
- * gebruiker per ongeluk op een library-item klikte. Een echte Projectgegevens
- * bevat ALTIJD `@select WindGebied`. Mist die marker bij een sheet met
- * templateId="project-metadata", dan herstellen we de canonical source.
- */
-function repairMetadataSheets(sheets: ProjectSheet[]): ProjectSheet[] {
-  const canonical = templates["project-metadata"];
-  if (!canonical) return sheets;
-  return sheets.map((s) => {
-    if (s.templateId === "project-metadata" && !/@select\s+WindGebied\b/.test(s.source)) {
-      return { ...s, source: canonical };
-    }
-    return s;
-  });
-}
-
-// Hydrate from Tauri store on first import, then auto-save (debounced) on
-// every mutation. Also auto-flush docStore.source into the active sheet so
-// it survives reloads.
-void getSetting<{ sheets: ProjectSheet[]; activeSheetId: string | null } | null>(STORE_KEY, null)
-  .then((saved) => {
-    if (saved && Array.isArray(saved.sheets) && saved.sheets.length > 0) {
-      const repaired = repairMetadataSheets(saved.sheets);
-      useProjectStore.setState({
-        sheets: repaired,
-        activeSheetId: saved.activeSheetId ?? repaired[0].id,
-      });
-      const active = repaired.find((s) => s.id === (saved.activeSheetId ?? repaired[0].id));
-      if (active) useDocumentStore.getState().setSource(active.source);
-    }
-    useProjectStore.subscribe((s) => {
-      // Flush docStore.source into the active sheet whenever the store updates.
-      const docSource = useDocumentStore.getState().source;
-      const sheets = s.sheets.map((x) =>
-        x.id === s.activeSheetId ? { ...x, source: docSource } : x,
-      );
-      scheduleProjectPersist({ sheets, activeSheetId: s.activeSheetId });
-    });
-    // Also subscribe to docStore source changes — flush into active sheet.
-    useDocumentStore.subscribe((doc) => {
-      const { sheets, activeSheetId } = useProjectStore.getState();
-      if (!activeSheetId) return;
-      const sheet = sheets.find((s) => s.id === activeSheetId);
-      if (sheet && sheet.source !== doc.source) {
-        useProjectStore.setState({
-          sheets: sheets.map((s) => (s.id === activeSheetId ? { ...s, source: doc.source } : s)),
-        });
-      }
-    });
-  });

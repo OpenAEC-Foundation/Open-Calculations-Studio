@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
-import { useDocumentStore } from "../../store/documentStore";
-import { useLoadCaseStore } from "../../store/loadCaseStore";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useProjectStore } from "../../store/projectStore";
+import { useProjectKFI, useProjectGetal, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
  * Losstaand parametrisch beeld van een balklaag (doorsnede): vloerhout op
  * houten balken, hart-op-hart afstand. Leest/schrijft dezelfde invoer als de
- * rekensheet (balklaag.ts) via de loadCaseStore; de unity checks lopen live
+ * rekensheet (balklaag.ts) via het exemplaar in de projectstore; de unity
+ * checks lopen live
  * mee (gespiegeld aan de template).
  */
 const MARKER = "Balklaag";
@@ -54,20 +55,37 @@ const GRENS: { v: number; label: string }[] = [
  * '0' voor `?`-velden — die wijken af van wat het beeld toont.
  */
 const DEFAULTS: Record<string, number> = {
-  profiel: 10, sterkteklasse: 2, duurklasse: 2, klimaat: 1, eigengewicht: 0,
-  gevolgklasse: 1.0, L_d: 5000, a_opl: 50, hoh: 450, t_vloer: 25,
+  profiel: 10, sterkteklasse: 2, duurklasse: 2, klimaat: 1,
+  L_d: 5000, a_opl: 50, hoh: 450, t_vloer: 25,
   g_vloerplaat: 1.5, g_wanden: 0, g_plafond: 0, g_overig: 0,
   q_k: 1.0, Q_k: 2, belastingcat: 2, verplaatsbaar: 0,
   "ψ_0_zelf": 0.5, "ψ_2_zelf": 0.3, controleer: 1, grensfactor: 0.004,
 };
 
 export default function BalklaagDesigner() {
-  const source = useDocumentStore((s) => s.source);
-  const activeId = useLoadCaseStore((s) => s.activeId);
-  const valuesByCase = useLoadCaseStore((s) => s.valuesByCase);
-  const setActiveValue = useLoadCaseStore((s) => s.setActiveValue);
-  const seedActiveValues = useLoadCaseStore((s) => s.seedActiveValues);
+  // Invoer hoort bij het exemplaar dat openstaat: twee bladen van dezelfde
+  // module delen niets, ook al gebruiken ze dezelfde variabelenamen.
+  // Welk blad getekend wordt: normaal het actieve, in de afdruk het blad dat de
+  // context aanwijst. `alleenLezen` houdt daar het schrijven tegen.
+  const exemplaar = useActiefExemplaar();
+  const alleenLezen = useAlleenLezen();
+  const activeId = alleenLezen ? "" : (exemplaar?.id ?? "");
+  const zetWaarde = useProjectStore((s) => s.zetWaarde);
+  const seedWaarden = useProjectStore((s) => s.seedWaarden);
+  const source = exemplaar?.source ?? "";
+  const zetBladWaarde = useCallback(
+    (naam: string, waarde: string) => zetWaarde(activeId, naam, waarde),
+    [activeId, zetWaarde],
+  );
+  const seedBladWaarden = useCallback(
+    (defaults: Record<string, string>) => seedWaarden(activeId, defaults),
+    [activeId, seedWaarden],
+  );
   const [editing, setEditing] = useState<string | null>(null);
+
+  // Meet het beschikbare tekengebied zodat het beeld meegroeit met het paneel.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 620, h: 360 });
 
   // Push the displayed defaults into the shared store on open / case switch, so
   // the rekensheet evaluates with the same inputs the picture shows. Only fills
@@ -77,19 +95,36 @@ export default function BalklaagDesigner() {
     if (!isBalklaag) return;
     const seed: Record<string, string> = {};
     for (const [k, v] of Object.entries(DEFAULTS)) seed[k] = String(v);
-    seedActiveValues(seed);
-  }, [isBalklaag, activeId, seedActiveValues]);
+    seedBladWaarden(seed);
+  }, [isBalklaag, activeId, seedBladWaarden]);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[0].contentRect;
+      setBox({ w: Math.max(220, r.width), h: Math.max(200, r.height) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isBalklaag]);
+
+  // Projectwaarden: hooks, dus ze moeten vóór de vroege return staan. Anders
+  // roept deze component in de ene render meer hooks aan dan in de andere en
+  // klapt React eruit zodra het paneel van blad wisselt.
+  const kfi = useProjectKFI();
+  const xc = Math.round(useProjectGetal("rekenwijze", 1)) === 1;
 
   if (!isBalklaag) return null;
 
-  const vals = valuesByCase[activeId] ?? {};
+  const vals = exemplaar?.waarden ?? {};
   const num = (name: string, def: number): number => {
     const raw = vals[name];
     if (raw === undefined || raw === "") return def;
     const n = parseFloat(String(raw).replace(",", "."));
     return Number.isFinite(n) ? n : def;
   };
-  const setVal = (name: string, value: number) => setActiveValue(name, String(value));
+  const setVal = (name: string, value: number) => zetBladWaarde(name, String(value));
 
   // ── invoer (defaults uit gedeelde DEFAULTS-bron, zie boven) ───────────────
   const d = (name: string) => num(name, DEFAULTS[name]);
@@ -99,8 +134,9 @@ export default function BalklaagDesigner() {
   const mat = MATS[matId] ?? MATS[DEFAULTS.sterkteklasse];
   const duur = Math.round(d("duurklasse"));
   const klim = Math.round(d("klimaat"));
-  const eig = Math.round(d("eigengewicht"));
-  const kfi = d("gevolgklasse");
+  // Het eigen gewicht is een splitspunt: De referentie-uitwerking rekent 550 kg/m³ met g = 10,
+  // de norm ρ_mean uit EN 338 met g = 9,81. Die keuze staat in de
+  // projectgegevens en niet in dit paneel — het blad leest hem daar ook.
   const Ld = d("L_d");
   const aOpl = d("a_opl");
   const hoh = d("hoh");
@@ -130,7 +166,7 @@ export default function BalklaagDesigner() {
   const Lth = Ld + aOpl;
   const gk = gVloer + gPlaf + gOver + (verpl === 0 ? gWand : 0); // kN/m² permanent
   const qkEff = qk + (verpl === 1 ? gWand : 0); // verplaatsbare wanden → variabel
-  const gBalk = (A * 1e-6 * (eig === 550 ? 550 : mat.rho) * 9.81) / 1000; // kN/m
+  const gBalk = xc ? (A * 1e-6 * 550 * 10) / 1000 : (A * 1e-6 * mat.rho * 9.81) / 1000; // kN/m
   const Pg = (hoh / 1000) * gk + gBalk; // kN/m = N/mm
   const qq = (hoh / 1000) * qkEff; // N/mm
   const ug = (5 / 384) * (Pg * Lth ** 4) / (mat.E * Iy);
@@ -152,13 +188,24 @@ export default function BalklaagDesigner() {
   const ucMax = controleer === 1 ? Math.max(ucDoor, ucBuig, ucAfsch) : Math.max(ucBuig, ucAfsch);
   const ok = ucMax <= 1.0;
 
-  // ── doorsnede-tekening op schaal ─────────────────────────────────────────
-  const W = 520, H = 300, m = 70, nJ = 4;
-  const totalMM = (nJ - 1) * hoh + b;
-  const s = Math.min((W - 2 * m) / totalMM, 150 / h);
-  const jW = b * s, jH = h * s, sp = hoh * s, tV = Math.max(8, tVloer * s);
-  const x0 = (W - ((nJ - 1) * sp + jW)) / 2;
-  const yBoard = 64, yJoist = yBoard + tV;
+  // ── doorsnede-tekening — vult het gemeten tekengebied, gecentreerd ─────────
+  // Eén uniforme fit-schaal: het beeld groeit/krimpt evenredig mee met het
+  // paneel en blijft dimensioneel correct (x = y).
+  const capH = 26;                                 // ruimte voor het onderschrift boven de stage
+  const nJ = 4;
+  const W = box.w, H = box.h - capH;               // stage vult het gebied
+  const mX = 46, mTop = 26, mBot = 48;             // marges (px)
+  const totalMM = (nJ - 1) * hoh + b;              // breedte van de balken-groep
+  const availW = W - 2 * mX, availH = H - mTop - mBot;
+  // grootste schaal die zowel de breedte als de hoogte (vloerhout + balk) laat passen
+  const s = Math.min(availW / totalMM, availH / (tVloer + h));
+  const jW = b * s, jH = h * s, sp = hoh * s, tV = Math.max(6, tVloer * s);
+  const groupW = (nJ - 1) * sp + jW;               // getekende breedte van de balken
+  const x0 = (W - groupW) / 2;                     // horizontaal gecentreerd
+  const boardL = Math.min(mX, x0 - sp * 0.4), boardR = Math.max(W - mX, x0 + groupW + sp * 0.4);
+  const blockH = tV + jH;
+  const yBoard = mTop + Math.max(0, (availH - blockH) / 2);  // verticaal gecentreerd
+  const yJoist = yBoard + tV;
 
   function Dim(props: { name: string; value: number; x: number; y: number; step?: number }) {
     const { name, value, x, y, step = 5 } = props;
@@ -190,16 +237,9 @@ export default function BalklaagDesigner() {
         </span>
       </div>
 
-      <div className="vd-body">
-        <div className="vd-controls vd-compact">
+      <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
+        <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
           <span className="vd-ctrl-h">Algemeen</span>
-          <label>Gevolgklasse
-            <select value={kfi} onChange={(e) => setVal("gevolgklasse", parseFloat(e.target.value))}>
-              <option value={0.9}>CC1</option>
-              <option value={1.0}>CC2</option>
-              <option value={1.1}>CC3</option>
-            </select>
-          </label>
           <span className="vd-ctrl-h">Geometrie</span>
           <label>Profiel (b×h)
             <select value={profId} onChange={(e) => setVal("profiel", parseInt(e.target.value))}>
@@ -233,12 +273,6 @@ export default function BalklaagDesigner() {
           <label>Duurklasse
             <select value={duur} onChange={(e) => setVal("duurklasse", parseInt(e.target.value))}>
               {DUUR.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
-            </select>
-          </label>
-          <label>Eigengewicht
-            <select value={eig} onChange={(e) => setVal("eigengewicht", parseInt(e.target.value))}>
-              <option value={0}>EN 338</option>
-              <option value={550}>Referentie</option>
             </select>
           </label>
 
@@ -303,13 +337,18 @@ export default function BalklaagDesigner() {
           </label>
         </div>
 
-        <div className="vd-canvases">
+        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, justifyContent: "center", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
           <div className="vd-canvas">
             <div className="vd-caption">Doorsnede</div>
-            <div className="vd-stage" style={{ width: W, height: H }}>
+            <div className="vd-stage" style={{ width: W, height: H, background: "transparent", border: "none", borderRadius: 0 }}>
               <svg width={W} height={H} className="vd-svg">
+                <defs>
+                  <marker id="bdDim" markerWidth="10" markerHeight="12" refX="5" refY="6" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+                    <path d="M5 0.5 L5 11.5" className="vd-dimarrow" />
+                  </marker>
+                </defs>
                 {/* vloerhout */}
-                <rect x={20} y={yBoard} width={W - 40} height={tV} style={{ fill: "#D9B382", stroke: "#8B6F47", strokeWidth: 1.5 }} />
+                <rect x={boardL} y={yBoard} width={boardR - boardL} height={tV} style={{ fill: "#D9B382", stroke: "#8B6F47", strokeWidth: 1.5 }} />
                 {/* balken */}
                 {Array.from({ length: nJ }, (_, i) => (
                   <rect key={i} x={x0 + i * sp} y={yJoist} width={jW} height={jH} style={{ fill: "#E3C08A", stroke: "#8B6F47", strokeWidth: 1.5 }} />
@@ -318,14 +357,9 @@ export default function BalklaagDesigner() {
                 <line x1={x0 + jW / 2} y1={yJoist + jH + 18} x2={x0 + sp + jW / 2} y2={yJoist + jH + 18} className="vd-dimmeasure" markerStart="url(#bdDim)" markerEnd="url(#bdDim)" />
                 <line x1={x0 + jW / 2} y1={yJoist + jH} x2={x0 + jW / 2} y2={yJoist + jH + 22} className="vd-dimext" />
                 <line x1={x0 + sp + jW / 2} y1={yJoist + jH} x2={x0 + sp + jW / 2} y2={yJoist + jH + 22} className="vd-dimext" />
-                <defs>
-                  <marker id="bdDim" markerWidth="11" markerHeight="9" refX="9" refY="4.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                    <path d="M9 1 L1 4.5 L9 8" className="vd-dimarrow" />
-                  </marker>
-                </defs>
               </svg>
               <Dim name="hoh" value={hoh} x={x0 + sp / 2 + jW / 2} y={yJoist + jH + 18} step={10} />
-              <Dim name="t_vloer" value={tVloer} x={W - 60} y={yBoard + tV / 2} step={1} />
+              <Dim name="t_vloer" value={tVloer} x={boardR - 26} y={yBoard + tV / 2} step={1} />
               <div className="vd-dim-ro" style={{ left: x0 + jW / 2, top: yJoist + jH / 2 }}>{b}×{h}</div>
             </div>
           </div>

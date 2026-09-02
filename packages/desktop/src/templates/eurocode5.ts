@@ -566,12 +566,6 @@ export const ec5HoutenBalk = `# Volledige Toetsing Houten Balk — EN 1995-1-1
 
 ## Projectgegevens
 
-@select gevolgklasse "Constructiegevolgklasse (CC)"
-CC1 — Lage gevolgen = 1
-CC2 — Middelmatige gevolgen = 2
-CC3 — Grote gevolgen = 3
-@end
-
 ## Materiaal
 
 @select houttype "Type hout"

@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useDocumentStore } from "../../store/documentStore";
-import { useLoadCaseStore } from "../../store/loadCaseStore";
+import { useProjectStore } from "../../store/projectStore";
+import { useActieveBron, useActieveWaarden, useProjectScope } from "../../store/actiefBlad";
 import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
 import { parse, evaluate, generateIfcx, generateIfc4x3Step, type IfcGenerationResult, type IfcxDocument } from "@ifc-calc/core";
 import { wrapAsIfcCalculation } from "../../tauri/fileOps";
@@ -329,28 +329,34 @@ function IfcxViewer({ content }: { content: string }) {
 
 // ── Main panel ───────────────────────────────────────────────
 
-/** IFCX shown in the viewer mirrors EXACTLY what Save writes to disk. */
+/**
+ * De IFCX-weergave hoort bij het rekenblad dat openstaat.
+ *
+ * Let op: dit is niet één-op-één het bestand op schijf. Opslaan schrijft het
+ * héle project weg — alle exemplaren plus de projectgegevens onder `project` —
+ * met de IFC-kant van het eerste blad. Hier zie je de IFC-kant van dít blad.
+ */
 interface GeneratedIfc extends IfcGenerationResult {
-  /** Pretty-printed JSON identical to the on-disk `.ifc-calculation` payload. */
+  /** Pretty-printed IFCX van dit blad, in de vorm die ook op schijf gebruikt wordt. */
   ifcxJsonString: string;
 }
 
 function useGeneratedIfc(): GeneratedIfc {
-  const source = useDocumentStore((s) => s.source);
-  const filePath = useDocumentStore((s) => s.filePath);
-  const activeId = useLoadCaseStore((s) => s.activeId);
-  const valuesByCase = useLoadCaseStore((s) => s.valuesByCase);
-  const selectValues = valuesByCase[activeId] ?? {};
+  // De IFC-weergave hoort bij het blad dat openstaat, met de projectgegevens
+  // als startwaarden — precies zoals de uitwerking ernaast.
+  const source = useActieveBron();
+  const selectValues = useActieveWaarden();
+  const scope = useProjectScope();
+  const projectNaam = useProjectStore((s) => s.projectNaam);
 
   return useMemo(() => {
     try {
       const ast = parse(source, { includes: calcpadIncludes, imageUrls: calcpadImageUrls });
-      const ev = evaluate(ast, selectValues);
-      const projectName = filePath?.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, "") ?? "Berekening";
+      const ev = evaluate(ast, selectValues, scope);
+      const projectName = projectNaam || "Berekening";
       const ifcx = generateIfcx(ev, { projectName });
       const step = generateIfc4x3Step(ev, { projectName });
-      // Show the IFCX exactly as it will be persisted on disk — same JSON the
-      // saveCalculationFile() helper writes.
+      // Zelfde omhulsel als op schijf, maar dan voor dit ene blad.
       const ifcxJsonString = wrapAsIfcCalculation(source, ifcx);
       return { ifcx, step, ifcxJsonString };
     } catch (err) {
@@ -361,7 +367,7 @@ function useGeneratedIfc(): GeneratedIfc {
         ifcxJsonString: JSON.stringify(errorDoc, null, 2),
       };
     }
-  }, [source, selectValues, filePath]);
+  }, [source, selectValues, scope, projectNaam]);
 }
 
 export default function IfcViewerPanel() {

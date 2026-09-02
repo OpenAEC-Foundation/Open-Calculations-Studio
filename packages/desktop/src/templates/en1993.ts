@@ -70,7 +70,7 @@ f_yd = f_y / gamma_M0 to N/mm^2
 
 ## Epsilon (tabel 5.2)
 
-epsilon = sqrt(235 / f_y)
+epsilon = sqrt(235 / f_y * 1 N/mm^2)
 
 ## Samenvatting
 
@@ -100,7 +100,7 @@ S450 — f_y=440 = 440
 
 f_y = staalsoort * 1 N/mm^2
 
-epsilon = sqrt(235 / f_y)
+epsilon = sqrt(235 / f_y * 1 N/mm^2)
 
 ## Profielgegevens (I/H-profiel)
 
@@ -987,7 +987,7 @@ W_ely = 557300 mm^3
 W_plz = 98520 mm^3
 W_elz = 80500 mm^3
 
-epsilon = sqrt(235 / f_y)
+epsilon = sqrt(235 / f_y * 1 N/mm^2)
 
 ## Systeem en belasting
 

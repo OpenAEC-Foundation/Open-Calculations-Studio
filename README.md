@@ -12,7 +12,7 @@ Open desktop-applicatie voor constructieve berekeningen op basis van CalcPAD-syn
 - **Wiskundige opmaak** — KaTeX-rendering met echte breuken, superscripts, subscripts en Griekse letters
 - **Formule-keten** — toont `naam = formule = ingevulde waarden = resultaat` op één regel
 - **Live preview** — split-pane editor (CodeMirror 6) en debounced preview, syntax highlighting voor `.cpd`
-- **Belastingsgevallen** — tabs onderaan voor SLS / ULS / aardbeving etc., elk met eigen prompt-waarden
+- **Project met meerdere rekenbladen** — dezelfde module kan er meerdere keren in (drie balklagen, elk met eigen invoer); de projectgegevens gelden voor alle bladen
 
 ### CalcPAD-compatibiliteit
 Full subset compatibility met real-world CalcPAD-bestanden. Het 1094-regel `2259-Intertek-units.cpd` regressie-bestand evalueert met 0 errors en rendert 6 SVG-tekeningen.
@@ -34,15 +34,17 @@ Full subset compatibility met real-world CalcPAD-bestanden. Het 1094-regel `2259
 - **`@img(file.png|jpg|…)`** — raster afbeeldingen via `<img src>`
 
 ### IFC export
-Live IFCX (JSON-LD draft) en IFC4x3 STEP-SPF generatie vanuit de huidige calc.
+Live IFCX (JSON-LD draft) en IFC4x3 STEP-SPF generatie. Opslaan schrijft het
+**hele project** weg: alle rekenbladen in één ruimtelijke boom, met een element
+per blad. Zie [docs/ifc-export.md](docs/ifc-export.md).
 - Detecteert structurele elementen via conventionele variabelenamen (`b_fdn`, `l_fdn`, `D_paal`, `M_Ed`, `R_c_d`, …)
 - Altijd geldig Project → Site → Building → Storey skelet
 - IFC-tab met spatial tree, STEP viewer en IFCX JSON viewer (syntax highlighting + klikbare entity-types naar BuildingSMART docs)
 - Eén klik export: `.ifc` / `.ifcx` download
 
 ### Overig
-- **Belastingsgevallen** (load cases) met eigen prompt-waarden per case
-- **PDF-export** via Tauri shell + headless preview
+- **Projectgegevens** — gevolgklasse, ontwerplevensduur, windgebied en de projectkop staan op projectniveau en werken door in elk blad
+- **Afdrukken / PDF** — het hele project als één document: voorblad uit de projectgegevens, inhoudsopgave, elk blad op een eigen pagina, met het parametrische beeld én de uitwerking. Met **Voorbeeld** zie je op het scherm precies wat er op papier komt
 - **GEF-upload** (`@gef name`) voor sonderingsdata
 - **5 themes** (light, forge, openaec, blueprint, contrast) — OpenAEC design tokens
 - **`@select var "Label" … @end`** dropdown-blocks voor materiaalkeuzes etc.
@@ -65,6 +67,7 @@ Open-Calculations-Studio/
 │   │   └── package.json
 │   ├── desktop/                       # @openaec/calculations-studio — Tauri app
 │   │   ├── src/                       # React UI (ribbon, panels, preview)
+│   │   │   └── store/projectStore.ts  # Project: exemplaren + projectgegevens
 │   │   ├── src-tauri/                 # Rust shell (Tauri 2)
 │   │   └── src/templates/calcpad-samples/   # Vendored .cpd + .svg samples
 │   └── web/                           # @ifc-calc/web — browser-only build
@@ -123,6 +126,35 @@ npm run tauri:dev --workspace=@openaec/calculations-studio
 # Of alleen de Vite browser-preview
 npm run dev --workspace=@openaec/calculations-studio
 ```
+
+De desktop-app vraagt een Rust-toolchain (`rustup`) plus, op Windows, de
+Visual Studio Build Tools met de C++-werkbelasting en de Windows SDK:
+
+```bash
+winget install --id Rustlang.Rustup --exact
+```
+```bash
+winget install --id Microsoft.VisualStudio.2022.BuildTools --exact --override "--quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+```
+
+Die tweede vraagt beheerdersrechten; draai hem vanuit een PowerShell die als
+administrator is gestart, anders breekt hij af met code 1602. De browser-preview draait zonder Rust en is voor het rekenwerk zelf
+gelijkwaardig; alleen bestandsdialogen en de opslag van instellingen werken
+daar niet.
+
+### Optioneel: de OpenAEC-rapportengine
+
+Afdrukken gaat standaard via de browser (voorblad, inhoudsopgave, elk blad op
+een pagina, mét tekeningen). De Rust-rapportengine van OpenAEC is optioneel en
+wordt níét meegebouwd, zodat dit project op zichzelf bouwt:
+
+```bash
+npm run tauri build --workspace=@openaec/calculations-studio -- --features rapportengine
+```
+
+Zonder die vlag bestaan de engine-commando's wel, maar geven ze een melding dat
+de build ze niet bevat. Zie [docs/backlog.md](docs/backlog.md) voor waarom die
+weg nu niet de standaard is.
 
 ## Gebruik als library
 
