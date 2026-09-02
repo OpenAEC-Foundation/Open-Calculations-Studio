@@ -71,7 +71,7 @@ export const voetplaatverbinding = `"Voetplaatverbinding — toetsing volgens EN
 a_las = ?*(mm)', hoeklas a — keeldikte van de las kolom→voetplaat (mm)'
 
 f_y = staalsoort N/mm^2', vloeigrens staal'
-f_u = if(staalsoort ≡ 235; 360; if(staalsoort ≡ 275; 430; 510)) N/mm^2', treksterkte EN 10025'
+f_u = if(staalsoort ≡ 235; 360; if(staalsoort ≡ 275; 430; 490)) N/mm^2', treksterkte NEN-EN 1993-1-1:2025 tabel 3.1 (t ≤ 40 mm)'
 β_w = if(staalsoort ≡ 235; 0.8; if(staalsoort ≡ 275; 0.85; 0.9))', correlatiefactor las (Tabel 4.1)'
 γ_M0 = 1.0
 γ_M2 = 1.25', voor lassen + ankers (netto/breuk)'
@@ -398,13 +398,15 @@ c = t_p*sqrt(f_y/(3*f_jd))', §6.2.5(4) — f_yd = f_y/γ_M0'
 c
 
 '<h6>8.5 Afmetingen drukprent (T-stukken)</h6>
-b_eff,f = t_f + 2*c', breedte drukprent onder flens (T-stuk 1 en 3)'
+c_p = (d_p - h)/2', plaatoverstek voorbij de flens, in de richting van d_p'
+b_eff,f = t_f + c + min(c; c_p)', T-stuk 1 en 3 — naar buiten begrensd door het overstek c_p'
 l_eff,f = min(b_kolom + 2*c; b_p)', lengte, begrensd door plaatbreedte'
 A_pr,f = b_eff,f*l_eff,f', drukprent per flens'
 b_eff,w = t_w + 2*c', breedte drukprent onder lijf (T-stuk 2)'
 l_eff,w = max(0 mm; h - 2*t_f - 2*c)', lengte lijfstrook tussen de flenzen'
 A_pr,w = b_eff,w*l_eff,w', drukprent lijf'
 A_prent = 2*A_pr,f + A_pr,w', totale drukprent'
+c_p
 b_eff,f
 l_eff,f
 A_pr,f

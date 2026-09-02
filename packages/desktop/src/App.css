@@ -478,3 +478,69 @@ body,
 .detached-dock-btn:hover {
   background: rgba(255,255,255,0.35);
 }
+
+/* Werkruimte zonder geopend rekenblad — wegwijzer in plaats van leegte. */
+.werkruimte-leeg {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 24px;
+  text-align: center;
+  color: var(--theme-text-secondary);
+  font-family: var(--font-body);
+}
+
+.werkruimte-leeg h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+.werkruimte-leeg p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* Balk boven het afdrukvoorbeeld. Verdwijnt bij het echte printen: hij hoort
+   bij de app, niet bij het document. */
+.afdruk-balk {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--theme-accent, #d97706);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.afdruk-balk span {
+  flex: 1;
+}
+
+.afdruk-balk button {
+  padding: 4px 12px;
+  font: inherit;
+  color: var(--theme-accent, #d97706);
+  background: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+@media print {
+  .afdruk-balk {
+    display: none !important;
+  }
+}

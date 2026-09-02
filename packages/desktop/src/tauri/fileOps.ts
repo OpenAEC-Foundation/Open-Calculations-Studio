@@ -12,8 +12,8 @@
  *   • the round-trippable calc source (consumable by this app)
  *
  * Legacy `.cpd`, `.cpdz` and raw-text `.ifc-calculation` files are still
- * accepted on open — `unwrapFromIfcCalculation` falls through to treating the
- * payload as raw CalcPAD when JSON parsing fails or `source` is absent.
+ * accepted on open; `store/projectBestand.ts` beslist wat een bestand voorstelt
+ * en maakt er zo nodig een project met één rekenblad van.
  */
 
 import type { IfcxDocument } from "@ifc-calc/core";
@@ -28,84 +28,40 @@ function isTauri(): boolean {
 }
 
 const SUPPORTED_FILTERS = [
-  { name: "OpenAEC Calculations", extensions: ["ifccalculation", "ifc-calculation"] },
+  { name: "Calculations", extensions: ["ifccalculation", "ifc-calculation", "cpd", "cpdz"] },
   { name: "CalcPAD bestanden", extensions: ["cpd", "cpdz"] },
+  { name: "OpenAEC Calculations", extensions: ["ifccalculation", "ifc-calculation"] },
   { name: "Alle bestanden", extensions: ["*"] },
 ];
-
-/** Primary save extension. Legacy `.ifc-calculation` still accepted on open. */
-const SAVE_EXTENSION = "ifccalculation";
 
 export interface OpenedFile {
   path: string;
   name: string;
-  /** Raw CalcPAD source — IFCX-wrapping (when present) is already stripped. */
-  content: string;
+  /**
+   * Onbewerkte bestandsinhoud. Het uitpakken gebeurt in
+   * `store/projectBestand.ts`: die kent zowel het projectformaat als de oudere
+   * losse-blad-vormen, en kan als enige beslissen wat een bestand voorstelt.
+   */
+  raw: string;
 }
 
 /**
  * Wrap a CalcPAD source + IFCX representation into the on-disk
- * `.ifccalculation` JSON-LD format. The result IS a valid IFCX document
+ * `.ifc-calculation` JSON-LD format. The result IS a valid IFCX document
  * (an IFC consumer can read it) with one extra `source` field for round-trip.
- *
- * `projectSheets`, when provided, persists the full multi-sheet project
- * state under `source.project.sheets[]`. On open, the projectStore is
- * rehydrated from this list.
  */
-export function wrapAsIfcCalculation(
-  source: string,
-  ifcx: IfcxDocument,
-  projectSheets?: unknown,
-): string {
+export function wrapAsIfcCalculation(source: string, ifcx: IfcxDocument): string {
   const doc = {
     ...ifcx,
     source: {
       format: "calcpad",
-      language: "ifccalculation",
+      language: "ifc-calculation",
       content: source,
-      ...(projectSheets ? { project: { sheets: projectSheets } } : {}),
     },
   };
   return JSON.stringify(doc, null, 2);
 }
 
-/**
- * Extract the multi-sheet project (if any) from a `.ifccalculation` file.
- * Returns the sheets array verbatim — caller validates the shape.
- */
-export function projectFromIfcCalculation(content: string): unknown[] | null {
-  const trimmed = content.trimStart();
-  if (!trimmed.startsWith("{")) return null;
-  try {
-    const parsed = JSON.parse(trimmed) as {
-      source?: { project?: { sheets?: unknown[] } };
-    };
-    const sheets = parsed?.source?.project?.sheets;
-    return Array.isArray(sheets) ? sheets : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Extract the CalcPAD source from a `.ifccalculation` file. Accepts either:
- *   • new format: JSON document with `source.content`
- *   • legacy: raw CalcPAD text (also matches `.cpd` / `.cpdz` files)
- */
-export function unwrapFromIfcCalculation(content: string): string {
-  // Quick guard — only try JSON.parse when the payload looks like JSON.
-  const trimmed = content.trimStart();
-  if (!trimmed.startsWith("{")) return content;
-  try {
-    const parsed = JSON.parse(trimmed) as { source?: { content?: unknown } };
-    if (parsed && typeof parsed.source?.content === "string") {
-      return parsed.source.content;
-    }
-  } catch {
-    // Fall through — not JSON, treat as raw CalcPAD.
-  }
-  return content;
-}
 
 /**
  * Open a `.ifc-calculation` or `.cpd` file via the OS file picker.
@@ -125,9 +81,8 @@ export async function openCalculationFile(): Promise<OpenedFile | null> {
     if (!picked || typeof picked !== "string") return null;
 
     const raw = await readTextFile(picked);
-    const content = unwrapFromIfcCalculation(raw);
     const name = pathBaseName(picked);
-    return { path: picked, name, content };
+    return { path: picked, name, raw };
   }
 
   // Browser fallback: HTML <input type=file>
@@ -139,8 +94,7 @@ export async function openCalculationFile(): Promise<OpenedFile | null> {
       const f = input.files?.[0];
       if (!f) return resolve(null);
       const raw = await f.text();
-      const content = unwrapFromIfcCalculation(raw);
-      resolve({ path: f.name, name: stripExt(f.name), content });
+      resolve({ path: f.name, name: stripExt(f.name), raw });
     };
     input.oncancel = () => resolve(null);
     input.click();
@@ -156,100 +110,21 @@ function stripExt(s: string): string {
   return s.replace(/\.(ifccalculation|ifc-calculation|cpd|cpdz|txt)$/i, "");
 }
 
-export type PickedImage =
-  | { kind: "raster"; name: string; dataUrl: string }
-  | { kind: "svg"; name: string; content: string; dataUrl: string };
-
-/**
- * Open an image picker that accepts both raster (.png/.jpg/.gif/.webp/.bmp)
- * and vector (.svg) files. Returns the loaded content as a data URL (raster)
- * or as the raw SVG text (vector).
- */
-export async function openImageOrSvgDialog(): Promise<PickedImage | null> {
-  if (isTauri()) {
-    const { open } = await import("@tauri-apps/plugin-dialog");
-    const { readFile, readTextFile } = await import("@tauri-apps/plugin-fs");
-    const picked = await open({
-      title: "Afbeelding of SVG kiezen",
-      multiple: false,
-      filters: [
-        { name: "Afbeeldingen + SVG", extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"] },
-        { name: "Alle bestanden", extensions: ["*"] },
-      ],
-    });
-    if (!picked || typeof picked !== "string") return null;
-    const name = picked.split(/[\\/]/).pop() ?? picked;
-    const ext = (name.split(".").pop() ?? "").toLowerCase();
-    if (ext === "svg") {
-      const content = await readTextFile(picked);
-      const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(content)}`;
-      return { kind: "svg", name, content, dataUrl };
-    }
-    const bytes = await readFile(picked);
-    const dataUrl = bytesToDataUrl(bytes, ext);
-    return { kind: "raster", name, dataUrl };
-  }
-
-  // Browser fallback
-  return new Promise<PickedImage | null>((resolve) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".png,.jpg,.jpeg,.gif,.webp,.bmp,.svg,image/*";
-    input.onchange = async () => {
-      const f = input.files?.[0];
-      if (!f) return resolve(null);
-      const ext = (f.name.split(".").pop() ?? "").toLowerCase();
-      if (ext === "svg" || f.type === "image/svg+xml") {
-        const content = await f.text();
-        const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(content)}`;
-        resolve({ kind: "svg", name: f.name, content, dataUrl });
-      } else {
-        const dataUrl = await new Promise<string>((res) => {
-          const reader = new FileReader();
-          reader.onload = () => res(String(reader.result));
-          reader.readAsDataURL(f);
-        });
-        resolve({ kind: "raster", name: f.name, dataUrl });
-      }
-    };
-    input.oncancel = () => resolve(null);
-    input.click();
-  });
-}
-
-function bytesToDataUrl(bytes: Uint8Array, ext: string): string {
-  const mimeMap: Record<string, string> = {
-    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
-    gif: "image/gif", webp: "image/webp", bmp: "image/bmp",
-  };
-  const mime = mimeMap[ext] ?? "application/octet-stream";
-  let binary = "";
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
-  // btoa expects ASCII binary string; safe for image bytes.
-  // eslint-disable-next-line no-undef
-  return `data:${mime};base64,${btoa(binary)}`;
-}
-
 function sanitizeFileName(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_");
 }
 
 /**
- * Save the current calc as a `.ifc-calculation` file via a Save As dialog.
- *
- * The on-disk payload is an IFCX JSON-LD document with the CalcPAD source
- * embedded under `source.content` — see the module header for the format.
- * The resolved absolute path is returned, or `null` if the user cancelled.
+ * Schrijf een kant-en-klare payload weg als `.ifc-calculation` via een Save
+ * As-dialoog. De payload wordt gebouwd door `store/projectBestand.ts` — dat
+ * bepaalt de vorm, dit bestand doet alleen de schijf.
+ * Het absolute pad komt terug, of `null` als de gebruiker annuleert.
  */
 export async function saveCalculationFile(
-  source: string,
-  ifcx: IfcxDocument,
+  payload: string,
   defaultName: string,
-  projectSheets?: unknown,
 ): Promise<string | null> {
-  const payload = wrapAsIfcCalculation(source, ifcx, projectSheets);
-  const defaultFile = `${sanitizeFileName(defaultName)}.${SAVE_EXTENSION}`;
+  const defaultFile = `${sanitizeFileName(defaultName)}.ifccalculation`;
 
   if (isTauri()) {
     const { save } = await import("@tauri-apps/plugin-dialog");
@@ -259,7 +134,6 @@ export async function saveCalculationFile(
       defaultPath: defaultFile,
       filters: [
         { name: "OpenAEC Calculation (IFCX)", extensions: ["ifccalculation"] },
-        { name: "Legacy (.ifc-calculation)", extensions: ["ifc-calculation"] },
         { name: "Alle bestanden", extensions: ["*"] },
       ],
     });

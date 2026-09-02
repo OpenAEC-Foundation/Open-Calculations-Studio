@@ -333,11 +333,11 @@ Bron: Prof. D. Vandepitte — Berekening van Constructies, Deel I, Hoofdstuk 5, 
 
 De kritieke knikbelasting volgens Euler (Hfd. 5, art. 5.2.2.3):
 
-  P_k = n^2 * pi^2 * E * I / l^2
+- P_k = n^2 · pi^2 · E · I / l^2
 
 met de kniklengte l_k = l / n, oftewel (Hfd. 5, art. 5.4.6):
 
-  P_k = pi^2 * E * I / l_k^2
+- P_k = pi^2 · E · I / l_k^2
 
 De kniklengte l_k hangt af van de randvoorwaarden (Hfd. 5, art. 5.4):
 - Staaf a (inklemming-vrij):     l_k = 2 * l
@@ -735,15 +735,15 @@ K = 3 * E * I / L^3 to N/mm
 
 De statische doorbuiging onder eigen gewicht:
 
-u_st = m * 9.81 / K to mm
+u_st = m * gravity / K to mm
 
 Eigenfrequentie (formule 157):
 
-f = 1 / (2 * pi) * sqrt(K * 1000 / m) to Hz
+f = 1 / (2 * pi) * sqrt(K / m) to Hz
 
 Benadering met de statische doorbuiging (Hfd. 8, formule 154):
 
-f_controle = 1 / (2 * pi) * sqrt(9810 / u_st) to Hz
+f_controle = 1 / (2 * pi) * sqrt(gravity / u_st) to Hz
 
 #end if
 
@@ -760,15 +760,15 @@ K = 48 * E * I / L^3 to N/mm
 
 De statische doorbuiging:
 
-u_st = m * 9.81 / K to mm
+u_st = m * gravity / K to mm
 
 Eigenfrequentie (formule 157):
 
-f = 1 / (2 * pi) * sqrt(K * 1000 / m) to Hz
+f = 1 / (2 * pi) * sqrt(K / m) to Hz
 
 Benadering:
 
-f_controle = 1 / (2 * pi) * sqrt(9810 / u_st) to Hz
+f_controle = 1 / (2 * pi) * sqrt(gravity / u_st) to Hz
 
 #end if
 
@@ -801,7 +801,7 @@ f = c_1^2 / (2 * pi) * sqrt(E * I / (m_bar * L^4)) to Hz
 
 ## Beoordeling
 
-#if f > 5
+#if f > 5 Hz
   Eigenfrequentie > 5 Hz: geen dynamische problemen te verwachten
   bij voetgangersbelasting.
 #else
@@ -809,7 +809,7 @@ f = c_1^2 / (2 * pi) * sqrt(E * I / (m_bar * L^4)) to Hz
   Nader dynamisch onderzoek is nodig.
 #end if
 
-#if f > 3
+#if f > 3 Hz
   Eigenfrequentie > 3 Hz: geen problemen bij normale vloerbelasting.
 #else
   Eigenfrequentie <= 3 Hz: trillingshinder is waarschijnlijk!
@@ -830,7 +830,7 @@ De totale virtuele arbeid van alle inwendige krachten R_i,
 voor elke mogelijke combinatie van virtuele verplaatsingen
 vanuit de vervormingstoestand, is nul:
 
-  SOM(F_i * delta_i) + SOM(R_i * delta_i) = 0
+- SOM(F_i · delta_i) + SOM(R_i · delta_i) = 0
 
 ## Toepassing: Doorbuiging van een vakwerkstaaf
 
@@ -886,7 +886,7 @@ F = 100 kN
 De doorbuiging a in het punt en de richting van de virtuele
 eenheidskracht wordt berekend als:
 
-  a = SOM( N_i * n_i * L_i / (E * A_i) )
+- a = SOM( N_i · n_i · L_i / (E · A_i) )
 
 waarbij:
 - N_i = staafkracht door werkelijke belasting
@@ -898,7 +898,7 @@ Voorbeeld (vereenvoudigd): doorbuiging door bovenrandstaaf:
 
 N_boven = F * L / (4 * H) to kN
 
-n_boven = 1 * L / (4 * H) to kN/kN
+n_boven = 1 * L / (4 * H)
 
 L_boven = L / 2 to mm
 
@@ -908,7 +908,7 @@ Voorbeeld: doorbuiging door onderrandstaaf:
 
 N_onder = F * L / (4 * H) to kN
 
-n_onder = 1 * L / (4 * H) to kN/kN
+n_onder = 1 * L / (4 * H)
 
 L_onder = L / 2 to mm
 
@@ -920,7 +920,7 @@ L_diag = sqrt(H^2 + (L/4)^2) to mm
 
 N_diag = F / 2 * L_diag / H to kN
 
-n_diag = 1 / 2 * L_diag / H to kN/kN
+n_diag = 1 / 2 * L_diag / H
 
 delta_diag = N_diag * n_diag * L_diag / (E * A_diag) to mm
 

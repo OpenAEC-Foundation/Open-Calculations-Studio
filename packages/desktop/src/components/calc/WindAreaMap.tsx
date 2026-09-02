@@ -17,6 +17,26 @@ const defaultIcon = L.icon({
   shadowSize: [41, 41],
 });
 
+/**
+ * Vaste labelpunten met de gebied-nummers, getekend óp de kaart. Gebied II
+ * ligt geografisch gesplitst (west + noordoost) en krijgt twee labels.
+ */
+const GEBIED_LABELS: Array<{ pos: [number, number]; tekst: string }> = [
+  { pos: [53.05, 5.1], tekst: "I" },
+  { pos: [51.95, 4.55], tekst: "II" },
+  { pos: [52.85, 6.5], tekst: "II" },
+  { pos: [51.95, 5.95], tekst: "III" },
+];
+
+function gebiedLabelIcon(tekst: string): L.DivIcon {
+  return L.divIcon({
+    className: "wind-area-gebiedlabel",
+    html: tekst,
+    iconSize: [34, 22],
+    iconAnchor: [17, 11],
+  });
+}
+
 interface GeocodeResult {
   lat: number;
   lng: number;
@@ -88,9 +108,9 @@ export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }:
       const color = g ? GEBIED_COLORS[g] : "#999";
       return {
         color,
-        weight: 1.5,
+        weight: 1,
         fillColor: color,
-        fillOpacity: 0.25,
+        fillOpacity: 0.16,
       };
     },
     [],
@@ -154,6 +174,14 @@ export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }:
               layer.on({ click: onFeatureClick });
             }}
           />
+          {GEBIED_LABELS.map((l, i) => (
+            <Marker
+              key={i}
+              position={l.pos}
+              icon={gebiedLabelIcon(l.tekst)}
+              interactive={false}
+            />
+          ))}
           {markerPos && (
             <Marker position={markerPos} icon={defaultIcon}>
               <Popup>
@@ -169,9 +197,18 @@ export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }:
         </MapContainer>
       </div>
       <div className="wind-area-legend">
-        <span className="wind-area-legend-item" style={{ background: GEBIED_COLORS[1] }}>I — kust</span>
-        <span className="wind-area-legend-item" style={{ background: GEBIED_COLORS[2] }}>II — overgang</span>
-        <span className="wind-area-legend-item" style={{ background: GEBIED_COLORS[3] }}>III — binnenland</span>
+        <span className="wind-area-legend-item">
+          <i className="wind-area-legend-dot" style={{ background: GEBIED_COLORS[1] }} />
+          I — kust
+        </span>
+        <span className="wind-area-legend-item">
+          <i className="wind-area-legend-dot" style={{ background: GEBIED_COLORS[2] }} />
+          II — overgang
+        </span>
+        <span className="wind-area-legend-item">
+          <i className="wind-area-legend-dot" style={{ background: GEBIED_COLORS[3] }} />
+          III — binnenland
+        </span>
       </div>
       <p className="wind-area-note">
         Polygonen zijn een vereenvoudigde weergave van NEN-EN 1991-1-4 NB Figuur A.1. Voor de exacte

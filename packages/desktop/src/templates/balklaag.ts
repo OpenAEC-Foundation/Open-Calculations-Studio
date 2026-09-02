@@ -7,8 +7,11 @@
  * §6.1.7).
  *
  * Eigengewicht balk: A · ρ_mean · g volgens EN 1991-1-1 / EN 338 (ρ_mean per
- * sterkteklasse). De referentie-uitwerking rekent dit ~5,5 kN/m³ (te hoog voor C24); hier de
- * correcte ρ_mean (C24 = 420 kg/m³ ≈ 4,12 kN/m³).
+ * sterkteklasse). De referentie-uitwerking rekent met een vaste 550 kg/m³ én g = 10 m/s²;
+ * hier de correcte ρ_mean (C24 = 420 kg/m³) met g = 9,81. Zie punt 8 in
+ * docs/afwijkingen-referentie.md.
+ *
+ * Gecalibreerd op document1 t/m document9 — zie scripts/check-balklaag.mjs.
  */
 
 export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
@@ -62,17 +65,6 @@ export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
   Blijvend = 4
 @end
 
-@select eigengewicht "Eigengewicht-dichtheid balk"
-  EN 338 (ρ_mean, normconform) = 0
-  Referentie (550 kg/m³) = 550
-@end
-
-@select gevolgklasse "Gevolgklasse (CC)"
-  CC1 (K_FI 0,90) = 0.9
-  CC2 (K_FI 1,00) = 1.0
-  CC3 (K_FI 1,10) = 1.1
-@end
-
 #hide
 'Profielmatrix: [id | b(mm) | h(mm)]
 profielen = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19 |46; 46; 46; 46; 63; 63; 63; 63; 71; 71; 71; 71; 71; 71; 96; 96; 96; 96; 96 |96; 146; 171; 196; 146; 171; 196; 221; 146; 171; 196; 221; 246; 271; 171; 196; 221; 246; 271]
@@ -91,7 +83,14 @@ k_mod_12 = if(duurklasse ≡ 1; 0.90; if(duurklasse ≡ 2; 0.80; if(duurklasse �
 k_mod_3 = if(duurklasse ≡ 1; 0.70; if(duurklasse ≡ 2; 0.65; if(duurklasse ≡ 3; 0.55; 0.50)))
 k_mod = if(klimaat ≡ 3; k_mod_3; k_mod_12)
 k_def = if(klimaat ≡ 1; 0.60; if(klimaat ≡ 2; 0.80; 2.00))', kruipfactor (Tabel 3.2)'
-ρ_eg = if(eigengewicht ≡ 0; ρ_mean; 550 kg/m^3)', dichtheid voor eigengewicht'
+'Hoogtefactor k_h op f_m,k — massief §3.2(3) bij h < 150 mm, gelijmd gelamineerd
+'§3.3(3) bij h < 600 mm. Op 71×221 is k_h = 1 voor massief en 1,10 voor GL.
+h_ruw = hlookup(profielen; profiel; 1; 3)', balkhoogte als kaal getal in mm'
+gelijmd = if(sterkteklasse ≡ 4; 1; if(sterkteklasse ≡ 5; 1; 0))
+k_h_massief = if(h_ruw < 150; min(1.3; (150/h_ruw)^0.2); 1)
+k_h_gelijmd = if(h_ruw < 600; min(1.1; (600/h_ruw)^0.1); 1)
+k_h = if(gelijmd ≡ 1; k_h_gelijmd; k_h_massief)
+f_m,k_eff = k_h*f_m,k', karakteristieke buigsterkte incl. hoogtefactor'
 #show
 
 '<h6>Gekozen profiel en materiaal</h6>
@@ -101,8 +100,10 @@ f_m,k
 f_v,k
 E_mean
 k_mod
+k_h
+f_m,k_eff
 
-f_m,d = k_mod*f_m,k/γ_M', rekenwaarde buigsterkte'
+f_m,d = k_mod*f_m,k_eff/γ_M', rekenwaarde buigsterkte (incl. k_h)'
 f_v,d = k_mod*f_v,k/γ_M', rekenwaarde afschuifsterkte'
 f_m,d
 f_v,d
@@ -162,30 +163,39 @@ I_y
 W_y
 S_y
 
+'<i><b>Splitspunt — eigen gewicht (register punt 8).</b> De referentie-uitwerking rekent met een
+'vaste 550 kg/m³ én g = 10 m/s²; de norm met ρ<sub>mean</sub> uit EN 338 en
+'g = 9,81. Welke van de twee de conclusie stuurt staat in de projectgegevens.</i>
 #hide
-g_n = 9.81 m/s^2
+ρ_xc = 550 kg/m^3
+g_xc = 10 m/s^2
+g_nb = 9.81 m/s^2
 #show
-g_balk = A*ρ_eg*g_n', eigengewicht balk'
+g_balk_xc = A*ρ_xc*g_xc to kN/m', eigen gewicht — de referentie-uitwerking'
+g_balk_nb = A*ρ_mean*g_nb to kN/m', eigen gewicht — EN 338'
+g_balk = if(rekenwijze ≡ 1; g_balk_xc; g_balk_nb)', gehanteerd eigen gewicht'
+g_balk_xc
+g_balk_nb
 g_balk
 
 # 5. Belastingsgeval 1 — Permanent
 
-P_g,k = hoh*g_k + g_balk', lijnlast permanent op de balk'
+P_g,k = hoh*g_k + g_balk to kN/m', lijnlast permanent op de balk'
 P_g,k
-M_g,k = P_g,k*L_th^2/8
-V_g,k = P_g,k*L_th/2
-u_g,k = 5/384*P_g,k*L_th^4/(E_mean*I_y)', momentane doorbuiging permanent'
+M_g,k = P_g,k*L_th^2/8 to kN*m
+V_g,k = P_g,k*L_th/2 to kN
+u_g,k = 5/384*P_g,k*L_th^4/(E_mean*I_y) to mm', momentane doorbuiging permanent'
 M_g,k
 V_g,k
 u_g,k
 
 # 6. Belastingsgeval 2 — Veranderlijk (gelijkmatig)
 
-q_q,k = hoh*q_k_eff', lijnlast veranderlijk'
+q_q,k = hoh*q_k_eff to kN/m', lijnlast veranderlijk'
 q_q,k
-M_q,k = q_q,k*L_th^2/8
-V_q,k = q_q,k*L_th/2
-u_q,k = 5/384*q_q,k*L_th^4/(E_mean*I_y)
+M_q,k = q_q,k*L_th^2/8 to kN*m
+V_q,k = q_q,k*L_th/2 to kN
+u_q,k = 5/384*q_q,k*L_th^4/(E_mean*I_y) to mm
 M_q,k
 V_q,k
 u_q,k
@@ -198,15 +208,22 @@ u_q,k
 
 #hide
 a_ref = 1000 mm
-C_kr = 85700 mm^3', kalibratie referentie-uitwerking — derde term = t_vloer³/C_kr (onafh. van I_y)'
+'Derde term = (E_vl·t³/12)/EI_ref. de referentie-uitwerking drukt hem af als 3402/50000 bij
+'t = 18 en 9115/50000 bij t = 25; beide volgen uit E_vl = 7000 N/mm² met een
+'vaste noemer. document2 (96×271 i.p.v. 71×221) laat k_r ongemoeid, dus die
+'noemer hangt niet van de balk af.
+E_vl = 7000', aangenomen buigstijfheid vloerhout (N/mm²)'
+EI_ref = 50000000', referentiestijfheid per mm plaatbreedte (N·mm)'
+t_ruw = t_vloer/(1 mm)
 #show
-k_r = 0.37 + 0.8*hoh/a_ref - t_vloer^3/C_kr', concentratiefactor (NEN-EN 1995-1-1 NB)'
+k_r_0 = 0.37 + 0.8*hoh/a_ref - E_vl*t_ruw^3/12/EI_ref
+k_r = min(1; k_r_0)', concentratiefactor, afgetopt op 1,0 (NEN-EN 1995-1-1 NB)'
 k_r
-F_Q,k = Q_k*k_r', effectieve puntlast op één balk'
+F_Q,k = Q_k*k_r to kN', effectieve puntlast op één balk'
 F_Q,k
-M_Q,k = F_Q,k*L_th/4
-V_Q,k = F_Q,k', puntlast bij oplegging → volledige dwarskracht op de balk'
-u_Q,k = 1/48*F_Q,k*L_th^3/(E_mean*I_y)
+M_Q,k = F_Q,k*L_th/4 to kN*m
+V_Q,k = F_Q,k to kN', puntlast bij oplegging → volledige dwarskracht op de balk'
+u_Q,k = 1/48*F_Q,k*L_th^3/(E_mean*I_y) to mm
 M_Q,k
 V_Q,k
 u_Q,k
@@ -256,8 +273,11 @@ by = vy + vt', bovenkant balken
 @end
 
 #if controleer ≡ 1
-    u_var = max(u_q,k; u_Q,k)', maatgevende veranderlijke doorbuiging'
-    w_fin = (1 + k_def)*u_g,k + (1 + ψ_2*k_def)*u_var
+    'Splitspunt — welke veranderlijke doorbuiging meetelt (register punt 9).
+    u_var_xc = u_q,k to mm', de referentie-uitwerking: alleen de gelijkmatig verdeelde variant'
+    u_var_nb = max(u_q,k; u_Q,k) to mm', de norm: de maatgevende van de twee'
+    u_var = if(rekenwijze ≡ 1; u_var_xc; u_var_nb) to mm', gehanteerd'
+    w_fin = (1 + k_def)*u_g,k + (1 + ψ_2*k_def)*u_var to mm
     w_lim = grensfactor*L_th
     w_fin
     w_lim
@@ -276,21 +296,22 @@ by = vy + vt', bovenkant balken
 
 '<h6>10.1 Maatgevende krachten</h6>
 'Permanent + veranderlijk (UDL):
-M_yEd_1 = 1.20*M_g,k + 1.50*M_q,k
-V_zEd_1 = 1.20*V_g,k + 1.50*V_q,k
+M_yEd_1 = 1.20*M_g,k + 1.50*M_q,k to kN*m
+V_zEd_1 = 1.20*V_g,k + 1.50*V_q,k to kN
 'Permanent + geconcentreerde last:
-M_yEd_2 = 1.20*M_g,k + 1.50*M_Q,k
-V_zEd_2 = 1.20*V_g,k + 1.50*V_Q,k
+M_yEd_2 = 1.20*M_g,k + 1.50*M_Q,k to kN*m
+V_zEd_2 = 1.20*V_g,k + 1.50*V_Q,k to kN
 
-K_FI = gevolgklasse', gevolgklasse-factor (EN 1990)'
-M_y,Ed = K_FI*max(M_yEd_1; M_yEd_2)', incl. K_FI'
-V_z,Ed = K_FI*max(V_zEd_1; V_zEd_2)', incl. K_FI'
-K_FI
+'<i>De gevolgklasse staat in de projectgegevens; K<sub>FI</sub> volgt daaruit
+'(Tabel NB.A1.1) en geldt voor alle bladen van dit project.</i>
+K_FI', gevolgklasse-factor uit de projectgegevens (EN 1990)'
+M_y,Ed = K_FI*max(M_yEd_1; M_yEd_2) to kN*m', incl. K_FI'
+V_z,Ed = K_FI*max(V_zEd_1; V_zEd_2) to kN', incl. K_FI'
 M_y,Ed
 V_z,Ed
 
 '<h6>10.2 Buiging — §6.1.6 (6.11)</h6>
-σ_m,y,d = M_y,Ed/W_y
+σ_m,y,d = M_y,Ed/W_y to N/mm^2
 σ_m,y,d
 UC_buiging = σ_m,y,d/f_m,d
 #if UC_buiging ≤ 1.0
@@ -300,7 +321,7 @@ UC_buiging = σ_m,y,d/f_m,d
 #end if
 
 '<h6>10.3 Afschuiving — §6.1.7 (6.13)</h6>
-τ_d = V_z,Ed*S_y/(b_balk*I_y)
+τ_d = V_z,Ed*S_y/(b_balk*I_y) to N/mm^2
 τ_d
 UC_afsch = τ_d/f_v,d
 #if UC_afsch ≤ 1.0
@@ -321,13 +342,20 @@ UC_max = max(UC_doorbuiging; UC_buiging; UC_afsch)
 '<hr/>
 '<i>Aandachtspunten / vereenvoudigingen:
 '<ul>
-'<li>Eigengewicht balk met EN 338 ρ<sub>mean</sub> (C24 = 420 kg/m³). De referentie-uitwerking
-'hanteert ~5,5 kN/m³ (hoger); resultaten hier daardoor iets gunstiger.</li>
-'<li>Concentratiefactor k<sub>r</sub> met kalibratieconstante uit de referentie-
-'voorbeelden; nog te verifiëren met een referentiecase.</li>
+'<li>Eigengewicht balk met EN 338 ρ<sub>mean</sub> (C24 = 420 kg/m³) en
+'g = 9,81 m/s². de referentie-uitwerking hanteert een vaste 550 kg/m³ met g = 10; resultaten
+'hier daardoor iets gunstiger.</li>
+'<li>Concentratiefactor k<sub>r</sub> geverifieerd op vier referentiebladen
+'(vloerhout 18 en 25 mm, hoh 600 en 1000, twee profielen).</li>
+'<li>Hoogtefactor k<sub>h</sub> geverifieerd in beide takken: gelijmd
+'gelamineerd (GL24h, 221 mm → 1,10) en massief (71×146 → 1,005).</li>
 '<li>Afschuiving met volle balkbreedte b (geen k<sub>cr</sub>-reductie), conform
 'de referentie-uitwerking.</li>
 '<li>Trillingstoets (§7.3) en kip zijn niet opgenomen (vloerbalk zijdelings
-'gesteund door het vloerhout).</li>
+'gesteund door het vloerhout). Let op: bij overspanningen rond 5 m ligt f<sub>1</sub>
+'onder de 8 Hz en is §7.3.3 wél van toepassing.</li>
+'<li>Oplegdruk (§6.1.5) wordt niet getoetst, net zomin als in de referentie-uitwerking. Op het
+'basisgeval is die u.c. 0,89 met k<sub>c,90</sub> = 1,25 — krap genoeg om apart
+'na te lopen.</li>
 '</ul></i>
 `;

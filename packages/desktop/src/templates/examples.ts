@@ -1,20 +1,13 @@
 export const paalExample = `# Projectgegevens
 
-@select gevolgklasse "Constructiegevolgklasse (CC)"
-CC1 — Lage gevolgen = 1
-CC2 — Middelmatige gevolgen = 2
-CC3 — Grote gevolgen = 3
-@end
+'<i>Onderstaande gegevens komen uit de projectgegevens en gelden voor elk blad
+'in dit project.</i>
 
-@select ontwerplevensduur "Ontwerplevensduur"
-15 jaar (tijdelijke constructie) = 15
-50 jaar (standaard) = 50
-100 jaar (bijzondere constructie) = 100
-@end
-
-Projectnummer: 2558
-Projectomschrijving: Woning en bijgebouw Laageind 57 Driebruggen
-Onderdeel: Funderingen
+'Projectnummer: 'project_nummer
+'Projectnaam: 'project_naam
+'Onderdeel: 'onderdeel
+'Gevolgklasse: CC'CC
+'Ontwerplevensduur: 'DesignLife' jaar
 
 # Paaldraagvermogen — NEN 9997-1
 

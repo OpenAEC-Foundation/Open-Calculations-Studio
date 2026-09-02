@@ -7,7 +7,9 @@
     "packages/desktop"
   ],
   "scripts": {
-    "icons": "node scripts/generate-icons.mjs && npm --prefix packages/desktop exec -- tauri icon src-tauri/icon-source.png"
+    "icons": "node scripts/generate-icons.mjs && npm --prefix packages/desktop exec -- tauri icon src-tauri/icon-source.png",
+    "check": "npm --prefix packages/core run build && node scripts/check-alles.mjs",
+    "snapshot": "node scripts/snapshot-templates.mjs"
   },
   "devDependencies": {
     "sharp": "^0.34.5"

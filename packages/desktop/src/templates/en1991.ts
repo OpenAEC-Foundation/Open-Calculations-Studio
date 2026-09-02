@@ -162,7 +162,7 @@ Karakteristieke waarde grondsneeuwbelasting voor Nederland:
 s_k = 0.7 kN/m^2
 
 Opmerking: voor alle locaties in Nederland geldt dezelfde waarde.
-psi_0 = 0.50, psi_1 = 0.20, psi_2 = 0.00 (H <= 1000 m).
+- psi_0 = 0.50, psi_1 = 0.20, psi_2 = 0.00 (H <= 1000 m).
 
 ## Blootstellings- en warmtecoefficient (art. 5.2)
 
@@ -250,11 +250,7 @@ export const en1991Windbelasting = `# Windbelasting -- EN 1991-1-4 NB
 
 ## Windgebied (Tabel NB.1)
 
-@select windgebied "Windgebied Nederland (Tabel NB.1)"
-Gebied I -- Kust, Markermeer, IJsselmeer (v_b0 = 29.5) = 1
-Gebied II -- Noord-Holland, Groningen, Friesland, Flevoland, Zuid-Holland, Zeeland (v_b0 = 27.0) = 2
-Gebied III -- Overig Nederland (v_b0 = 24.5) = 3
-@end
+Het windgebied staat in de projectgegevens; het volgt uit de gemeente.
 
 Fundamentele waarde basiswindsnelheid (Tabel NB.1):
 
@@ -288,15 +284,12 @@ Luchtdichtheid (NB: rho = 1.25 kg/m3):
 
 rho = 1.25 kg/m^3
 
-q_b = 0.5 * rho * v_b^2 / 1000 to kN/m^2
+q_b = 0.5 * rho * v_b^2 to kN/m^2
 
 ## Terreinruwheid (Tabel NB.3-4.1)
 
-@select terreincategorie "Terreincategorie (Tabel NB.3-4.1)"
-Categorie 0 -- Zee of kustgebied (z0=0.005, z_min=1) = 1
-Categorie II -- Onbebouwd gebied (z0=0.2, z_min=4) = 2
-Categorie III -- Bebouwd gebied (z0=0.5, z_min=7) = 3
-@end
+De terreincategorie staat in de projectgegevens; die volgt uit de omgeving
+van het gebouw.
 
 Terreinparameters:
 
@@ -333,7 +326,7 @@ z_eff = z_min to m
 
 Terreinfactor (formule 4.5):
 
-k_r = 0.19 * (z_0 / 0.05)^0.07
+k_r = 0.19 * (z_0 / 0.05 m)^0.07
 
 Ruwheidsfactor:
 
@@ -357,7 +350,7 @@ I_v = k_l / (c_o * ln(z_eff / z_0))
 
 ## Extreme stuwdruk q_p(z) (formule 4.8)
 
-q_p = (1 + 7 * I_v) * 0.5 * rho * v_m^2 / 1000 to kN/m^2
+q_p = (1 + 7 * I_v) * 0.5 * rho * v_m^2 to kN/m^2
 
 ## Blootstellingsfactor c_e(z)
 

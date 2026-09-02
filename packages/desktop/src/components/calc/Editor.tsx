@@ -1,8 +1,6 @@
 import { useCallback } from "react";
 import CodeMirror from "@uiw/react-codemirror";
-import type { EditorView } from "@codemirror/view";
-import { useDocumentStore } from "../../store/documentStore";
-import { useEditorViewStore } from "../../store/editorViewStore";
+import { useActieveBron, useZetActieveBron } from "../../store/actiefBlad";
 import { useZoom } from "../../hooks/useZoom";
 import { ifcCalcLang } from "./ifcCalcLanguage";
 import "./Editor.css";
@@ -10,9 +8,8 @@ import "./Editor.css";
 const BASE_FONT_PX = 13;
 
 export default function Editor() {
-  const source = useDocumentStore((s) => s.source);
-  const setSource = useDocumentStore((s) => s.setSource);
-  const setView = useEditorViewStore((s) => s.setView);
+  const source = useActieveBron();
+  const setSource = useZetActieveBron();
   const { ref, zoom } = useZoom();
 
   const onChange = useCallback(
@@ -20,15 +17,6 @@ export default function Editor() {
       setSource(value);
     },
     [setSource],
-  );
-
-  // Publish the EditorView to the shared store so ribbon buttons (undo/redo,
-  // insert) can dispatch commands without prop-drilling.
-  const onCreateEditor = useCallback(
-    (view: EditorView) => {
-      setView(view);
-    },
-    [setView],
   );
 
   return (
@@ -41,16 +29,18 @@ export default function Editor() {
         value={source}
         extensions={[ifcCalcLang()]}
         onChange={onChange}
-        onCreateEditor={onCreateEditor}
         basicSetup={{
+          // Geen eigen geschiedenis: ongedaan maken loopt via de projectstore,
+          // zodat Ctrl+Z hetzelfde doet of je nu in de tekst typt, een maat in
+          // het beeld versleept of een blad hernoemt. Twee stapels naast elkaar
+          // geeft anders een onvoorspelbare volgorde.
+          history: false,
+          historyKeymap: false,
           lineNumbers: true,
           highlightActiveLineGutter: true,
           highlightActiveLine: true,
           foldGutter: true,
           bracketMatching: true,
-          // CodeMirror's history extension provides Ctrl+Z / Ctrl+Y plus
-          // the dispatchable `undo` / `redo` commands the ribbon uses.
-          history: true,
         }}
       />
     </div>

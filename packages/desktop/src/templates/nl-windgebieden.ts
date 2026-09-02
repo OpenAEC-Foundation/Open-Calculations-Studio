@@ -65,9 +65,12 @@ export const windGebiedenGeoJSON: FeatureCollection<
 
 /** Kleuren per gebied — laag-opacity overlay op de basismap. */
 export const GEBIED_COLORS: Record<WindGebied, string> = {
-  1: "#DC2626", // rood — hoogste belasting (kust)
-  2: "#F59E0B", // amber — overgang
-  3: "#10B981", // groen — laagste (binnenland)
+  // Gedempte tinten — de kaart is een hulpmiddel, geen signaallamp. Het
+  // kleurverschil blijft leesbaar maar schreeuwt niet; de Romeinse cijfers
+  // op de kaart dragen de identificatie.
+  1: "#8c9bad", // grijsblauw — kust
+  2: "#a8a08f", // taupe — overgang
+  3: "#93a596", // grijsgroen — binnenland
 };
 
 export const GEBIED_NAMES: Record<WindGebied, string> = {

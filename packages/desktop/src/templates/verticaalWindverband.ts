@@ -198,7 +198,7 @@ t_aansluit = ?*(mm)', dikte op de aansluiting (strip-dikte of hoeklijn-been)'
 A_net = A - n_bouten*d_bout*t_aansluit
 N_u,Rd = 0.9*A_net*f_u/γ_M2', §6.2.3 (2) netto-doorsnede met γ_M2'
 
-#if A_net ≤ 0
+#if A_net ≤ 0 mm^2
     '<span style="color: red"><b>Aantal/diameter bouten te groot: A<sub>net</sub> ≤ 0</b></span>
     UC_net = 9.99
 #else

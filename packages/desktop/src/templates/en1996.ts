@@ -488,13 +488,13 @@ Karakteristieke afschuifsterkte (formule 3.5):
 
 f_vk = f_vk0 + 0.4 * sigma_d to N/mm^2
 
-Bovengrens f_vk (art. 3.6.2):
-
-f_vk_max = 0.045 * f_b to N/mm^2
-
 Genormaliseerde druksterkte steen:
 
 f_b = 15 N/mm^2
+
+Bovengrens f_vk (art. 3.6.2):
+
+f_vk_max = 0.045 * f_b to N/mm^2
 
 #if f_vk > f_vk_max
   f_vk wordt begrensd op {{f_vk_max}} N/mm^2 (bovengrens).

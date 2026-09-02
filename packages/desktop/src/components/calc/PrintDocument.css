@@ -1,0 +1,324 @@
+/*
+ * Afdrukweergave van het hele project.
+ *
+ * De regels hangen aan `html.afdrukmodus` in plaats van aan `@media print`.
+ * Daardoor is dezelfde opmaak ook op het scherm op te roepen — anders is een
+ * printlayout niet te controleren zonder hem uit te draaien. De app zet die
+ * klasse vlak voor het printen én in het afdrukvoorbeeld.
+ *
+ * `@page` staat wél los: die geldt sowieso alleen bij het printen.
+ */
+
+@page {
+  size: A4 portrait;
+  /* Ruimer boven en onder: daar staan de loopkop en de loopvoet in. */
+  margin: 24mm 16mm 20mm 16mm;
+}
+
+/*
+ * Buiten de afdrukmodus staat het document buiten beeld, maar wél met een echte
+ * opmaak. Met `display: none` heeft niets een grootte, en de parametrische
+ * beelden meten hun tekengebied met een ResizeObserver — die zou dan nul
+ * teruggeven en de tekening zou leeg blijven. Daarom wegzetten in plaats van
+ * verbergen, op de breedte van een A4 minus de marges.
+ */
+.print-root {
+  position: absolute;
+  left: -20000px;
+  top: 0;
+  width: 178mm;
+}
+
+/* ─── De app zelf verdwijnt ───────────────────────────────────── */
+
+html.afdrukmodus .titlebar,
+html.afdrukmodus .ribbon-container,
+html.afdrukmodus .document-bar,
+html.afdrukmodus .project-browser,
+html.afdrukmodus .status-bar,
+html.afdrukmodus .split-tabs,
+html.afdrukmodus .main-view,
+html.afdrukmodus .backstage-overlay,
+html.afdrukmodus .modal-overlay {
+  display: none !important;
+}
+
+/* De app-schil is een vaste kolom van schermhoogte met verborgen overloop; een
+   afdruk moet juist over zoveel pagina's lopen als hij nodig heeft. */
+html.afdrukmodus,
+html.afdrukmodus body,
+html.afdrukmodus #root {
+  display: block !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  background: #fff !important;
+  color: #000 !important;
+}
+
+html.afdrukmodus .print-root {
+  position: static;
+  left: auto;
+  width: auto;
+  display: block;
+  background: #fff;
+  color: #000;
+  font-family: var(--font-body, "Inter", system-ui, sans-serif);
+  font-size: 10.5pt;
+  line-height: 1.45;
+}
+
+/* ─── Loopkop en -voet ────────────────────────────────────────── */
+
+/* Vaste elementen herhaalt de browser op elke afgedrukte pagina. De negatieve
+   offset zet ze ín de paginamarge, boven en onder de tekst. */
+html.afdrukmodus .print-loopkop,
+html.afdrukmodus .print-loopvoet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 8pt;
+  color: #555;
+}
+
+html.afdrukmodus .print-loopkop {
+  top: -13mm;
+  padding-bottom: 3pt;
+  border-bottom: 0.5pt solid #bbb;
+}
+
+html.afdrukmodus .print-loopvoet {
+  bottom: -11mm;
+  padding-top: 3pt;
+  border-top: 0.5pt solid #bbb;
+}
+
+/* ─── Voorblad ────────────────────────────────────────────────── */
+
+html.afdrukmodus .print-voorblad {
+  break-after: page;
+  page-break-after: always;
+}
+
+html.afdrukmodus .print-soort {
+  margin: 0 0 4pt;
+  font-size: 9pt;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #666;
+}
+
+html.afdrukmodus .print-voorblad h1 {
+  margin: 0 0 18pt;
+  font-size: 20pt;
+  font-weight: 700;
+}
+
+html.afdrukmodus .print-voorblad table {
+  border-collapse: collapse;
+  margin-bottom: 22pt;
+}
+
+html.afdrukmodus .print-voorblad th {
+  text-align: left;
+  font-weight: 600;
+  padding: 2pt 18pt 2pt 0;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+html.afdrukmodus .print-voorblad td {
+  padding: 2pt 0;
+}
+
+html.afdrukmodus .print-inhoud-kop {
+  margin: 0 0 4pt;
+  font-weight: 700;
+}
+
+html.afdrukmodus .print-inhoud {
+  margin: 0;
+  padding-left: 18pt;
+}
+
+html.afdrukmodus .print-datum {
+  margin-top: 28pt;
+  font-size: 9pt;
+  color: #666;
+}
+
+/* ─── Rekenbladen ─────────────────────────────────────────────── */
+
+/* Elk blad op een eigen pagina — een berekening lees je per onderdeel. */
+html.afdrukmodus .print-blad {
+  break-before: page;
+  page-break-before: always;
+}
+
+html.afdrukmodus .print-blad:first-of-type {
+  break-before: auto;
+  page-break-before: auto;
+}
+
+html.afdrukmodus .print-blad-kop {
+  margin: 0 0 10pt;
+  padding-bottom: 4pt;
+  border-bottom: 1pt solid #999;
+  font-size: 13pt;
+  font-weight: 700;
+}
+
+/* Bladnummer voor de kop, zodat de volgorde uit de boom leesbaar blijft. */
+html.afdrukmodus .print-blad-nr {
+  display: inline-block;
+  min-width: 16pt;
+  color: #777;
+  font-weight: 400;
+}
+
+/* Niet midden in een formule of tekening afbreken. */
+html.afdrukmodus .print-blad .calc-line,
+html.afdrukmodus .print-blad .calc-text,
+html.afdrukmodus .print-blad table,
+html.afdrukmodus .print-blad svg,
+html.afdrukmodus .print-blad img {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+html.afdrukmodus .print-blad h1,
+html.afdrukmodus .print-blad h2,
+html.afdrukmodus .print-blad h3,
+html.afdrukmodus .print-blad h4,
+html.afdrukmodus .print-blad h5,
+html.afdrukmodus .print-blad h6 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+html.afdrukmodus .print-blad svg,
+html.afdrukmodus .print-blad img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* De kernopmaak houdt de uitwerking smal voor de leesbaarheid op een breed
+   scherm. Op een A4 is de bladspiegel al bepaald door de paginamarge, dus daar
+   is die extra beperking alleen verspilde ruimte naast de tekening. */
+html.afdrukmodus .print-blad .ifc-calc {
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Bedieningselementen die op papier niets betekenen: de sleepzone voor een
+   GEF-bestand is een knop, geen inhoud. */
+html.afdrukmodus .print-blad .calc-gef-upload,
+html.afdrukmodus .print-blad .calc-gef-dropzone {
+  display: none !important;
+}
+
+/* Invoervelden en keuzelijsten drukken als hun waarde, niet als bedieningselement. */
+html.afdrukmodus .print-blad input,
+html.afdrukmodus .print-blad select {
+  border: none !important;
+  background: transparent !important;
+  color: #000 !important;
+  padding: 0 !important;
+  font: inherit !important;
+  appearance: none !important;
+  /* Een getalveld krijgt anders de breedte van het invoervak in plaats van die
+     van het getal, met een gat in de regel als gevolg. */
+  width: auto !important;
+  min-width: 0 !important;
+}
+
+/* De invoerregel heeft op het scherm een gele achtergrond over de volle breedte
+   om aan te geven dat je er iets kunt intypen. Op papier is dat geen invoer meer
+   maar een uitgangspunt; een balk over de bladbreedte leidt daar alleen af. */
+html.afdrukmodus .print-blad .calc-input-prompt,
+html.afdrukmodus .print-blad .calc-select-row {
+  display: inline-flex !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  width: auto !important;
+}
+
+html.afdrukmodus .print-blad input[type="number"]::-webkit-inner-spin-button,
+html.afdrukmodus .print-blad input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+/* ─── Het parametrische beeld ─────────────────────────────────── */
+
+html.afdrukmodus .print-beeld {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 0 0 12pt;
+}
+
+/* Alleen de tekening, niet de bediening.
+   - `vd-controls`: de invoerkolom — die staat al in de uitwerking eronder.
+   - `vd-head`: "Parametrisch beeld — balklaag", een schermtitel die naast de
+     bladkop niets toevoegt.
+   - `vd-foot`: "Klik op een blauwe maat om die te wijzigen" — een instructie
+     die op papier onzin is. */
+html.afdrukmodus .print-beeld .vd-controls,
+html.afdrukmodus .print-beeld .vd-head,
+html.afdrukmodus .print-beeld .vd-foot,
+html.afdrukmodus .print-beeld .gd-tabs {
+  display: none !important;
+}
+
+/*
+ * Een vaste hoogte, geen `auto`.
+ *
+ * De designers meten hun tekengebied met een ResizeObserver en schalen de
+ * tekening op die maat. Laat je de hoogte door de inhoud bepalen, dan meet de
+ * observer de tekening die hij zelf net groter maakte: de Spuwer liep zo op tot
+ * een SVG van 33 miljoen pixels hoog en de Voetplaat viel juist samen tot 0×0.
+ * Met een opgegeven hoogte is de meting stabiel en schaalt de tekening netjes
+ * naar de bladbreedte.
+ */
+html.afdrukmodus .print-beeld .vd-panel {
+  border: none !important;
+  background: transparent !important;
+  /* 150 mm: de hoogste tekening (spuwer) vraagt op bladbreedte ongeveer 140 mm.
+     Krap bemeten wordt hij door zijn eigen tekengebied afgesneden. */
+  height: 150mm !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+html.afdrukmodus .print-beeld .vd-body {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+/* Maatchips zijn knoppen; op papier moeten ze als getal lezen. */
+html.afdrukmodus .print-beeld .vd-dim-num,
+html.afdrukmodus .print-beeld .vd-dim button {
+  border: none !important;
+  background: transparent !important;
+  color: #000 !important;
+  padding: 0 !important;
+  font: inherit !important;
+}
+
+html.afdrukmodus .print-beeld svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ─── Afdrukvoorbeeld op het scherm ───────────────────────────── */
+
+/* Ruimte voor de balk bovenaan, zodat die de titel niet afdekt. Bij het echte
+   printen bestaat die balk niet en is deze regel dus niet van toepassing. */
+html.afdrukmodus .afdruk-balk ~ .print-root,
+html.afdrukmodus .print-root:has(~ .afdruk-balk) {
+  padding-top: 34px;
+}

@@ -23,23 +23,17 @@ export const en1990Fundamenteel = `# Belastingcombinatie UGT -- EN 1990 $6.4.3.2
 In Nederland worden voor STR/GEO de vergelijkingen (6.10a) en (6.10b) gebruikt
 (Tabel NB.4 - A1.2(B), groep B). De maatgevende van beide is bepalend.
 
-@select gevolgklasse "Gevolgklasse (CC) -- Bijlage B, Tabel B3"
-CC1 -- Lage gevolgen (K_FI = 0.9) = 1
-CC2 -- Middelmatige gevolgen (K_FI = 1.0) = 2
-CC3 -- Grote gevolgen (K_FI = 1.1) = 3
-@end
-
 ### Partiele factoren (Tabel NB.4 en NB.5)
 
 Factor K_FI (tabel B3):
 
-#if gevolgklasse == 1
+#if CC == 1
 K_FI = 0.9
 #end if
-#if gevolgklasse == 2
+#if CC == 2
 K_FI = 1.0
 #end if
-#if gevolgklasse == 3
+#if CC == 3
 K_FI = 1.1
 #end if
 
@@ -117,19 +111,19 @@ gamma_Gsup_610b = 1.2
 xi = 0.89
 gamma_Q = 1.5
 
-Gecorrigeerde factoren voor de gekozen gevolgklasse:
+Gecorrigeerde factoren voor de gevolgklasse uit de projectgegevens:
 
-#if gevolgklasse == 1
+#if CC == 1
 gamma_Gsup_610a_CC = 1.2
 gamma_Gsup_610b_CC = 1.1
 gamma_Q_CC = 1.35
 #end if
-#if gevolgklasse == 2
+#if CC == 2
 gamma_Gsup_610a_CC = 1.35
 gamma_Gsup_610b_CC = 1.2
 gamma_Q_CC = 1.5
 #end if
-#if gevolgklasse == 3
+#if CC == 3
 gamma_Gsup_610a_CC = 1.5
 gamma_Gsup_610b_CC = 1.3
 gamma_Q_CC = 1.65
@@ -200,12 +194,6 @@ Controle of het destabiliserend belastingseffect niet groter is dan
 het stabiliserend belastingseffect (formule 6.7):
 
   E_d,dst <= E_d,stb
-
-@select gevolgklasse "Gevolgklasse (CC)"
-CC1 -- Lage gevolgen = 1
-CC2 -- Middelmatige gevolgen = 2
-CC3 -- Grote gevolgen = 3
-@end
 
 ### Partiele factoren EQU (Tabel NB.3 - A1.2(A))
 
@@ -378,7 +366,7 @@ Formule (6.12a/b):
 Alle partiele belastingsfactoren gamma = 1,0.
 Alle veranderlijke belastingen met psi_2.
 
-A_Ed = aardbevingsbelasting (rekenwaarde), bepaald conform EN 1998.
+- A_Ed = aardbevingsbelasting (rekenwaarde), bepaald conform EN 1998.
 
 @select belastingcategorie "Belastingcategorie veranderlijke belasting"
 Categorie A -- woon (psi_2 = 0.3) = 0.3
@@ -560,12 +548,6 @@ E_qp = G_k + psi_2 * Q_k1 + psi_2_2 * Q_k2 to kN
 export const en1990Compleet = `# Belastingcombinaties -- NEN-EN 1990+NB:2019
 ## Volledig overzicht UGT en BGT voor gebouwen
 
-@select gevolgklasse "Gevolgklasse (CC) -- Bijlage B, Tabel B3"
-CC1 -- Lage gevolgen (K_FI = 0.9) = 1
-CC2 -- Middelmatige gevolgen (K_FI = 1.0) = 2
-CC3 -- Grote gevolgen (K_FI = 1.1) = 3
-@end
-
 @select belastingcategorie "Belastingcategorie overheersende veranderlijke belasting"
 Categorie A -- woon- en verblijfsruimtes = 1
 Categorie B -- kantoorruimtes = 2
@@ -634,19 +616,19 @@ psi_2 = 0
 
 ### Partiele factoren STR/GEO (Tabel NB.4 en NB.5)
 
-#if gevolgklasse == 1
+#if CC == 1
 gamma_Gsup_a = 1.2
 gamma_Gsup_b = 1.1
 gamma_Q_CC = 1.35
 K_FI = 0.9
 #end if
-#if gevolgklasse == 2
+#if CC == 2
 gamma_Gsup_a = 1.35
 gamma_Gsup_b = 1.2
 gamma_Q_CC = 1.5
 K_FI = 1.0
 #end if
-#if gevolgklasse == 3
+#if CC == 3
 gamma_Gsup_a = 1.5
 gamma_Gsup_b = 1.3
 gamma_Q_CC = 1.65
@@ -770,12 +752,6 @@ Groep C wordt gebruikt voor geotechnische belastingen bij:
 
 Vergelijking (6.10) met gereduceerde partiele factoren.
 
-@select gevolgklasse "Gevolgklasse (CC)"
-CC1 -- Lage gevolgen = 1
-CC2 -- Middelmatige gevolgen = 2
-CC3 -- Grote gevolgen = 3
-@end
-
 ### Partiele factoren groep C (Tabel NB.6 - A1.2(C))
 
 gamma_Gsup = 1.0
@@ -815,27 +791,27 @@ export const en1990Rekenwaarden = `# Rekenwaarden -- EN 1990 $6.3
 
 ### Rekenwaarde van een belasting ($6.3.1, formule 6.1a)
 
-F_d = gamma_f * F_rep
+- F_d = gamma_f · F_rep
 
 met:
 
-F_rep = psi * F_k  (formule 6.1b)
+- F_rep = psi · F_k  (formule 6.1b)
 
 waarbij psi = 1,00 of psi_0, psi_1 of psi_2.
 
 ### Rekenwaarde van belastingseffecten ($6.3.2, formule 6.2)
 
-E_d = gamma_Sd * E{ gamma_f,i * F_rep,i ; a_d }
+- E_d = gamma_Sd · E{ gamma_f,i · F_rep,i ; a_d }
 
 Vereenvoudigd (formule 6.2a):
 
-E_d = E{ gamma_F,i * F_rep,i ; a_d }
+- E_d = E{ gamma_F,i · F_rep,i ; a_d }
 
-met gamma_F,i = gamma_Sd * gamma_f,i  (formule 6.2b)
+met gamma_F,i = gamma_Sd · gamma_f,i  (formule 6.2b)
 
 ### Rekenwaarde materiaal-/producteigenschap ($6.3.3, formule 6.3)
 
-X_d = eta * X_k / gamma_m
+- X_d = eta · X_k / gamma_m
 
 waarbij:
 - X_k = karakteristieke waarde
@@ -844,11 +820,11 @@ waarbij:
 
 ### Rekenwaarde van de weerstand ($6.3.5, formule 6.6a)
 
-R_d = R{ eta_i * X_k,i / gamma_M,i ; a_d }
+- R_d = R{ eta_i · X_k,i / gamma_M,i ; a_d }
 
 Vereenvoudigd (formule 6.6c):
 
-R_d = R_k / gamma_M
+- R_d = R_k / gamma_M
 
 ### Toetsingsvoorwaarde ($6.4.2-6.4.3)
 
@@ -901,7 +877,7 @@ waarde van gelijkmatig verdeelde veranderlijke belastingen worden aangepast
 
 Formule NB.1:
 
-  F_t = F_t0 * { 1 + (1 - psi_0) / 9 * ln(t / t_0) }
+- F_t = F_t0 · { 1 + (1 - psi_0) / 9 · ln(t / t_0) }
 
 @select ontwerplevensduurklasse "Ontwerplevensduurklasse (Tabel NB.1 - 2.1)"
 Klasse 1 -- 5 jaar (tijdelijk) = 5
@@ -920,13 +896,13 @@ Categorie E -- opslag (psi_0 = 1.0) = 1.0
 
 psi_0 = belastingcategorie * 1
 
-Referentieperiode bij de gekozen ontwerplevensduur:
+Referentieperiode bij de gekozen ontwerplevensduur (in jaren):
 
-t = ontwerplevensduurklasse * 1 jaar
+t = ontwerplevensduurklasse * 1
 
-Basisreferentieperiode (standaard):
+Basisreferentieperiode (standaard, in jaren):
 
-t_0 = 50 jaar
+t_0 = 50
 
 Karakteristieke waarde bij basisreferentieperiode:
 
