@@ -139,3 +139,17 @@
   font-size: 11px;
   color: var(--theme-text-secondary, var(--theme-text-muted, #888));
 }
+
+/* Label bij de 52°-lijn — de zuidgrens van gebied I. */
+.wind-area-graadlabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #4b5563;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 3px;
+  pointer-events: none;
+}
