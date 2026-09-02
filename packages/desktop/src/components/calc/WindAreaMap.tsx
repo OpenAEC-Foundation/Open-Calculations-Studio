@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, GeoJSON, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { windGebiedenGeoJSON, windGebiedForLatLng, GEBIED_COLORS, type WindGebied } from "../../templates/nl-windgebieden";
+import {
+  windGebiedenGeoJSON,
+  windGebiedForLatLng,
+  GEBIED_COLORS,
+  GEBIED_I_GRENS_LAT,
+  type WindGebied,
+} from "../../templates/nl-windgebieden";
 import "./WindAreaMap.css";
 
 // Leaflet default-icon images don't resolve under bundlers without a hack —
@@ -23,7 +29,10 @@ const defaultIcon = L.icon({
  */
 const GEBIED_LABELS: Array<{ pos: [number, number]; tekst: string }> = [
   { pos: [53.05, 5.1], tekst: "I" },
-  { pos: [51.95, 4.55], tekst: "II" },
+  // Zuid-Holland boven 52°N hoort óók bij gebied I; zonder eigen label
+  // lijkt die strook een tekenfout.
+  { pos: [52.16, 4.47], tekst: "I" },
+  { pos: [51.88, 4.5], tekst: "II" },
   { pos: [52.85, 6.5], tekst: "II" },
   { pos: [51.95, 5.95], tekst: "III" },
 ];
@@ -173,6 +182,31 @@ export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }:
               layer.bindTooltip(feature.properties.naam, { sticky: true });
               layer.on({ click: onFeatureClick });
             }}
+          />
+          {/* De 52°-lijn zichtbaar maken: zonder die lijn lijkt de knip
+              dwars door Zuid-Holland een fout in de kaart. */}
+          <Polyline
+            positions={[
+              [GEBIED_I_GRENS_LAT, 3.0],
+              [GEBIED_I_GRENS_LAT, 7.6],
+            ]}
+            pathOptions={{
+              color: "#4b5563",
+              weight: 1,
+              opacity: 0.55,
+              dashArray: "5 5",
+            }}
+            interactive={false}
+          />
+          <Marker
+            position={[GEBIED_I_GRENS_LAT, 3.35]}
+            icon={L.divIcon({
+              className: "wind-area-graadlabel",
+              html: "52° NB",
+              iconSize: [46, 16],
+              iconAnchor: [23, 16],
+            })}
+            interactive={false}
           />
           {GEBIED_LABELS.map((l, i) => (
             <Marker

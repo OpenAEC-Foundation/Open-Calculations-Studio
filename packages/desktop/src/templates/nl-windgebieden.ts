@@ -1,20 +1,30 @@
 /**
  * Windgebieden Nederland — NEN-EN 1991-1-4 NB Figuur NA.1.
  *
- * In de praktijk volgt de gebiedsindeling de provincie-grenzen (met enkele
- * uitzonderingen rond 52°N). Voor deze app gebruiken we de officiële PDOK
- * provincie-polygonen (CBS 2024) en wijzen elk gebied toe op provincie-
- * niveau:
+ * De indeling volgt grotendeels de provincie-grenzen, met één uitzondering
+ * die de norm expliciet maakt: de zuidgrens van gebied I ligt niet op een
+ * provinciegrens maar op **52° noorderbreedte**. Gebied I loopt daardoor
+ * langs de kust dóór tot in Zuid-Holland: Katwijk, Noordwijk en Hillegom
+ * vallen er nog onder, Den Haag en Rotterdam niet.
  *
- *   Gebied I  — kustprovincies: Noord-Holland · Friesland · Groningen
- *   Gebied II — overgangszone:  Zuid-Holland · Utrecht · Flevoland · Drenthe · Zeeland
- *   Gebied III — binnenland:    Gelderland · Overijssel · Noord-Brabant · Limburg
+ * Basis zijn de PDOK provincie-polygonen (CBS 2024). Zuid-Holland wordt op
+ * de 52°-lijn in tweeën geknipt; de rest van de provincies ligt volledig aan
+ * één kant van die lijn en blijft ongesplitst.
+ *
+ *   Gebied I  — kust boven 52°N: Noord-Holland · Friesland · Groningen
+ *               + Zuid-Holland boven 52°N
+ *   Gebied II — overgangszone:   Zuid-Holland onder 52°N · Utrecht ·
+ *               Flevoland · Drenthe · Zeeland
+ *   Gebied III — binnenland:     Gelderland · Overijssel · Noord-Brabant · Limburg
  */
 
 import provinciesRaw from "./nl-provincies.geojson?raw";
-import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
+import type { FeatureCollection, MultiPolygon, Polygon, Position } from "geojson";
 
 export type WindGebied = 1 | 2 | 3;
+
+/** Zuidgrens van windgebied I — NEN-EN 1991-1-4 NB. */
+export const GEBIED_I_GRENS_LAT = 52.0;
 
 const PROVINCIE_TO_GEBIED: Record<string, WindGebied> = {
   "Noord-Holland": 1,
@@ -32,6 +42,15 @@ const PROVINCIE_TO_GEBIED: Record<string, WindGebied> = {
   "Limburg": 3,
 };
 
+/**
+ * Kustprovincies waarvan het deel bóven 52°N alsnog bij gebied I hoort.
+ *
+ * Alleen provincies aan de Noordzee komen hiervoor in aanmerking: de
+ * 52°-lijn snijdt ook Utrecht en Gelderland, maar dat is binnenland en
+ * blijft gewoon gebied II respectievelijk III.
+ */
+const KUST_PROVINCIES_MET_GEBIED_I_DEEL = new Set(["Zuid-Holland"]);
+
 interface ProvincieProperties {
   statnaam: string;
   statcode?: string;
@@ -43,23 +62,90 @@ const provinciesParsed = JSON.parse(provinciesRaw) as FeatureCollection<
   { statnaam: string; statcode?: string }
 >;
 
-/** Provincie-grenzen met gebied-attribuut, klaar voor Leaflet GeoJSON. */
+/**
+ * Knip één ring af op een breedtegraad (Sutherland-Hodgman tegen een
+ * halfvlak). Houdt de helft boven óf onder `lat` over; een lege uitkomst
+ * betekent dat de ring volledig aan de andere kant lag.
+ */
+function clipRingByLat(ring: Position[], lat: number, keepAbove: boolean): Position[] {
+  const binnen = (p: Position) => (keepAbove ? p[1] >= lat : p[1] <= lat);
+  const snijpunt = (a: Position, b: Position): Position => {
+    const t = (lat - a[1]) / (b[1] - a[1]);
+    return [a[0] + t * (b[0] - a[0]), lat];
+  };
+  const uit: Position[] = [];
+  for (let i = 0; i < ring.length; i++) {
+    const huidig = ring[i];
+    const vorig = ring[(i + ring.length - 1) % ring.length];
+    const hIn = binnen(huidig);
+    const vIn = binnen(vorig);
+    if (hIn) {
+      if (!vIn) uit.push(snijpunt(vorig, huidig));
+      uit.push(huidig);
+    } else if (vIn) {
+      uit.push(snijpunt(vorig, huidig));
+    }
+  }
+  // Een ring van minder dan drie punten heeft geen oppervlak.
+  if (uit.length < 3) return [];
+  // Ring sluiten zoals GeoJSON voorschrijft.
+  const [ex, ey] = uit[0];
+  const [lx, ly] = uit[uit.length - 1];
+  if (ex !== lx || ey !== ly) uit.push([ex, ey]);
+  return uit;
+}
+
+/** Knip een hele geometrie af op een breedtegraad. Null = niets over. */
+function clipGeometryByLat(
+  geom: Polygon | MultiPolygon,
+  lat: number,
+  keepAbove: boolean,
+): Polygon | MultiPolygon | null {
+  const polygonen = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;
+  const behouden: Position[][][] = [];
+  for (const polygon of polygonen) {
+    // Alleen de buitenring knippen; de PDOK-provincies hebben geen gaten
+    // die over de 52°-lijn heen liggen.
+    const buiten = clipRingByLat(polygon[0], lat, keepAbove);
+    if (buiten.length >= 4) behouden.push([buiten]);
+  }
+  if (behouden.length === 0) return null;
+  if (behouden.length === 1) return { type: "Polygon", coordinates: behouden[0] };
+  return { type: "MultiPolygon", coordinates: behouden };
+}
+
+/**
+ * Provincie-grenzen met gebied-attribuut, klaar voor Leaflet GeoJSON.
+ *
+ * Kustprovincies die de 52°-lijn kruisen leveren twee features op: het
+ * noordelijke deel als gebied I, het zuidelijke deel met het eigen gebied.
+ */
 export const windGebiedenGeoJSON: FeatureCollection<
   Polygon | MultiPolygon,
   ProvincieProperties
 > = {
   type: "FeatureCollection",
-  features: provinciesParsed.features.map((feature) => {
-    const name = feature.properties.statnaam;
-    const gebied = PROVINCIE_TO_GEBIED[name] ?? 3;
-    return {
+  features: provinciesParsed.features.flatMap((feature) => {
+    const naam = feature.properties.statnaam;
+    const basisGebied = PROVINCIE_TO_GEBIED[naam] ?? 3;
+    const maak = (
+      geometry: Polygon | MultiPolygon,
+      gebied: WindGebied,
+    ) => ({
       ...feature,
-      properties: {
-        statnaam: name,
-        statcode: feature.properties.statcode,
-        gebied,
-      },
-    };
+      geometry,
+      properties: { statnaam: naam, statcode: feature.properties.statcode, gebied },
+    });
+
+    if (!KUST_PROVINCIES_MET_GEBIED_I_DEEL.has(naam) || basisGebied === 1) {
+      return [maak(feature.geometry, basisGebied)];
+    }
+
+    const noord = clipGeometryByLat(feature.geometry, GEBIED_I_GRENS_LAT, true);
+    const zuid = clipGeometryByLat(feature.geometry, GEBIED_I_GRENS_LAT, false);
+    // Ligt de provincie toch volledig aan één kant, dan blijft hij heel.
+    if (!noord || !zuid) return [maak(feature.geometry, basisGebied)];
+    return [maak(noord, 1), maak(zuid, basisGebied)];
   }),
 };
 
@@ -74,8 +160,8 @@ export const GEBIED_COLORS: Record<WindGebied, string> = {
 };
 
 export const GEBIED_NAMES: Record<WindGebied, string> = {
-  1: "Gebied I — kustprovincies (NH/FR/GR)",
-  2: "Gebied II — overgangszone (ZH/UT/FL/DR/ZL)",
+  1: "Gebied I — kust boven 52°N (NH/FR/GR + ZH-noord)",
+  2: "Gebied II — overgangszone (ZH-zuid/UT/FL/DR/ZL)",
   3: "Gebied III — binnenland (GE/OV/NB/LI)",
 };
 
