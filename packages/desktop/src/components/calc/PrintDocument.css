@@ -335,12 +335,3 @@ html.afdrukmodus .print-loopvoet {
   max-width: 100%;
   height: auto;
 }
-
-/* ─── Afdrukvoorbeeld op het scherm ───────────────────────────── */
-
-/* Ruimte voor de balk bovenaan, zodat die de titel niet afdekt. Bij het echte
-   printen bestaat die balk niet en is deze regel dus niet van toepassing. */
-html.afdrukmodus .afdruk-balk ~ .print-root,
-html.afdrukmodus .print-root:has(~ .afdruk-balk) {
-  padding-top: 34px;
-}
