@@ -12,6 +12,7 @@ import ProjectBrowser from "./components/calc/ProjectBrowser";
 import { designerVoor } from "./components/calc/designerKeuze";
 import ProjectGegevensPanel from "./components/calc/ProjectGegevensPanel";
 import PrintDocument from "./components/calc/PrintDocument";
+import AfdrukVoorbeeld from "./components/calc/AfdrukVoorbeeld";
 import IfcViewerPanel from "./components/calc/IfcViewerPanel";
 import { getSetting } from "./store";
 import { useProjectStore, PROJECT_ID } from "./store/projectStore";
@@ -76,7 +77,9 @@ export default function App() {
   const printBezig = usePrintStore((s) => s.bezig);
   const printVoorbeeld = usePrintStore((s) => s.voorbeeld);
   const printKlaar = usePrintStore((s) => s.klaar);
-  const afdrukmodus = printBezig || printVoorbeeld;
+  // Alleen het échte printen zet de app weg. Het afdrukvoorbeeld is een paneel
+  // binnen de applicatie: lint, projectboom en statusbalk blijven staan.
+  const afdrukmodus = printBezig;
 
   // De afdrukopmaak hangt aan een klasse op <html> in plaats van aan
   // `@media print`, zodat het voorbeeld op het scherm er precies zo uitziet.
@@ -162,7 +165,9 @@ export default function App() {
       <main className="main-view" style={{ flex: 1, minHeight: 0, display: "flex" }}>
         <ProjectBrowser />
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          {activeView === "ifc" ? (
+          {printVoorbeeld ? (
+            <AfdrukVoorbeeld />
+          ) : activeView === "ifc" ? (
             <IfcViewerPanel />
           ) : toontProjectGegevens ? (
             <ProjectGegevensPanel />
@@ -193,13 +198,6 @@ export default function App() {
       </main>
       <StatusBar />
       {afdrukmodus && <PrintDocument />}
-      {printVoorbeeld && (
-        <div className="afdruk-balk">
-          <span>Afdrukvoorbeeld — zo komt het op papier</span>
-          <button onClick={() => usePrintStore.getState().afdrukken()}>Afdrukken…</button>
-          <button onClick={() => usePrintStore.getState().sluitVoorbeeld()}>Sluiten</button>
-        </div>
-      )}
       <Backstage
         open={backstageOpen}
         onClose={() => setBackstageOpen(false)}

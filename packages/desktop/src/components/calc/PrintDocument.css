@@ -1,12 +1,18 @@
 /*
  * Afdrukweergave van het hele project.
  *
- * De regels hangen aan `html.afdrukmodus` in plaats van aan `@media print`.
- * Daardoor is dezelfde opmaak ook op het scherm op te roepen — anders is een
- * printlayout niet te controleren zonder hem uit te draaien. De app zet die
- * klasse vlak voor het printen én in het afdrukvoorbeeld.
+ * Twee soorten regels, met opzet aan verschillende haakjes:
  *
- * `@page` staat wél los: die geldt sowieso alleen bij het printen.
+ * - `html.afdrukmodus` zet de ápp weg — lint, projectboom, statusbalk. Die
+ *   klasse staat alleen aan op het moment dat er echt geprint wordt.
+ * - `.print-opmaak` maakt het dócument op. Die klasse hangt aan de uitdraai
+ *   zelf, zodat het afdrukvoorbeeld in de app dezelfde opmaak krijgt zonder
+ *   dat daarvoor de hele applicatie hoeft te verdwijnen.
+ *
+ * Waarom niet gewoon `@media print`: dan is een printlayout niet te
+ * controleren zonder hem uit te draaien.
+ *
+ * `@page` staat los: die geldt sowieso alleen bij het printen.
  */
 
 @page {
@@ -97,12 +103,12 @@ html.afdrukmodus .print-loopvoet {
 
 /* ─── Voorblad ────────────────────────────────────────────────── */
 
-html.afdrukmodus .print-voorblad {
+.print-opmaak .print-voorblad {
   break-after: page;
   page-break-after: always;
 }
 
-html.afdrukmodus .print-soort {
+.print-opmaak .print-soort {
   margin: 0 0 4pt;
   font-size: 9pt;
   letter-spacing: 0.14em;
@@ -110,18 +116,18 @@ html.afdrukmodus .print-soort {
   color: #666;
 }
 
-html.afdrukmodus .print-voorblad h1 {
+.print-opmaak .print-voorblad h1 {
   margin: 0 0 18pt;
   font-size: 20pt;
   font-weight: 700;
 }
 
-html.afdrukmodus .print-voorblad table {
+.print-opmaak .print-voorblad table {
   border-collapse: collapse;
   margin-bottom: 22pt;
 }
 
-html.afdrukmodus .print-voorblad th {
+.print-opmaak .print-voorblad th {
   text-align: left;
   font-weight: 600;
   padding: 2pt 18pt 2pt 0;
@@ -129,21 +135,21 @@ html.afdrukmodus .print-voorblad th {
   white-space: nowrap;
 }
 
-html.afdrukmodus .print-voorblad td {
+.print-opmaak .print-voorblad td {
   padding: 2pt 0;
 }
 
-html.afdrukmodus .print-inhoud-kop {
+.print-opmaak .print-inhoud-kop {
   margin: 0 0 4pt;
   font-weight: 700;
 }
 
-html.afdrukmodus .print-inhoud {
+.print-opmaak .print-inhoud {
   margin: 0;
   padding-left: 18pt;
 }
 
-html.afdrukmodus .print-datum {
+.print-opmaak .print-datum {
   margin-top: 28pt;
   font-size: 9pt;
   color: #666;
@@ -152,17 +158,17 @@ html.afdrukmodus .print-datum {
 /* ─── Rekenbladen ─────────────────────────────────────────────── */
 
 /* Elk blad op een eigen pagina — een berekening lees je per onderdeel. */
-html.afdrukmodus .print-blad {
+.print-opmaak .print-blad {
   break-before: page;
   page-break-before: always;
 }
 
-html.afdrukmodus .print-blad:first-of-type {
+.print-opmaak .print-blad:first-of-type {
   break-before: auto;
   page-break-before: auto;
 }
 
-html.afdrukmodus .print-blad-kop {
+.print-opmaak .print-blad-kop {
   margin: 0 0 10pt;
   padding-bottom: 4pt;
   border-bottom: 1pt solid #999;
@@ -171,7 +177,7 @@ html.afdrukmodus .print-blad-kop {
 }
 
 /* Bladnummer voor de kop, zodat de volgorde uit de boom leesbaar blijft. */
-html.afdrukmodus .print-blad-nr {
+.print-opmaak .print-blad-nr {
   display: inline-block;
   min-width: 16pt;
   color: #777;
@@ -179,50 +185,54 @@ html.afdrukmodus .print-blad-nr {
 }
 
 /* Niet midden in een formule of tekening afbreken. */
-html.afdrukmodus .print-blad .calc-line,
-html.afdrukmodus .print-blad .calc-text,
-html.afdrukmodus .print-blad table,
-html.afdrukmodus .print-blad svg,
-html.afdrukmodus .print-blad img {
+.print-opmaak .print-blad .calc-line,
+.print-opmaak .print-blad .calc-text,
+.print-opmaak .print-blad table,
+.print-opmaak .print-blad svg,
+.print-opmaak .print-blad img {
   break-inside: avoid;
   page-break-inside: avoid;
 }
 
-html.afdrukmodus .print-blad h1,
-html.afdrukmodus .print-blad h2,
-html.afdrukmodus .print-blad h3,
-html.afdrukmodus .print-blad h4,
-html.afdrukmodus .print-blad h5,
-html.afdrukmodus .print-blad h6 {
+.print-opmaak .print-blad h1,
+.print-opmaak .print-blad h2,
+.print-opmaak .print-blad h3,
+.print-opmaak .print-blad h4,
+.print-opmaak .print-blad h5,
+.print-opmaak .print-blad h6 {
   break-after: avoid;
   page-break-after: avoid;
 }
 
-html.afdrukmodus .print-blad svg,
-html.afdrukmodus .print-blad img {
+.print-opmaak .print-blad svg,
+.print-opmaak .print-blad img {
   max-width: 100%;
   height: auto;
 }
 
 /* De kernopmaak houdt de uitwerking smal voor de leesbaarheid op een breed
-   scherm. Op een A4 is de bladspiegel al bepaald door de paginamarge, dus daar
-   is die extra beperking alleen verspilde ruimte naast de tekening. */
-html.afdrukmodus .print-blad .ifc-calc {
+   scherm, met 28px lucht eromheen. Op een A4 is de bladspiegel al bepaald door
+   de paginamarge, dus die beperking is daar alleen verspilde ruimte naast de
+   tekening — en de binnenmarge komt bovenop een marge die er al is.
+   Het afdrukvoorbeeld bouwt deze wikkel per pagina opnieuw op; met binnenmarge
+   zou elke pagina er twee keer 28px bij krijgen en overlopen. */
+.print-opmaak .print-blad .ifc-calc {
   max-width: none !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
+  padding: 0 !important;
 }
 
 /* Bedieningselementen die op papier niets betekenen: de sleepzone voor een
    GEF-bestand is een knop, geen inhoud. */
-html.afdrukmodus .print-blad .calc-gef-upload,
-html.afdrukmodus .print-blad .calc-gef-dropzone {
+.print-opmaak .print-blad .calc-gef-upload,
+.print-opmaak .print-blad .calc-gef-dropzone {
   display: none !important;
 }
 
 /* Invoervelden en keuzelijsten drukken als hun waarde, niet als bedieningselement. */
-html.afdrukmodus .print-blad input,
-html.afdrukmodus .print-blad select {
+.print-opmaak .print-blad input,
+.print-opmaak .print-blad select {
   border: none !important;
   background: transparent !important;
   color: #000 !important;
@@ -238,8 +248,8 @@ html.afdrukmodus .print-blad select {
 /* De invoerregel heeft op het scherm een gele achtergrond over de volle breedte
    om aan te geven dat je er iets kunt intypen. Op papier is dat geen invoer meer
    maar een uitgangspunt; een balk over de bladbreedte leidt daar alleen af. */
-html.afdrukmodus .print-blad .calc-input-prompt,
-html.afdrukmodus .print-blad .calc-select-row {
+.print-opmaak .print-blad .calc-input-prompt,
+.print-opmaak .print-blad .calc-select-row {
   display: inline-flex !important;
   background: transparent !important;
   border: none !important;
@@ -247,15 +257,15 @@ html.afdrukmodus .print-blad .calc-select-row {
   width: auto !important;
 }
 
-html.afdrukmodus .print-blad input[type="number"]::-webkit-inner-spin-button,
-html.afdrukmodus .print-blad input[type="number"]::-webkit-outer-spin-button {
+.print-opmaak .print-blad input[type="number"]::-webkit-inner-spin-button,
+.print-opmaak .print-blad input[type="number"]::-webkit-outer-spin-button {
   appearance: none;
   margin: 0;
 }
 
 /* ─── Het parametrische beeld ─────────────────────────────────── */
 
-html.afdrukmodus .print-beeld {
+.print-opmaak .print-beeld {
   break-inside: avoid;
   page-break-inside: avoid;
   margin: 0 0 12pt;
@@ -267,10 +277,10 @@ html.afdrukmodus .print-beeld {
      bladkop niets toevoegt.
    - `vd-foot`: "Klik op een blauwe maat om die te wijzigen" — een instructie
      die op papier onzin is. */
-html.afdrukmodus .print-beeld .vd-controls,
-html.afdrukmodus .print-beeld .vd-head,
-html.afdrukmodus .print-beeld .vd-foot,
-html.afdrukmodus .print-beeld .gd-tabs {
+.print-opmaak .print-beeld .vd-controls,
+.print-opmaak .print-beeld .vd-head,
+.print-opmaak .print-beeld .vd-foot,
+.print-opmaak .print-beeld .gd-tabs {
   display: none !important;
 }
 
@@ -284,7 +294,7 @@ html.afdrukmodus .print-beeld .gd-tabs {
  * Met een opgegeven hoogte is de meting stabiel en schaalt de tekening netjes
  * naar de bladbreedte.
  */
-html.afdrukmodus .print-beeld .vd-panel {
+.print-opmaak .print-beeld .vd-panel {
   border: none !important;
   background: transparent !important;
   /* 208 mm: de balklaag zet vier tekeningen onder elkaar (doorsnede, statisch
@@ -297,7 +307,7 @@ html.afdrukmodus .print-beeld .vd-panel {
   overflow: hidden !important;
 }
 
-html.afdrukmodus .print-beeld .vd-body {
+.print-opmaak .print-beeld .vd-body {
   height: 100% !important;
   min-height: 0 !important;
 }
@@ -305,15 +315,15 @@ html.afdrukmodus .print-beeld .vd-body {
 /* Op papier valt er niets te scrollen: de tekeningkolom moet gewoon zijn
    volle hoogte innemen. Blijft de schermscroll staan, dan verdwijnt alles
    onder de vouw en houd je een half beeld met witruimte over. */
-html.afdrukmodus .print-beeld .vd-canvases {
+.print-opmaak .print-beeld .vd-canvases {
   overflow: visible !important;
   scrollbar-gutter: auto !important;
   justify-content: flex-start !important;
 }
 
 /* Maatchips zijn knoppen; op papier moeten ze als getal lezen. */
-html.afdrukmodus .print-beeld .vd-dim-num,
-html.afdrukmodus .print-beeld .vd-dim button {
+.print-opmaak .print-beeld .vd-dim-num,
+.print-opmaak .print-beeld .vd-dim button {
   border: none !important;
   background: transparent !important;
   color: #000 !important;
@@ -321,7 +331,7 @@ html.afdrukmodus .print-beeld .vd-dim button {
   font: inherit !important;
 }
 
-html.afdrukmodus .print-beeld svg {
+.print-opmaak .print-beeld svg {
   max-width: 100%;
   height: auto;
 }
