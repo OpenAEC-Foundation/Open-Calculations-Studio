@@ -25,6 +25,15 @@ const PROFILES: Record<number, Prof> = {
   15: { name: "96×171", b: 96, h: 171 }, 16: { name: "96×196", b: 96, h: 196 },
   17: { name: "96×221", b: 96, h: 221 }, 18: { name: "96×246", b: 96, h: 246 },
   19: { name: "96×271", b: 96, h: 271 },
+  // SLS — geschaafd naaldhout in Noord-Amerikaanse maatvoering (38 mm dik),
+  // zoals dat in de houtskeletbouw wordt geleverd. De dubbele varianten zijn
+  // twee stuks tegen elkaar.
+  20: { name: "SLS 38×89", b: 38, h: 89 }, 21: { name: "SLS 38×140", b: 38, h: 140 },
+  22: { name: "SLS 38×184", b: 38, h: 184 }, 23: { name: "SLS 38×235", b: 38, h: 235 },
+  24: { name: "SLS 38×285", b: 38, h: 285 },
+  25: { name: "SLS dubbel 76×184", b: 76, h: 184 },
+  26: { name: "SLS dubbel 76×235", b: 76, h: 235 },
+  27: { name: "SLS dubbel 76×285", b: 76, h: 285 },
 };
 
 interface Mat { name: string; fmk: number; fvk: number; E: number; rho: number; gM: number }
@@ -84,6 +93,25 @@ const CAT: { v: number; label: string; psi0: number; psi1: number; psi2: number 
 const GRENS: { v: number; label: string }[] = [
   { v: 0.004, label: "0,004 × L" }, { v: 0.003, label: "0,003 × L" }, { v: 0.002, label: "0,002 × L" },
 ];
+
+/**
+ * Scharnier links, rol rechts — klein weergegeven, om onder een diagram te
+ * zetten. Zonder die twee is uit een M- of V-lijn niet af te lezen waar de
+ * ligger wordt ondersteund, en dus ook niet waarom de lijn daar nul is.
+ */
+function Steunpunten({ x1, x2, y }: { x1: number; x2: number; y: number }) {
+  const g = 7;
+  return (
+    <g style={{ stroke: "#6b7280", strokeWidth: 1, fill: "none" }}>
+      <polygon points={`${x1},${y} ${x1 - g},${y + 2 * g} ${x1 + g},${y + 2 * g}`} />
+      <line x1={x1 - g - 3} y1={y + 2 * g} x2={x1 + g + 3} y2={y + 2 * g} />
+      <polygon points={`${x2},${y} ${x2 - g},${y + 1.6 * g} ${x2 + g},${y + 1.6 * g}`} />
+      <circle cx={x2 - 3.5} cy={y + 1.6 * g + 2.6} r={2.4} />
+      <circle cx={x2 + 3.5} cy={y + 1.6 * g + 2.6} r={2.4} />
+      <line x1={x2 - g - 3} y1={y + 1.6 * g + 5.6} x2={x2 + g + 3} y2={y + 1.6 * g + 5.6} />
+    </g>
+  );
+}
 
 /**
  * Eén unity check in de voetregel, gekleurd naar de uitkomst. Een rij grijze
@@ -157,7 +185,14 @@ export default function BalklaagDesigner() {
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
       const r = entries[0].contentRect;
-      setBox({ w: Math.max(220, r.width), h: Math.max(200, r.height) });
+      const w = Math.max(220, Math.floor(r.width));
+      const h = Math.max(200, Math.floor(r.height));
+      // Alleen bijwerken bij een merkbaar verschil. Het beeld schaalt op deze
+      // maat, dus een verandering van één pixel zou een nieuwe meting kunnen
+      // uitlokken en het beeld aan het trillen brengen.
+      setBox((vorige) =>
+        Math.abs(vorige.w - w) > 2 || Math.abs(vorige.h - h) > 2 ? { w, h } : vorige,
+      );
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -272,9 +307,11 @@ export default function BalklaagDesigner() {
   const capH = 26;                                 // ruimte voor het onderschrift boven de stage
   const nJ = 4;
   const schemaH = 150;                             // vaste hoogte voor het statisch schema
+  const mvH = 150;                                 // idem voor de M- en V-lijn
+  const uH = 130;                                  // en voor de doorbuigingslijn
   const W = box.w;
-  // De doorsnede krijgt wat overblijft nadat het schema zijn deel heeft gehad.
-  const H = Math.max(150, box.h - 2 * capH - schemaH - 14);
+  // De doorsnede krijgt wat overblijft nadat schema en M/V-lijn hun deel hebben.
+  const H = Math.max(130, box.h - 4 * capH - schemaH - mvH - uH - 26);
   const mX = 46, mTop = 26, mBot = 48;             // marges (px)
   const totalMM = (nJ - 1) * hoh + b;              // breedte van de balken-groep
   const availW = W - 2 * mX, availH = H - mTop - mBot;
@@ -526,6 +563,100 @@ export default function BalklaagDesigner() {
                       </div>
                     )}
                     <Dim name="L_d" value={Ld} x={smid} y={ay + 46} step={100} />
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* ── Momenten- en dwarskrachtenlijn (UGT) ───────────────────── */}
+          <div className="vd-canvas">
+            <div className="vd-caption">M- en V-lijn (UGT)</div>
+            <div className="vd-stage" style={{ width: W, height: mvH, background: "transparent", border: "none", borderRadius: 0 }}>
+              {(() => {
+                const mx = 54;
+                const mx1 = mx, mx2 = Math.max(mx + 80, W - mx);
+                const mmid = (mx1 + mx2) / 2;
+                // De parabool hangt onder zijn as, de V-lijn steekt naar beide
+                // kanten uit — vandaar twee assen met ruimte ertussen.
+                const amp = 26;
+                const myAs = 30;
+                const vyAs = 110;
+                const Mk = MyEd / 1e6;             // N·mm → kN·m
+                const Vk = VzEd / 1000;            // N → kN
+                return (
+                  <>
+                    <svg width={W} height={mvH} className="vd-svg">
+                      {/* M-lijn */}
+                      <line x1={mx1 - 8} y1={myAs} x2={mx2 + 8} y2={myAs} style={{ stroke: "#374151", strokeWidth: 0.8 }} />
+                      <path
+                        d={`M ${mx1} ${myAs} Q ${mmid} ${myAs + 2 * amp} ${mx2} ${myAs}`}
+                        style={{ fill: "#DBEAFE", stroke: "#1E40AF", strokeWidth: 1.2 }}
+                      />
+                      <line x1={mmid} y1={myAs} x2={mmid} y2={myAs + amp} style={{ stroke: "#1E40AF", strokeWidth: 0.8, strokeDasharray: "3 3" }} />
+                      <Steunpunten x1={mx1} x2={mx2} y={myAs} />
+                      {/* V-lijn */}
+                      <line x1={mx1 - 8} y1={vyAs} x2={mx2 + 8} y2={vyAs} style={{ stroke: "#374151", strokeWidth: 0.8 }} />
+                      <polygon points={`${mx1},${vyAs - amp} ${mmid},${vyAs} ${mx1},${vyAs}`} style={{ fill: "#DCFCE7", stroke: "#15803D", strokeWidth: 1.2 }} />
+                      <polygon points={`${mmid},${vyAs} ${mx2},${vyAs + amp} ${mx2},${vyAs}`} style={{ fill: "#DCFCE7", stroke: "#15803D", strokeWidth: 1.2 }} />
+                      <Steunpunten x1={mx1} x2={mx2} y={vyAs} />
+                    </svg>
+                    <div className="vd-dim-ro" style={{ left: mx1 + 20, top: myAs - 9, color: "#374151", fontWeight: 700 }}>M-lijn</div>
+                    <div className="vd-dim-ro" style={{ left: mmid, top: myAs + amp + 12, color: "#1E40AF", fontWeight: 700 }}>
+                      M = {Mk.toFixed(2)} kNm
+                    </div>
+                    <div className="vd-dim-ro" style={{ left: mx1 + 20, top: vyAs - 9, color: "#374151", fontWeight: 700 }}>V-lijn</div>
+                    <div className="vd-dim-ro" style={{ left: mx1 + 46, top: vyAs - amp - 4, color: "#15803D", fontWeight: 700 }}>
+                      +V = {Vk.toFixed(2)} kN
+                    </div>
+                    <div className="vd-dim-ro" style={{ left: mx2 - 38, top: vyAs + amp + 4, color: "#15803D", fontWeight: 700 }}>
+                      −V
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* ── Doorbuigingslijn (BGT) ─────────────────────────────────── */}
+          <div className="vd-canvas">
+            <div className="vd-caption">Doorbuiging (BGT)</div>
+            <div className="vd-stage" style={{ width: W, height: uH, background: "transparent", border: "none", borderRadius: 0 }}>
+              {(() => {
+                const mx = 54;
+                const ux1 = mx, ux2 = Math.max(mx + 80, W - mx);
+                const umid = (ux1 + ux2) / 2;
+                const uAs = 26;
+                // De twee zakkingen op dezelfde schaal, zodat je in één blik
+                // ziet hoeveel de kruip er nog bovenop doet.
+                const amp = 34;
+                const grootste = Math.max(wfin, ug + uvar, 1e-6);
+                const sInst = (amp * (ug + uvar)) / grootste;
+                const sFin = (amp * wfin) / grootste;
+                return (
+                  <>
+                    <svg width={W} height={uH} className="vd-svg">
+                      <line x1={ux1 - 8} y1={uAs} x2={ux2 + 8} y2={uAs} style={{ stroke: "#374151", strokeWidth: 0.8, strokeDasharray: "4 3" }} />
+                      {/* momentaan (6.14b) */}
+                      <path
+                        d={`M ${ux1} ${uAs} Q ${umid} ${uAs + 2 * sInst} ${ux2} ${uAs}`}
+                        style={{ fill: "none", stroke: "#0EA5E9", strokeWidth: 1.2, strokeDasharray: "5 3" }}
+                      />
+                      {/* eindstand incl. kruip (6.16b) */}
+                      <path
+                        d={`M ${ux1} ${uAs} Q ${umid} ${uAs + 2 * sFin} ${ux2} ${uAs}`}
+                        style={{ fill: "rgba(14,165,233,0.10)", stroke: "#0369A1", strokeWidth: 1.4 }}
+                      />
+                      <line x1={umid} y1={uAs} x2={umid} y2={uAs + sFin} style={{ stroke: "#0369A1", strokeWidth: 0.8, strokeDasharray: "3 3" }} />
+                      <Steunpunten x1={ux1} x2={ux2} y={uAs} />
+                    </svg>
+                    <div className="vd-dim-ro" style={{ left: ux1 + 26, top: uAs - 9, color: "#374151", fontWeight: 700 }}>onvervormd</div>
+                    <div className="vd-dim-ro" style={{ left: umid + 62, top: uAs + sInst - 4, color: "#0EA5E9", fontWeight: 700 }}>
+                      w<sub>inst</sub> = {(ug + uvar).toFixed(1)} mm
+                    </div>
+                    <div className="vd-dim-ro" style={{ left: umid, top: uAs + sFin + 12, color: "#0369A1", fontWeight: 700 }}>
+                      w<sub>fin</sub> = {wfin.toFixed(1)} mm (grens {wlim.toFixed(1)})
+                    </div>
                   </>
                 );
               })()}
