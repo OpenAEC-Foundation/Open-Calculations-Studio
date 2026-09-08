@@ -313,6 +313,52 @@
 .vd-dimext { stroke: #2563eb; stroke-width: 1; }
 .vd-dimmeasure { stroke: #2563eb; stroke-width: 1; }
 .vd-dimarrow { fill: #2563eb; stroke: #2563eb; stroke-width: 0.8; }
+/* Ontwerpknop: staat onder de profielkeuze, want dat is wat hij invult. Geen
+   `label`, dus buiten de regelopmaak van .vd-compact om. */
+.vd-ontwerp {
+  display: flex;
+  align-items: center;
+  /* Is de kolom smal, dan zakt de toelichting naar een eigen regel in plaats
+     van in een smalle strook naast de knop te wringen. */
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--theme-border-subtle, #e5e7eb);
+}
+
+.vd-ontwerp button {
+  flex: none;
+  padding: 4px 14px;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--theme-accent, #d97706);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.vd-ontwerp button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.vd-ontwerp button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.vd-ontwerp span {
+  font-size: 11px;
+  color: var(--theme-text-muted, #6b7280);
+}
+
+.vd-ontwerp-melding {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-text-secondary, #475569);
+}
+
 /* Kleurverklaring onder een tekening: een streepje in de kleur van de lijn,
    met de bijbehorende grootheid ernaast. */
 .vd-legenda {

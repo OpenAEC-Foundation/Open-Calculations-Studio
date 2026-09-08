@@ -94,6 +94,128 @@ const GRENS: { v: number; label: string }[] = [
   { v: 0.004, label: "0,004 × L" }, { v: 0.003, label: "0,003 × L" }, { v: 0.002, label: "0,002 × L" },
 ];
 
+
+/**
+ * Alles wat de toetsing nodig heeft, als één object. Los van de React-state,
+ * zodat dezelfde berekening ook op een ánder profiel losgelaten kan worden —
+ * dat is precies wat de ontwerpknop doet.
+ */
+interface Invoer {
+  prof: Prof;
+  mat: Mat;
+  duur: number;
+  klim: number;
+  /** Eigen gewicht volgens de referentie-uitwerking in plaats van EN 338. */
+  xc: boolean;
+  kfi: number;
+  Ld: number;
+  aOpl: number;
+  hoh: number;
+  tVloer: number;
+  eBeschot: number;
+  bVloer: number;
+  gk: number;
+  qk: number;
+  Qk: number;
+  psi2: number;
+  controleer: number;
+  grens: number;
+  tril: number;
+  zeta: number;
+  aTril: number;
+  bTril: number;
+}
+
+/**
+ * De toetsing van één balklaag, gespiegeld aan `templates/balklaag.ts`.
+ *
+ * Zuivere functie: het paneel roept hem aan voor het gekozen profiel, de
+ * ontwerpknop voor elk kandidaat-profiel. Eén bron voor de formules — een
+ * tweede kopie zou vroeg of laat van de rekensheet af gaan wijken.
+ */
+function toets(inv: Invoer) {
+  const {
+    prof, mat, duur, klim, xc, kfi, Ld, aOpl, hoh, tVloer, eBeschot, bVloer,
+    gk, qk, Qk, psi2, controleer, grens, tril, zeta, aTril, bTril,
+  } = inv;
+  const { b, h } = prof;
+  // ── doorsnede + checks (gespiegeld aan balklaag.ts), in N en mm ──────────
+  const A = b * h, Iy = (b * h ** 3) / 12, Wy = (b * h ** 2) / 6, Sy = (b * h ** 2) / 8;
+  const kmod12 = duur === 1 ? 0.9 : duur === 2 ? 0.8 : duur === 3 ? 0.7 : 0.6;
+  const kmod3 = duur === 1 ? 0.7 : duur === 2 ? 0.65 : duur === 3 ? 0.55 : 0.5;
+  const kmod = klim === 3 ? kmod3 : kmod12;
+  const kdef = klim === 1 ? 0.6 : klim === 2 ? 0.8 : 2.0;
+  const fmd = (kmod * mat.fmk) / mat.gM, fvd = (kmod * mat.fvk) / mat.gM;
+  const Lth = Ld + aOpl;
+  const qkEff = qk;
+  const gBalk = xc ? (A * 1e-6 * 550 * 10) / 1000 : (A * 1e-6 * mat.rho * 9.81) / 1000; // kN/m
+  const Pg = (hoh / 1000) * gk + gBalk; // kN/m = N/mm
+  const qq = (hoh / 1000) * qkEff; // N/mm
+  const ug = (5 / 384) * (Pg * Lth ** 4) / (mat.E * Iy);
+  const uq = (5 / 384) * (qq * Lth ** 4) / (mat.E * Iy);
+  // Concentratiefactor: derde term = (EI)_l/EI_ref met (EI)_l = E_beschot·t³/12
+  // per mm plaatbreedte. De E-modulus van het beschot is nu invoer, zodat een
+  // stijver of slapper beschot ook echt doorwerkt.
+  const kr = Math.min(1, 0.37 + (0.8 * hoh) / 1000 - (eBeschot * tVloer ** 3) / 12 / 50000000);
+  const FQ = Qk * kr; // kN
+  const uQ = (1 / 48) * (FQ * 1000 * Lth ** 3) / (mat.E * Iy);
+  const uvar = Math.max(uq, uQ);
+  const wfin = (1 + kdef) * ug + (1 + psi2 * kdef) * uvar;
+  const wlim = grens * Lth;
+  const ucDoor = wfin / wlim;
+
+  const Mg = (Pg * Lth ** 2) / 8, Mq = (qq * Lth ** 2) / 8, MQ = (FQ * 1000 * Lth) / 4; // N·mm
+  const Vg = (Pg * Lth) / 2, Vq = (qq * Lth) / 2, VQ = FQ * 1000; // N
+  const MyEd = kfi * Math.max(1.2 * Mg + 1.5 * Mq, 1.2 * Mg + 1.5 * MQ);
+  const VzEd = kfi * Math.max(1.2 * Vg + 1.5 * Vq, 1.2 * Vg + 1.5 * VQ);
+  const ucBuig = MyEd / Wy / fmd;
+  const ucAfsch = (VzEd * Sy) / (b * Iy) / fvd;
+  // ── trillingen §7.3.3 — in SI: N, m, kg ───────────────────────────────────
+  const Lm = Lth / 1000;                                  // overspanning [m]
+  const EIb = (mat.E * 1e6 * (Iy * 1e-12)) / (hoh / 1000); // (EI)_b [Nm²/m]
+  const EIl = (eBeschot * 1e6 * (1 * (tVloer / 1000) ** 3)) / 12; // (EI)_l [Nm²/m]
+  const mOpp = (gk + gBalk / (hoh / 1000)) * 1000 / 9.81;  // massa [kg/m²], permanent
+  const f1 = (Math.PI / (2 * Lm ** 2)) * Math.sqrt(EIb / mOpp);
+  // Criterium 1 — stijfheid onder 1 kN (7.3): w/F ≤ a
+  const wPerKN = ((1000 * kr) * Lth ** 3) / (48 * mat.E * Iy); // mm per kN
+  const ucTrilA = wPerKN / aTril;
+  // Criterium 2 — responssnelheid (7.4/7.6/7.7)
+  const n40 = Math.pow(Math.max(0, (40 / f1) ** 2 - 1) * (bVloer / Lm) ** 4 * (EIl / EIb), 0.25);
+  const vResp = (4 * (0.4 + 0.6 * n40)) / (mOpp * bVloer * Lm + 200);
+  const vLim = Math.pow(bTril, f1 * zeta - 1);
+  const ucTrilV = vResp / vLim;
+  const ucTril = Math.max(ucTrilA, ucTrilV);
+
+  const ucs = [ucBuig, ucAfsch];
+  if (controleer === 1) ucs.push(ucDoor);
+  if (tril === 1) ucs.push(ucTril);
+  const ucMax = Math.max(...ucs);
+  const ok = ucMax <= 1.0;
+  return {
+    b, h, A, Iy, Wy, Sy, kmod, kdef, fmd, fvd, Lth, gBalk, Pg, qq, kr, FQ,
+    ug, uq, uQ, uvar, wfin, wlim, ucDoor,
+    MyEd, VzEd, ucBuig, ucAfsch,
+    f1, wPerKN, ucTrilA, n40, vResp, vLim, ucTrilV, ucTril,
+    ucMax, ok,
+  };
+}
+
+/**
+ * Het eerste profiel uit de keuzelijst dat op alle ingeschakelde toetsen
+ * voldoet, of `null` als geen enkel profiel het haalt.
+ *
+ * "Eerste" is de volgorde van de lijst zelf. Die loopt per reeks van klein
+ * naar groot, dus het eerste passende profiel is ook het lichtste dat het
+ * redt — en de gebruiker ziet dezelfde volgorde in de keuzelijst terug.
+ */
+function eerstePassendProfiel(inv: Invoer): number | null {
+  const ids = Object.keys(PROFILES).map(Number).sort((a, b) => a - b);
+  for (const id of ids) {
+    if (toets({ ...inv, prof: PROFILES[id] }).ok) return id;
+  }
+  return null;
+}
+
 /**
  * Scharnier links, rol rechts — klein weergegeven, om onder een diagram te
  * zetten. Zonder die twee is uit een M- of V-lijn niet af te lezen waar de
@@ -210,6 +332,11 @@ export default function BalklaagDesigner() {
     [activeId, seedWaarden],
   );
   const [editing, setEditing] = useState<string | null>(null);
+  // Uitkomst van de ontwerpknop. De handtekening is een vingerafdruk van de
+  // invoer waarop gezocht is — het profiel zit er bewust NIET in, want dat
+  // verandert de knop zelf. Wijzigt de gebruiker daarna iets anders, dan klopt
+  // de melding niet meer en verdwijnt hij vanzelf.
+  const [ontwerp, setOntwerp] = useState<{ sig: string; tekst: string } | null>(null);
 
   // Meet het beschikbare tekengebied zodat het beeld meegroeit met het paneel.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -293,59 +420,39 @@ export default function BalklaagDesigner() {
   const controleer = Math.round(d("controleer"));
   const grens = d("grensfactor");
 
-  const { b, h } = prof;
-  // ── doorsnede + checks (gespiegeld aan balklaag.ts), in N en mm ──────────
-  const A = b * h, Iy = (b * h ** 3) / 12, Wy = (b * h ** 2) / 6, Sy = (b * h ** 2) / 8;
-  const kmod12 = duur === 1 ? 0.9 : duur === 2 ? 0.8 : duur === 3 ? 0.7 : 0.6;
-  const kmod3 = duur === 1 ? 0.7 : duur === 2 ? 0.65 : duur === 3 ? 0.55 : 0.5;
-  const kmod = klim === 3 ? kmod3 : kmod12;
-  const kdef = klim === 1 ? 0.6 : klim === 2 ? 0.8 : 2.0;
-  const fmd = (kmod * mat.fmk) / mat.gM, fvd = (kmod * mat.fvk) / mat.gM;
-  const Lth = Ld + aOpl;
-  const qkEff = qk;
-  const gBalk = xc ? (A * 1e-6 * 550 * 10) / 1000 : (A * 1e-6 * mat.rho * 9.81) / 1000; // kN/m
-  const Pg = (hoh / 1000) * gk + gBalk; // kN/m = N/mm
-  const qq = (hoh / 1000) * qkEff; // N/mm
-  const ug = (5 / 384) * (Pg * Lth ** 4) / (mat.E * Iy);
-  const uq = (5 / 384) * (qq * Lth ** 4) / (mat.E * Iy);
-  // Concentratiefactor: derde term = (EI)_l/EI_ref met (EI)_l = E_beschot·t³/12
-  // per mm plaatbreedte. De E-modulus van het beschot is nu invoer, zodat een
-  // stijver of slapper beschot ook echt doorwerkt.
-  const kr = Math.min(1, 0.37 + (0.8 * hoh) / 1000 - (eBeschot * tVloer ** 3) / 12 / 50000000);
-  const FQ = Qk * kr; // kN
-  const uQ = (1 / 48) * (FQ * 1000 * Lth ** 3) / (mat.E * Iy);
-  const uvar = Math.max(uq, uQ);
-  const wfin = (1 + kdef) * ug + (1 + psi2 * kdef) * uvar;
-  const wlim = grens * Lth;
-  const ucDoor = wfin / wlim;
+  const inv: Invoer = {
+    prof, mat, duur, klim, xc, kfi, Ld, aOpl, hoh, tVloer, eBeschot, bVloer,
+    gk, qk, Qk, psi2, controleer, grens, tril, zeta, aTril, bTril,
+  };
+  const {
+    b, h, Pg, qq, kr, ug, uvar, wfin, wlim, ucDoor,
+    MyEd, VzEd, ucBuig, ucAfsch, f1, ucTril, ucMax, ok,
+  } = toets(inv);
 
-  const Mg = (Pg * Lth ** 2) / 8, Mq = (qq * Lth ** 2) / 8, MQ = (FQ * 1000 * Lth) / 4; // N·mm
-  const Vg = (Pg * Lth) / 2, Vq = (qq * Lth) / 2, VQ = FQ * 1000; // N
-  const MyEd = kfi * Math.max(1.2 * Mg + 1.5 * Mq, 1.2 * Mg + 1.5 * MQ);
-  const VzEd = kfi * Math.max(1.2 * Vg + 1.5 * Vq, 1.2 * Vg + 1.5 * VQ);
-  const ucBuig = MyEd / Wy / fmd;
-  const ucAfsch = (VzEd * Sy) / (b * Iy) / fvd;
-  // ── trillingen §7.3.3 — in SI: N, m, kg ───────────────────────────────────
-  const Lm = Lth / 1000;                                  // overspanning [m]
-  const EIb = (mat.E * 1e6 * (Iy * 1e-12)) / (hoh / 1000); // (EI)_b [Nm²/m]
-  const EIl = (eBeschot * 1e6 * (1 * (tVloer / 1000) ** 3)) / 12; // (EI)_l [Nm²/m]
-  const mOpp = (gk + gBalk / (hoh / 1000)) * 1000 / 9.81;  // massa [kg/m²], permanent
-  const f1 = (Math.PI / (2 * Lm ** 2)) * Math.sqrt(EIb / mOpp);
-  // Criterium 1 — stijfheid onder 1 kN (7.3): w/F ≤ a
-  const wPerKN = ((1000 * kr) * Lth ** 3) / (48 * mat.E * Iy); // mm per kN
-  const ucTrilA = wPerKN / aTril;
-  // Criterium 2 — responssnelheid (7.4/7.6/7.7)
-  const n40 = Math.pow(Math.max(0, (40 / f1) ** 2 - 1) * (bVloer / Lm) ** 4 * (EIl / EIb), 0.25);
-  const vResp = (4 * (0.4 + 0.6 * n40)) / (mOpp * bVloer * Lm + 200);
-  const vLim = Math.pow(bTril, f1 * zeta - 1);
-  const ucTrilV = vResp / vLim;
-  const ucTril = Math.max(ucTrilA, ucTrilV);
-
-  const ucs = [ucBuig, ucAfsch];
-  if (controleer === 1) ucs.push(ucDoor);
-  if (tril === 1) ucs.push(ucTril);
-  const ucMax = Math.max(...ucs);
-  const ok = ucMax <= 1.0;
+  // Alles waarop de ontwerpzoektocht gebaseerd was, behalve het profiel.
+  const ontwerpSig = JSON.stringify([
+    Ld, aOpl, hoh, tVloer, eBeschot, bVloer, gk, qk, Qk, matId, duur, klim,
+    cat, psi2, controleer, grens, tril, zeta, aTril, bTril, xc, kfi,
+  ]);
+  const ontwerpMelding = ontwerp && ontwerp.sig === ontwerpSig ? ontwerp.tekst : null;
+  const kiesEerstePassend = () => {
+    const id = eerstePassendProfiel(inv);
+    if (id === null) {
+      setOntwerp({
+        sig: ontwerpSig,
+        tekst: "Geen enkel profiel uit de lijst voldoet. Verklein de h.o.h. afstand of de overspanning, of kies een hogere sterkteklasse.",
+      });
+      return;
+    }
+    setVal("profiel", id);
+    setOntwerp({
+      sig: ontwerpSig,
+      tekst:
+        id === profId
+          ? `${PROFILES[id].name} voldoet al — lichter kan niet binnen deze lijst.`
+          : `${PROFILES[id].name} gekozen: het eerste profiel dat op alle toetsen voldoet.`,
+    });
+  };
 
   // ── doorsnede-tekening — vult het gemeten tekengebied, gecentreerd ─────────
   // Eén uniforme fit-schaal: het beeld groeit/krimpt evenredig mee met het
@@ -416,6 +523,13 @@ export default function BalklaagDesigner() {
               {Object.entries(PROFILES).map(([id, p]) => <option key={id} value={id}>{p.name}</option>)}
             </select>
           </label>
+          <div className="vd-ontwerp">
+            <button type="button" onClick={kiesEerstePassend} disabled={alleenLezen}>
+              Ontwerp
+            </button>
+            <span>kiest het eerste profiel dat voldoet</span>
+          </div>
+          {ontwerpMelding && <p className="vd-ontwerp-melding">{ontwerpMelding}</p>}
           <label>Dagmaat (mm)
             <input type="number" step={100} value={Ld} onChange={(e) => setVal("L_d", parseFloat(e.target.value))} />
           </label>
