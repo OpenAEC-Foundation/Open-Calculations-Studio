@@ -307,7 +307,7 @@ const DEFAULTS: Record<string, number> = {
   profiel: 10, sterkteklasse: 2, duurklasse: 2, klimaat: 1,
   L_d: 5000, a_opl: 50, hoh: 450, t_vloer: 25,
   E_beschot: 7000, b_vloer: 5,
-  G_k: 1.5, Q_k: 1.0, F_k: 2, belastingcat: 2,
+  G_k: 0.5, Q_k: 2.55, F_k: 2, belastingcat: 1,
   "ψ_0_zelf": 0.5, "ψ_2_zelf": 0.3, controleer: 1, grensfactor: 0.004,
   controleer_trilling: 1, "ζ": 0.01, a_tril: 1.0, b_tril: 120,
 };
