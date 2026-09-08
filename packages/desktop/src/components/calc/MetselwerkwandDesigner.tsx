@@ -297,7 +297,7 @@ export default function MetselwerkwandDesigner() {
   const defsSec = (
     <defs>
       <marker id="mwDim2" markerWidth="10" markerHeight="12" refX="5" refY="6" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-        <path d="M5 0.5 L5 11.5" className="vd-dimarrow" />
+        <circle cx="5" cy="6" r="2.4" className="vd-dimarrow" />
       </marker>
       <marker id="mwLoad2" markerWidth="11" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
         <path d="M1 1 L9 4.5 L1 8 Z" className="vd-loadfill" />
@@ -308,7 +308,7 @@ export default function MetselwerkwandDesigner() {
   const defs = (
     <defs>
       <marker id="mwDim" markerWidth="10" markerHeight="12" refX="5" refY="6" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-        <path d="M5 0.5 L5 11.5" className="vd-dimarrow" />
+        <circle cx="5" cy="6" r="2.4" className="vd-dimarrow" />
       </marker>
       <marker id="mwLoad" markerWidth="11" markerHeight="9" refX="9" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
         <path d="M1 1 L9 4.5 L1 8 Z" className="vd-loadfill" />

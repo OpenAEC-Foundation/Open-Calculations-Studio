@@ -160,10 +160,10 @@ export default function SpuwerDesigner() {
   const defs = (
     <defs>
       <marker id="spDim" markerWidth="10" markerHeight="12" refX="5" refY="6" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-        <path d="M5 0.5 L5 11.5" className="vd-dimarrow" />
+        <circle cx="5" cy="6" r="2.4" className="vd-dimarrow" />
       </marker>
       <marker id="spDimG" markerWidth="10" markerHeight="12" refX="5" refY="6" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-        <path d="M5 0.5 L5 11.5" fill="none" stroke="#9ca3af" strokeWidth="1.2" />
+        <circle cx="5" cy="6" r="2.4" fill="#9ca3af" stroke="#9ca3af" strokeWidth="0.8" />
       </marker>
       <linearGradient id="spDek" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stopColor="#d1d5db" />
@@ -174,7 +174,7 @@ export default function SpuwerDesigner() {
   const defsF = (
     <defs>
       <marker id="spDimF" markerWidth="10" markerHeight="12" refX="5" refY="6" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-        <path d="M5 0.5 L5 11.5" className="vd-dimarrow" />
+        <circle cx="5" cy="6" r="2.4" className="vd-dimarrow" />
       </marker>
     </defs>
   );

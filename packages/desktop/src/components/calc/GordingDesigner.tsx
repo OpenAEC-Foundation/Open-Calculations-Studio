@@ -505,7 +505,7 @@ export default function GordingDesigner() {
               <svg width={W} height={H} className="vd-svg">
                 <defs>
                   <marker id="grDim" markerWidth="10" markerHeight="12" refX="5" refY="6" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                    <path d="M5 0.5 L5 11.5" className="vd-dimarrow" />
+                    <circle cx="5" cy="6" r="2.4" className="vd-dimarrow" />
                   </marker>
                 </defs>
 
