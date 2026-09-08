@@ -38,8 +38,30 @@ const MATS: Record<number, Mat> = {
 const DUUR: { v: number; label: string }[] = [
   { v: 1, label: "Kort" }, { v: 2, label: "Middellang" }, { v: 3, label: "Lang" }, { v: 4, label: "Blijvend" },
 ];
-const KLIM: { v: number; label: string }[] = [
-  { v: 1, label: "Klasse 1" }, { v: 2, label: "Klasse 2" }, { v: 3, label: "Klasse 3" },
+/**
+ * Klimaatklassen volgens EN 1995-1-1 §2.3.1.3. De klasse bepaalt k_mod
+ * (Tabel 3.1) en k_def (Tabel 3.2) en dus zowel de sterkte als de kruip —
+ * vandaar de omschrijving erbij in plaats van alleen een nummer.
+ */
+const KLIM: { v: number; label: string; uitleg: string }[] = [
+  {
+    v: 1,
+    label: "1 — verwarmd binnen",
+    uitleg:
+      "Klimaatklasse 1 — houtvochtgehalte horend bij 20 °C en een relatieve luchtvochtigheid die slechts enkele weken per jaar boven 65 % komt. Gemiddeld vochtgehalte ten hoogste 12 %. Typisch: verwarmde, gesloten binnenruimten.",
+  },
+  {
+    v: 2,
+    label: "2 — overdekt, onverwarmd",
+    uitleg:
+      "Klimaatklasse 2 — 20 °C met een relatieve luchtvochtigheid die slechts enkele weken per jaar boven 85 % komt. Gemiddeld vochtgehalte ten hoogste 20 %. Typisch: overdekt maar open of onverwarmd — carport, geventileerde kruipruimte, onverwarmde zolder.",
+  },
+  {
+    v: 3,
+    label: "3 — buiten / vochtig",
+    uitleg:
+      "Klimaatklasse 3 — omstandigheden die tot een hoger vochtgehalte leiden dan klasse 2. Typisch: onbeschermd buiten of blijvend vochtige ruimten. Geeft de laagste k_mod en de hoogste kruipfactor.",
+  },
 ];
 /**
  * ψ-factoren uit NEN-EN 1990 Tabel NB.2 — A1.1, gelijk aan de tabel in
@@ -64,6 +86,21 @@ const GRENS: { v: number; label: string }[] = [
 ];
 
 /**
+ * Eén unity check in de voetregel, gekleurd naar de uitkomst. Een rij grijze
+ * getallen dwingt je ze allemaal te lezen om te zien welke knelt; met kleur
+ * springt de maatgevende er meteen uit.
+ */
+function UcChip({ naam, uc, extra }: { naam: string; uc: number; extra?: string }) {
+  const staat = uc > 1 ? "bad" : uc > 0.9 ? "warn" : "ok";
+  return (
+    <span className={`vd-uc-chip ${staat}`}>
+      {naam} {uc.toFixed(2)}
+      {extra ? ` (${extra})` : ""}
+    </span>
+  );
+}
+
+/**
  * Eén bron van waarheid voor de invoer-defaults. Wordt zowel gebruikt om de
  * controls te tonen (via num()) als om de gedeelde store te seeden, zodat de
  * evaluator (rekensheet) en de designer nooit op verschillende defaults
@@ -74,7 +111,7 @@ const DEFAULTS: Record<string, number> = {
   profiel: 10, sterkteklasse: 2, duurklasse: 2, klimaat: 1,
   L_d: 5000, a_opl: 50, hoh: 450, t_vloer: 25,
   E_beschot: 7000, b_vloer: 5,
-  g_k: 1.5, q_k: 1.0, Q_k: 2, belastingcat: 2,
+  G_k: 1.5, Q_k: 1.0, F_k: 2, belastingcat: 2,
   "ψ_0_zelf": 0.5, "ψ_2_zelf": 0.3, controleer: 1, grensfactor: 0.004,
   controleer_trilling: 1, "ζ": 0.01, a_tril: 1.0, b_tril: 120,
 };
@@ -160,9 +197,9 @@ export default function BalklaagDesigner() {
   const tVloer = d("t_vloer");
   const eBeschot = d("E_beschot");
   const bVloer = d("b_vloer");
-  const gk = d("g_k");
-  const qk = d("q_k");
-  const Qk = d("Q_k");
+  const gk = d("G_k");
+  const qk = d("Q_k");
+  const Qk = d("F_k");
   const cat = Math.round(d("belastingcat"));
   const tril = Math.round(d("controleer_trilling"));
   const zeta = d("ζ");
@@ -318,9 +355,14 @@ export default function BalklaagDesigner() {
               {Object.entries(MATS).map(([id, mm]) => <option key={id} value={id}>{mm.name}</option>)}
             </select>
           </label>
-          <label>Klimaatklasse
-            <select value={klim} onChange={(e) => setVal("klimaat", parseInt(e.target.value))}>
-              {KLIM.map((k) => <option key={k.v} value={k.v}>{k.label}</option>)}
+          <label title={KLIM.map((k) => k.uitleg).join("\n\n")}>
+            <span className="vd-help">Klimaatklasse</span>
+            <select
+              value={klim}
+              title={(KLIM.find((k) => k.v === klim) ?? KLIM[0]).uitleg}
+              onChange={(e) => setVal("klimaat", parseInt(e.target.value))}
+            >
+              {KLIM.map((k) => <option key={k.v} value={k.v} title={k.uitleg}>{k.label}</option>)}
             </select>
           </label>
           <label>Belastingduurklasse
@@ -330,14 +372,14 @@ export default function BalklaagDesigner() {
           </label>
 
           <span className="vd-ctrl-h">Belasting</span>
-          <label>g<sub>k</sub> (kN/m²)
-            <input type="number" step={0.1} value={gk} onChange={(e) => setVal("g_k", parseFloat(e.target.value))} />
+          <label>G<sub>k</sub> (kN/m²)
+            <input type="number" step={0.1} value={gk} onChange={(e) => setVal("G_k", parseFloat(e.target.value))} />
           </label>
-          <label>q<sub>k</sub> (kN/m²)
-            <input type="number" step={0.5} value={qk} onChange={(e) => setVal("q_k", parseFloat(e.target.value))} />
+          <label>Q<sub>k</sub> (kN/m²)
+            <input type="number" step={0.5} value={qk} onChange={(e) => setVal("Q_k", parseFloat(e.target.value))} />
           </label>
-          <label>Q<sub>k</sub> (kN)
-            <input type="number" step={0.5} value={Qk} onChange={(e) => setVal("Q_k", parseFloat(e.target.value))} />
+          <label>F<sub>k</sub> (kN)
+            <input type="number" step={0.5} value={Qk} onChange={(e) => setVal("F_k", parseFloat(e.target.value))} />
           </label>
           <label>Categorie (Tabel NB.2 — A1.1)
             <select value={cat} onChange={(e) => {
@@ -495,11 +537,12 @@ export default function BalklaagDesigner() {
       <div className="vd-foot">
         <span>Klik op een blauwe maat om die te wijzigen — stroomt direct terug in de rekensheet.</span>
         <span className="vd-live">
-          {controleer === 1 ? `doorbuiging ${ucDoor.toFixed(2)} · ` : "doorbuiging n.v.t. · "}
-          buiging {ucBuig.toFixed(2)} · afschuiving {ucAfsch.toFixed(2)}
+          {controleer === 1 ? <UcChip naam="doorbuiging" uc={ucDoor} /> : <span className="vd-uc-nvt">doorbuiging n.v.t.</span>}
+          <UcChip naam="buiging" uc={ucBuig} />
+          <UcChip naam="afschuiving" uc={ucAfsch} />
           {tril === 1
-            ? ` · trilling ${ucTril.toFixed(2)} (f₁ = ${f1.toFixed(1)} Hz)`
-            : " · trilling n.v.t."}
+            ? <UcChip naam="trilling" uc={ucTril} extra={`f₁ = ${f1.toFixed(1)} Hz`} />
+            : <span className="vd-uc-nvt">trilling n.v.t.</span>}
         </span>
       </div>
     </div>

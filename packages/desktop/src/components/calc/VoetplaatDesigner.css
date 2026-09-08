@@ -426,3 +426,40 @@
   font-size: 11px;
   color: var(--theme-text-secondary, var(--theme-text-muted, #6b7280));
 }
+
+/* ── Unity checks in de voetregel ─────────────────────────────────── */
+
+.vd-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.vd-uc-chip {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Ruim binnen de grens. */
+.vd-uc-chip.ok { color: #047857; background: #d1fae5; }
+/* Tussen 0,90 en 1,00 — voldoet, maar er zit geen marge meer in. */
+.vd-uc-chip.warn { color: #b45309; background: #fef3c7; }
+/* Boven 1,00 — voldoet niet. */
+.vd-uc-chip.bad { color: #b91c1c; background: #fee2e2; }
+
+.vd-uc-nvt {
+  font-size: 11px;
+  color: var(--theme-text-muted, #9ca3af);
+  font-style: italic;
+}
+
+/* Label met uitleg achter een tooltip — de stippellijn maakt zichtbaar dat
+ * er iets te lezen valt, anders vindt niemand hem. */
+.vd-help {
+  border-bottom: 1px dotted var(--theme-text-muted, #9ca3af);
+  cursor: help;
+}
