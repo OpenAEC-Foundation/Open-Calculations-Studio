@@ -125,6 +125,7 @@ export function Dim(props: {
     <div className="vd-dim" style={{ left: x, top: y }}>
       {isEd ? (
         <input className="vd-dim-input" type="number" step={step} defaultValue={value} autoFocus
+            onFocus={(e) => e.currentTarget.select()}
           onBlur={(e) => commit(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") commit((e.target as HTMLInputElement).value);
@@ -157,6 +158,7 @@ export function Force(props: {
     <div className="vd-force" style={{ left: x, top: y }}>
       {isEd ? (
         <input className="vd-dim-input" type="number" step={step} defaultValue={value} autoFocus
+            onFocus={(e) => e.currentTarget.select()}
           onBlur={(e) => commit(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") commit((e.target as HTMLInputElement).value);
@@ -304,5 +306,41 @@ export function Kop({ titel, badge, staat }: { titel: string; badge: ReactNode; 
       <strong>{titel}</strong>
       <span className={`vd-uc ${staat ?? "info"}`}>{badge}</span>
     </div>
+  );
+}
+
+/**
+ * Ja/nee-schakelaar voor de invoerkolom.
+ *
+ * Vervangt een keuzelijst met twee opties: die vraagt drie handelingen
+ * (openklappen, kiezen, sluiten) waar één klik volstaat, en de stand is op
+ * afstand niet af te lezen. De schakelaar toont de stand als vorm en kleur,
+ * dus ook zonder de tekst te lezen.
+ */
+export function JaNee({
+  label,
+  waarde,
+  onChange,
+}: {
+  label: ReactNode;
+  waarde: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="vd-toggle-row">
+      <span className="vd-toggle-label">{label}</span>
+      <span className="vd-toggle-veld">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={waarde}
+          className={`vd-toggle${waarde ? " aan" : ""}`}
+          onClick={() => onChange(!waarde)}
+        >
+          <span className="vd-toggle-knop" />
+        </button>
+        <span className="vd-toggle-stand">{waarde ? "Ja" : "Nee"}</span>
+      </span>
+    </label>
   );
 }

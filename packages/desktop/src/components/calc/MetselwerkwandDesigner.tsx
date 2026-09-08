@@ -258,6 +258,7 @@ export default function MetselwerkwandDesigner() {
       <div className="vd-dim" style={{ left: x, top: y }}>
         {isEd ? (
           <input className="vd-dim-input" type="number" step={step} defaultValue={value} autoFocus
+            onFocus={(e) => e.currentTarget.select()}
             onBlur={(e) => { setVal(name, parseFloat(e.target.value)); setEditing(null); }}
             onKeyDown={(e) => {
               if (e.key === "Enter") { setVal(name, parseFloat((e.target as HTMLInputElement).value)); setEditing(null); }
@@ -278,6 +279,7 @@ export default function MetselwerkwandDesigner() {
       <div className="vd-force" style={{ left: x, top: y }}>
         {isEd ? (
           <input className="vd-dim-input" type="number" step={step} defaultValue={value} autoFocus
+            onFocus={(e) => e.currentTarget.select()}
             onBlur={(e) => { setVal(name, parseFloat(e.target.value)); setEditing(null); }}
             onKeyDown={(e) => {
               if (e.key === "Enter") { setVal(name, parseFloat((e.target as HTMLInputElement).value)); setEditing(null); }
