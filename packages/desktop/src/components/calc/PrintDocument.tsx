@@ -19,7 +19,7 @@ function zorgVoorKernstijlen() {
 }
 
 /** Eén rekenblad in de uitdraai: het parametrische beeld, dan de uitwerking. */
-function PrintBlad({ ex, html, nummer }: { ex: Exemplaar; html: string; nummer: number }) {
+export function PrintBlad({ ex, html, nummer }: { ex: Exemplaar; html: string; nummer: number }) {
   // Het beeld tekent zichzelf uit de waarden van dít exemplaar, niet uit het
   // blad dat toevallig openstaat. `alleenLezen` houdt tegen dat het afdrukken
   // standaardwaarden aanvult of iets anders aan het project verandert.
@@ -42,15 +42,23 @@ function PrintBlad({ ex, html, nummer }: { ex: Exemplaar; html: string; nummer: 
   );
 }
 
+/** Wat er op het voorblad en in de uitdraai staat. */
+export interface Uitdraai {
+  projectNaam: string;
+  bladen: { ex: Exemplaar; html: string }[];
+  /** De ingevulde projectgegevens, als label/waarde-paren. */
+  kopregels: [string, string][];
+  datum: string;
+  onderdeel: string | undefined;
+  projectNummer: string | undefined;
+}
+
 /**
- * Het hele project als één afdrukbaar document.
- *
- * Waarom via de browser en niet via de rapportengine: die levert alleen
- * rekentabellen — geen koppen, geen proza, geen variabelenamen en geen
- * tekeningen (zie docs/backlog.md, punt 4). Hier printen we exact wat de
- * uitwerking toont, plus het parametrische beeld dat de app zelf tekent.
+ * Bouwt het hele project één keer door en levert alles wat een uitdraai nodig
+ * heeft. Zowel de afdruk als het afdrukvoorbeeld in de app gebruiken deze
+ * hook, zodat er maar één opbouw bestaat en de twee niet uiteen kunnen lopen.
  */
-export default function PrintDocument() {
+export function useUitdraai(): Uitdraai {
   const projectNaam = useProjectStore((s) => s.projectNaam);
   const gegevens = useProjectStore((s) => s.gegevens);
   const exemplaren = useProjectStore((s) => s.exemplaren);
@@ -98,48 +106,72 @@ export default function PrintDocument() {
         : "de referentie-uitwerking gevolgd op de gemarkeerde punten",
     ],
   ];
-  const ingevuld = kop.filter(([, waarde]) => !!waarde);
-  const datum = new Date().toLocaleDateString("nl-NL", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+
+  return {
+    projectNaam,
+    bladen,
+    kopregels: kop.filter((r): r is [string, string] => !!r[1]),
+    datum: new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }),
+    onderdeel: gegevens.onderdeel,
+    projectNummer: gegevens.project_nummer,
+  };
+}
+
+/** Het voorblad: projectgegevens plus de inhoudsopgave. */
+export function PrintVoorblad({ uitdraai }: { uitdraai: Uitdraai }) {
+  const { projectNaam, kopregels, bladen, datum } = uitdraai;
+  return (
+    <section className="print-voorblad">
+      <p className="print-soort">Constructieve berekening</p>
+      <h1>{projectNaam || "Berekening"}</h1>
+      {kopregels.length > 0 && (
+        <table>
+          <tbody>
+            {kopregels.map(([label, waarde]) => (
+              <tr key={label}>
+                <th>{label}</th>
+                <td>{waarde}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <p className="print-inhoud-kop">Inhoud</p>
+      <ol className="print-inhoud">
+        {bladen.map(({ ex }) => (
+          <li key={ex.id}>{ex.naam}</li>
+        ))}
+      </ol>
+      <p className="print-datum">{datum}</p>
+    </section>
+  );
+}
+
+/**
+ * Het hele project als één afdrukbaar document.
+ *
+ * Waarom via de browser en niet via de rapportengine: die levert alleen
+ * rekentabellen — geen koppen, geen proza, geen variabelenamen en geen
+ * tekeningen (zie docs/backlog.md, punt 4). Hier printen we exact wat de
+ * uitwerking toont, plus het parametrische beeld dat de app zelf tekent.
+ */
+export default function PrintDocument() {
+  const uitdraai = useUitdraai();
+  const { projectNaam, bladen, datum, onderdeel, projectNummer } = uitdraai;
 
   return (
-    <div className="print-root" aria-hidden="true">
+    <div className="print-root print-opmaak" aria-hidden="true">
       {/* Loopt op elke pagina mee: vaste elementen herhaalt de browser bij het printen. */}
       <div className="print-loopkop">
-        <span>{gegevens.project_nummer ? `${gegevens.project_nummer} · ` : ""}{projectNaam}</span>
-        <span>{gegevens.onderdeel}</span>
+        <span>{projectNummer ? `${projectNummer} · ` : ""}{projectNaam}</span>
+        <span>{onderdeel}</span>
       </div>
       <div className="print-loopvoet">
         <span>Open Calculations Studio</span>
         <span>{datum}</span>
       </div>
 
-      <section className="print-voorblad">
-        <p className="print-soort">Constructieve berekening</p>
-        <h1>{projectNaam || "Berekening"}</h1>
-        {ingevuld.length > 0 && (
-          <table>
-            <tbody>
-              {ingevuld.map(([label, waarde]) => (
-                <tr key={label}>
-                  <th>{label}</th>
-                  <td>{waarde}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <p className="print-inhoud-kop">Inhoud</p>
-        <ol className="print-inhoud">
-          {bladen.map(({ ex }) => (
-            <li key={ex.id}>{ex.naam}</li>
-          ))}
-        </ol>
-        <p className="print-datum">{datum}</p>
-      </section>
+      <PrintVoorblad uitdraai={uitdraai} />
 
       {bladen.map(({ ex, html }, i) => (
         <PrintBlad key={ex.id} ex={ex} html={html} nummer={i + 1} />

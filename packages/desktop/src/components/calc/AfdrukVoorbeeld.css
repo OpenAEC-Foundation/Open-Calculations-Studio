@@ -1,0 +1,184 @@
+/*
+ * Afdrukvoorbeeld als paneel in de applicatie: losse A4-vellen onder elkaar,
+ * met de app-schil (lint, projectboom, statusbalk) gewoon in beeld.
+ */
+
+.av-paneel {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  background: var(--theme-bg-canvas, #f1f3f5);
+}
+
+/* ─── Werkbalk ────────────────────────────────────────────────── */
+
+.av-balk {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--theme-border-subtle, #d5d9de);
+  background: var(--theme-bg-surface, #fff);
+  font-size: 12px;
+}
+
+.av-balk .av-titel {
+  font-weight: 600;
+}
+
+.av-balk .av-tel {
+  color: var(--theme-text-muted, #6b7280);
+}
+
+.av-balk .av-rek {
+  flex: 1;
+}
+
+.av-balk button {
+  padding: 3px 10px;
+  font: inherit;
+  color: var(--theme-text, #1f2328);
+  background: var(--theme-bg-surface, #fff);
+  border: 1px solid var(--theme-border-subtle, #d5d9de);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.av-balk button:hover {
+  background: var(--theme-surface-hover, #f3f4f6);
+}
+
+.av-balk button.av-primair {
+  color: #fff;
+  background: var(--theme-accent, #d97706);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.av-zoom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.av-zoom select {
+  padding: 2px 4px;
+  font: inherit;
+  border: 1px solid var(--theme-border-subtle, #d5d9de);
+  border-radius: 4px;
+  background: var(--theme-bg-surface, #fff);
+  color: inherit;
+}
+
+/* ─── De vellen ───────────────────────────────────────────────── */
+
+.av-vellen {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 0 32px;
+}
+
+/* `zoom` in plaats van `transform: scale()`: dit is een Chromium-webview, en
+   zoom rekent de schuifbalken en de scrollhoogte vanzelf goed door. Met een
+   transform zou het vel wel kleiner ogen maar evenveel ruimte blijven
+   innemen, met een halve pagina witruimte eronder. */
+.av-vellen-binnen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.av-pagina {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  flex: none;
+  background: #fff;
+  color: #000;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 6px 16px rgba(0, 0, 0, 0.12);
+  /* Wat niet op het vel past, valt eraf — net als op papier. Zonder deze regel
+     lekt een te grote tekening over de rand en lijkt hij te passen. */
+  overflow: hidden;
+}
+
+.av-pagina-inhoud {
+  position: absolute;
+  top: 24mm;
+  left: 16mm;
+  width: 178mm;
+  height: 253mm;
+  overflow: hidden;
+  font-family: var(--font-body, "Inter", system-ui, sans-serif);
+  font-size: 10.5pt;
+  line-height: 1.45;
+}
+
+.av-loopkop,
+.av-loopvoet {
+  position: absolute;
+  left: 16mm;
+  right: 16mm;
+  display: flex;
+  justify-content: space-between;
+  font-size: 8pt;
+  color: #555;
+}
+
+.av-loopkop {
+  top: 13mm;
+  padding-bottom: 3pt;
+  border-bottom: 0.5pt solid #bbb;
+}
+
+.av-loopvoet {
+  bottom: 11mm;
+  padding-top: 3pt;
+  border-top: 0.5pt solid #bbb;
+}
+
+/* Vel plus bijschrift. Het nummer staat bewust búiten het papier: het hoort
+   bij de weergave, niet bij de afdruk. */
+.av-vel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+}
+
+.av-nummer {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--theme-text-muted, #6b7280);
+}
+
+/* ─── De verborgen meetopstelling ─────────────────────────────── */
+
+/*
+ * De uitdraai wordt eerst op ware breedte opgebouwd om hem te kunnen meten.
+ * Niet met `display: none`: de parametrische beelden meten hun tekengebied met
+ * een ResizeObserver, en die geeft dan nul terug — de tekeningen zouden leeg
+ * blijven. Daarom wegzetten in plaats van verbergen.
+ */
+.av-meet {
+  position: absolute;
+  left: -20000px;
+  top: 0;
+  width: 178mm;
+  font-family: var(--font-body, "Inter", system-ui, sans-serif);
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: #000;
+  background: #fff;
+}
+
+.av-leeg {
+  margin: 40px auto;
+  max-width: 380px;
+  text-align: center;
+  color: var(--theme-text-muted, #6b7280);
+  font-size: 13px;
+}
