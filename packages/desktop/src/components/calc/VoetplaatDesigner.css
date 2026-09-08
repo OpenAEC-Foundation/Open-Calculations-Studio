@@ -313,6 +313,42 @@
 .vd-dimext { stroke: #2563eb; stroke-width: 1; }
 .vd-dimmeasure { stroke: #2563eb; stroke-width: 1; }
 .vd-dimarrow { fill: #2563eb; stroke: #2563eb; stroke-width: 0.8; }
+/* Kleurverklaring onder een tekening: een streepje in de kleur van de lijn,
+   met de bijbehorende grootheid ernaast. */
+.vd-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  gap: 2px 14px;
+  /* De breedte komt inline mee van de tekening ernaast. Zonder die maat groeit
+     een flexregel tot zijn max-content breedte, en omdat de ouder zijn kinderen
+     alleen centreert (niet begrenst) rekt die dan mee — waarna de tekeningkolom
+     horizontaal afklemt en het laatste woord wegvalt. */
+  box-sizing: border-box;
+  min-height: 30px;
+  padding: 2px 4px 0;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--theme-text-secondary, #475569);
+}
+
+.vd-legenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+/* Het streepje is een rand, geen achtergrond: browsers drukken achtergronden
+   standaard niet af (`print-color-adjust: economy`), en dan valt juist de kleur
+   weg die de verklaring moet dragen. Randen gaan altijd mee. */
+.vd-legenda i {
+  flex: none;
+  width: 14px;
+  border-top: 3px solid currentColor;
+}
+
 .vd-dim-ro {
   position: absolute;
   transform: translate(-50%, -50%);

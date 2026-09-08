@@ -311,17 +311,30 @@ sy = 96', hoogte van de balk-as
 smid = (sx1 + sx2)/2
 #show
 '<svg viewbox="0 0 480 190" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:210px;">
-'  <!-- verdeelde last: pijlen naar beneden op de balk -->
+'  <!-- veranderlijke verdeelde last: eigen band met eigen basislijn -->
+#if q_q,k > 0 kN/m
+    #for i = 0 : 12
+    '  <line x1="'sx1 + i*30'" y1="'sy - 76'" x2="'sx1 + i*30'" y2="'sy - 62'" style="stroke:#B45309; stroke-width:0.9"/>
+    '  <polygon points="'sx1 + i*30','sy - 58' 'sx1 + i*30 - 3.5','sy - 66' 'sx1 + i*30 + 3.5','sy - 66'" style="fill:#B45309"/>
+    #loop
+    '  <line x1="'sx1'" y1="'sy - 76'" x2="'sx2'" y2="'sy - 76'" style="stroke:#B45309; stroke-width:1"/>
+    '  <text x="'sx1 + 60'" y="'sy - 80'" style="fill:#B45309; font-weight:700">q<tspan baseline-shift="sub" font-size="8">q,k</tspan> = 'q_q,k' kN/m</text>
+#end if
+'  <!-- permanente verdeelde last: band direct op de balk -->
 #for i = 0 : 12
-'  <line x1="'sx1 + i*30'" y1="'sy - 46'" x2="'sx1 + i*30'" y2="'sy - 8'" style="stroke:#B45309; stroke-width:0.9"/>
-'  <polygon points="'sx1 + i*30','sy - 4' 'sx1 + i*30 - 3.5','sy - 12' 'sx1 + i*30 + 3.5','sy - 12'" style="fill:#B45309"/>
+'  <line x1="'sx1 + i*30'" y1="'sy - 46'" x2="'sx1 + i*30'" y2="'sy - 8'" style="stroke:#475569; stroke-width:0.9"/>
+'  <polygon points="'sx1 + i*30','sy - 4' 'sx1 + i*30 - 3.5','sy - 12' 'sx1 + i*30 + 3.5','sy - 12'" style="fill:#475569"/>
 #loop
-'  <line x1="'sx1'" y1="'sy - 46'" x2="'sx2'" y2="'sy - 46'" style="stroke:#B45309; stroke-width:1"/>
-'  <text x="'smid'" y="'sy - 52'" text-anchor="middle" style="fill:#B45309; font-weight:700">q = 'P_g,k + q_q,k'</text>
-'  <!-- geconcentreerde last in het midden -->
-'  <line x1="'smid'" y1="'sy - 76'" x2="'smid'" y2="'sy - 50'" style="stroke:#B91C1C; stroke-width:1.4"/>
-'  <polygon points="'smid','sy - 47' 'smid - 5','sy - 58' 'smid + 5','sy - 58'" style="fill:#B91C1C"/>
-'  <text x="'smid + 8'" y="'sy - 66'" style="fill:#B91C1C; font-weight:700">F = 'F_Q,k'</text>
+'  <line x1="'sx1'" y1="'sy - 46'" x2="'sx2'" y2="'sy - 46'" style="stroke:#475569; stroke-width:1"/>
+'  <text x="'sx1 + 60'" y="'sy - 50'" style="fill:#475569; font-weight:700">P<tspan baseline-shift="sub" font-size="8">g,k</tspan> = 'P_g,k' kN/m</text>
+'  <!-- geconcentreerde veranderlijke last in het midden; de witte onderlaag houdt
+'       hem leesbaar waar hij door de twee lastbanden heen zakt -->
+#if F_Q,k > 0 kN
+    '  <line x1="'smid'" y1="'sy - 92'" x2="'smid'" y2="'sy - 12'" style="stroke:#ffffff; stroke-width:4"/>
+    '  <line x1="'smid'" y1="'sy - 92'" x2="'smid'" y2="'sy - 12'" style="stroke:#B91C1C; stroke-width:1.4"/>
+    '  <polygon points="'smid','sy - 7' 'smid - 5','sy - 18' 'smid + 5','sy - 18'" style="fill:#B91C1C"/>
+    '  <text x="'smid + 8'" y="'sy - 84'" style="fill:#B91C1C; font-weight:700">F<tspan baseline-shift="sub" font-size="8">Q,k</tspan> = 'F_Q,k' kN</text>
+#end if
 '  <!-- de balk -->
 '  <rect x="'sx1'" y="'sy - 6'" width="'sx2 - sx1'" height="12" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:0.9"/>
 '  <!-- opleggingen: driehoek links (scharnier), rol rechts -->
@@ -337,6 +350,11 @@ smid = (sx1 + sx2)/2
 '  <circle cx="'sx2'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
 '  <text x="'smid'" y="'sy + 48'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">L<tspan baseline-shift="sub" font-size="8">th</tspan> = 'L_th'</text>
 '</svg>'
+'<span style="display:inline-block; width:14px; border-top:3px solid #475569; vertical-align:middle"></span>&nbsp;permanent &nbsp;&nbsp; <span style="display:inline-block; width:14px; border-top:3px solid #B45309; vertical-align:middle"></span>&nbsp;veranderlijk, verdeeld &nbsp;&nbsp; <span style="display:inline-block; width:14px; border-top:3px solid #B91C1C; vertical-align:middle"></span>&nbsp;veranderlijk, geconcentreerd
+
+'<i>Permanent en veranderlijk staan apart omdat ze met verschillende partiële
+'factoren de UGT-combinatie in gaan (1,20 tegen 1,50) en in de BGT-combinaties
+'elk hun eigen ψ-factor krijgen.</i>'
 
 # 9. Toetsing BGT — doorbuiging (§7.2)
 
