@@ -106,32 +106,71 @@
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--theme-text-muted, #6b7280);
-  margin-top: 8px;
-  border-bottom: 1px solid var(--theme-border-subtle, #e5e7eb);
-  padding-bottom: 2px;
+  letter-spacing: 0.06em;
+  color: var(--theme-accent, #d97706);
+  margin-top: 14px;
+  border-bottom: 1.5px solid var(--theme-accent, #d97706);
+  padding-bottom: 3px;
 }
 .vd-ctrl-h:first-child { margin-top: 0; }
 
 /* compacte invoer — label links, smal veld rechts (referentie-look) */
-.vd-compact { width: 258px; gap: 3px; }
+.vd-compact { width: 268px; gap: 0; }
+/* Twee vaste kolommen in plaats van space-between: een label met opmaak
+ * (g<sub>k</sub>, eenheid tussen haakjes) bestaat uit meerdere inline-stukken,
+ * en space-between duwde die uit elkaar — "g    k    (kN/m²)". Met een grid
+ * blijft de tekst één geheel en staan alle velden op dezelfde lijn. */
+/* Let op met grid of space-between: een label als "g<sub>k</sub> (kN/m²)"
+ * bestaat uit drie losse kinderen (tekst, <sub>, tekst). Grid maakt van elk
+ * een cel — dan valt het label over twee rijen; space-between duwt ze uit
+ * elkaar. Daarom flex zonder gap, en alleen het invoerveld met een auto-marge
+ * naar rechts: de tekstdelen blijven tegen elkaar staan. */
 .vd-compact label {
+  display: flex;
   flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 0;
   font-size: 11px;
-  line-height: 1.15;
+  line-height: 1.3;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--theme-border-subtle, rgba(0, 0, 0, 0.05));
+}
+.vd-compact label:last-child {
+  border-bottom: none;
 }
 .vd-compact label > select,
 .vd-compact label > input {
-  width: 94px;
-  flex: 0 0 auto;
-  font-size: 11px;
-  padding: 2px 4px;
+  margin-left: auto;
+  flex: 0 0 96px;
+  width: 96px;
+  font-size: 11.5px;
+  padding: 4px 6px;
 }
-.vd-compact .vd-ctrl-h { margin-top: 6px; }
+.vd-compact label > select:focus,
+.vd-compact label > input:focus {
+  outline: none;
+  border-color: var(--theme-accent, #d97706);
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.15);
+}
+/* De ja/nee-schakelaar deelt de tweede kolom met de invoervelden, zodat
+ * schakelaars en velden op dezelfde lijn beginnen. */
+.vd-compact .vd-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  font-size: 11px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--theme-border-subtle, rgba(0, 0, 0, 0.05));
+}
+.vd-compact .vd-toggle-veld {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex: 0 0 96px;
+}
+.vd-compact .vd-ctrl-h { margin-top: 12px; margin-bottom: 2px; }
 
 /* belasting-tabjes (referentie-look) */
 .gd-tabs { display: flex; gap: 2px; margin-top: 4px; }
@@ -325,3 +364,65 @@
   color: var(--text-muted, #6b7280);
 }
 .vd-live { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text, #374151); }
+
+/* ── Ja/nee-schakelaar in de invoerkolom ──────────────────────────── */
+
+.vd-toggle-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.vd-toggle-label {
+  min-width: 0;
+}
+
+.vd-toggle {
+  position: relative;
+  width: 34px;
+  height: 19px;
+  padding: 0;
+  flex: none;
+  border: 1px solid var(--theme-border-subtle, #c7cbd1);
+  border-radius: 999px;
+  background: var(--theme-bg-surface, #e5e7eb);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.vd-toggle:hover {
+  border-color: var(--theme-accent, #d97706);
+}
+
+.vd-toggle.aan {
+  background: var(--theme-accent, #d97706);
+  border-color: var(--theme-accent, #d97706);
+}
+
+.vd-toggle-knop {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.vd-toggle.aan .vd-toggle-knop {
+  transform: translateX(15px);
+}
+
+.vd-toggle:focus-visible {
+  outline: 2px solid var(--theme-accent, #d97706);
+  outline-offset: 2px;
+}
+
+.vd-toggle-stand {
+  min-width: 24px;
+  font-size: 11px;
+  color: var(--theme-text-secondary, var(--theme-text-muted, #6b7280));
+}

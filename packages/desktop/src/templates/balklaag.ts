@@ -113,8 +113,8 @@ f_v,d
 L_d = ?*(mm)', dagmaat (vrije overspanning)'
 a_opl = ?*(mm)', opleglengte per zijde'
 hoh = ?*(mm)', hart-op-hart afstand van de balken'
-t_vloer = ?*(mm)', dikte vloerhout (vloerplaat)'
-E_beschot = ?*(N/mm^2)', E-modulus vloerhout/beschot (E_0,ser,rep)'
+t_vloer = ?*(mm)', dikte beschot'
+E_beschot = ?*(N/mm^2)', E-modulus beschot (E_0,ser,rep)'
 b_vloer = ?*(m)', breedte van het vloerveld — nodig voor de trillingstoets'
 
 L_th = L_d + a_opl', theoretische overspanning (= L_d + 2·a_opl/2)'
@@ -133,17 +133,36 @@ g_k = ?*(kN/m^2)', permanente vloerbelasting'
 q_k = ?*(kN/m^2)', veranderlijke vloerbelasting'
 Q_k = ?*(kN)', geconcentreerde last'
 
-@select belastingcat "Belastingcategorie (ψ-waarden)"
-  Vloer (woning/kantoor) = 2
-  Dak = 1
-  Zelf invullen = 3
+@select belastingcat "Belastingcategorie (Tabel NB.2 — A1.1)"
+  A — woon- en verblijfsruimtes = 1
+  B — kantoorruimtes = 2
+  C — bijeenkomstruimtes = 3
+  D — winkelruimtes = 4
+  E — opslagruimtes = 5
+  F — verkeersruimte, voertuig ≤ 25 kN = 6
+  G — verkeersruimte, 25 < voertuig ≤ 160 kN = 7
+  H — daken = 8
+  Sneeuwbelasting = 9
+  Windbelasting = 10
+  Zelf invullen = 11
 @end
 
 ψ_0_zelf = ?', ψ0 — alleen bij "zelf invullen"'
 ψ_2_zelf = ?', ψ2 — alleen bij "zelf invullen"'
-ψ_0 = if(belastingcat ≡ 1; 0; if(belastingcat ≡ 2; 0.5; ψ_0_zelf))
-ψ_2 = if(belastingcat ≡ 1; 0; if(belastingcat ≡ 2; 0.3; ψ_2_zelf))
+
+#hide
+'ψ-factoren uit NEN-EN 1990 Tabel NB.2 — A1.1. Dezelfde waarden als het
+'normblad "EN 1990 — Rekenwaarden" in de bibliotheek; één bron, zodat de
+'twee niet uit elkaar kunnen lopen.
+'   [categorie | ψ_0 | ψ_1 | ψ_2]
+ψ_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 |0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 |0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 |0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
+#show
+
+ψ_0 = if(belastingcat ≡ 11; ψ_0_zelf; hlookup(ψ_tabel; belastingcat; 1; 2))
+ψ_1 = if(belastingcat ≡ 11; ψ_0_zelf; hlookup(ψ_tabel; belastingcat; 1; 3))
+ψ_2 = if(belastingcat ≡ 11; ψ_2_zelf; hlookup(ψ_tabel; belastingcat; 1; 4))
 ψ_0
+ψ_1
 ψ_2
 
 q_k_eff = q_k', veranderlijke vloerbelasting'
@@ -198,9 +217,9 @@ u_q,k
 
 # 7. Belastingsgeval 3 — Geconcentreerde last
 
-'<i>Een puntlast verdeelt zich via het vloerhout over meerdere balken. De
+'<i>Een puntlast verdeelt zich via het beschot over meerdere balken. De
 'concentratiefactor k<sub>r</sub> bepaalt het deel dat op één balk komt
-'(NEN-EN 1995-1-1 NB). Stijver vloerhout (dikker) → kleinere k<sub>r</sub>.</i>
+'(NEN-EN 1995-1-1 NB). Stijver beschot (dikker) → kleinere k<sub>r</sub>.</i>
 
 #hide
 a_ref = 1000 mm
@@ -234,8 +253,8 @@ gap = 96', pixelafstand tussen balken (representatief)
 bw = 30', balkbreedte in pixels
 bh = 70', balkhoogte in pixels
 x0 = (svgW - (n_balk - 1)*gap - bw)/2
-vy = 60', bovenkant vloerhout
-vt = 16', dikte vloerhout in pixels
+vy = 60', bovenkant beschot
+vt = 16', dikte beschot in pixels
 by = vy + vt', bovenkant balken
 #show
 '<svg viewbox="0 0 480 220" xmlns="http://www.w3.org/2000/svg" style="font-size:12px; width:100%; max-height:240px;">
@@ -247,14 +266,65 @@ by = vy + vt', bovenkant balken
 '  <polygon points="'x0 + bw/2','by + bh + 12' 'x0 + bw/2 + 6','by + bh + 16' 'x0 + bw/2','by + bh + 20'" style="fill:#1E40AF"/>
 '  <polygon points="'x0 + gap + bw/2','by + bh + 12' 'x0 + gap + bw/2 - 6','by + bh + 16' 'x0 + gap + bw/2','by + bh + 20'" style="fill:#1E40AF"/>
 '  <text x="'x0 + gap/2 + bw/2'" y="'by + bh + 12'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">hoh = 'hoh'</text>
-'  <text x="30" y="'vy - 6'" style="fill:#8B6F47">vloerhout t = 't_vloer'</text>
+'  <text x="30" y="'vy - 6'" style="fill:#8B6F47">beschot t = 't_vloer'</text>
 '  <text x="'x0 - 4'" y="'by + bh/2'" text-anchor="end" style="fill:#8B6F47">'b_balk' × 'h_balk'</text>
+'</svg>'
+
+# 8b. Statisch schema
+
+'<i>Eén balk, enkelvoudig opgelegd over L<sub>th</sub>, met de lijnlasten uit
+'§5 en §6 en de geconcentreerde last uit §7. De lasten hieronder zijn de
+'karakteristieke waarden per balk — de rekenwaarden voor de UGT volgen in §10.</i>
+
+#hide
+sw = 480', tekenbreedte
+sx1 = 60', linker oplegging
+sx2 = 420', rechter oplegging
+sy = 96', hoogte van de balk-as
+smid = (sx1 + sx2)/2
+#show
+'<svg viewbox="0 0 480 190" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:210px;">
+'  <!-- verdeelde last: pijlen naar beneden op de balk -->
+#for i = 0 : 12
+'  <line x1="'sx1 + i*30'" y1="'sy - 46'" x2="'sx1 + i*30'" y2="'sy - 8'" style="stroke:#B45309; stroke-width:1.2"/>
+'  <polygon points="'sx1 + i*30','sy - 4' 'sx1 + i*30 - 3.5','sy - 12' 'sx1 + i*30 + 3.5','sy - 12'" style="fill:#B45309"/>
+#loop
+'  <line x1="'sx1'" y1="'sy - 46'" x2="'sx2'" y2="'sy - 46'" style="stroke:#B45309; stroke-width:1.6"/>
+'  <text x="'smid'" y="'sy - 52'" text-anchor="middle" style="fill:#B45309; font-weight:700">q = 'P_g,k + q_q,k'</text>
+'  <!-- geconcentreerde last in het midden -->
+'  <line x1="'smid'" y1="'sy - 76'" x2="'smid'" y2="'sy - 50'" style="stroke:#B91C1C; stroke-width:2"/>
+'  <polygon points="'smid','sy - 47' 'smid - 5','sy - 58' 'smid + 5','sy - 58'" style="fill:#B91C1C"/>
+'  <text x="'smid + 8'" y="'sy - 66'" style="fill:#B91C1C; font-weight:700">F = 'F_Q,k'</text>
+'  <!-- de balk -->
+'  <rect x="'sx1'" y="'sy - 6'" width="'sx2 - sx1'" height="12" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:1.5"/>
+'  <!-- opleggingen: driehoek links (scharnier), rol rechts -->
+'  <polygon points="'sx1','sy + 6' 'sx1 - 11','sy + 26' 'sx1 + 11','sy + 26'" style="fill:none; stroke:#374151; stroke-width:1.5"/>
+'  <polygon points="'sx2','sy + 6' 'sx2 - 11','sy + 22' 'sx2 + 11','sy + 22'" style="fill:none; stroke:#374151; stroke-width:1.5"/>
+'  <circle cx="'sx2 - 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:1.5"/>
+'  <circle cx="'sx2 + 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:1.5"/>
+'  <line x1="'sx1 - 18'" y1="'sy + 27'" x2="'sx1 + 18'" y2="'sy + 27'" style="stroke:#374151; stroke-width:1.5"/>
+'  <line x1="'sx2 - 18'" y1="'sy + 31'" x2="'sx2 + 18'" y2="'sy + 31'" style="stroke:#374151; stroke-width:1.5"/>
+'  <!-- maatlijn L_th -->
+'  <line x1="'sx1'" y1="'sy + 52'" x2="'sx2'" y2="'sy + 52'" style="stroke:#1E40AF; stroke-width:1"/>
+'  <circle cx="'sx1'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
+'  <circle cx="'sx2'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
+'  <text x="'smid'" y="'sy + 48'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">L<tspan baseline-shift="sub" font-size="8">th</tspan> = 'L_th'</text>
 '</svg>'
 
 # 9. Toetsing BGT — doorbuiging (§7.2)
 
-'<i>Eindstand-doorbuiging incl. kruip: w<sub>fin</sub> = (1+k<sub>def</sub>)·u<sub>g</sub>
-'+ (1+ψ<sub>2</sub>·k<sub>def</sub>)·u<sub>var</sub>. Grens: 0,004·L (= L/250).</i>
+'<i>De BGT kent twee combinaties die hier meedoen (EN 1990 §6.5.3):
+'<ul>
+'<li><b>Karakteristiek (6.14b)</b> — G<sub>k</sub> "+" Q<sub>k,1</sub> "+" Σψ<sub>0,i</sub>·Q<sub>k,i</sub>.
+'Dit is de momentane doorbuiging w<sub>inst</sub>, zonder kruip: het doorzakken
+'dat je meteen na het aanbrengen van de belasting ziet.</li>
+'<li><b>Quasi-blijvend (6.16b)</b> — G<sub>k</sub> "+" Σψ<sub>2,i</sub>·Q<sub>k,i</sub>.
+'Dit is het deel dat langdurig aanwezig blijft en dus kruipt. Met de kruipfactor
+'k<sub>def</sub> (Tabel 3.2) volgt de eindstand w<sub>fin</sub>.</li>
+'</ul>
+'De eindstand combineert beide: w<sub>fin</sub> = (1+k<sub>def</sub>)·u<sub>g</sub>
+'+ (1+ψ<sub>2</sub>·k<sub>def</sub>)·u<sub>var</sub> — de permanente last kruipt
+'volledig, de veranderlijke alleen voor het quasi-blijvende deel ψ<sub>2</sub>.</i>
 
 @select controleer "Controleer doorbuiging"
   Ja = 1
@@ -272,6 +342,20 @@ by = vy + vt', bovenkant balken
     u_var_xc = u_q,k to mm', de referentie-uitwerking: alleen de gelijkmatig verdeelde variant'
     u_var_nb = max(u_q,k; u_Q,k) to mm', de norm: de maatgevende van de twee'
     u_var = if(rekenwijze ≡ 1; u_var_xc; u_var_nb) to mm', gehanteerd'
+    '<h6>9.1 Karakteristieke combinatie (6.14b) — momentane doorbuiging</h6>
+    'w<sub>inst</sub> = u<sub>g</sub> + u<sub>var</sub>, zonder kruip:
+    w_inst = u_g,k + u_var to mm
+    w_inst
+
+    '<h6>9.2 Quasi-blijvende combinatie (6.16b) — kruipdeel</h6>
+    'Alleen het deel dat langdurig blijft staan kruipt: de volledige permanente
+    'last plus ψ<sub>2</sub> maal de veranderlijke.
+    w_qp = u_g,k + ψ_2*u_var to mm', doorbuiging onder de quasi-blijvende combinatie'
+    w_qp
+    w_kruip = k_def*w_qp to mm', bijkomende doorbuiging door kruip'
+    w_kruip
+
+    '<h6>9.3 Eindstand (§7.2, formule 7.2)</h6>
     w_fin = (1 + k_def)*u_g,k + (1 + ψ_2*k_def)*u_var to mm
     w_lim = grensfactor*L_th
     w_fin
@@ -392,6 +476,37 @@ V_z,Ed = K_FI*max(V_zEd_1; V_zEd_2) to kN', incl. K_FI'
 M_y,Ed
 V_z,Ed
 
+'<h6>10.1b Momenten- en dwarskrachtenlijn (UGT)</h6>
+
+'<i>Bij een enkelvoudig opgelegde ligger onder een gelijkmatig verdeelde last
+'is de momentenlijn een parabool met het maximum in het midden, en de
+'dwarskrachtenlijn recht met de uitersten bij de opleggingen.</i>
+
+#hide
+mw = 480
+mx1 = 60
+mx2 = 420
+mmid = (mx1 + mx2)/2
+mh = 46', halve hoogte van elk diagram in pixels
+my = 60', as van de M-lijn
+vy2 = 168', as van de V-lijn
+#show
+'<svg viewbox="0 0 480 220" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:240px;">
+'  <!-- M-lijn: parabool onder de as (trek aan de onderzijde) -->
+'  <line x1="'mx1 - 10'" y1="'my'" x2="'mx2 + 10'" y2="'my'" style="stroke:#374151; stroke-width:1"/>
+'  <path d="M 'mx1' 'my' Q 'mmid' 'my + 2*mh' 'mx2' 'my'" style="fill:#DBEAFE; stroke:#1E40AF; stroke-width:1.6"/>
+'  <line x1="'mmid'" y1="'my'" x2="'mmid'" y2="'my + mh'" style="stroke:#1E40AF; stroke-width:1; stroke-dasharray:3 3"/>
+'  <text x="'mmid'" y="'my + mh + 15'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">M<tspan baseline-shift="sub" font-size="8">y,Ed</tspan> = 'M_y,Ed'</text>
+'  <text x="'mx1 - 10'" y="'my - 8'" style="fill:#374151; font-weight:700">M-lijn</text>
+'  <!-- V-lijn: recht, positief links, negatief rechts -->
+'  <line x1="'mx1 - 10'" y1="'vy2'" x2="'mx2 + 10'" y2="'vy2'" style="stroke:#374151; stroke-width:1"/>
+'  <polygon points="'mx1','vy2 - mh' 'mmid','vy2' 'mx1','vy2'" style="fill:#DCFCE7; stroke:#15803D; stroke-width:1.6"/>
+'  <polygon points="'mmid','vy2' 'mx2','vy2 + mh' 'mx2','vy2'" style="fill:#DCFCE7; stroke:#15803D; stroke-width:1.6"/>
+'  <text x="'mx1 + 4'" y="'vy2 - mh - 5'" style="fill:#15803D; font-weight:700">+V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan> = 'V_z,Ed'</text>
+'  <text x="'mx2 - 4'" y="'vy2 + mh + 13'" text-anchor="end" style="fill:#15803D; font-weight:700">−V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan></text>
+'  <text x="'mx1 - 10'" y="'vy2 - 8'" style="fill:#374151; font-weight:700">V-lijn</text>
+'</svg>'
+
 '<h6>10.2 Buiging — §6.1.6 (6.11)</h6>
 σ_m,y,d = M_y,Ed/W_y to N/mm^2
 σ_m,y,d
@@ -428,13 +543,13 @@ UC_max = max(UC_doorbuiging; UC_buiging; UC_afsch; UC_trilling)
 'g = 9,81 m/s². de referentie-uitwerking hanteert een vaste 550 kg/m³ met g = 10; resultaten
 'hier daardoor iets gunstiger.</li>
 '<li>Concentratiefactor k<sub>r</sub> geverifieerd op vier referentiebladen
-'(vloerhout 18 en 25 mm, hoh 600 en 1000, twee profielen).</li>
+'(beschot 18 en 25 mm, hoh 600 en 1000, twee profielen).</li>
 '<li>Hoogtefactor k<sub>h</sub> geverifieerd in beide takken: gelijmd
 'gelamineerd (GL24h, 221 mm → 1,10) en massief (71×146 → 1,005).</li>
 '<li>Afschuiving met volle balkbreedte b (geen k<sub>cr</sub>-reductie), conform
 'de referentie-uitwerking.</li>
 '<li>Trillingstoets (§7.3) en kip zijn niet opgenomen (vloerbalk zijdelings
-'gesteund door het vloerhout). Let op: bij overspanningen rond 5 m ligt f<sub>1</sub>
+'gesteund door het beschot). Let op: bij overspanningen rond 5 m ligt f<sub>1</sub>
 'onder de 8 Hz en is §7.3.3 wél van toepassing.</li>
 '<li>Oplegdruk (§6.1.5) wordt niet getoetst, net zomin als in de referentie-uitwerking. Op het
 'basisgeval is die u.c. 0,89 met k<sub>c,90</sub> = 1,25 — krap genoeg om apart

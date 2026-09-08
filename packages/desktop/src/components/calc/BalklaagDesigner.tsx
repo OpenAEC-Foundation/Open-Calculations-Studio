@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
 import { useProjectKFI, useProjectGetal, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { JaNee } from "./designerKit";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
- * Losstaand parametrisch beeld van een balklaag (doorsnede): vloerhout op
+ * Losstaand parametrisch beeld van een balklaag (doorsnede): beschot op
  * houten balken, hart-op-hart afstand. Leest/schrijft dezelfde invoer als de
  * rekensheet (balklaag.ts) via het exemplaar in de projectstore; de unity
  * checks lopen live
@@ -40,8 +41,23 @@ const DUUR: { v: number; label: string }[] = [
 const KLIM: { v: number; label: string }[] = [
   { v: 1, label: "Klasse 1" }, { v: 2, label: "Klasse 2" }, { v: 3, label: "Klasse 3" },
 ];
-const CAT: { v: number; label: string }[] = [
-  { v: 2, label: "Vloer (woning/kantoor)" }, { v: 1, label: "Dak" }, { v: 3, label: "Zelf invullen" },
+/**
+ * ψ-factoren uit NEN-EN 1990 Tabel NB.2 — A1.1, gelijk aan de tabel in
+ * `templates/balklaag.ts`. Beeld en rekensheet moeten dezelfde waarden
+ * gebruiken, anders wijst het paneel een andere UC aan dan de uitwerking.
+ */
+const CAT: { v: number; label: string; psi0: number; psi1: number; psi2: number }[] = [
+  { v: 1, label: "A — woon- en verblijfsruimtes", psi0: 0.4, psi1: 0.5, psi2: 0.3 },
+  { v: 2, label: "B — kantoorruimtes", psi0: 0.5, psi1: 0.5, psi2: 0.3 },
+  { v: 3, label: "C — bijeenkomstruimtes", psi0: 0.4, psi1: 0.7, psi2: 0.6 },
+  { v: 4, label: "D — winkelruimtes", psi0: 0.4, psi1: 0.7, psi2: 0.6 },
+  { v: 5, label: "E — opslagruimtes", psi0: 1.0, psi1: 0.9, psi2: 0.8 },
+  { v: 6, label: "F — verkeersruimte, voertuig ≤ 25 kN", psi0: 0.7, psi1: 0.7, psi2: 0.6 },
+  { v: 7, label: "G — verkeersruimte, 25 < voertuig ≤ 160 kN", psi0: 0.7, psi1: 0.5, psi2: 0.3 },
+  { v: 8, label: "H — daken", psi0: 0, psi1: 0, psi2: 0 },
+  { v: 9, label: "Sneeuwbelasting", psi0: 0, psi1: 0.2, psi2: 0 },
+  { v: 10, label: "Windbelasting", psi0: 0, psi1: 0.2, psi2: 0 },
+  { v: 11, label: "Zelf invullen", psi0: 0.5, psi1: 0.5, psi2: 0.3 },
 ];
 const GRENS: { v: number; label: string }[] = [
   { v: 0.004, label: "0,004 × L" }, { v: 0.003, label: "0,003 × L" }, { v: 0.002, label: "0,002 × L" },
@@ -154,7 +170,8 @@ export default function BalklaagDesigner() {
   const bTril = d("b_tril");
   const psi0zelf = d("ψ_0_zelf");
   const psi2zelf = d("ψ_2_zelf");
-  const psi2 = cat === 1 ? 0 : cat === 2 ? 0.3 : psi2zelf;
+  const catRij = CAT.find((c) => c.v === cat) ?? CAT[1];
+  const psi2 = cat === 11 ? psi2zelf : catRij.psi2;
   const controleer = Math.round(d("controleer"));
   const grens = d("grensfactor");
 
@@ -217,11 +234,14 @@ export default function BalklaagDesigner() {
   // paneel en blijft dimensioneel correct (x = y).
   const capH = 26;                                 // ruimte voor het onderschrift boven de stage
   const nJ = 4;
-  const W = box.w, H = box.h - capH;               // stage vult het gebied
+  const schemaH = 150;                             // vaste hoogte voor het statisch schema
+  const W = box.w;
+  // De doorsnede krijgt wat overblijft nadat het schema zijn deel heeft gehad.
+  const H = Math.max(150, box.h - 2 * capH - schemaH - 14);
   const mX = 46, mTop = 26, mBot = 48;             // marges (px)
   const totalMM = (nJ - 1) * hoh + b;              // breedte van de balken-groep
   const availW = W - 2 * mX, availH = H - mTop - mBot;
-  // grootste schaal die zowel de breedte als de hoogte (vloerhout + balk) laat passen
+  // grootste schaal die zowel de breedte als de hoogte (beschot + balk) laat passen
   const s = Math.min(availW / totalMM, availH / (tVloer + h));
   const jW = b * s, jH = h * s, sp = hoh * s, tV = Math.max(6, tVloer * s);
   const groupW = (nJ - 1) * sp + jW;               // getekende breedte van de balken
@@ -238,6 +258,7 @@ export default function BalklaagDesigner() {
       <div className="vd-dim" style={{ left: x, top: y }}>
         {isEd ? (
           <input className="vd-dim-input" type="number" step={step} defaultValue={value} autoFocus
+            onFocus={(e) => e.currentTarget.select()}
             onBlur={(e) => { setVal(name, parseFloat(e.target.value)); setEditing(null); }}
             onKeyDown={(e) => {
               if (e.key === "Enter") { setVal(name, parseFloat((e.target as HTMLInputElement).value)); setEditing(null); }
@@ -262,7 +283,9 @@ export default function BalklaagDesigner() {
       </div>
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
-        <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
+        {/* De invoerkolom scrollt zelf: hij is langer dan het paneel hoog is,
+            en zonder eigen scroll puilt hij over de voetregel heen. */}
+        <div className="vd-controls vd-compact" style={{ alignSelf: "stretch", overflowY: "auto", minHeight: 0 }}>
           <span className="vd-ctrl-h">Algemeen</span>
           <span className="vd-ctrl-h">Geometrie</span>
           <label>Profiel (b×h)
@@ -279,7 +302,7 @@ export default function BalklaagDesigner() {
           <label>H.o.h. afstand (mm)
             <input type="number" step={10} value={hoh} onChange={(e) => setVal("hoh", parseFloat(e.target.value))} />
           </label>
-          <label>Dikte vloerhout (mm)
+          <label>Dikte beschot (mm)
             <input type="number" step={1} value={tVloer} onChange={(e) => setVal("t_vloer", parseFloat(e.target.value))} />
           </label>
           <label>E-modulus beschot (N/mm²)
@@ -316,16 +339,18 @@ export default function BalklaagDesigner() {
           <label>Q<sub>k</sub> (kN)
             <input type="number" step={0.5} value={Qk} onChange={(e) => setVal("Q_k", parseFloat(e.target.value))} />
           </label>
-          <label>Categorie (ψ-waarden)
+          <label>Categorie (Tabel NB.2 — A1.1)
             <select value={cat} onChange={(e) => {
               const v = parseInt(e.target.value); setVal("belastingcat", v);
-              if (v === 1) { setVal("ψ_0_zelf", 0); setVal("ψ_2_zelf", 0); }
-              else if (v === 2) { setVal("ψ_0_zelf", 0.5); setVal("ψ_2_zelf", 0.3); }
+              const rij = CAT.find((c) => c.v === v);
+              // Bij een normcategorie de bijbehorende waarden meesturen, zodat
+              // "zelf invullen" begint bij wat er stond in plaats van bij nul.
+              if (rij && v !== 11) { setVal("ψ_0_zelf", rij.psi0); setVal("ψ_2_zelf", rij.psi2); }
             }}>
               {CAT.map((c) => <option key={c.v} value={c.v}>{c.label}</option>)}
             </select>
           </label>
-          {cat === 3 && (
+          {cat === 11 && (
             <>
               <label>ψ<sub>0</sub>
                 <input type="number" step={0.1} value={psi0zelf} onChange={(e) => setVal("ψ_0_zelf", parseFloat(e.target.value))} />
@@ -337,12 +362,11 @@ export default function BalklaagDesigner() {
           )}
 
           <span className="vd-ctrl-h">Doorbuiging</span>
-          <label>Controleer doorbuiging
-            <select value={controleer} onChange={(e) => setVal("controleer", parseInt(e.target.value))}>
-              <option value={1}>Ja</option>
-              <option value={0}>Nee</option>
-            </select>
-          </label>
+          <JaNee
+            label="Controleer doorbuiging"
+            waarde={controleer === 1}
+            onChange={(v) => setVal("controleer", v ? 1 : 0)}
+          />
           <label>Toelaatbare bijkomende doorbuiging
             <select value={grens} onChange={(e) => setVal("grensfactor", parseFloat(e.target.value))}>
               {GRENS.map((g) => <option key={g.v} value={g.v}>{g.label}</option>)}
@@ -350,12 +374,11 @@ export default function BalklaagDesigner() {
           </label>
 
           <span className="vd-ctrl-h">Trilling (§7.3.3)</span>
-          <label>Controleer trilling
-            <select value={tril} onChange={(e) => setVal("controleer_trilling", parseInt(e.target.value))}>
-              <option value={1}>Ja</option>
-              <option value={0}>Nee</option>
-            </select>
-          </label>
+          <JaNee
+            label="Controleer trilling"
+            waarde={tril === 1}
+            onChange={(v) => setVal("controleer_trilling", v ? 1 : 0)}
+          />
           {tril === 1 && (
             <>
               <label>ζ — demping
@@ -381,7 +404,7 @@ export default function BalklaagDesigner() {
                     <circle cx="5" cy="6" r="2.4" className="vd-dimarrow" />
                   </marker>
                 </defs>
-                {/* vloerhout */}
+                {/* beschot */}
                 <rect x={boardL} y={yBoard} width={boardR - boardL} height={tV} style={{ fill: "#D9B382", stroke: "#8B6F47", strokeWidth: 1.5 }} />
                 {/* balken */}
                 {Array.from({ length: nJ }, (_, i) => (
@@ -395,6 +418,75 @@ export default function BalklaagDesigner() {
               <Dim name="hoh" value={hoh} x={x0 + sp / 2 + jW / 2} y={yJoist + jH + 18} step={10} />
               <Dim name="t_vloer" value={tVloer} x={boardR - 26} y={yBoard + tV / 2} step={1} />
               <div className="vd-dim-ro" style={{ left: x0 + jW / 2, top: yJoist + jH / 2 }}>{b}×{h}</div>
+            </div>
+          </div>
+
+          {/* ── Statisch schema: één balk op twee steunpunten ──────────── */}
+          <div className="vd-canvas">
+            <div className="vd-caption">Statisch schema</div>
+            <div className="vd-stage" style={{ width: W, height: schemaH, background: "transparent", border: "none", borderRadius: 0 }}>
+              {(() => {
+                const mx = 54;
+                const sx1 = mx, sx2 = Math.max(mx + 80, W - mx);
+                const smid = (sx1 + sx2) / 2;
+                const ay = 78;                       // hoogte van de balk-as
+                const qTop = ay - 40;                // bovenkant van de lastpijlen
+                const nPij = Math.max(4, Math.round((sx2 - sx1) / 30));
+                const stap = (sx2 - sx1) / nPij;
+                const qTot = Pg + qq;                // kN/m, karakteristiek
+                return (
+                  <>
+                    <svg width={W} height={schemaH} className="vd-svg">
+                      <defs>
+                        <marker id="bdDim2" markerWidth="10" markerHeight="12" refX="5" refY="6" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+                          <circle cx="5" cy="6" r="2.4" className="vd-dimarrow" />
+                        </marker>
+                      </defs>
+                      {/* verdeelde last */}
+                      <line x1={sx1} y1={qTop} x2={sx2} y2={qTop} style={{ stroke: "#B45309", strokeWidth: 1.6 }} />
+                      {Array.from({ length: nPij + 1 }, (_, i) => {
+                        const px = sx1 + i * stap;
+                        return (
+                          <g key={i}>
+                            <line x1={px} y1={qTop} x2={px} y2={ay - 9} style={{ stroke: "#B45309", strokeWidth: 1.1 }} />
+                            <polygon points={`${px},${ay - 5} ${px - 3.2},${ay - 12} ${px + 3.2},${ay - 12}`} style={{ fill: "#B45309" }} />
+                          </g>
+                        );
+                      })}
+                      {/* puntlast in het midden */}
+                      {Qk > 0 && (
+                        <>
+                          <line x1={smid} y1={qTop - 26} x2={smid} y2={ay - 12} style={{ stroke: "#B91C1C", strokeWidth: 2 }} />
+                          <polygon points={`${smid},${ay - 7} ${smid - 4.5},${ay - 17} ${smid + 4.5},${ay - 17}`} style={{ fill: "#B91C1C" }} />
+                        </>
+                      )}
+                      {/* de balk */}
+                      <rect x={sx1} y={ay - 5} width={sx2 - sx1} height={10} style={{ fill: "#E3C08A", stroke: "#8B6F47", strokeWidth: 1.5 }} />
+                      {/* opleggingen: scharnier links, rol rechts */}
+                      <polygon points={`${sx1},${ay + 5} ${sx1 - 10},${ay + 23} ${sx1 + 10},${ay + 23}`} style={{ fill: "none", stroke: "#374151", strokeWidth: 1.5 }} />
+                      <line x1={sx1 - 16} y1={ay + 24} x2={sx1 + 16} y2={ay + 24} style={{ stroke: "#374151", strokeWidth: 1.5 }} />
+                      <polygon points={`${sx2},${ay + 5} ${sx2 - 10},${ay + 19} ${sx2 + 10},${ay + 19}`} style={{ fill: "none", stroke: "#374151", strokeWidth: 1.5 }} />
+                      <circle cx={sx2 - 5} cy={ay + 23} r={3.6} style={{ fill: "none", stroke: "#374151", strokeWidth: 1.4 }} />
+                      <circle cx={sx2 + 5} cy={ay + 23} r={3.6} style={{ fill: "none", stroke: "#374151", strokeWidth: 1.4 }} />
+                      <line x1={sx2 - 16} y1={ay + 28} x2={sx2 + 16} y2={ay + 28} style={{ stroke: "#374151", strokeWidth: 1.5 }} />
+                      {/* maatlijn overspanning */}
+                      <line x1={sx1} y1={ay + 46} x2={sx2} y2={ay + 46} className="vd-dimmeasure" markerStart="url(#bdDim2)" markerEnd="url(#bdDim2)" />
+                      <line x1={sx1} y1={ay + 30} x2={sx1} y2={ay + 50} className="vd-dimext" />
+                      <line x1={sx2} y1={ay + 34} x2={sx2} y2={ay + 50} className="vd-dimext" />
+                    </svg>
+                    {/* klikbare maten en labels */}
+                    <div className="vd-dim-ro" style={{ left: smid, top: qTop - 10, color: "#B45309", fontWeight: 700 }}>
+                      q = {qTot.toFixed(2)} kN/m
+                    </div>
+                    {Qk > 0 && (
+                      <div className="vd-dim-ro" style={{ left: smid + 52, top: qTop - 26, color: "#B91C1C", fontWeight: 700 }}>
+                        F = {(Qk * kr).toFixed(2)} kN
+                      </div>
+                    )}
+                    <Dim name="L_d" value={Ld} x={smid} y={ay + 46} step={100} />
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
