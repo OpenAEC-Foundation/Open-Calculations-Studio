@@ -42,6 +42,14 @@ export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
   96×221 = 17
   96×246 = 18
   96×271 = 19
+  SLS 38×89 = 20
+  SLS 38×140 = 21
+  SLS 38×184 = 22
+  SLS 38×235 = 23
+  SLS 38×285 = 24
+  SLS dubbel 76×184 = 25
+  SLS dubbel 76×235 = 26
+  SLS dubbel 76×285 = 27
 @end
 
 @select sterkteklasse "Sterkteklasse"
@@ -67,7 +75,10 @@ export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
 
 #hide
 'Profielmatrix: [id | b(mm) | h(mm)]
-profielen = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19 |46; 46; 46; 46; 63; 63; 63; 63; 71; 71; 71; 71; 71; 71; 96; 96; 96; 96; 96 |96; 146; 171; 196; 146; 171; 196; 221; 146; 171; 196; 221; 246; 271; 171; 196; 221; 246; 271]
+'Regels 20 t/m 27 zijn SLS-maten: geschaafd naaldhout in de Noord-Amerikaanse
+'maatvoering (38 mm dik), zoals dat in de houtskeletbouw wordt geleverd. De
+'dubbele varianten zijn twee stuks tegen elkaar.
+profielen = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19; 20; 21; 22; 23; 24; 25; 26; 27 |46; 46; 46; 46; 63; 63; 63; 63; 71; 71; 71; 71; 71; 71; 96; 96; 96; 96; 96; 38; 38; 38; 38; 38; 76; 76; 76 |96; 146; 171; 196; 146; 171; 196; 221; 146; 171; 196; 221; 246; 271; 171; 196; 221; 246; 271; 89; 140; 184; 235; 285; 184; 235; 285]
 'Materiaalmatrix: [id | f_m,k | f_v,k | E_mean | ρ_mean | γ_M]
 materialen = [1; 2; 3; 4; 5 |18; 24; 30; 24; 28 |3.4; 4.0; 4.0; 3.5; 3.5 |9000; 11000; 12000; 11500; 12600 |380; 420; 460; 420; 425 |1.30; 1.30; 1.30; 1.25; 1.25]
 
@@ -382,6 +393,38 @@ smid = (sx1 + sx2)/2
     #else
         'UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
     #end if
+
+    '<h6>9.4 Doorbuigingslijn</h6>
+    '<i>De onderbroken lijn is de momentane zakking (6.14b), de doorgetrokken
+    'de eindstand inclusief kruip (6.16b). Beide op dezelfde schaal, zodat het
+    'verschil laat zien wat de kruip er nog bovenop doet.</i>
+    #hide
+    ux1 = 60
+    ux2 = 420
+    umid = (ux1 + ux2)/2
+    uas = 34', hoogte van de onvervormde as'
+    uamp = 40', pixels voor de grootste zakking'
+    w_inst_ruw = w_inst/(1 mm)
+    w_fin_ruw = w_fin/(1 mm)
+    w_grootst = max(w_fin_ruw; max(w_inst_ruw; 0.001))
+    s_inst = uamp*w_inst_ruw/w_grootst
+    s_fin = uamp*w_fin_ruw/w_grootst
+    #show
+    '<svg viewbox="0 0 480 130" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:140px;">
+    '  <line x1="'ux1 - 8'" y1="'uas'" x2="'ux2 + 8'" y2="'uas'" style="stroke:#374151; stroke-width:0.8; stroke-dasharray:4 3"/>
+    '  <path d="M 'ux1' 'uas' Q 'umid' 'uas + 2*s_inst' 'ux2' 'uas'" style="fill:none; stroke:#0EA5E9; stroke-width:1.1; stroke-dasharray:5 3"/>
+    '  <path d="M 'ux1' 'uas' Q 'umid' 'uas + 2*s_fin' 'ux2' 'uas'" style="fill:none; stroke:#0369A1; stroke-width:1.3"/>
+    '  <line x1="'umid'" y1="'uas'" x2="'umid'" y2="'uas + s_fin'" style="stroke:#0369A1; stroke-width:0.8; stroke-dasharray:3 3"/>
+    '  <polygon points="'ux1','uas' 'ux1 - 7','uas + 14' 'ux1 + 7','uas + 14'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <line x1="'ux1 - 10'" y1="'uas + 14'" x2="'ux1 + 10'" y2="'uas + 14'" style="stroke:#6b7280; stroke-width:0.9"/>
+    '  <polygon points="'ux2','uas' 'ux2 - 7','uas + 11' 'ux2 + 7','uas + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <circle cx="'ux2 - 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <circle cx="'ux2 + 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <line x1="'ux2 - 10'" y1="'uas + 17'" x2="'ux2 + 10'" y2="'uas + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+    '  <text x="'ux1 + 4'" y="'uas - 6'" style="fill:#374151; font-weight:700">onvervormd</text>
+    '  <text x="'umid + 10'" y="'uas + s_inst + 4'" style="fill:#0EA5E9; font-weight:700">w<tspan baseline-shift="sub" font-size="8">inst</tspan> (6.14b) = 'w_inst'</text>
+    '  <text x="'umid'" y="'uas + s_fin + 16'" text-anchor="middle" style="fill:#0369A1; font-weight:700">w<tspan baseline-shift="sub" font-size="8">fin</tspan> (6.16b + kruip) = 'w_fin' — grens 'w_lim'</text>
+    '</svg>'
 #else
     'Doorbuiging wordt niet getoetst (Controleer doorbuiging = Nee).
     UC_doorbuiging = 0
@@ -524,6 +567,15 @@ vy2 = 190', as van de V-lijn
 '  <text x="'mx1 + 4'" y="'vy2 - mh - 5'" style="fill:#15803D; font-weight:700">+V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan> = 'V_z,Ed'</text>
 '  <text x="'mx2 - 4'" y="'vy2 + mh + 13'" text-anchor="end" style="fill:#15803D; font-weight:700">−V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan></text>
 '  <text x="'mx1 - 10'" y="'vy2 - 8'" style="fill:#374151; font-weight:700">V-lijn</text>
+'  <!-- opleggingen onder beide assen: scharnier links, rol rechts -->
+#for j = 0 : 1
+'  <polygon points="'mx1','my + j*(vy2 - my)' 'mx1 - 7','my + j*(vy2 - my) + 14' 'mx1 + 7','my + j*(vy2 - my) + 14'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+'  <line x1="'mx1 - 10'" y1="'my + j*(vy2 - my) + 14'" x2="'mx1 + 10'" y2="'my + j*(vy2 - my) + 14'" style="stroke:#6b7280; stroke-width:0.9"/>
+'  <polygon points="'mx2','my + j*(vy2 - my)' 'mx2 - 7','my + j*(vy2 - my) + 11' 'mx2 + 7','my + j*(vy2 - my) + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+'  <circle cx="'mx2 - 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+'  <circle cx="'mx2 + 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+'  <line x1="'mx2 - 10'" y1="'my + j*(vy2 - my) + 17'" x2="'mx2 + 10'" y2="'my + j*(vy2 - my) + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+#loop
 '</svg>'
 
 '<h6>10.2 Buiging — §6.1.6 (6.11)</h6>

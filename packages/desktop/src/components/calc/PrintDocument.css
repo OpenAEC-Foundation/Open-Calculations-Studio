@@ -287,9 +287,10 @@ html.afdrukmodus .print-beeld .gd-tabs {
 html.afdrukmodus .print-beeld .vd-panel {
   border: none !important;
   background: transparent !important;
-  /* 150 mm: de hoogste tekening (spuwer) vraagt op bladbreedte ongeveer 140 mm.
-     Krap bemeten wordt hij door zijn eigen tekengebied afgesneden. */
-  height: 150mm !important;
+  /* 200 mm: de balklaag zet drie tekeningen onder elkaar (doorsnede, statisch
+     schema, M- en V-lijn). Krap bemeten snijdt het tekengebied de onderste
+     eraf — precies wat er gebeurde toen hier nog 150 mm stond. */
+  height: 200mm !important;
   min-height: 0 !important;
   overflow: hidden !important;
 }
@@ -297,6 +298,15 @@ html.afdrukmodus .print-beeld .vd-panel {
 html.afdrukmodus .print-beeld .vd-body {
   height: 100% !important;
   min-height: 0 !important;
+}
+
+/* Op papier valt er niets te scrollen: de tekeningkolom moet gewoon zijn
+   volle hoogte innemen. Blijft de schermscroll staan, dan verdwijnt alles
+   onder de vouw en houd je een half beeld met witruimte over. */
+html.afdrukmodus .print-beeld .vd-canvases {
+  overflow: visible !important;
+  scrollbar-gutter: auto !important;
+  justify-content: flex-start !important;
 }
 
 /* Maatchips zijn knoppen; op papier moeten ze als getal lezen. */
