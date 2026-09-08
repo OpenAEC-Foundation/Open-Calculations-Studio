@@ -287,10 +287,12 @@ html.afdrukmodus .print-beeld .gd-tabs {
 html.afdrukmodus .print-beeld .vd-panel {
   border: none !important;
   background: transparent !important;
-  /* 200 mm: de balklaag zet drie tekeningen onder elkaar (doorsnede, statisch
-     schema, M- en V-lijn). Krap bemeten snijdt het tekengebied de onderste
-     eraf — precies wat er gebeurde toen hier nog 150 mm stond. */
-  height: 200mm !important;
+  /* 208 mm: de balklaag zet vier tekeningen onder elkaar (doorsnede, statisch
+     schema met lastverklaring, M- en V-lijn, doorbuiging). Krap bemeten snijdt
+     het tekengebied de onderste eraf — precies wat er gebeurde toen hier nog
+     150 mm stond. De doorsnede heeft een ondergrens van 130 px, dus onder deze
+     maat kan de kolom niet verder inklappen en gaat er weer iets af. */
+  height: 208mm !important;
   min-height: 0 !important;
   overflow: hidden !important;
 }

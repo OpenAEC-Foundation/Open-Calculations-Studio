@@ -113,6 +113,52 @@ function Steunpunten({ x1, x2, y }: { x1: number; x2: number; y: number }) {
   );
 }
 
+/*
+ * Vaste kleuren per lastsoort. Permanent en veranderlijk gaan met verschillende
+ * partiële factoren de combinatie in (1,20 tegen 1,50) en horen in de quasi-
+ * blijvende combinatie verschillend mee te tellen; één kleur voor de som maakt
+ * uit de tekening niet meer op te maken wélk deel dat is.
+ */
+const KLEUR_G = "#475569"; // permanent
+const KLEUR_Q = "#B45309"; // veranderlijk, verdeeld
+const KLEUR_F = "#B91C1C"; // veranderlijk, geconcentreerd
+
+/** Band met neerwaartse pijlen voor een verdeelde last: basislijn op `yTop`,
+ *  pijlpunten op `yTip`. */
+function Verdeellast({
+  x1,
+  x2,
+  yTop,
+  yTip,
+  kleur,
+}: {
+  x1: number;
+  x2: number;
+  yTop: number;
+  yTip: number;
+  kleur: string;
+}) {
+  const n = Math.max(4, Math.round((x2 - x1) / 30));
+  const stap = (x2 - x1) / n;
+  return (
+    <g>
+      <line x1={x1} y1={yTop} x2={x2} y2={yTop} style={{ stroke: kleur, strokeWidth: 1.6 }} />
+      {Array.from({ length: n + 1 }, (_, i) => {
+        const px = x1 + i * stap;
+        return (
+          <g key={i}>
+            <line x1={px} y1={yTop} x2={px} y2={yTip - 4} style={{ stroke: kleur, strokeWidth: 1.1 }} />
+            <polygon
+              points={`${px},${yTip} ${px - 3.2},${yTip - 7} ${px + 3.2},${yTip - 7}`}
+              style={{ fill: kleur }}
+            />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 /**
  * Eén unity check in de voetregel, gekleurd naar de uitkomst. Een rij grijze
  * getallen dwingt je ze allemaal te lezen om te zien welke knelt; met kleur
@@ -311,7 +357,10 @@ export default function BalklaagDesigner() {
   const uH = 130;                                  // en voor de doorbuigingslijn
   const W = box.w;
   // De doorsnede krijgt wat overblijft nadat schema en M/V-lijn hun deel hebben.
-  const H = Math.max(130, box.h - 4 * capH - schemaH - mvH - uH - 26);
+  const legH = 30;                                 // legenda onder het statisch schema
+  // 3 × 14 px tussenruimte tussen de vier tekeningen (`gap` op .vd-canvases).
+  const gapH = 3 * 14;
+  const H = Math.max(130, box.h - 4 * capH - schemaH - mvH - uH - legH - gapH);
   const mX = 46, mTop = 26, mBot = 48;             // marges (px)
   const totalMM = (nJ - 1) * hoh + b;              // breedte van de balken-groep
   const availW = W - 2 * mX, availH = H - mTop - mBot;
@@ -508,11 +557,10 @@ export default function BalklaagDesigner() {
                 const mx = 54;
                 const sx1 = mx, sx2 = Math.max(mx + 80, W - mx);
                 const smid = (sx1 + sx2) / 2;
-                const ay = 78;                       // hoogte van de balk-as
-                const qTop = ay - 40;                // bovenkant van de lastpijlen
-                const nPij = Math.max(4, Math.round((sx2 - sx1) / 30));
-                const stap = (sx2 - sx1) / nPij;
-                const qTot = Pg + qq;                // kN/m, karakteristiek
+                const ay = 84;                       // hoogte van de balk-as
+                const gTop = ay - 30;                // basislijn permanente last
+                const qTop = gTop - 28;              // basislijn veranderlijke last
+                const heeftQ = qq > 0;
                 return (
                   <>
                     <svg width={W} height={schemaH} className="vd-svg">
@@ -521,22 +569,17 @@ export default function BalklaagDesigner() {
                           <circle cx="5" cy="6" r="2.4" className="vd-dimarrow" />
                         </marker>
                       </defs>
-                      {/* verdeelde last */}
-                      <line x1={sx1} y1={qTop} x2={sx2} y2={qTop} style={{ stroke: "#B45309", strokeWidth: 1.6 }} />
-                      {Array.from({ length: nPij + 1 }, (_, i) => {
-                        const px = sx1 + i * stap;
-                        return (
-                          <g key={i}>
-                            <line x1={px} y1={qTop} x2={px} y2={ay - 9} style={{ stroke: "#B45309", strokeWidth: 1.1 }} />
-                            <polygon points={`${px},${ay - 5} ${px - 3.2},${ay - 12} ${px + 3.2},${ay - 12}`} style={{ fill: "#B45309" }} />
-                          </g>
-                        );
-                      })}
-                      {/* puntlast in het midden */}
+                      {/* veranderlijke verdeelde last, met eigen basislijn erboven */}
+                      {heeftQ && <Verdeellast x1={sx1} x2={sx2} yTop={qTop} yTip={gTop - 8} kleur={KLEUR_Q} />}
+                      {/* permanente verdeelde last, direct op de balk */}
+                      <Verdeellast x1={sx1} x2={sx2} yTop={gTop} yTip={ay - 5} kleur={KLEUR_G} />
+                      {/* geconcentreerde veranderlijke last in het midden; met een witte
+                          onderlaag, anders loopt hij zichtbaar dóór de twee lastbanden */}
                       {Qk > 0 && (
                         <>
-                          <line x1={smid} y1={qTop - 26} x2={smid} y2={ay - 12} style={{ stroke: "#B91C1C", strokeWidth: 2 }} />
-                          <polygon points={`${smid},${ay - 7} ${smid - 4.5},${ay - 17} ${smid + 4.5},${ay - 17}`} style={{ fill: "#B91C1C" }} />
+                          <line x1={smid} y1={qTop - 14} x2={smid} y2={ay - 12} style={{ stroke: "#fff", strokeWidth: 5 }} />
+                          <line x1={smid} y1={qTop - 14} x2={smid} y2={ay - 12} style={{ stroke: KLEUR_F, strokeWidth: 2 }} />
+                          <polygon points={`${smid},${ay - 7} ${smid - 4.5},${ay - 17} ${smid + 4.5},${ay - 17}`} style={{ fill: KLEUR_F }} />
                         </>
                       )}
                       {/* de balk */}
@@ -553,19 +596,31 @@ export default function BalklaagDesigner() {
                       <line x1={sx1} y1={ay + 30} x2={sx1} y2={ay + 50} className="vd-dimext" />
                       <line x1={sx2} y1={ay + 34} x2={sx2} y2={ay + 50} className="vd-dimext" />
                     </svg>
-                    {/* klikbare maten en labels */}
-                    <div className="vd-dim-ro" style={{ left: smid, top: qTop - 10, color: "#B45309", fontWeight: 700 }}>
-                      q = {qTot.toFixed(2)} kN/m
-                    </div>
-                    {Qk > 0 && (
-                      <div className="vd-dim-ro" style={{ left: smid + 52, top: qTop - 26, color: "#B91C1C", fontWeight: 700 }}>
-                        F = {(Qk * kr).toFixed(2)} kN
-                      </div>
-                    )}
                     <Dim name="L_d" value={Ld} x={smid} y={ay + 46} step={100} />
                   </>
                 );
               })()}
+            </div>
+            {/* De waarden staan onder de tekening in plaats van als zwevende labels
+                erin: zo is er ruimte om er de lastsoort bij te schrijven, en dekt
+                geen labelvlak de pijl van de puntlast af. */}
+            <div className="vd-legenda" style={{ width: W }}>
+              <span>
+                <i style={{ color: KLEUR_G }} />
+                P<sub>g,k</sub> = {Pg.toFixed(2)} kN/m · permanent
+              </span>
+              {qq > 0 && (
+                <span>
+                  <i style={{ color: KLEUR_Q }} />
+                  q<sub>q,k</sub> = {qq.toFixed(2)} kN/m · veranderlijk
+                </span>
+              )}
+              {Qk > 0 && (
+                <span>
+                  <i style={{ color: KLEUR_F }} />
+                  F<sub>Q,k</sub> = {(Qk * kr).toFixed(2)} kN · veranderlijk
+                </span>
+              )}
             </div>
           </div>
 
