@@ -261,7 +261,7 @@
 .vd-dimline line { stroke: #2563eb; stroke-width: 1; }
 .vd-dimext { stroke: #2563eb; stroke-width: 1; }
 .vd-dimmeasure { stroke: #2563eb; stroke-width: 1; }
-.vd-dimarrow { fill: none; stroke: #2563eb; stroke-width: 1.2; }
+.vd-dimarrow { fill: #2563eb; stroke: #2563eb; stroke-width: 0.8; }
 .vd-dim-ro {
   position: absolute;
   transform: translate(-50%, -50%);

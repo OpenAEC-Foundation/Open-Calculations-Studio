@@ -114,16 +114,22 @@ L_d = ?*(mm)', dagmaat (vrije overspanning)'
 a_opl = ?*(mm)', opleglengte per zijde'
 hoh = ?*(mm)', hart-op-hart afstand van de balken'
 t_vloer = ?*(mm)', dikte vloerhout (vloerplaat)'
+E_beschot = ?*(N/mm^2)', E-modulus vloerhout/beschot (E_0,ser,rep)'
+b_vloer = ?*(m)', breedte van het vloerveld — nodig voor de trillingstoets'
 
 L_th = L_d + a_opl', theoretische overspanning (= L_d + 2·a_opl/2)'
 L_th
 
 # 3. Belastingen
 
-g_vloerplaat = ?*(kN/m^2)', e.g. vloerplaat'
-g_wanden = ?*(kN/m^2)', e.g. scheidingswanden'
-g_plafond = ?*(kN/m^2)', e.g. plafond'
-g_overig = ?*(kN/m^2)', overig permanent'
+'<i>Eén permanente en één veranderlijke vloerbelasting. Wat daarin thuishoort
+'bepaal je zelf: vloerafwerking, plafond, vaste scheidingswanden en overige
+'blijvende lasten tellen op in g<sub>k</sub>. Verplaatsbare scheidingswanden
+'horen volgens EN 1991-1-1 §6.3.1.2 juist bij de veranderlijke last q<sub>k</sub>.
+'Het eigen gewicht van de balk zelf komt hier niet bij — dat rekent de sheet
+'in §5 zelf uit de doorsnede en de dichtheid.</i>
+
+g_k = ?*(kN/m^2)', permanente vloerbelasting'
 q_k = ?*(kN/m^2)', veranderlijke vloerbelasting'
 Q_k = ?*(kN)', geconcentreerde last'
 
@@ -133,11 +139,6 @@ Q_k = ?*(kN)', geconcentreerde last'
   Zelf invullen = 3
 @end
 
-@select verplaatsbaar "Scheidingswanden verplaatsbaar"
-  Nee (vast) = 0
-  Ja (verplaatsbaar) = 1
-@end
-
 ψ_0_zelf = ?', ψ0 — alleen bij "zelf invullen"'
 ψ_2_zelf = ?', ψ2 — alleen bij "zelf invullen"'
 ψ_0 = if(belastingcat ≡ 1; 0; if(belastingcat ≡ 2; 0.5; ψ_0_zelf))
@@ -145,12 +146,7 @@ Q_k = ?*(kN)', geconcentreerde last'
 ψ_0
 ψ_2
 
-'<i>Verplaatsbare scheidingswanden worden als gelijkmatig verdeelde veranderlijke
-'last meegenomen (EN 1991-1-1 §6.3.1.2); vaste wanden tellen als permanent.</i>
-g_k = g_vloerplaat + g_plafond + g_overig + if(verplaatsbaar ≡ 0; g_wanden; 0 kN/m^2)', permanente vloerbelasting'
-q_k_eff = q_k + if(verplaatsbaar ≡ 1; g_wanden; 0 kN/m^2)', veranderlijk incl. verplaatsbare wanden'
-g_k
-q_k_eff
+q_k_eff = q_k', veranderlijke vloerbelasting'
 
 # 4. Doorsnede-eigenschappen
 
@@ -208,13 +204,12 @@ u_q,k
 
 #hide
 a_ref = 1000 mm
-'Derde term = (E_vl·t³/12)/EI_ref. de referentie-uitwerking drukt hem af als 3402/50000 bij
-'t = 18 en 9115/50000 bij t = 25; beide volgen uit E_vl = 7000 N/mm² met een
-'vaste noemer. document2 (96×271 i.p.v. 71×221) laat k_r ongemoeid, dus die
-'noemer hangt niet van de balk af.
-E_vl = 7000', aangenomen buigstijfheid vloerhout (N/mm²)'
+'Derde term = (EI)_l/EI_ref, met (EI)_l = E_beschot·t³/12 per mm plaatbreedte.
+'De E-modulus van het beschot is invoer (§2); vroeger stond hier een vaste
+'7000 N/mm², waardoor een stijver of slapper beschot niet doorwerkte.
 EI_ref = 50000000', referentiestijfheid per mm plaatbreedte (N·mm)'
 t_ruw = t_vloer/(1 mm)
+E_vl = E_beschot/(1 N/mm^2)', E-modulus beschot, dimensieloos voor de deling'
 #show
 k_r_0 = 0.37 + 0.8*hoh/a_ref - E_vl*t_ruw^3/12/EI_ref
 k_r = min(1; k_r_0)', concentratiefactor, afgetopt op 1,0 (NEN-EN 1995-1-1 NB)'
@@ -292,6 +287,93 @@ by = vy + vt', bovenkant balken
     UC_doorbuiging = 0
 #end if
 
+# 9b. Toetsing BGT — trillingen (§7.3.3)
+
+'<i>De trillingstoets voor woonvloeren kent twee criteria naast de
+'frequentie-eis: de stijfheid onder een puntlast van 1 kN (formule 7.3) en
+'de responssnelheid op een eenheidsimpuls (formule 7.4). Beide gelden alleen
+'als f<sub>1</sub> ≥ 8 Hz; daaronder vraagt de norm een volledige
+'trillingsanalyse (§7.3.3(2)).</i>
+
+@select controleer_trilling "Controleer trilling"
+  Ja = 1
+  Nee = 0
+@end
+
+ζ = ?', dempingsratio (§7.3.1: 0,01 voor vloeren zonder afwerklaag)'
+a_tril = ?*(mm/kN)', grenswaarde stijfheid a (Tabel NB — 1,0 mm/kN)'
+b_tril = ?', parameter b bij de snelheidseis (Figuur 7.2, ca. 120)'
+
+#if controleer_trilling ≡ 1
+    '<h6>9b.1 Stijfheden</h6>
+    'Beschot, per meter vloerbreedte — draagt loodrecht op de balken:
+    I_beschot = 1 m*t_vloer^3/12 to m^4
+    EI_l = E_beschot*I_beschot/(1 m) to N*m^2/m', (EI)_l — beschot'
+    EI_l
+    'Balklaag, per meter vloerbreedte — de balken dragen in de overspanning:
+    EI_b = E_mean*I_y/hoh to N*m^2/m', (EI)_b — balken'
+    EI_b
+
+    '<h6>9b.2 Eigenfrequentie (formule 7.5)</h6>
+    'Trillende massa per m² — alleen het permanente gewicht (§7.3.3): de
+    'veranderlijke belasting telt niet mee, want de vloer trilt in de staat
+    'waarin hij normaal wordt gebruikt, niet onder vol belastingsontwerp.
+    m_opp = (g_k + g_balk/hoh)/(9.81 m/s^2) to kg/m^2
+    m_opp
+    f_1 = π/(2*L_th^2)*sqrt(EI_b/m_opp) to Hz
+    f_1
+    #if f_1 ≥ 8 Hz
+        'f<sub>1</sub> = 'f_1'<span style="color: green"> ≥ 8 Hz → de twee criteria hieronder zijn van toepassing</span>
+    #else
+        'f<sub>1</sub> = 'f_1'<span style="color: red"> < 8 Hz → de vereenvoudigde toets vervalt; §7.3.3(2) vraagt een volledige trillingsanalyse</span>
+    #end if
+
+    '<h6>9b.3 Criterium 1 — stijfheid onder 1 kN (formule 7.3)</h6>
+    'De puntlast spreidt over meerdere balken; k<sub>r</sub> uit §7 geeft het
+    'deel dat op de zwaarst belaste balk komt.
+    F_tril = 1 kN*k_r to kN', effectieve puntlast op één balk'
+    w_1kN = F_tril*L_th^3/(48*E_mean*I_y) to mm
+    w_per_kN = w_1kN/(1 kN) to mm/kN
+    w_per_kN
+    a_tril
+    UC_tril_a = w_per_kN/a_tril
+    #if UC_tril_a ≤ 1.0
+        'UC<sub>w/F</sub> = 'UC_tril_a'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+    #else
+        'UC<sub>w/F</sub> = 'UC_tril_a'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+    #end if
+
+    '<h6>9b.4 Criterium 2 — responssnelheid (formules 7.4, 7.6, 7.7)</h6>
+    'Aantal eigenmodi onder 40 Hz (formule 7.7). Bij een zeer stijve vloer
+    'ligt f_1 al boven 40 Hz; dan is er geen enkele eigenmode onder de 40 Hz
+    'en wordt de term onder de wortel op nul afgekapt.
+    n_40_arg = max(0; (40 Hz/f_1)^2 - 1)
+    n_40 = (n_40_arg*(b_vloer/L_th)^4*EI_l/EI_b)^0.25
+    n_40
+    'Responssnelheid op een eenheidsimpuls (formule 7.6):
+    v_resp = 4*(0.4 + 0.6*n_40)/(m_opp*b_vloer*L_th + 200 kg) to m/(N*s^2)
+    v_resp
+    'Grenswaarde (formule 7.4): b^(f_1·ζ − 1)
+    v_lim = b_tril^(f_1*ζ/(1 Hz) - 1)*1 m/(N*s^2)
+    v_lim
+    UC_tril_v = v_resp/v_lim
+    #if UC_tril_v ≤ 1.0
+        'UC<sub>v</sub> = 'UC_tril_v'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+    #else
+        'UC<sub>v</sub> = 'UC_tril_v'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+    #end if
+
+    UC_trilling = max(UC_tril_a; UC_tril_v)
+    #if UC_trilling ≤ 1.0
+        '<b>Trillingen voldoen</b> (maatgevende UC = 'UC_trilling')
+    #else
+        '<b><span style="color: red">Trillingen voldoen niet</span></b> (maatgevende UC = 'UC_trilling')
+    #end if
+#else
+    'Trilling wordt niet getoetst (Controleer trilling = Nee).
+    UC_trilling = 0
+#end if
+
 # 10. Toetsing UGT
 
 '<h6>10.1 Maatgevende krachten</h6>
@@ -332,7 +414,7 @@ UC_afsch = τ_d/f_v,d
 
 # 11. Samenvatting
 
-UC_max = max(UC_doorbuiging; UC_buiging; UC_afsch)
+UC_max = max(UC_doorbuiging; UC_buiging; UC_afsch; UC_trilling)
 #if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1.0 → <b>Balklaag voldoet</b></span>
 #else

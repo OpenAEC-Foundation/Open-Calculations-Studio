@@ -57,9 +57,10 @@ const GRENS: { v: number; label: string }[] = [
 const DEFAULTS: Record<string, number> = {
   profiel: 10, sterkteklasse: 2, duurklasse: 2, klimaat: 1,
   L_d: 5000, a_opl: 50, hoh: 450, t_vloer: 25,
-  g_vloerplaat: 1.5, g_wanden: 0, g_plafond: 0, g_overig: 0,
-  q_k: 1.0, Q_k: 2, belastingcat: 2, verplaatsbaar: 0,
+  E_beschot: 7000, b_vloer: 5,
+  g_k: 1.5, q_k: 1.0, Q_k: 2, belastingcat: 2,
   "ψ_0_zelf": 0.5, "ψ_2_zelf": 0.3, controleer: 1, grensfactor: 0.004,
+  controleer_trilling: 1, "ζ": 0.01, a_tril: 1.0, b_tril: 120,
 };
 
 export default function BalklaagDesigner() {
@@ -141,14 +142,16 @@ export default function BalklaagDesigner() {
   const aOpl = d("a_opl");
   const hoh = d("hoh");
   const tVloer = d("t_vloer");
-  const gVloer = d("g_vloerplaat");
-  const gWand = d("g_wanden");
-  const gPlaf = d("g_plafond");
-  const gOver = d("g_overig");
+  const eBeschot = d("E_beschot");
+  const bVloer = d("b_vloer");
+  const gk = d("g_k");
   const qk = d("q_k");
   const Qk = d("Q_k");
   const cat = Math.round(d("belastingcat"));
-  const verpl = Math.round(d("verplaatsbaar"));
+  const tril = Math.round(d("controleer_trilling"));
+  const zeta = d("ζ");
+  const aTril = d("a_tril");
+  const bTril = d("b_tril");
   const psi0zelf = d("ψ_0_zelf");
   const psi2zelf = d("ψ_2_zelf");
   const psi2 = cat === 1 ? 0 : cat === 2 ? 0.3 : psi2zelf;
@@ -164,14 +167,16 @@ export default function BalklaagDesigner() {
   const kdef = klim === 1 ? 0.6 : klim === 2 ? 0.8 : 2.0;
   const fmd = (kmod * mat.fmk) / mat.gM, fvd = (kmod * mat.fvk) / mat.gM;
   const Lth = Ld + aOpl;
-  const gk = gVloer + gPlaf + gOver + (verpl === 0 ? gWand : 0); // kN/m² permanent
-  const qkEff = qk + (verpl === 1 ? gWand : 0); // verplaatsbare wanden → variabel
+  const qkEff = qk;
   const gBalk = xc ? (A * 1e-6 * 550 * 10) / 1000 : (A * 1e-6 * mat.rho * 9.81) / 1000; // kN/m
   const Pg = (hoh / 1000) * gk + gBalk; // kN/m = N/mm
   const qq = (hoh / 1000) * qkEff; // N/mm
   const ug = (5 / 384) * (Pg * Lth ** 4) / (mat.E * Iy);
   const uq = (5 / 384) * (qq * Lth ** 4) / (mat.E * Iy);
-  const kr = 0.37 + (0.8 * hoh) / 1000 - tVloer ** 3 / 85700;
+  // Concentratiefactor: derde term = (EI)_l/EI_ref met (EI)_l = E_beschot·t³/12
+  // per mm plaatbreedte. De E-modulus van het beschot is nu invoer, zodat een
+  // stijver of slapper beschot ook echt doorwerkt.
+  const kr = Math.min(1, 0.37 + (0.8 * hoh) / 1000 - (eBeschot * tVloer ** 3) / 12 / 50000000);
   const FQ = Qk * kr; // kN
   const uQ = (1 / 48) * (FQ * 1000 * Lth ** 3) / (mat.E * Iy);
   const uvar = Math.max(uq, uQ);
@@ -185,7 +190,26 @@ export default function BalklaagDesigner() {
   const VzEd = kfi * Math.max(1.2 * Vg + 1.5 * Vq, 1.2 * Vg + 1.5 * VQ);
   const ucBuig = MyEd / Wy / fmd;
   const ucAfsch = (VzEd * Sy) / (b * Iy) / fvd;
-  const ucMax = controleer === 1 ? Math.max(ucDoor, ucBuig, ucAfsch) : Math.max(ucBuig, ucAfsch);
+  // ── trillingen §7.3.3 — in SI: N, m, kg ───────────────────────────────────
+  const Lm = Lth / 1000;                                  // overspanning [m]
+  const EIb = (mat.E * 1e6 * (Iy * 1e-12)) / (hoh / 1000); // (EI)_b [Nm²/m]
+  const EIl = (eBeschot * 1e6 * (1 * (tVloer / 1000) ** 3)) / 12; // (EI)_l [Nm²/m]
+  const mOpp = (gk + gBalk / (hoh / 1000)) * 1000 / 9.81;  // massa [kg/m²], permanent
+  const f1 = (Math.PI / (2 * Lm ** 2)) * Math.sqrt(EIb / mOpp);
+  // Criterium 1 — stijfheid onder 1 kN (7.3): w/F ≤ a
+  const wPerKN = ((1000 * kr) * Lth ** 3) / (48 * mat.E * Iy); // mm per kN
+  const ucTrilA = wPerKN / aTril;
+  // Criterium 2 — responssnelheid (7.4/7.6/7.7)
+  const n40 = Math.pow(Math.max(0, (40 / f1) ** 2 - 1) * (bVloer / Lm) ** 4 * (EIl / EIb), 0.25);
+  const vResp = (4 * (0.4 + 0.6 * n40)) / (mOpp * bVloer * Lm + 200);
+  const vLim = Math.pow(bTril, f1 * zeta - 1);
+  const ucTrilV = vResp / vLim;
+  const ucTril = Math.max(ucTrilA, ucTrilV);
+
+  const ucs = [ucBuig, ucAfsch];
+  if (controleer === 1) ucs.push(ucDoor);
+  if (tril === 1) ucs.push(ucTril);
+  const ucMax = Math.max(...ucs);
   const ok = ucMax <= 1.0;
 
   // ── doorsnede-tekening — vult het gemeten tekengebied, gecentreerd ─────────
@@ -258,6 +282,12 @@ export default function BalklaagDesigner() {
           <label>Dikte vloerhout (mm)
             <input type="number" step={1} value={tVloer} onChange={(e) => setVal("t_vloer", parseFloat(e.target.value))} />
           </label>
+          <label>E-modulus beschot (N/mm²)
+            <input type="number" step={100} value={eBeschot} onChange={(e) => setVal("E_beschot", parseFloat(e.target.value))} />
+          </label>
+          <label>Breedte vloerveld (m)
+            <input type="number" step={0.5} value={bVloer} onChange={(e) => setVal("b_vloer", parseFloat(e.target.value))} />
+          </label>
 
           <span className="vd-ctrl-h">Materiaal</span>
           <label>Sterkteklasse
@@ -270,33 +300,16 @@ export default function BalklaagDesigner() {
               {KLIM.map((k) => <option key={k.v} value={k.v}>{k.label}</option>)}
             </select>
           </label>
-          <label>Duurklasse
+          <label>Belastingduurklasse
             <select value={duur} onChange={(e) => setVal("duurklasse", parseInt(e.target.value))}>
               {DUUR.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
             </select>
           </label>
 
-          <span className="vd-ctrl-h">Permanente belasting (kN/m²)</span>
-          <label>e.g. vloerplaat
-            <input type="number" step={0.1} value={gVloer} onChange={(e) => setVal("g_vloerplaat", parseFloat(e.target.value))} />
+          <span className="vd-ctrl-h">Belasting</span>
+          <label>g<sub>k</sub> (kN/m²)
+            <input type="number" step={0.1} value={gk} onChange={(e) => setVal("g_k", parseFloat(e.target.value))} />
           </label>
-          <label>e.g. scheidingswanden
-            <input type="number" step={0.1} value={gWand} onChange={(e) => setVal("g_wanden", parseFloat(e.target.value))} />
-          </label>
-          <label>Scheidingswanden verplaatsbaar
-            <select value={verpl} onChange={(e) => setVal("verplaatsbaar", parseInt(e.target.value))}>
-              <option value={0}>Nee (vast)</option>
-              <option value={1}>Ja (verplaatsbaar)</option>
-            </select>
-          </label>
-          <label>e.g. plafond
-            <input type="number" step={0.1} value={gPlaf} onChange={(e) => setVal("g_plafond", parseFloat(e.target.value))} />
-          </label>
-          <label>overig
-            <input type="number" step={0.1} value={gOver} onChange={(e) => setVal("g_overig", parseFloat(e.target.value))} />
-          </label>
-
-          <span className="vd-ctrl-h">Veranderlijke belasting</span>
           <label>q<sub>k</sub> (kN/m²)
             <input type="number" step={0.5} value={qk} onChange={(e) => setVal("q_k", parseFloat(e.target.value))} />
           </label>
@@ -335,6 +348,27 @@ export default function BalklaagDesigner() {
               {GRENS.map((g) => <option key={g.v} value={g.v}>{g.label}</option>)}
             </select>
           </label>
+
+          <span className="vd-ctrl-h">Trilling (§7.3.3)</span>
+          <label>Controleer trilling
+            <select value={tril} onChange={(e) => setVal("controleer_trilling", parseInt(e.target.value))}>
+              <option value={1}>Ja</option>
+              <option value={0}>Nee</option>
+            </select>
+          </label>
+          {tril === 1 && (
+            <>
+              <label>ζ — demping
+                <input type="number" step={0.005} value={zeta} onChange={(e) => setVal("ζ", parseFloat(e.target.value))} />
+              </label>
+              <label>a (mm/kN)
+                <input type="number" step={0.1} value={aTril} onChange={(e) => setVal("a_tril", parseFloat(e.target.value))} />
+              </label>
+              <label>b (—)
+                <input type="number" step={5} value={bTril} onChange={(e) => setVal("b_tril", parseFloat(e.target.value))} />
+              </label>
+            </>
+          )}
         </div>
 
         <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, justifyContent: "center", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
@@ -344,7 +378,7 @@ export default function BalklaagDesigner() {
               <svg width={W} height={H} className="vd-svg">
                 <defs>
                   <marker id="bdDim" markerWidth="10" markerHeight="12" refX="5" refY="6" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                    <path d="M5 0.5 L5 11.5" className="vd-dimarrow" />
+                    <circle cx="5" cy="6" r="2.4" className="vd-dimarrow" />
                   </marker>
                 </defs>
                 {/* vloerhout */}
@@ -369,7 +403,11 @@ export default function BalklaagDesigner() {
       <div className="vd-foot">
         <span>Klik op een blauwe maat om die te wijzigen — stroomt direct terug in de rekensheet.</span>
         <span className="vd-live">
-          {controleer === 1 ? `doorbuiging ${ucDoor.toFixed(2)} · ` : "doorbuiging n.v.t. · "}buiging {ucBuig.toFixed(2)} · afschuiving {ucAfsch.toFixed(2)}
+          {controleer === 1 ? `doorbuiging ${ucDoor.toFixed(2)} · ` : "doorbuiging n.v.t. · "}
+          buiging {ucBuig.toFixed(2)} · afschuiving {ucAfsch.toFixed(2)}
+          {tril === 1
+            ? ` · trilling ${ucTril.toFixed(2)} (f₁ = ${f1.toFixed(1)} Hz)`
+            : " · trilling n.v.t."}
         </span>
       </div>
     </div>
