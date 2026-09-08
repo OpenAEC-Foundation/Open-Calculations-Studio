@@ -124,14 +124,14 @@ L_th
 
 '<i>Eén permanente en één veranderlijke vloerbelasting. Wat daarin thuishoort
 'bepaal je zelf: vloerafwerking, plafond, vaste scheidingswanden en overige
-'blijvende lasten tellen op in g<sub>k</sub>. Verplaatsbare scheidingswanden
-'horen volgens EN 1991-1-1 §6.3.1.2 juist bij de veranderlijke last q<sub>k</sub>.
+'blijvende lasten tellen op in G<sub>k</sub>. Verplaatsbare scheidingswanden
+'horen volgens EN 1991-1-1 §6.3.1.2 juist bij de veranderlijke last Q<sub>k</sub>.
 'Het eigen gewicht van de balk zelf komt hier niet bij — dat rekent de sheet
 'in §5 zelf uit de doorsnede en de dichtheid.</i>
 
-g_k = ?*(kN/m^2)', permanente vloerbelasting'
-q_k = ?*(kN/m^2)', veranderlijke vloerbelasting'
-Q_k = ?*(kN)', geconcentreerde last'
+G_k = ?*(kN/m^2)', permanente vloerbelasting'
+Q_k = ?*(kN/m^2)', veranderlijke vloerbelasting'
+F_k = ?*(kN)', geconcentreerde last'
 
 @select belastingcat "Belastingcategorie (Tabel NB.2 — A1.1)"
   A — woon- en verblijfsruimtes = 1
@@ -165,7 +165,7 @@ Q_k = ?*(kN)', geconcentreerde last'
 ψ_1
 ψ_2
 
-q_k_eff = q_k', veranderlijke vloerbelasting'
+Q_k_eff = Q_k', veranderlijke vloerbelasting'
 
 # 4. Doorsnede-eigenschappen
 
@@ -195,7 +195,7 @@ g_balk
 
 # 5. Belastingsgeval 1 — Permanent
 
-P_g,k = hoh*g_k + g_balk to kN/m', lijnlast permanent op de balk'
+P_g,k = hoh*G_k + g_balk to kN/m', lijnlast permanent op de balk'
 P_g,k
 M_g,k = P_g,k*L_th^2/8 to kN*m
 V_g,k = P_g,k*L_th/2 to kN
@@ -206,7 +206,7 @@ u_g,k
 
 # 6. Belastingsgeval 2 — Veranderlijk (gelijkmatig)
 
-q_q,k = hoh*q_k_eff to kN/m', lijnlast veranderlijk'
+q_q,k = hoh*Q_k_eff to kN/m', lijnlast veranderlijk'
 q_q,k
 M_q,k = q_q,k*L_th^2/8 to kN*m
 V_q,k = q_q,k*L_th/2 to kN
@@ -233,7 +233,7 @@ E_vl = E_beschot/(1 N/mm^2)', E-modulus beschot, dimensieloos voor de deling'
 k_r_0 = 0.37 + 0.8*hoh/a_ref - E_vl*t_ruw^3/12/EI_ref
 k_r = min(1; k_r_0)', concentratiefactor, afgetopt op 1,0 (NEN-EN 1995-1-1 NB)'
 k_r
-F_Q,k = Q_k*k_r to kN', effectieve puntlast op één balk'
+F_Q,k = F_k*k_r to kN', effectieve puntlast op één balk'
 F_Q,k
 M_Q,k = F_Q,k*L_th/4 to kN*m
 V_Q,k = F_Q,k to kN', puntlast bij oplegging → volledige dwarskracht op de balk'
@@ -402,7 +402,7 @@ b_tril = ?', parameter b bij de snelheidseis (Figuur 7.2, ca. 120)'
     'Trillende massa per m² — alleen het permanente gewicht (§7.3.3): de
     'veranderlijke belasting telt niet mee, want de vloer trilt in de staat
     'waarin hij normaal wordt gebruikt, niet onder vol belastingsontwerp.
-    m_opp = (g_k + g_balk/hoh)/(9.81 m/s^2) to kg/m^2
+    m_opp = (G_k + g_balk/hoh)/(9.81 m/s^2) to kg/m^2
     m_opp
     f_1 = π/(2*L_th^2)*sqrt(EI_b/m_opp) to Hz
     f_1
