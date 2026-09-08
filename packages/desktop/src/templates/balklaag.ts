@@ -247,27 +247,43 @@ u_Q,k
 '<i>Vloerhout (dikte t<sub>vloer</sub>) op de balken, hart-op-hart afstand hoh.</i>
 
 #hide
+'De doorsnede staat op schaal: balkbreedte, balkhoogte, beschotdikte en de
+'hart-op-hart afstand krijgen allemaal dezelfde factor, zodat de verhoudingen
+'kloppen met het gekozen profiel. Eerder stonden er vaste pixelmaten, waardoor
+'een slanke balk er even plomp uitzag als een zware.
 svgW = 480
 n_balk = 4
-gap = 96', pixelafstand tussen balken (representatief)
-bw = 30', balkbreedte in pixels
-bh = 70', balkhoogte in pixels
+mm_ruw = 1 mm', hulpeenheid om maten kaal te maken'
+b_ruw = b_balk/mm_ruw
+h_ruw2 = h_balk/mm_ruw
+hoh_ruw = hoh/mm_ruw
+t_ruw2 = t_vloer/mm_ruw
+'Breedte van de balkengroep in mm, en de schaal die hem in 420 px laat passen.
+groep_mm = (n_balk - 1)*hoh_ruw + b_ruw
+sc_x = 420/groep_mm
+'Hoogte begrenzen: beschot + balk mag niet boven de 110 px uitkomen.
+sc_y = 110/(t_ruw2 + h_ruw2)
+sc = min(sc_x; sc_y)
+bw = b_ruw*sc
+bh = h_ruw2*sc
+gap = hoh_ruw*sc
+vt = max(4; t_ruw2*sc)
 x0 = (svgW - (n_balk - 1)*gap - bw)/2
-vy = 60', bovenkant beschot
-vt = 16', dikte beschot in pixels
-by = vy + vt', bovenkant balken
+vy = 46', bovenkant beschot'
+by = vy + vt', bovenkant balken'
+svgH = by + bh + 46
 #show
-'<svg viewbox="0 0 480 220" xmlns="http://www.w3.org/2000/svg" style="font-size:12px; width:100%; max-height:240px;">
-'  <rect x="20" y="'vy'" width="440" height="'vt'" style="fill:#D9B382; stroke:#8B6F47; stroke-width:1.5"/>
+'<svg viewbox="0 0 480 'svgH'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'svgH'px;">
+'  <rect x="24" y="'vy'" width="432" height="'vt'" style="fill:#D9B382; stroke:#8B6F47; stroke-width:0.8"/>
 #for i = 0 : n_balk - 1
-'  <rect x="'x0 + i*gap'" y="'by'" width="'bw'" height="'bh'" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:1.5"/>
+'  <rect x="'x0 + i*gap'" y="'by'" width="'bw'" height="'bh'" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:0.8"/>
 #loop
-'  <line x1="'x0 + bw/2'" y1="'by + bh + 16'" x2="'x0 + gap + bw/2'" y2="'by + bh + 16'" style="stroke:#1E40AF; stroke-width:1"/>
-'  <polygon points="'x0 + bw/2','by + bh + 12' 'x0 + bw/2 + 6','by + bh + 16' 'x0 + bw/2','by + bh + 20'" style="fill:#1E40AF"/>
-'  <polygon points="'x0 + gap + bw/2','by + bh + 12' 'x0 + gap + bw/2 - 6','by + bh + 16' 'x0 + gap + bw/2','by + bh + 20'" style="fill:#1E40AF"/>
-'  <text x="'x0 + gap/2 + bw/2'" y="'by + bh + 12'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">hoh = 'hoh'</text>
-'  <text x="30" y="'vy - 6'" style="fill:#8B6F47">beschot t = 't_vloer'</text>
-'  <text x="'x0 - 4'" y="'by + bh/2'" text-anchor="end" style="fill:#8B6F47">'b_balk' × 'h_balk'</text>
+'  <line x1="'x0 + bw/2'" y1="'by + bh + 18'" x2="'x0 + gap + bw/2'" y2="'by + bh + 18'" style="stroke:#1E40AF; stroke-width:0.7"/>
+'  <circle cx="'x0 + bw/2'" cy="'by + bh + 18'" r="2.2" style="fill:#1E40AF"/>
+'  <circle cx="'x0 + gap + bw/2'" cy="'by + bh + 18'" r="2.2" style="fill:#1E40AF"/>
+'  <text x="'x0 + gap/2 + bw/2'" y="'by + bh + 13'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">hoh = 'hoh'</text>
+'  <text x="26" y="'vy - 5'" style="fill:#8B6F47">beschot t = 't_vloer'</text>
+'  <text x="456" y="'by + bh + 13'" text-anchor="end" style="fill:#8B6F47">balk 'b_balk' × 'h_balk'</text>
 '</svg>'
 
 # 8b. Statisch schema
@@ -286,24 +302,24 @@ smid = (sx1 + sx2)/2
 '<svg viewbox="0 0 480 190" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:210px;">
 '  <!-- verdeelde last: pijlen naar beneden op de balk -->
 #for i = 0 : 12
-'  <line x1="'sx1 + i*30'" y1="'sy - 46'" x2="'sx1 + i*30'" y2="'sy - 8'" style="stroke:#B45309; stroke-width:1.2"/>
+'  <line x1="'sx1 + i*30'" y1="'sy - 46'" x2="'sx1 + i*30'" y2="'sy - 8'" style="stroke:#B45309; stroke-width:0.9"/>
 '  <polygon points="'sx1 + i*30','sy - 4' 'sx1 + i*30 - 3.5','sy - 12' 'sx1 + i*30 + 3.5','sy - 12'" style="fill:#B45309"/>
 #loop
-'  <line x1="'sx1'" y1="'sy - 46'" x2="'sx2'" y2="'sy - 46'" style="stroke:#B45309; stroke-width:1.6"/>
+'  <line x1="'sx1'" y1="'sy - 46'" x2="'sx2'" y2="'sy - 46'" style="stroke:#B45309; stroke-width:1"/>
 '  <text x="'smid'" y="'sy - 52'" text-anchor="middle" style="fill:#B45309; font-weight:700">q = 'P_g,k + q_q,k'</text>
 '  <!-- geconcentreerde last in het midden -->
-'  <line x1="'smid'" y1="'sy - 76'" x2="'smid'" y2="'sy - 50'" style="stroke:#B91C1C; stroke-width:2"/>
+'  <line x1="'smid'" y1="'sy - 76'" x2="'smid'" y2="'sy - 50'" style="stroke:#B91C1C; stroke-width:1.4"/>
 '  <polygon points="'smid','sy - 47' 'smid - 5','sy - 58' 'smid + 5','sy - 58'" style="fill:#B91C1C"/>
 '  <text x="'smid + 8'" y="'sy - 66'" style="fill:#B91C1C; font-weight:700">F = 'F_Q,k'</text>
 '  <!-- de balk -->
-'  <rect x="'sx1'" y="'sy - 6'" width="'sx2 - sx1'" height="12" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:1.5"/>
+'  <rect x="'sx1'" y="'sy - 6'" width="'sx2 - sx1'" height="12" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:0.9"/>
 '  <!-- opleggingen: driehoek links (scharnier), rol rechts -->
-'  <polygon points="'sx1','sy + 6' 'sx1 - 11','sy + 26' 'sx1 + 11','sy + 26'" style="fill:none; stroke:#374151; stroke-width:1.5"/>
-'  <polygon points="'sx2','sy + 6' 'sx2 - 11','sy + 22' 'sx2 + 11','sy + 22'" style="fill:none; stroke:#374151; stroke-width:1.5"/>
-'  <circle cx="'sx2 - 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:1.5"/>
-'  <circle cx="'sx2 + 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:1.5"/>
-'  <line x1="'sx1 - 18'" y1="'sy + 27'" x2="'sx1 + 18'" y2="'sy + 27'" style="stroke:#374151; stroke-width:1.5"/>
-'  <line x1="'sx2 - 18'" y1="'sy + 31'" x2="'sx2 + 18'" y2="'sy + 31'" style="stroke:#374151; stroke-width:1.5"/>
+'  <polygon points="'sx1','sy + 6' 'sx1 - 11','sy + 26' 'sx1 + 11','sy + 26'" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+'  <polygon points="'sx2','sy + 6' 'sx2 - 11','sy + 22' 'sx2 + 11','sy + 22'" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+'  <circle cx="'sx2 - 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+'  <circle cx="'sx2 + 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+'  <line x1="'sx1 - 18'" y1="'sy + 27'" x2="'sx1 + 18'" y2="'sy + 27'" style="stroke:#374151; stroke-width:0.9"/>
+'  <line x1="'sx2 - 18'" y1="'sy + 31'" x2="'sx2 + 18'" y2="'sy + 31'" style="stroke:#374151; stroke-width:0.9"/>
 '  <!-- maatlijn L_th -->
 '  <line x1="'sx1'" y1="'sy + 52'" x2="'sx2'" y2="'sy + 52'" style="stroke:#1E40AF; stroke-width:1"/>
 '  <circle cx="'sx1'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
@@ -487,21 +503,24 @@ mw = 480
 mx1 = 60
 mx2 = 420
 mmid = (mx1 + mx2)/2
-mh = 46', halve hoogte van elk diagram in pixels
-my = 60', as van de M-lijn
-vy2 = 168', as van de V-lijn
+'De M-lijn hangt onder zijn as, de V-lijn steekt er zowel boven als onder
+'uit. Met te weinig tussenruimte liepen de twee door elkaar; vandaar de
+'as van V ruim onder het diepste punt van de parabool.
+mh = 38', halve hoogte van elk diagram in pixels
+my = 42', as van de M-lijn
+vy2 = 190', as van de V-lijn
 #show
-'<svg viewbox="0 0 480 220" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:240px;">
+'<svg viewbox="0 0 480 250" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:260px;">
 '  <!-- M-lijn: parabool onder de as (trek aan de onderzijde) -->
 '  <line x1="'mx1 - 10'" y1="'my'" x2="'mx2 + 10'" y2="'my'" style="stroke:#374151; stroke-width:1"/>
-'  <path d="M 'mx1' 'my' Q 'mmid' 'my + 2*mh' 'mx2' 'my'" style="fill:#DBEAFE; stroke:#1E40AF; stroke-width:1.6"/>
+'  <path d="M 'mx1' 'my' Q 'mmid' 'my + 2*mh' 'mx2' 'my'" style="fill:#DBEAFE; stroke:#1E40AF; stroke-width:1"/>
 '  <line x1="'mmid'" y1="'my'" x2="'mmid'" y2="'my + mh'" style="stroke:#1E40AF; stroke-width:1; stroke-dasharray:3 3"/>
 '  <text x="'mmid'" y="'my + mh + 15'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">M<tspan baseline-shift="sub" font-size="8">y,Ed</tspan> = 'M_y,Ed'</text>
 '  <text x="'mx1 - 10'" y="'my - 8'" style="fill:#374151; font-weight:700">M-lijn</text>
 '  <!-- V-lijn: recht, positief links, negatief rechts -->
 '  <line x1="'mx1 - 10'" y1="'vy2'" x2="'mx2 + 10'" y2="'vy2'" style="stroke:#374151; stroke-width:1"/>
-'  <polygon points="'mx1','vy2 - mh' 'mmid','vy2' 'mx1','vy2'" style="fill:#DCFCE7; stroke:#15803D; stroke-width:1.6"/>
-'  <polygon points="'mmid','vy2' 'mx2','vy2 + mh' 'mx2','vy2'" style="fill:#DCFCE7; stroke:#15803D; stroke-width:1.6"/>
+'  <polygon points="'mx1','vy2 - mh' 'mmid','vy2' 'mx1','vy2'" style="fill:#DCFCE7; stroke:#15803D; stroke-width:1"/>
+'  <polygon points="'mmid','vy2' 'mx2','vy2 + mh' 'mx2','vy2'" style="fill:#DCFCE7; stroke:#15803D; stroke-width:1"/>
 '  <text x="'mx1 + 4'" y="'vy2 - mh - 5'" style="fill:#15803D; font-weight:700">+V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan> = 'V_z,Ed'</text>
 '  <text x="'mx2 - 4'" y="'vy2 + mh + 13'" text-anchor="end" style="fill:#15803D; font-weight:700">−V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan></text>
 '  <text x="'mx1 - 10'" y="'vy2 - 8'" style="fill:#374151; font-weight:700">V-lijn</text>
@@ -527,9 +546,74 @@ UC_afsch = τ_d/f_v,d
     'UC<sub>afschuiving</sub> = τ<sub>d</sub>/f<sub>v,d</sub> = 'UC_afsch'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
 #end if
 
-# 11. Samenvatting
+# 11. Samenvatting — alle unity checks
 
 UC_max = max(UC_doorbuiging; UC_buiging; UC_afsch; UC_trilling)
+
+#hide
+'Kleur per regel: rood zodra een toets boven 1,0 uitkomt, oranje vanaf 0,90
+'(voldoet, maar zonder marge), anders groen.
+kl_buig = if(UC_buiging > 1; 1; if(UC_buiging > 0.9; 2; 3))
+kl_afsch = if(UC_afsch > 1; 1; if(UC_afsch > 0.9; 2; 3))
+kl_door = if(UC_doorbuiging > 1; 1; if(UC_doorbuiging > 0.9; 2; 3))
+kl_tril = if(UC_trilling > 1; 1; if(UC_trilling > 0.9; 2; 3))
+c_1 = "#b91c1c"
+c_2 = "#b45309"
+c_3 = "#047857"
+kleur_buig = if(kl_buig ≡ 1; c_1; if(kl_buig ≡ 2; c_2; c_3))
+kleur_afsch = if(kl_afsch ≡ 1; c_1; if(kl_afsch ≡ 2; c_2; c_3))
+kleur_door = if(kl_door ≡ 1; c_1; if(kl_door ≡ 2; c_2; c_3))
+kleur_tril = if(kl_tril ≡ 1; c_1; if(kl_tril ≡ 2; c_2; c_3))
+oordeel_buig = if(UC_buiging ≤ 1; "voldoet"; "voldoet niet")
+oordeel_afsch = if(UC_afsch ≤ 1; "voldoet"; "voldoet niet")
+oordeel_door = if(UC_doorbuiging ≤ 1; "voldoet"; "voldoet niet")
+oordeel_tril = if(UC_trilling ≤ 1; "voldoet"; "voldoet niet")
+#show
+
+'<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
+'<tr style="border-bottom:2px solid #374151;">
+'<th style="text-align:left; padding:5px 8px;">Toets</th>
+'<th style="text-align:left; padding:5px 8px;">Norm</th>
+'<th style="text-align:right; padding:5px 8px;">UC</th>
+'<th style="text-align:left; padding:5px 8px;">Oordeel</th></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Buiging</td>
+'<td style="padding:5px 8px;">§6.1.6 (6.11)</td>
+'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_buig'">'UC_buiging'</td>
+'<td style="padding:5px 8px; color:'kleur_buig'">'oordeel_buig'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Afschuiving</td>
+'<td style="padding:5px 8px;">§6.1.7 (6.13)</td>
+'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_afsch'">'UC_afsch'</td>
+'<td style="padding:5px 8px; color:'kleur_afsch'">'oordeel_afsch'</td></tr>
+#if controleer ≡ 1
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Doorbuiging</td>
+'<td style="padding:5px 8px;">§7.2 (7.2)</td>
+'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_door'">'UC_doorbuiging'</td>
+'<td style="padding:5px 8px; color:'kleur_door'">'oordeel_door'</td></tr>
+#else
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Doorbuiging</td>
+'<td style="padding:5px 8px;">§7.2</td>
+'<td style="padding:5px 8px; text-align:right; color:#9ca3af;">—</td>
+'<td style="padding:5px 8px; color:#9ca3af;">niet getoetst</td></tr>
+#end if
+#if controleer_trilling ≡ 1
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Trilling</td>
+'<td style="padding:5px 8px;">§7.3.3 (7.3, 7.4)</td>
+'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_tril'">'UC_trilling'</td>
+'<td style="padding:5px 8px; color:'kleur_tril'">'oordeel_tril'</td></tr>
+#else
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Trilling</td>
+'<td style="padding:5px 8px;">§7.3.3</td>
+'<td style="padding:5px 8px; text-align:right; color:#9ca3af;">—</td>
+'<td style="padding:5px 8px; color:#9ca3af;">niet getoetst</td></tr>
+#end if
+'</table>
+
 #if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1.0 → <b>Balklaag voldoet</b></span>
 #else
