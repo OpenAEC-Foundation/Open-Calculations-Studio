@@ -33,9 +33,17 @@ export function laadTemplate(bestand) {
 export function reken(tpl, selectValues, initialScope) {
   const nodes = evaluate(parse(tpl), selectValues, initialScope);
   const values = {};
+  // Zowel de toekenningsregel (`x = formule = uitkomst`) als de kale herhaling
+  // eronder (`x = uitkomst`) draagt de waarde. Alleen op die herhaling
+  // vertrouwen maakt de controle afhankelijk van een regel die puur voor de
+  // leesbaarheid bestaat: haal je hem uit een blad om de uitdraai in te korten,
+  // dan valt de controle om terwijl er aan de berekening niets veranderde.
   const loop = (lijst) => {
     for (const n of lijst) {
-      if (n.type === "var-display") values[n.name] = parseFloat(String(n.result).replace(",", "."));
+      if (n.type === "assignment" || n.type === "var-display") {
+        const w = parseFloat(String(n.result).replace(",", "."));
+        if (Number.isFinite(w)) values[n.name] = w;
+      }
       if (Array.isArray(n.children)) loop(n.children);
       if (Array.isArray(n.nodes)) loop(n.nodes);
     }

@@ -129,7 +129,6 @@ E_beschot = ?*(N/mm^2)', E-modulus beschot (E_0,ser,rep)'
 b_vloer = ?*(m)', breedte van het vloerveld — nodig voor de trillingstoets'
 
 L_th = L_d + a_opl', theoretische overspanning (= L_d + 2·a_opl/2)'
-L_th
 
 # 3. Belastingen
 
@@ -172,9 +171,6 @@ F_k = ?*(kN)', geconcentreerde last'
 ψ_0 = if(belastingcat ≡ 11; ψ_0_zelf; hlookup(ψ_tabel; belastingcat; 1; 2))
 ψ_1 = if(belastingcat ≡ 11; ψ_0_zelf; hlookup(ψ_tabel; belastingcat; 1; 3))
 ψ_2 = if(belastingcat ≡ 11; ψ_2_zelf; hlookup(ψ_tabel; belastingcat; 1; 4))
-ψ_0
-ψ_1
-ψ_2
 
 Q_k_eff = Q_k', veranderlijke vloerbelasting'
 
@@ -184,10 +180,6 @@ A = b_balk*h_balk
 I_y = b_balk*h_balk^3/12', traagheidsmoment'
 W_y = b_balk*h_balk^2/6', weerstandsmoment'
 S_y = b_balk*h_balk^2/8', statisch moment (NL) voor afschuiving'
-A
-I_y
-W_y
-S_y
 
 '<i><b>Splitspunt — eigen gewicht (register punt 8).</b> De referentie-uitwerking rekent met een
 'vaste 550 kg/m³ én g = 10 m/s²; de norm met ρ<sub>mean</sub> uit EN 338 en
@@ -200,9 +192,6 @@ g_nb = 9.81 m/s^2
 g_balk_xc = A*ρ_xc*g_xc to kN/m', eigen gewicht — de referentie-uitwerking'
 g_balk_nb = A*ρ_mean*g_nb to kN/m', eigen gewicht — EN 338'
 g_balk = if(rekenwijze ≡ 1; g_balk_xc; g_balk_nb)', gehanteerd eigen gewicht'
-g_balk_xc
-g_balk_nb
-g_balk
 
 # 5. Belastingsgeval 1 — Permanent
 
@@ -243,7 +232,6 @@ E_vl = E_beschot/(1 N/mm^2)', E-modulus beschot, dimensieloos voor de deling'
 #show
 k_r_0 = 0.37 + 0.8*hoh/a_ref - E_vl*t_ruw^3/12/EI_ref
 k_r = min(1; k_r_0)', concentratiefactor, afgetopt op 1,0 (NEN-EN 1995-1-1 NB)'
-k_r
 F_Q,k = F_k*k_r to kN', effectieve puntlast op één balk'
 F_Q,k
 M_Q,k = F_Q,k*L_th/4 to kN*m
@@ -390,21 +378,16 @@ smid = (sx1 + sx2)/2
     '<h6>9.1 Karakteristieke combinatie (6.14b) — momentane doorbuiging</h6>
     'w<sub>inst</sub> = u<sub>g</sub> + u<sub>var</sub>, zonder kruip:
     w_inst = u_g,k + u_var to mm
-    w_inst
 
     '<h6>9.2 Quasi-blijvende combinatie (6.16b) — kruipdeel</h6>
     'Alleen het deel dat langdurig blijft staan kruipt: de volledige permanente
     'last plus ψ<sub>2</sub> maal de veranderlijke.
     w_qp = u_g,k + ψ_2*u_var to mm', doorbuiging onder de quasi-blijvende combinatie'
-    w_qp
     w_kruip = k_def*w_qp to mm', bijkomende doorbuiging door kruip'
-    w_kruip
 
     '<h6>9.3 Eindstand (§7.2, formule 7.2)</h6>
     w_fin = (1 + k_def)*u_g,k + (1 + ψ_2*k_def)*u_var to mm
     w_lim = grensfactor*L_th
-    w_fin
-    w_lim
     UC_doorbuiging = w_fin/w_lim
     #if UC_doorbuiging ≤ 1.0
         'UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
@@ -470,19 +453,15 @@ b_tril = ?', parameter b bij de snelheidseis (Figuur 7.2, ca. 120)'
     'Beschot, per meter vloerbreedte — draagt loodrecht op de balken:
     I_beschot = 1 m*t_vloer^3/12 to m^4
     EI_l = E_beschot*I_beschot/(1 m) to N*m^2/m', (EI)_l — beschot'
-    EI_l
     'Balklaag, per meter vloerbreedte — de balken dragen in de overspanning:
     EI_b = E_mean*I_y/hoh to N*m^2/m', (EI)_b — balken'
-    EI_b
 
     '<h6>9b.2 Eigenfrequentie (formule 7.5)</h6>
     'Trillende massa per m² — alleen het permanente gewicht (§7.3.3): de
     'veranderlijke belasting telt niet mee, want de vloer trilt in de staat
     'waarin hij normaal wordt gebruikt, niet onder vol belastingsontwerp.
     m_opp = (G_k + g_balk/hoh)/(9.81 m/s^2) to kg/m^2
-    m_opp
     f_1 = π/(2*L_th^2)*sqrt(EI_b/m_opp) to Hz
-    f_1
     #if f_1 ≥ 8 Hz
         'f<sub>1</sub> = 'f_1'<span style="color: green"> ≥ 8 Hz → de twee criteria hieronder zijn van toepassing</span>
     #else
@@ -495,8 +474,6 @@ b_tril = ?', parameter b bij de snelheidseis (Figuur 7.2, ca. 120)'
     F_tril = 1 kN*k_r to kN', effectieve puntlast op één balk'
     w_1kN = F_tril*L_th^3/(48*E_mean*I_y) to mm
     w_per_kN = w_1kN/(1 kN) to mm/kN
-    w_per_kN
-    a_tril
     UC_tril_a = w_per_kN/a_tril
     #if UC_tril_a ≤ 1.0
         'UC<sub>w/F</sub> = 'UC_tril_a'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
@@ -510,13 +487,10 @@ b_tril = ?', parameter b bij de snelheidseis (Figuur 7.2, ca. 120)'
     'en wordt de term onder de wortel op nul afgekapt.
     n_40_arg = max(0; (40 Hz/f_1)^2 - 1)
     n_40 = (n_40_arg*(b_vloer/L_th)^4*EI_l/EI_b)^0.25
-    n_40
     'Responssnelheid op een eenheidsimpuls (formule 7.6):
     v_resp = 4*(0.4 + 0.6*n_40)/(m_opp*b_vloer*L_th + 200 kg) to m/(N*s^2)
-    v_resp
     'Grenswaarde (formule 7.4): b^(f_1·ζ − 1)
     v_lim = b_tril^(f_1*ζ/(1 Hz) - 1)*1 m/(N*s^2)
-    v_lim
     UC_tril_v = v_resp/v_lim
     #if UC_tril_v ≤ 1.0
         'UC<sub>v</sub> = 'UC_tril_v'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
@@ -608,7 +582,6 @@ UC_buiging = σ_m,y,d/f_m,d
 
 '<h6>10.3 Afschuiving — §6.1.7 (6.13)</h6>
 τ_d = V_z,Ed*S_y/(b_balk*I_y) to N/mm^2
-τ_d
 UC_afsch = τ_d/f_v,d
 #if UC_afsch ≤ 1.0
     'UC<sub>afschuiving</sub> = τ<sub>d</sub>/f<sub>v,d</sub> = 'UC_afsch'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>

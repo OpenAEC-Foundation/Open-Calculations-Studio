@@ -335,3 +335,53 @@ html.afdrukmodus .print-loopvoet {
   max-width: 100%;
   height: auto;
 }
+
+/* ─── Compacter zetwerk op papier ─────────────────────────────── */
+
+/*
+ * De kernopmaak is gemaakt voor een scherm waar je ruim scrollt. Op papier
+ * telt elke regel: een kwart van de bladhoogte ging op aan de witruimte
+ * tússen de blokken, en de rekenregels stonden op schermgrootte (14px, ruim
+ * 10,5pt) terwijl een rekenrapport traditioneel krapper wordt gezet.
+ *
+ * Hier één compacte maatvoering voor de afdruk. Alleen de ruimte en de
+ * korpsgrootte veranderen; er verdwijnt geen inhoud, en op het scherm blijft
+ * de ruimere opmaak staan.
+ */
+.print-opmaak .print-blad .calc-line {
+  margin: 1px 0 !important;
+  padding: 0 !important;
+  font-size: 12.3px !important;
+}
+
+.print-opmaak .print-blad .calc-text {
+  margin: 1.5px 0 !important;
+  font-size: 12.3px !important;
+  line-height: 1.4 !important;
+}
+
+/* Koppen houden lucht erbóven — dat markeert de paragraafovergang — maar
+   niet eronder: de kop hoort al bij de tekst die volgt. */
+.print-opmaak .print-blad h1,
+.print-opmaak .print-blad h2,
+.print-opmaak .print-blad h3,
+.print-opmaak .print-blad h4,
+.print-opmaak .print-blad h5,
+.print-opmaak .print-blad h6 {
+  margin-top: 7px !important;
+  margin-bottom: 2px !important;
+  padding-bottom: 0 !important;
+}
+
+/*
+ * Tekeningen in de uitwerking krimpen op papier mee.
+ *
+ * De rekenbladen geven hun SVG's een `max-height` die op een scherm prettig
+ * leest; vier van die tekeningen onder elkaar kosten op een A4 bijna een heel
+ * vel. Het zijn vectoren, dus kleiner blijft scherp — en de bijschriften staan
+ * in de tekening zelf mee te schalen. Breedte-begrenzing blijft staan, zodat
+ * de verhouding klopt.
+ */
+.print-opmaak .print-blad .calc-svg svg {
+  max-height: 150px !important;
+}
