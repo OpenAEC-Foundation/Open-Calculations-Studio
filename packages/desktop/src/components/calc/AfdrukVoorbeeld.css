@@ -174,11 +174,3 @@
   color: #000;
   background: #fff;
 }
-
-.av-leeg {
-  margin: 40px auto;
-  max-width: 380px;
-  text-align: center;
-  color: var(--theme-text-muted, #6b7280);
-  font-size: 13px;
-}
