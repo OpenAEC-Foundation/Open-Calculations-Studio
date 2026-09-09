@@ -382,3 +382,28 @@
 .tree-section-toggle:hover {
   background: var(--theme-hover, rgba(217, 119, 6, 0.08));
 }
+
+/* ─── Publicatievlag ──────────────────────────────────────────── */
+
+/* Publicatie staat los van de status-bolletjes: die zeggen hoe ver de toetsing
+   is, dit zegt of de module is nagekeken en vrijgegeven. Vandaar een tekstvlag
+   naast het label in plaats van een tweede bolletje — twee symbolen naast
+   elkaar zouden alleen maar verwarren. */
+.tree-vlag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 8px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #15803d;
+  background: #dcfce7;
+  white-space: nowrap;
+}
+
+/* Nog niet nagekeken: het label wat naar achteren, zodat de vrijgegeven
+   modules eruit springen. Wel gewoon aanklikbaar — er moet aan doorgewerkt
+   kunnen worden. */
+.tree-item-onuitgegeven .tree-item-label {
+  opacity: 0.6;
+}

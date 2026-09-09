@@ -4,6 +4,7 @@ import {
   bibliotheek,
   modulesPerTemplate,
   STATUS_UITLEG,
+  PUBLICATIE_UITLEG,
   type TreeNode,
 } from "./projectTree";
 import { templates } from "../../templates";
@@ -58,21 +59,29 @@ function CatalogusNode({ node, level, onInsert }: TreeProps) {
   const heeftSjabloon = !!node.templateId && !!templates[node.templateId];
   const status = node.status;
   const bolletje = status === "concept" ? "○" : status ? "●" : heeftSjabloon ? "○" : "□";
+  // Alleen rekenmodules dragen een status; naslagwerk uit de bibliotheek niet.
+  // Voor die laatste zegt "niet gepubliceerd" niets, dus daar blijft het weg.
+  const isModule = !!status;
+  const publicatie = node.gepubliceerd
+    ? PUBLICATIE_UITLEG.gepubliceerd
+    : PUBLICATIE_UITLEG.onuitgegeven;
   const uitleg = status
-    ? `${node.label} — ${STATUS_UITLEG[status]}\nKlik om toe te voegen aan het project`
+    ? `${node.label} — ${STATUS_UITLEG[status]}\n${publicatie}\nKlik om toe te voegen aan het project`
     : heeftSjabloon
       ? `${node.label} — klik om toe te voegen aan het project`
       : `${node.label} (nog niet beschikbaar)`;
 
   return (
     <button
-      className={`tree-item${heeftSjabloon ? "" : " tree-item-disabled"}`}
+      className={`tree-item${heeftSjabloon ? "" : " tree-item-disabled"}` +
+        (isModule && !node.gepubliceerd ? " tree-item-onuitgegeven" : "")}
       style={{ paddingLeft: 16 + level * 12 }}
       onClick={() => heeftSjabloon && node.templateId && onInsert(node.templateId, node.label)}
       title={uitleg}
     >
       <span className={`tree-item-icon${status ? ` tree-status-${status}` : ""}`}>{bolletje}</span>
       <span className="tree-item-label">{node.label}</span>
+      {node.gepubliceerd && <span className="tree-vlag">gepubliceerd</span>}
       {heeftSjabloon && <span className="tree-item-plus">+</span>}
     </button>
   );
@@ -161,7 +170,7 @@ function ExemplaarRij({
   );
 }
 
-/** Verklaring van de bolletjes, onder aan de boom. */
+/** Verklaring van de bolletjes en de publicatievlag, onder aan de boom. */
 function StatusLegenda() {
   return (
     <div className="tree-legend">
@@ -171,6 +180,14 @@ function StatusLegenda() {
           {s === "gereed" ? "gecalibreerd" : s === "controleren" ? "nog controleren" : "nog uit te werken"}
         </span>
       ))}
+      <span className="tree-legend-row" title={PUBLICATIE_UITLEG.gepubliceerd}>
+        <span className="tree-vlag">gepubliceerd</span>
+        nagekeken en vrijgegeven
+      </span>
+      <span className="tree-legend-row tree-item-onuitgegeven" title={PUBLICATIE_UITLEG.onuitgegeven}>
+        <span className="tree-item-icon">·</span>
+        gedimd = nog niet nagekeken
+      </span>
     </div>
   );
 }

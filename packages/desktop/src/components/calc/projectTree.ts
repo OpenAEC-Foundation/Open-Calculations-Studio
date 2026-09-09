@@ -29,10 +29,32 @@ export const STATUS_UITLEG: Record<ModuleStatus, string> = {
   concept: "Nog uit te werken — alleen invoer en parametrisch beeld, geen toetsing",
 };
 
+/**
+ * Publicatie staat los van de status hierboven.
+ *
+ * De status zegt hoe ver de tóétsing is; publicatie zegt of de module is
+ * nagekeken en vrijgegeven om mee te werken. Een module kan gecalibreerd zijn
+ * en toch nog niet zijn nagekeken — dan is hij wel bruikbaar maar niet
+ * vrijgegeven, en dat hoort de gebruiker te zien.
+ */
+export const PUBLICATIE_UITLEG = {
+  gepubliceerd: "Gepubliceerd — nagekeken en vrijgegeven",
+  onuitgegeven: "Nog niet gepubliceerd — nog niet nagekeken",
+} as const;
+
 export type TreeNode =
   | { kind: "section"; id: string; label: string; children: TreeNode[] }
   | { kind: "category"; id: string; label: string; defaultExpanded?: boolean; children: TreeNode[]; count?: number }
-  | { kind: "item"; id: string; label: string; templateId?: string; emphasis?: boolean; status?: ModuleStatus };
+  | {
+      kind: "item";
+      id: string;
+      label: string;
+      templateId?: string;
+      emphasis?: boolean;
+      status?: ModuleStatus;
+      /** Nagekeken en vrijgegeven. Ontbreekt of `false` = nog niet. */
+      gepubliceerd?: boolean;
+    };
 
 /**
  * Calc-sheets binnen het huidige project, gegroepeerd per materiaal.
@@ -55,7 +77,7 @@ export const moduleCatalogus: TreeNode[] = [
     defaultExpanded: true,
     count: 3,
     children: [
-      { kind: "item", id: "sheet-spuwer", label: "Spuwer (noodoverlaat)", templateId: "spuwer", status: "gereed" },
+      { kind: "item", id: "sheet-spuwer", label: "Spuwer (noodoverlaat)", templateId: "spuwer", status: "gereed", gepubliceerd: true },
       { kind: "item", id: "sheet-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen", status: "controleren" },
       { kind: "item", id: "sheet-permanente-vuurlast", label: "Permanente vuurlast (NEN 6090)", templateId: "permanente-vuurlast", status: "controleren" },
     ],
@@ -125,7 +147,7 @@ export const moduleCatalogus: TreeNode[] = [
     count: 4,
     children: [
       { kind: "item", id: "sheet-kolom", label: "Kolom (houten kolom)", templateId: "kolom", status: "gereed" },
-      { kind: "item", id: "sheet-balklaag", label: "Balklaag (houten vloerbalken)", templateId: "balklaag", status: "gereed" },
+      { kind: "item", id: "sheet-balklaag", label: "Balklaag (houten vloerbalken)", templateId: "balklaag", status: "gereed", gepubliceerd: true },
       { kind: "item", id: "sheet-gording", label: "Gording (dakgording)", templateId: "gording", status: "gereed" },
       { kind: "item", id: "sheet-schijfwerking", label: "Schijfwerking (wandschijf)", templateId: "schijfwerking", status: "controleren" },
     ],
