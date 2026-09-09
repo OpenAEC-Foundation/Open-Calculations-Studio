@@ -49,8 +49,10 @@ import type { AstNode, ConditionalNode, PlotNode, TextNode } from './types.js';
 const IDENT = '[\\p{L}_][\\p{L}\\p{N}_]*';
 const ASSIGNMENT_RE = new RegExp(`^(${IDENT})\\s*=\\s*(.+)$`, 'u');
 const INPUT_PROMPT_RE = new RegExp(`^(${IDENT})\\s*=\\s*\\?\\s*(.*)$`, 'u');
+// Parameters mogen met een komma of een puntkomma gescheiden worden: CalcPAD
+// schrijft puntkomma's, mathjs komma's, en beide horen hier te werken.
 const USER_FUNC_RE = new RegExp(
-  `^(${IDENT})\\s*\\(\\s*(${IDENT}(?:\\s*,\\s*${IDENT})*)\\s*\\)\\s*=\\s*(.+)$`,
+  `^(${IDENT})\\s*\\(\\s*(${IDENT}(?:\\s*[,;]\\s*${IDENT})*)\\s*\\)\\s*=\\s*(.+)$`,
   'u',
 );
 const VAR_DISPLAY_RE = new RegExp(`^(${IDENT})\\s*$`, 'u');
@@ -657,7 +659,14 @@ function parseLines(
             if (k % 2 === 0) {
               if (seg !== '') parts.push({ kind: 'literal', value: seg });
             } else {
-              const expr = seg.trim();
+              // Ook een ingevoegde expressie normaliseren, net als elke andere.
+              // Zonder deze stap werkte `max(a; b)` wél in een toekenning maar
+              // niet tussen twee apostrofs in een tekst- of SVG-regel: daar
+              // bleef de puntkomma staan, mislukte de berekening en kwam de
+              // expressie letterlijk in de uitdraai terecht. Alleen de
+              // expressie-delen gaan hier langs; de letterlijke stukken — met
+              // hun CSS en &nbsp; — blijven ongemoeid.
+              const expr = normalizeExpression(seg.trim());
               if (expr !== '') parts.push({ kind: 'expr', value: expr });
             }
           }
@@ -870,13 +879,18 @@ function parseLines(
     // User function — match BEFORE generic assignment
     const fnMatch = trimmed.match(USER_FUNC_RE);
     if (fnMatch) {
-      const params = fnMatch[2].split(',').map((p) => p.trim());
+      const params = fnMatch[2].split(/[,;]/).map((p) => p.trim());
       nodes.push(
         markHidden({
           type: 'user-function',
           name: fnMatch[1],
           params,
-          expression: fnMatch[3].trim(),
+          // Net als elke andere expressie normaliseren. Zonder deze stap bleef
+          // de body van een functie als enige achter met CalcPAD-notatie: een
+          // `if(a; b; c)` erin werd nooit omgezet naar komma's en `≤`, `≡` en π
+          // bleven onvertaald, waarna de aanroep stilzwijgend als tekst in de
+          // uitdraai belandde in plaats van als getal.
+          expression: normalizeExpression(fnMatch[3].trim()),
           raw: trimmed,
         }, state),
       );

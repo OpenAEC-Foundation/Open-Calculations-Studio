@@ -258,6 +258,41 @@ c_V = if(schema ≡ 2; c_V_2; if(schema ≡ 3; c_V_3; c_V_1))', dwarskracht per 
 c_u = if(schema ≡ 2; c_u_2; if(schema ≡ 3; c_u_3; c_u_1))', zakking × EI per eenheid lijnlast'
 c_ue = if(schema ≡ 2; c_ue_2; 0*mm^4)', zakking × EI van het overstekeinde'
 
+'<i>Voor de diagrammen verderop zijn ook de vórmen nodig, niet alleen de
+'uiterste waarden. Hieronder staan ze dimensieloos — met q = 1 en EI = 1 — zodat
+'de tekeningen ze op de berekende waarden kunnen schalen. Ook deze zijn
+'nagerekend tegen een numerieke balkberekening: over de hele lengte exact.</i>
+
+#hide
+d_L = L_th/(1 mm)', overspanning van het eerste veld'
+d_a = if(schema ≡ 2; a_over/(1 mm); 0)', overstek'
+d_L2 = if(schema ≡ 3; L_veld2/(1 mm); 0)', tweede veld'
+d_tot = d_L + d_a + d_L2', totale lengte'
+d_Ms = c_Ms/(1 mm^2)', steunmoment per eenheid lijnlast'
+d_RA = d_L/2 - d_Ms/d_L', eindreactie van het eerste veld'
+d_RC = if(d_L2 > 0; d_L2/2 - d_Ms/d_L2; 0)', eindreactie van het tweede veld'
+
+'Zakking van een veld: scharnier links, inklemmend moment M rechts.
+uv(x; L; M) = x*(L^3 - 2*L*x^2 + x^3)/24 - M*x*(L^2 - x^2)/(6*L)
+'Hoekverdraaiing aan de rechterzijde van datzelfde veld.
+tv(L; M) = M*L/3 - L^3/24
+'Zakking van een uitkraging, gemeten vanaf de oplegging: de starre rotatie
+'vanuit het veld plus de eigen doorbuiging van de kraag.
+uo(t; a; L; M) = tv(L; M)*t + t^2*(6*a^2 - 4*a*t + t^2)/24
+
+'Zakking, moment en dwarskracht op afstand x vanaf het begin.
+uz(x) = if(x ≤ d_L; uv(x; d_L; d_Ms); if(d_a > 0; uo(x - d_L; d_a; d_L; d_Ms); uv(d_tot - x; d_L2; d_Ms)))
+mz(x) = if(x ≤ d_L; d_RA*x - x^2/2; if(d_a > 0; -(d_tot - x)^2/2; d_RC*(d_tot - x) - (d_tot - x)^2/2))
+vz(x) = if(x ≤ d_L; d_RA - x; if(d_a > 0; d_tot - x; (d_tot - x) - d_RC))
+
+'Pieken om op te schalen; die volgen uit de coefficienten hierboven.
+d_Mp = max(max(c_M; c_Ms)/(1 mm^2); 0.001)
+d_Vp = max(c_V/(1 mm); 0.001)
+d_up = max(max(c_u/(1 mm^4); abs(c_ue)/(1 mm^4)); 0.001)
+'Plaats van de opleggingen als deel van de tekenbreedte.
+d_o2 = d_L/d_tot
+#show
+
 # 5. Belastingsgeval 1 — Permanent
 
 '<i>Bij een raveelbalk is de belaste breedte niet de hart-op-hart afstand maar
@@ -562,33 +597,41 @@ s_stap = (sx3 - sx1)/14', pijlafstand in de lastbanden
     '<h6>9.4 Doorbuigingslijn</h6>
     '<i>De onderbroken lijn is de momentane zakking (6.14b), de doorgetrokken
     'de eindstand inclusief kruip (6.16b). Beide op dezelfde schaal, zodat het
-    'verschil laat zien wat de kruip er nog bovenop doet.</i>
+    'verschil laat zien wat de kruip er nog bovenop doet. De vorm volgt het
+    'gekozen statische schema.</i>
     #hide
     ux1 = 60
     ux2 = 420
-    umid = (ux1 + ux2)/2
-    uas = 34', hoogte van de onvervormde as'
+    uas = 40', hoogte van de onvervormde as'
     uamp = 40', pixels voor de grootste zakking'
-    w_inst_ruw = w_inst/(1 mm)
-    w_fin_ruw = w_fin/(1 mm)
-    w_grootst = max(w_fin_ruw; max(w_inst_ruw; 0.001))
-    s_inst = uamp*w_inst_ruw/w_grootst
-    s_fin = uamp*w_fin_ruw/w_grootst
+    'Beide krommen op dezelfde schaal, anders valt niet te zien wat de kruip
+    'er bovenop doet.
+    w_grootst_u = max(max(w_fin; w_inst); 0.001 mm)
+    u_inst_s = uamp*w_inst/w_grootst_u
+    u_fin_s = uamp*w_fin/w_grootst_u
     #show
-    '<svg viewbox="0 0 480 130" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:140px;">
+    '<svg viewbox="0 0 480 140" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:150px;">
     '  <line x1="'ux1 - 8'" y1="'uas'" x2="'ux2 + 8'" y2="'uas'" style="stroke:#374151; stroke-width:0.8; stroke-dasharray:4 3"/>
-    '  <path d="M 'ux1' 'uas' Q 'umid' 'uas + 2*s_inst' 'ux2' 'uas'" style="fill:none; stroke:#0EA5E9; stroke-width:1.1; stroke-dasharray:5 3"/>
-    '  <path d="M 'ux1' 'uas' Q 'umid' 'uas + 2*s_fin' 'ux2' 'uas'" style="fill:none; stroke:#0369A1; stroke-width:1.3"/>
-    '  <line x1="'umid'" y1="'uas'" x2="'umid'" y2="'uas + s_fin'" style="stroke:#0369A1; stroke-width:0.8; stroke-dasharray:3 3"/>
+    #for i = 0 : 29
+    '  <line x1="'ux1 + (ux2 - ux1)*i/30'" y1="'uas + u_inst_s*uz(i*d_tot/30)/d_up'" x2="'ux1 + (ux2 - ux1)*(i + 1)/30'" y2="'uas + u_inst_s*uz((i + 1)*d_tot/30)/d_up'" style="stroke:#0EA5E9; stroke-width:1.1; stroke-dasharray:5 3"/>
+    '  <line x1="'ux1 + (ux2 - ux1)*i/30'" y1="'uas + u_fin_s*uz(i*d_tot/30)/d_up'" x2="'ux1 + (ux2 - ux1)*(i + 1)/30'" y2="'uas + u_fin_s*uz((i + 1)*d_tot/30)/d_up'" style="stroke:#0369A1; stroke-width:1.3"/>
+    #loop
+    '  <!-- opleggingen -->
     '  <polygon points="'ux1','uas' 'ux1 - 7','uas + 14' 'ux1 + 7','uas + 14'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
     '  <line x1="'ux1 - 10'" y1="'uas + 14'" x2="'ux1 + 10'" y2="'uas + 14'" style="stroke:#6b7280; stroke-width:0.9"/>
-    '  <polygon points="'ux2','uas' 'ux2 - 7','uas + 11' 'ux2 + 7','uas + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-    '  <circle cx="'ux2 - 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-    '  <circle cx="'ux2 + 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-    '  <line x1="'ux2 - 10'" y1="'uas + 17'" x2="'ux2 + 10'" y2="'uas + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+    '  <polygon points="'ux1 + (ux2 - ux1)*d_o2','uas' 'ux1 + (ux2 - ux1)*d_o2 - 7','uas + 11' 'ux1 + (ux2 - ux1)*d_o2 + 7','uas + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <circle cx="'ux1 + (ux2 - ux1)*d_o2 - 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <circle cx="'ux1 + (ux2 - ux1)*d_o2 + 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <line x1="'ux1 + (ux2 - ux1)*d_o2 - 10'" y1="'uas + 17'" x2="'ux1 + (ux2 - ux1)*d_o2 + 10'" y2="'uas + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+    #if schema ≡ 3
+        '  <polygon points="'ux2','uas' 'ux2 - 7','uas + 11' 'ux2 + 7','uas + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+        '  <circle cx="'ux2 - 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+        '  <circle cx="'ux2 + 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+        '  <line x1="'ux2 - 10'" y1="'uas + 17'" x2="'ux2 + 10'" y2="'uas + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+    #end if
     '  <text x="'ux1 + 4'" y="'uas - 6'" style="fill:#374151; font-weight:700">onvervormd</text>
-    '  <text x="'umid + 10'" y="'uas + s_inst + 4'" style="fill:#0EA5E9; font-weight:700">w<tspan baseline-shift="sub" font-size="8">inst</tspan> (6.14b) = 'w_inst'</text>
-    '  <text x="'umid'" y="'uas + s_fin + 16'" text-anchor="middle" style="fill:#0369A1; font-weight:700">w<tspan baseline-shift="sub" font-size="8">fin</tspan> (6.16b + kruip) = 'w_fin' — grens 'w_lim'</text>
+    '  <text x="'ux1 + 8'" y="'uas + uamp + 24'" style="fill:#0369A1; font-weight:700">w<tspan baseline-shift="sub" font-size="8">fin</tspan> (6.16b + kruip) = 'w_fin' — grens 'w_lim'</text>
+    '  <text x="'ux1 + 8'" y="'uas + uamp + 38'" style="fill:#0EA5E9; font-weight:700">w<tspan baseline-shift="sub" font-size="8">inst</tspan> (6.14b) = 'w_inst'</text>
     '</svg>'
 #else
     'Doorbuiging wordt niet getoetst (Controleer doorbuiging = Nee).
@@ -693,45 +736,52 @@ V_z,Ed
 
 '<h6>10.1b Momenten- en dwarskrachtenlijn (UGT)</h6>
 
-'<i>Bij een enkelvoudig opgelegde ligger onder een gelijkmatig verdeelde last
-'is de momentenlijn een parabool met het maximum in het midden, en de
-'dwarskrachtenlijn recht met de uitersten bij de opleggingen.</i>
+'<i>Beide lijnen volgen het gekozen statische schema. Bij een overstek of een
+'tweede veld loopt het moment over de oplegging heen naar de andere kant — dat
+'is de trek aan de bóvenzijde die de doorsnede daar te verduren krijgt.</i>
 
 #hide
-mw = 480
 mx1 = 60
 mx2 = 420
 mmid = (mx1 + mx2)/2
-'De M-lijn hangt onder zijn as, de V-lijn steekt er zowel boven als onder
-'uit. Met te weinig tussenruimte liepen de twee door elkaar; vandaar de
-'as van V ruim onder het diepste punt van de parabool.
+'De M-lijn hangt onder zijn as maar kan er bij een steunmoment ook bovenuit
+'komen; de V-lijn steekt naar twee kanten. Vandaar ruime tussenruimte.
 mh = 38', halve hoogte van elk diagram in pixels
-my = 42', as van de M-lijn
-vy2 = 190', as van de V-lijn
+my = 60', as van de M-lijn
+vy2 = 195', as van de V-lijn
 #show
 '<svg viewbox="0 0 480 250" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:260px;">
-'  <!-- M-lijn: parabool onder de as (trek aan de onderzijde) -->
+'  <!-- M-lijn -->
 '  <line x1="'mx1 - 10'" y1="'my'" x2="'mx2 + 10'" y2="'my'" style="stroke:#374151; stroke-width:1"/>
-'  <path d="M 'mx1' 'my' Q 'mmid' 'my + 2*mh' 'mx2' 'my'" style="fill:#DBEAFE; stroke:#1E40AF; stroke-width:1"/>
-'  <line x1="'mmid'" y1="'my'" x2="'mmid'" y2="'my + mh'" style="stroke:#1E40AF; stroke-width:1; stroke-dasharray:3 3"/>
-'  <text x="'mmid'" y="'my + mh + 15'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">M<tspan baseline-shift="sub" font-size="8">y,Ed</tspan> = 'M_y,Ed'</text>
+#for i = 0 : 29
+'  <line x1="'mx1 + (mx2 - mx1)*i/30'" y1="'my + mh*mz(i*d_tot/30)/d_Mp'" x2="'mx1 + (mx2 - mx1)*(i + 1)/30'" y2="'my + mh*mz((i + 1)*d_tot/30)/d_Mp'" style="stroke:#1E40AF; stroke-width:1.3"/>
+#loop
 '  <text x="'mx1 - 10'" y="'my - 8'" style="fill:#374151; font-weight:700">M-lijn</text>
-'  <!-- V-lijn: recht, positief links, negatief rechts -->
+'  <text x="'mmid'" y="'my + mh + 16'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">M<tspan baseline-shift="sub" font-size="8">y,Ed</tspan> = 'M_y,Ed'</text>
+'  <!-- V-lijn -->
 '  <line x1="'mx1 - 10'" y1="'vy2'" x2="'mx2 + 10'" y2="'vy2'" style="stroke:#374151; stroke-width:1"/>
-'  <polygon points="'mx1','vy2 - mh' 'mmid','vy2' 'mx1','vy2'" style="fill:#DCFCE7; stroke:#15803D; stroke-width:1"/>
-'  <polygon points="'mmid','vy2' 'mx2','vy2 + mh' 'mx2','vy2'" style="fill:#DCFCE7; stroke:#15803D; stroke-width:1"/>
-'  <text x="'mx1 + 4'" y="'vy2 - mh - 5'" style="fill:#15803D; font-weight:700">+V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan> = 'V_z,Ed'</text>
-'  <text x="'mx2 - 4'" y="'vy2 + mh + 13'" text-anchor="end" style="fill:#15803D; font-weight:700">−V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan></text>
+#for i = 0 : 29
+'  <line x1="'mx1 + (mx2 - mx1)*i/30'" y1="'vy2 - mh*vz(i*d_tot/30)/d_Vp'" x2="'mx1 + (mx2 - mx1)*(i + 1)/30'" y2="'vy2 - mh*vz((i + 1)*d_tot/30)/d_Vp'" style="stroke:#15803D; stroke-width:1.3"/>
+#loop
 '  <text x="'mx1 - 10'" y="'vy2 - 8'" style="fill:#374151; font-weight:700">V-lijn</text>
-'  <!-- opleggingen onder beide assen: scharnier links, rol rechts -->
+'  <text x="'mx1 + 4'" y="'vy2 - mh - 6'" style="fill:#15803D; font-weight:700">+V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan> = 'V_z,Ed'</text>
+'  <!-- opleggingen onder beide assen -->
 #for j = 0 : 1
 '  <polygon points="'mx1','my + j*(vy2 - my)' 'mx1 - 7','my + j*(vy2 - my) + 14' 'mx1 + 7','my + j*(vy2 - my) + 14'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
 '  <line x1="'mx1 - 10'" y1="'my + j*(vy2 - my) + 14'" x2="'mx1 + 10'" y2="'my + j*(vy2 - my) + 14'" style="stroke:#6b7280; stroke-width:0.9"/>
-'  <polygon points="'mx2','my + j*(vy2 - my)' 'mx2 - 7','my + j*(vy2 - my) + 11' 'mx2 + 7','my + j*(vy2 - my) + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-'  <circle cx="'mx2 - 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-'  <circle cx="'mx2 + 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-'  <line x1="'mx2 - 10'" y1="'my + j*(vy2 - my) + 17'" x2="'mx2 + 10'" y2="'my + j*(vy2 - my) + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+'  <polygon points="'mx1 + (mx2 - mx1)*d_o2','my + j*(vy2 - my)' 'mx1 + (mx2 - mx1)*d_o2 - 7','my + j*(vy2 - my) + 11' 'mx1 + (mx2 - mx1)*d_o2 + 7','my + j*(vy2 - my) + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+'  <circle cx="'mx1 + (mx2 - mx1)*d_o2 - 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+'  <circle cx="'mx1 + (mx2 - mx1)*d_o2 + 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+'  <line x1="'mx1 + (mx2 - mx1)*d_o2 - 10'" y1="'my + j*(vy2 - my) + 17'" x2="'mx1 + (mx2 - mx1)*d_o2 + 10'" y2="'my + j*(vy2 - my) + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
 #loop
+#if schema ≡ 3
+    #for j = 0 : 1
+    '  <polygon points="'mx2','my + j*(vy2 - my)' 'mx2 - 7','my + j*(vy2 - my) + 11' 'mx2 + 7','my + j*(vy2 - my) + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <circle cx="'mx2 - 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <circle cx="'mx2 + 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <line x1="'mx2 - 10'" y1="'my + j*(vy2 - my) + 17'" x2="'mx2 + 10'" y2="'my + j*(vy2 - my) + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+    #loop
+#end if
 '</svg>'
 
 '<h6>10.2 Buiging — §6.1.6 (6.11)</h6>

@@ -408,9 +408,15 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
       }
 
       case 'user-function': {
-        // mathjs supports the `f(x) = expr` form natively via its parser.
+        // mathjs supports the `f(x) = expr` form natively via its parser, maar
+        // wel in zíjn eigen notatie. Daarom de genormaliseerde body gebruiken
+        // en niet de rauwe regel: die staat er nog in CalcPAD-notatie, met
+        // puntkomma's in `if(a; b; c)` en tekens als ≤ en ≡. mathjs slikte dat
+        // niet, de definitie mislukte, en omdat de fout bij een verborgen regel
+        // wordt ingeslikt bleef de aanroep verderop stilzwijgend als tekst in
+        // de uitdraai staan.
         try {
-          math.evaluate(node.raw, scope);
+          math.evaluate(`${node.name}(${node.params.join(', ')}) = ${node.expression}`, scope);
         } catch (err) {
           // Surface error as a hidden text — function won't be callable later.
           if (!node.hidden) {
