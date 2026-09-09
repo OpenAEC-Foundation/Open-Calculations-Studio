@@ -362,56 +362,145 @@ svgH = by + bh + 46
 
 # 8b. Statisch schema
 
-'<i>Eén balk, enkelvoudig opgelegd over L<sub>th</sub>, met de lijnlasten uit
-'§5 en §6 en de geconcentreerde last uit §7. De lasten hieronder zijn de
-'karakteristieke waarden per balk — de rekenwaarden voor de UGT volgen in §10.</i>
+#if schema ≡ 4
+    '<i>Plattegrond van de sparing. De onderbroken balken eindigen op de
+    'raveelbalk; die draagt zijn last af op de twee wisselbalken ernaast. De
+    'tekening staat op schaal.</i>
+
+    #hide
+    'Tekengebied: de sparing plus anderhalve balkafstand aan weerszijden, en in
+    'de lengte de staart plus de helft daarvan om de sparing zelf te tonen.
+    pw = b_sparing + 3*hoh
+    ph = 1.5*l_staart
+    p_s = min(400/(pw/(1 mm)); 150/(ph/(1 mm)))
+    p_b = p_s*pw/(1 mm)
+    p_h = p_s*ph/(1 mm)
+    p_x0 = 40 + (400 - p_b)/2
+    p_y0 = 30
+    p_spb = p_s*b_sparing/(1 mm)
+    p_st = p_s*l_staart/(1 mm)
+    p_hoh = p_s*hoh/(1 mm)
+    p_mid = p_x0 + p_b/2
+    p_wl = p_mid - p_spb/2
+    p_wr = p_mid + p_spb/2
+    p_rav = p_y0 + p_st
+    p_ond = p_y0 + p_h
+    p_n = max(1; floor(b_sparing/hoh) - 1)
+    p_stap = p_spb/(p_n + 1)
+    #show
+    '<svg viewbox="0 0 480 220" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:230px;">
+    '  <!-- de muur waar de balken op liggen -->
+    '  <line x1="'p_x0 - 10'" y1="'p_y0'" x2="'p_x0 + p_b + 10'" y2="'p_y0'" style="stroke:#374151; stroke-width:2"/>
+    #for i = 0 : 20
+    '  <line x1="'p_x0 - 10 + i*(p_b + 20)/20'" y1="'p_y0'" x2="'p_x0 - 16 + i*(p_b + 20)/20'" y2="'p_y0 - 7'" style="stroke:#374151; stroke-width:0.7"/>
+    #loop
+    '  <!-- doorlopende balken naast de wisselbalken -->
+    '  <line x1="'p_wl - p_hoh'" y1="'p_y0'" x2="'p_wl - p_hoh'" y2="'p_ond'" style="stroke:#8B6F47; stroke-width:1.4"/>
+    '  <line x1="'p_wr + p_hoh'" y1="'p_y0'" x2="'p_wr + p_hoh'" y2="'p_ond'" style="stroke:#8B6F47; stroke-width:1.4"/>
+    '  <!-- de sparing -->
+    '  <rect x="'p_wl'" y="'p_rav'" width="'p_spb'" height="'p_ond - p_rav'" style="fill:#F1F5F9; stroke:#94A3B8; stroke-width:0.8; stroke-dasharray:4 3"/>
+    '  <text x="'p_mid'" y="'(p_rav + p_ond)/2 + 4'" text-anchor="middle" style="fill:#64748B">sparing</text>
+    '  <!-- onderbroken balken: van de muur tot op de raveelbalk -->
+    #for i = 1 : p_n
+    '  <line x1="'p_wl + i*p_stap'" y1="'p_y0'" x2="'p_wl + i*p_stap'" y2="'p_rav'" style="stroke:#8B6F47; stroke-width:1.4"/>
+    #loop
+    '  <!-- wisselbalken: die dragen de raveelbalk -->
+    '  <rect x="'p_wl - 3'" y="'p_y0'" width="6" height="'p_ond - p_y0'" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:1.2"/>
+    '  <rect x="'p_wr - 3'" y="'p_y0'" width="6" height="'p_ond - p_y0'" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:1.2"/>
+    '  <text x="'p_wl - 8'" y="'p_ond + 12'" text-anchor="end" style="fill:#8B6F47">wisselbalk</text>
+    '  <text x="'p_wr + 8'" y="'p_ond + 12'" style="fill:#8B6F47">wisselbalk</text>
+    '  <!-- de raveelbalk zelf -->
+    '  <rect x="'p_wl'" y="'p_rav - 4'" width="'p_spb'" height="8" style="fill:#B45309; stroke:#7C2D12; stroke-width:1"/>
+    '  <text x="'p_mid'" y="'p_rav - 8'" text-anchor="middle" style="fill:#7C2D12; font-weight:700">raveelbalk</text>
+    '  <!-- maatlijnen -->
+    '  <line x1="'p_wl'" y1="'p_ond + 26'" x2="'p_wr'" y2="'p_ond + 26'" style="stroke:#1E40AF; stroke-width:1"/>
+    '  <circle cx="'p_wl'" cy="'p_ond + 26'" r="2.6" style="fill:#1E40AF"/>
+    '  <circle cx="'p_wr'" cy="'p_ond + 26'" r="2.6" style="fill:#1E40AF"/>
+    '  <text x="'p_mid'" y="'p_ond + 22'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">b<tspan baseline-shift="sub" font-size="8">sparing</tspan> = 'b_sparing'</text>
+    '  <line x1="'p_x0 - 26'" y1="'p_y0'" x2="'p_x0 - 26'" y2="'p_rav'" style="stroke:#1E40AF; stroke-width:1"/>
+    '  <circle cx="'p_x0 - 26'" cy="'p_y0'" r="2.6" style="fill:#1E40AF"/>
+    '  <circle cx="'p_x0 - 26'" cy="'p_rav'" r="2.6" style="fill:#1E40AF"/>
+    '  <text x="'p_x0 - 30'" y="'(p_y0 + p_rav)/2'" text-anchor="end" style="fill:#1E40AF; font-weight:700">l<tspan baseline-shift="sub" font-size="8">staart</tspan> = 'l_staart'</text>
+    '</svg>'
+
+    '<i>De raveelbalk overspant de sparing en draagt per strekkende meter een
+    'vloerstrook ter breedte van l<sub>staart</sub>/2. Hieronder staat hij als
+    'gewone ligger op twee steunpunten.</i>
+#end if
+
+'<i>De ligger met de lijnlasten uit §5 en §6 en de geconcentreerde last uit §7.
+'De lasten zijn de karakteristieke waarden per balk — de rekenwaarden voor de
+'UGT volgen in §10. De tekening staat op schaal.</i>
 
 #hide
-sw = 480', tekenbreedte
-sx1 = 60', linker oplegging
-sx2 = 420', rechter oplegging
+'Totale lengte: bij een overstek of een tweede veld hoort daar meer bij dan
+'alleen de overspanning van het eerste veld.
+L_tot = if(schema ≡ 2; L_th + a_over; if(schema ≡ 3; L_th + L_veld2; L_th))
+s_schaal = 360/(L_tot/(1 mm))
+sx1 = 60', eerste oplegging
+sx2 = sx1 + s_schaal*L_th/(1 mm)', tweede oplegging
+sx3 = sx1 + s_schaal*L_tot/(1 mm)', einde van de balk, of de derde oplegging
 sy = 96', hoogte van de balk-as
 smid = (sx1 + sx2)/2
+s_stap = (sx3 - sx1)/14', pijlafstand in de lastbanden
 #show
 '<svg viewbox="0 0 480 190" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:210px;">
 '  <!-- veranderlijke verdeelde last: eigen band met eigen basislijn -->
 #if q_q,k > 0 kN/m
-    #for i = 0 : 12
-    '  <line x1="'sx1 + i*30'" y1="'sy - 76'" x2="'sx1 + i*30'" y2="'sy - 62'" style="stroke:#B45309; stroke-width:0.9"/>
-    '  <polygon points="'sx1 + i*30','sy - 58' 'sx1 + i*30 - 3.5','sy - 66' 'sx1 + i*30 + 3.5','sy - 66'" style="fill:#B45309"/>
+    #for i = 0 : 14
+    '  <line x1="'sx1 + i*s_stap'" y1="'sy - 76'" x2="'sx1 + i*s_stap'" y2="'sy - 62'" style="stroke:#B45309; stroke-width:0.9"/>
+    '  <polygon points="'sx1 + i*s_stap','sy - 58' 'sx1 + i*s_stap - 3.5','sy - 66' 'sx1 + i*s_stap + 3.5','sy - 66'" style="fill:#B45309"/>
     #loop
-    '  <line x1="'sx1'" y1="'sy - 76'" x2="'sx2'" y2="'sy - 76'" style="stroke:#B45309; stroke-width:1"/>
-    '  <text x="'sx1 + 60'" y="'sy - 80'" style="fill:#B45309; font-weight:700">q<tspan baseline-shift="sub" font-size="8">q,k</tspan> = 'q_q,k' kN/m</text>
+    '  <line x1="'sx1'" y1="'sy - 76'" x2="'sx3'" y2="'sy - 76'" style="stroke:#B45309; stroke-width:1"/>
+    '  <text x="'sx1 + 50'" y="'sy - 80'" style="fill:#B45309; font-weight:700">q<tspan baseline-shift="sub" font-size="8">q,k</tspan> = 'q_q,k' kN/m</text>
 #end if
 '  <!-- permanente verdeelde last: band direct op de balk -->
-#for i = 0 : 12
-'  <line x1="'sx1 + i*30'" y1="'sy - 46'" x2="'sx1 + i*30'" y2="'sy - 8'" style="stroke:#475569; stroke-width:0.9"/>
-'  <polygon points="'sx1 + i*30','sy - 4' 'sx1 + i*30 - 3.5','sy - 12' 'sx1 + i*30 + 3.5','sy - 12'" style="fill:#475569"/>
+#for i = 0 : 14
+'  <line x1="'sx1 + i*s_stap'" y1="'sy - 46'" x2="'sx1 + i*s_stap'" y2="'sy - 8'" style="stroke:#475569; stroke-width:0.9"/>
+'  <polygon points="'sx1 + i*s_stap','sy - 4' 'sx1 + i*s_stap - 3.5','sy - 12' 'sx1 + i*s_stap + 3.5','sy - 12'" style="fill:#475569"/>
 #loop
-'  <line x1="'sx1'" y1="'sy - 46'" x2="'sx2'" y2="'sy - 46'" style="stroke:#475569; stroke-width:1"/>
-'  <text x="'sx1 + 60'" y="'sy - 50'" style="fill:#475569; font-weight:700">P<tspan baseline-shift="sub" font-size="8">g,k</tspan> = 'P_g,k' kN/m</text>
-'  <!-- geconcentreerde veranderlijke last in het midden; de witte onderlaag houdt
-'       hem leesbaar waar hij door de twee lastbanden heen zakt -->
+'  <line x1="'sx1'" y1="'sy - 46'" x2="'sx3'" y2="'sy - 46'" style="stroke:#475569; stroke-width:1"/>
+'  <text x="'sx1 + 50'" y="'sy - 50'" style="fill:#475569; font-weight:700">P<tspan baseline-shift="sub" font-size="8">g,k</tspan> = 'P_g,k' kN/m</text>
+'  <!-- geconcentreerde veranderlijke last; de witte onderlaag houdt hem
+'       leesbaar waar hij door de twee lastbanden heen zakt -->
 #if F_Q,k > 0 kN
     '  <line x1="'smid'" y1="'sy - 92'" x2="'smid'" y2="'sy - 12'" style="stroke:#ffffff; stroke-width:4"/>
     '  <line x1="'smid'" y1="'sy - 92'" x2="'smid'" y2="'sy - 12'" style="stroke:#B91C1C; stroke-width:1.4"/>
     '  <polygon points="'smid','sy - 7' 'smid - 5','sy - 18' 'smid + 5','sy - 18'" style="fill:#B91C1C"/>
     '  <text x="'smid + 8'" y="'sy - 84'" style="fill:#B91C1C; font-weight:700">F<tspan baseline-shift="sub" font-size="8">Q,k</tspan> = 'F_Q,k' kN</text>
 #end if
-'  <!-- de balk -->
-'  <rect x="'sx1'" y="'sy - 6'" width="'sx2 - sx1'" height="12" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:0.9"/>
-'  <!-- opleggingen: driehoek links (scharnier), rol rechts -->
+'  <!-- de balk over zijn volle lengte -->
+'  <rect x="'sx1'" y="'sy - 6'" width="'sx3 - sx1'" height="12" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:0.9"/>
+'  <!-- eerste oplegging: scharnier -->
 '  <polygon points="'sx1','sy + 6' 'sx1 - 11','sy + 26' 'sx1 + 11','sy + 26'" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+'  <line x1="'sx1 - 18'" y1="'sy + 27'" x2="'sx1 + 18'" y2="'sy + 27'" style="stroke:#374151; stroke-width:0.9"/>
+'  <!-- tweede oplegging: rol -->
 '  <polygon points="'sx2','sy + 6' 'sx2 - 11','sy + 22' 'sx2 + 11','sy + 22'" style="fill:none; stroke:#374151; stroke-width:0.9"/>
 '  <circle cx="'sx2 - 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
 '  <circle cx="'sx2 + 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
-'  <line x1="'sx1 - 18'" y1="'sy + 27'" x2="'sx1 + 18'" y2="'sy + 27'" style="stroke:#374151; stroke-width:0.9"/>
 '  <line x1="'sx2 - 18'" y1="'sy + 31'" x2="'sx2 + 18'" y2="'sy + 31'" style="stroke:#374151; stroke-width:0.9"/>
-'  <!-- maatlijn L_th -->
+#if schema ≡ 3
+    '  <!-- derde oplegging -->
+    '  <polygon points="'sx3','sy + 6' 'sx3 - 11','sy + 22' 'sx3 + 11','sy + 22'" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+    '  <circle cx="'sx3 - 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+    '  <circle cx="'sx3 + 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+    '  <line x1="'sx3 - 18'" y1="'sy + 31'" x2="'sx3 + 18'" y2="'sy + 31'" style="stroke:#374151; stroke-width:0.9"/>
+#end if
+'  <!-- maatlijn van het eerste veld -->
 '  <line x1="'sx1'" y1="'sy + 52'" x2="'sx2'" y2="'sy + 52'" style="stroke:#1E40AF; stroke-width:1"/>
 '  <circle cx="'sx1'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
 '  <circle cx="'sx2'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
 '  <text x="'smid'" y="'sy + 48'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">L<tspan baseline-shift="sub" font-size="8">th</tspan> = 'L_th'</text>
+#if schema ≡ 2
+    '  <line x1="'sx2'" y1="'sy + 52'" x2="'sx3'" y2="'sy + 52'" style="stroke:#1E40AF; stroke-width:1"/>
+    '  <circle cx="'sx3'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
+    '  <text x="'(sx2 + sx3)/2'" y="'sy + 48'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">a = 'a_over'</text>
+#end if
+#if schema ≡ 3
+    '  <line x1="'sx2'" y1="'sy + 52'" x2="'sx3'" y2="'sy + 52'" style="stroke:#1E40AF; stroke-width:1"/>
+    '  <circle cx="'sx3'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
+    '  <text x="'(sx2 + sx3)/2'" y="'sy + 48'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">L<tspan baseline-shift="sub" font-size="8">2</tspan> = 'L_veld2'</text>
+#end if
 '</svg>'
 '<span style="display:inline-block; width:14px; border-top:3px solid #475569; vertical-align:middle"></span>&nbsp;permanent &nbsp;&nbsp; <span style="display:inline-block; width:14px; border-top:3px solid #B45309; vertical-align:middle"></span>&nbsp;veranderlijk, verdeeld &nbsp;&nbsp; <span style="display:inline-block; width:14px; border-top:3px solid #B91C1C; vertical-align:middle"></span>&nbsp;veranderlijk, geconcentreerd
 

@@ -90,6 +90,17 @@ const CAT: { v: number; label: string; psi0: number; psi1: number; psi2: number 
   { v: 10, label: "Windbelasting", psi0: 0, psi1: 0.2, psi2: 0 },
   { v: 11, label: "Zelf invullen", psi0: 0.5, psi1: 0.5, psi2: 0.3 },
 ];
+/**
+ * De statische schema's. De coëfficiënten in `toets()` volgen deze nummering,
+ * en `templates/balklaag.ts` gebruikt dezelfde — beeld en uitwerking moeten
+ * hetzelfde schema doorrekenen.
+ */
+const SCHEMA: { v: number; label: string }[] = [
+  { v: 1, label: "Enkelvoudig, op twee steunpunten" },
+  { v: 2, label: "Met overstek aan één zijde" },
+  { v: 3, label: "Op drie steunpunten (twee velden)" },
+  { v: 4, label: "Raveelbalk langs een sparing" },
+];
 const GRENS: { v: number; label: string }[] = [
   { v: 0.004, label: "0,004 × L" }, { v: 0.003, label: "0,003 × L" }, { v: 0.002, label: "0,002 × L" },
 ];
@@ -103,6 +114,12 @@ const GRENS: { v: number; label: string }[] = [
 interface Invoer {
   prof: Prof;
   mat: Mat;
+  /** 1 enkelvoudig, 2 overstek, 3 drie steunpunten, 4 raveelbalk. */
+  schema: number;
+  aOver: number;
+  LVeld2: number;
+  bSparing: number;
+  lStaart: number;
   duur: number;
   klim: number;
   /** Eigen gewicht volgens de referentie-uitwerking in plaats van EN 338. */
@@ -137,6 +154,7 @@ function toets(inv: Invoer) {
   const {
     prof, mat, duur, klim, xc, kfi, Ld, aOpl, hoh, tVloer, eBeschot, bVloer,
     gk, qk, Qk, psi2, controleer, grens, tril, zeta, aTril, bTril,
+    schema, aOver, LVeld2, bSparing, lStaart,
   } = inv;
   const { b, h } = prof;
   // ── doorsnede + checks (gespiegeld aan balklaag.ts), in N en mm ──────────
@@ -146,26 +164,86 @@ function toets(inv: Invoer) {
   const kmod = klim === 3 ? kmod3 : kmod12;
   const kdef = klim === 1 ? 0.6 : klim === 2 ? 0.8 : 2.0;
   const fmd = (kmod * mat.fmk) / mat.gM, fvd = (kmod * mat.fvk) / mat.gM;
-  const Lth = Ld + aOpl;
+  // Bij een raveelbalk is de overspanning de breedte van de sparing.
+  const Lth = schema === 4 ? bSparing + aOpl : Ld + aOpl;
   const qkEff = qk;
   const gBalk = xc ? (A * 1e-6 * 550 * 10) / 1000 : (A * 1e-6 * mat.rho * 9.81) / 1000; // kN/m
-  const Pg = (hoh / 1000) * gk + gBalk; // kN/m = N/mm
-  const qq = (hoh / 1000) * qkEff; // N/mm
-  const ug = (5 / 384) * (Pg * Lth ** 4) / (mat.E * Iy);
-  const uq = (5 / 384) * (qq * Lth ** 4) / (mat.E * Iy);
+  // En de belaste breedte niet de hart-op-hart afstand maar de halve
+  // staartlengte: elke onderbroken balk zet zijn oplegreactie op de raveelbalk af.
+  const bBelast = schema === 4 ? lStaart / 2 : hoh;
+  const Pg = (bBelast / 1000) * gk + gBalk; // kN/m = N/mm
+  const qq = (bBelast / 1000) * qkEff; // N/mm
+
+  /*
+   * Coefficienten van het statische schema, gelijk aan die in balklaag.ts.
+   * Elk veld is een overspanning met een inklemmend eindmoment; daarmee
+   * volstaat één stel coefficienten voor alle schema's:
+   *   M_veld = cM*q   M_steun = cMs*q   V = cV*q   u = cu*q/EI
+   * Nagerekend tegen een onafhankelijke numerieke balkberekening.
+   */
+  // Buigstijfheid van de balk zelf. Niet EIb noemen: de trillingstoets verderop
+  // gebruikt die naam al voor de stijfheid per meter vloerbreedte.
+  const EIbalk = mat.E * Iy;
+  let cM = (Lth * Lth) / 8;
+  let cMs = 0;
+  let cV = Lth / 2;
+  let cU = (5 * Lth ** 4) / 384;
+  let cUe = 0; // zakking x EI van het uiteinde van een overstek
+  if (schema === 2) {
+    const cR = (Lth * Lth - aOver * aOver) / (2 * Lth);
+    cMs = (aOver * aOver) / 2;
+    cM = cR > 0 ? (cR * cR) / 2 : 0;
+    cV = Math.max(cR, aOver, Lth - cR);
+    cU = Math.max(1.04 * ((5 * Lth ** 4) / 384 - (cMs * Lth * Lth) / 16), 0);
+    // Negatief betekent dat het uiteinde omhoog komt: bij een kort overstek
+    // kantelt de ligger over de tweede oplegging.
+    cUe = (aOver / 24) * (4 * aOver * aOver * Lth + 3 * aOver ** 3 - Lth ** 3);
+  } else if (schema === 3 && LVeld2 > 0) {
+    cMs = (Lth ** 3 + LVeld2 ** 3) / (8 * (Lth + LVeld2));
+    const cRa = Lth / 2 - cMs / Lth;
+    const cRb = LVeld2 / 2 - cMs / LVeld2;
+    cM = Math.max(cRa * cRa, cRb * cRb) / 2;
+    cV = Math.max(Lth - cRa, LVeld2 - cRb, cRa, cRb);
+    const ua = (5 * Lth ** 4) / 384 - (cMs * Lth * Lth) / 16;
+    const ub = (5 * LVeld2 ** 4) / 384 - (cMs * LVeld2 * LVeld2) / 16;
+    cU = Math.max(1.04 * Math.max(ua, ub), 0);
+  }
+
+  const ug = (cU * Pg) / EIbalk;
+  const uq = (cU * qq) / EIbalk;
+  const ueG = (cUe * Pg) / EIbalk;
+  const ueQ = (cUe * qq) / EIbalk;
   // Concentratiefactor: derde term = (EI)_l/EI_ref met (EI)_l = E_beschot·t³/12
   // per mm plaatbreedte. De E-modulus van het beschot is nu invoer, zodat een
   // stijver of slapper beschot ook echt doorwerkt.
-  const kr = Math.min(1, 0.37 + (0.8 * hoh) / 1000 - (eBeschot * tVloer ** 3) / 12 / 50000000);
+  // Bij een raveelbalk staat de last rechtstreeks op de balk; er is dan geen
+  // balklaag waarover hij zich verdeelt.
+  const kr = schema === 4
+    ? 1
+    : Math.min(1, 0.37 + (0.8 * hoh) / 1000 - (eBeschot * tVloer ** 3) / 12 / 50000000);
   const FQ = Qk * kr; // kN
-  const uQ = (1 / 48) * (FQ * 1000 * Lth ** 3) / (mat.E * Iy);
+  // De puntlast wordt op twee plaatsen beschouwd — midden in het veld en, bij
+  // een overstek, op het uiteinde. Ze kunnen niet tegelijk optreden, dus per
+  // grootheid telt de ongunstigste van de twee.
+  const uQveld = (1 / 48) * (FQ * 1000 * Lth ** 3) / EIbalk;
+  const uQeind = schema === 2
+    ? (FQ * 1000 * aOver * aOver * (Lth + aOver)) / (3 * EIbalk)
+    : 0;
+  const uQ = Math.max(uQveld, uQeind);
   const uvar = Math.max(uq, uQ);
-  const wfin = (1 + kdef) * ug + (1 + psi2 * kdef) * uvar;
+  const wfin0 = (1 + kdef) * ug + (1 + psi2 * kdef) * uvar;
+  // Het uiteinde van een overstek zakt anders dan het veld; beide worden
+  // getoetst en de grootste telt.
+  const wfinEind = (1 + kdef) * Math.abs(ueG) + (1 + psi2 * kdef) * Math.abs(ueQ);
+  const wfin = Math.max(wfin0, schema === 2 ? wfinEind : 0);
   const wlim = grens * Lth;
   const ucDoor = wfin / wlim;
 
-  const Mg = (Pg * Lth ** 2) / 8, Mq = (qq * Lth ** 2) / 8, MQ = (FQ * 1000 * Lth) / 4; // N·mm
-  const Vg = (Pg * Lth) / 2, Vq = (qq * Lth) / 2, VQ = FQ * 1000; // N
+  // De doorsnede is prismatisch, dus alleen de grootte telt: veld of steun,
+  // welke van de twee groter is.
+  const Mg = Math.max(cM, cMs) * Pg, Mq = Math.max(cM, cMs) * qq; // N·mm
+  const MQ = Math.max((FQ * 1000 * Lth) / 4, schema === 2 ? FQ * 1000 * aOver : 0);
+  const Vg = cV * Pg, Vq = cV * qq, VQ = FQ * 1000; // N
   const MyEd = kfi * Math.max(1.2 * Mg + 1.5 * Mq, 1.2 * Mg + 1.5 * MQ);
   const VzEd = kfi * Math.max(1.2 * Vg + 1.5 * Vq, 1.2 * Vg + 1.5 * VQ);
   const ucBuig = MyEd / Wy / fmd;
@@ -192,6 +270,7 @@ function toets(inv: Invoer) {
   const ucMax = Math.max(...ucs);
   const ok = ucMax <= 1.0;
   return {
+    schema, aOver, LVeld2, bSparing, lStaart, cM, cMs, cV, cU,
     b, h, A, Iy, Wy, Sy, kmod, kdef, fmd, fvd, Lth, gBalk, Pg, qq, kr, FQ,
     ug, uq, uQ, uvar, wfin, wlim, ucDoor,
     MyEd, VzEd, ucBuig, ucAfsch,
@@ -305,6 +384,7 @@ function UcChip({ naam, uc, extra }: { naam: string; uc: number; extra?: string 
  */
 const DEFAULTS: Record<string, number> = {
   profiel: 10, sterkteklasse: 2, duurklasse: 2, klimaat: 1,
+  schema: 1, a_over: 800, L_veld2: 3000, b_sparing: 2400, l_staart: 1800,
   L_d: 5000, a_opl: 50, hoh: 450, t_vloer: 25,
   E_beschot: 7000, b_vloer: 5,
   G_k: 0.5, Q_k: 2.55, F_k: 2, belastingcat: 1,
@@ -399,6 +479,11 @@ export default function BalklaagDesigner() {
   // Het eigen gewicht is een splitspunt: De referentie-uitwerking rekent 550 kg/m³ met g = 10,
   // de norm ρ_mean uit EN 338 met g = 9,81. Die keuze staat in de
   // projectgegevens en niet in dit paneel — het blad leest hem daar ook.
+  const schema = Math.round(d("schema"));
+  const aOver = d("a_over");
+  const LVeld2 = d("L_veld2");
+  const bSparing = d("b_sparing");
+  const lStaart = d("l_staart");
   const Ld = d("L_d");
   const aOpl = d("a_opl");
   const hoh = d("hoh");
@@ -423,9 +508,10 @@ export default function BalklaagDesigner() {
   const inv: Invoer = {
     prof, mat, duur, klim, xc, kfi, Ld, aOpl, hoh, tVloer, eBeschot, bVloer,
     gk, qk, Qk, psi2, controleer, grens, tril, zeta, aTril, bTril,
+    schema, aOver, LVeld2, bSparing, lStaart,
   };
   const {
-    b, h, Pg, qq, kr, ug, uvar, wfin, wlim, ucDoor,
+    b, h, Lth, Pg, qq, kr, ug, uvar, wfin, wlim, ucDoor,
     MyEd, VzEd, ucBuig, ucAfsch, f1, ucTril, ucMax, ok,
   } = toets(inv);
 
@@ -517,6 +603,37 @@ export default function BalklaagDesigner() {
             en zonder eigen scroll puilt hij over de voetregel heen. */}
         <div className="vd-controls vd-compact" style={{ alignSelf: "stretch", overflowY: "auto", minHeight: 0 }}>
           <span className="vd-ctrl-h">Algemeen</span>
+          <span className="vd-ctrl-h">Statisch schema</span>
+          <label>Schema
+            <select value={schema} onChange={(e) => setVal("schema", parseInt(e.target.value))}>
+              {SCHEMA.map((x) => <option key={x.v} value={x.v}>{x.label}</option>)}
+            </select>
+          </label>
+          {schema === 2 && (
+            <label>Overstek a (mm)
+              <input type="number" step={50} value={aOver}
+                onChange={(e) => setVal("a_over", parseFloat(e.target.value))} />
+            </label>
+          )}
+          {schema === 3 && (
+            <label>Tweede overspanning (mm)
+              <input type="number" step={100} value={LVeld2}
+                onChange={(e) => setVal("L_veld2", parseFloat(e.target.value))} />
+            </label>
+          )}
+          {schema === 4 && (
+            <>
+              <label>Breedte sparing (mm)
+                <input type="number" step={100} value={bSparing}
+                  onChange={(e) => setVal("b_sparing", parseFloat(e.target.value))} />
+              </label>
+              <label>Staartlengte (mm)
+                <input type="number" step={100} value={lStaart}
+                  onChange={(e) => setVal("l_staart", parseFloat(e.target.value))} />
+              </label>
+            </>
+          )}
+
           <span className="vd-ctrl-h">Geometrie</span>
           <label>Profiel (b×h)
             <select value={profId} onChange={(e) => setVal("profiel", parseInt(e.target.value))}>
@@ -663,13 +780,17 @@ export default function BalklaagDesigner() {
             </div>
           </div>
 
-          {/* ── Statisch schema: één balk op twee steunpunten ──────────── */}
+          {/* ── Statisch schema, met de opleggingen van het gekozen schema ── */}
           <div className="vd-canvas">
             <div className="vd-caption">Statisch schema</div>
             <div className="vd-stage" style={{ width: W, height: schemaH, background: "transparent", border: "none", borderRadius: 0 }}>
               {(() => {
                 const mx = 54;
-                const sx1 = mx, sx2 = Math.max(mx + 80, W - mx);
+                // De balk is bij een overstek of een tweede veld langer dan de
+                // overspanning; sx2 blijft de tweede oplegging, sxE het einde.
+                const Ltot = schema === 2 ? Lth + aOver : schema === 3 ? Lth + LVeld2 : Lth;
+                const sx1 = mx, sxE = Math.max(mx + 80, W - mx);
+                const sx2 = sx1 + ((sxE - sx1) * Lth) / Math.max(Ltot, 1);
                 const smid = (sx1 + sx2) / 2;
                 const ay = 84;                       // hoogte van de balk-as
                 const gTop = ay - 30;                // basislijn permanente last
@@ -684,9 +805,9 @@ export default function BalklaagDesigner() {
                         </marker>
                       </defs>
                       {/* veranderlijke verdeelde last, met eigen basislijn erboven */}
-                      {heeftQ && <Verdeellast x1={sx1} x2={sx2} yTop={qTop} yTip={gTop - 8} kleur={KLEUR_Q} />}
+                      {heeftQ && <Verdeellast x1={sx1} x2={sxE} yTop={qTop} yTip={gTop - 8} kleur={KLEUR_Q} />}
                       {/* permanente verdeelde last, direct op de balk */}
-                      <Verdeellast x1={sx1} x2={sx2} yTop={gTop} yTip={ay - 5} kleur={KLEUR_G} />
+                      <Verdeellast x1={sx1} x2={sxE} yTop={gTop} yTip={ay - 5} kleur={KLEUR_G} />
                       {/* geconcentreerde veranderlijke last in het midden; met een witte
                           onderlaag, anders loopt hij zichtbaar dóór de twee lastbanden */}
                       {Qk > 0 && (
@@ -697,7 +818,7 @@ export default function BalklaagDesigner() {
                         </>
                       )}
                       {/* de balk */}
-                      <rect x={sx1} y={ay - 5} width={sx2 - sx1} height={10} style={{ fill: "#E3C08A", stroke: "#8B6F47", strokeWidth: 1.5 }} />
+                      <rect x={sx1} y={ay - 5} width={sxE - sx1} height={10} style={{ fill: "#E3C08A", stroke: "#8B6F47", strokeWidth: 1.5 }} />
                       {/* opleggingen: scharnier links, rol rechts */}
                       <polygon points={`${sx1},${ay + 5} ${sx1 - 10},${ay + 23} ${sx1 + 10},${ay + 23}`} style={{ fill: "none", stroke: "#374151", strokeWidth: 1.5 }} />
                       <line x1={sx1 - 16} y1={ay + 24} x2={sx1 + 16} y2={ay + 24} style={{ stroke: "#374151", strokeWidth: 1.5 }} />
@@ -705,6 +826,15 @@ export default function BalklaagDesigner() {
                       <circle cx={sx2 - 5} cy={ay + 23} r={3.6} style={{ fill: "none", stroke: "#374151", strokeWidth: 1.4 }} />
                       <circle cx={sx2 + 5} cy={ay + 23} r={3.6} style={{ fill: "none", stroke: "#374151", strokeWidth: 1.4 }} />
                       <line x1={sx2 - 16} y1={ay + 28} x2={sx2 + 16} y2={ay + 28} style={{ stroke: "#374151", strokeWidth: 1.5 }} />
+                      {/* derde oplegging bij twee velden */}
+                      {schema === 3 && (
+                        <>
+                          <polygon points={`${sxE},${ay + 5} ${sxE - 10},${ay + 19} ${sxE + 10},${ay + 19}`} style={{ fill: "none", stroke: "#374151", strokeWidth: 1.5 }} />
+                          <circle cx={sxE - 5} cy={ay + 23} r={3.6} style={{ fill: "none", stroke: "#374151", strokeWidth: 1.4 }} />
+                          <circle cx={sxE + 5} cy={ay + 23} r={3.6} style={{ fill: "none", stroke: "#374151", strokeWidth: 1.4 }} />
+                          <line x1={sxE - 16} y1={ay + 28} x2={sxE + 16} y2={ay + 28} style={{ stroke: "#374151", strokeWidth: 1.5 }} />
+                        </>
+                      )}
                       {/* maatlijn overspanning */}
                       <line x1={sx1} y1={ay + 46} x2={sx2} y2={ay + 46} className="vd-dimmeasure" markerStart="url(#bdDim2)" markerEnd="url(#bdDim2)" />
                       <line x1={sx1} y1={ay + 30} x2={sx1} y2={ay + 50} className="vd-dimext" />
@@ -738,7 +868,11 @@ export default function BalklaagDesigner() {
             </div>
           </div>
 
-          {/* ── Momenten- en dwarskrachtenlijn (UGT) ───────────────────── */}
+          {/* ── Momenten- en dwarskrachtenlijn (UGT) ─────────────────────
+              Bij een overstek of twee velden heeft de lijn een andere vorm dan
+              hier getekend wordt. Liever niets tonen dan een kromme die niet
+              klopt; de uitwerking geeft de juiste waarden. */}
+          {schema !== 2 && schema !== 3 && (
           <div className="vd-canvas">
             <div className="vd-caption">M- en V-lijn (UGT)</div>
             <div className="vd-stage" style={{ width: W, height: mvH, background: "transparent", border: "none", borderRadius: 0 }}>
@@ -786,8 +920,10 @@ export default function BalklaagDesigner() {
               })()}
             </div>
           </div>
+          )}
 
           {/* ── Doorbuigingslijn (BGT) ─────────────────────────────────── */}
+          {schema !== 2 && schema !== 3 && (
           <div className="vd-canvas">
             <div className="vd-caption">Doorbuiging (BGT)</div>
             <div className="vd-stage" style={{ width: W, height: uH, background: "transparent", border: "none", borderRadius: 0 }}>
@@ -831,6 +967,7 @@ export default function BalklaagDesigner() {
               })()}
             </div>
           </div>
+          )}
         </div>
       </div>
 
