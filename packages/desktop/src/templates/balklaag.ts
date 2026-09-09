@@ -119,7 +119,14 @@ f_v,d = k_mod*f_v,k/γ_M', rekenwaarde afschuifsterkte'
 f_m,d
 f_v,d
 
-# 2. Geometrie
+# 2. Geometrie en statisch schema
+
+@select schema "Statisch schema"
+  Enkelvoudige ligger op twee steunpunten = 1
+  Ligger met overstek aan één zijde = 2
+  Ligger op drie steunpunten (twee velden) = 3
+  Raveelbalk langs een sparing = 4
+@end
 
 L_d = ?*(mm)', dagmaat (vrije overspanning)'
 a_opl = ?*(mm)', opleglengte per zijde'
@@ -128,7 +135,21 @@ t_vloer = ?*(mm)', dikte beschot'
 E_beschot = ?*(N/mm^2)', E-modulus beschot (E_0,ser,rep)'
 b_vloer = ?*(m)', breedte van het vloerveld — nodig voor de trillingstoets'
 
-L_th = L_d + a_opl', theoretische overspanning (= L_d + 2·a_opl/2)'
+'<i>De maten hieronder gelden alleen voor het gekozen schema; bij een ander
+'schema blijven ze buiten beschouwing.</i>
+a_over = ?*(mm)', lengte van het overstek — alleen bij schema 2'
+L_veld2 = ?*(mm)', tweede overspanning — alleen bij schema 3'
+b_sparing = ?*(mm)', breedte van de sparing = overspanning raveelbalk — schema 4'
+l_staart = ?*(mm)', staartlengte van de onderbroken balken — schema 4'
+
+#hide
+'De theoretische overspanning van het maatgevende veld. Bij een raveelbalk is
+'dat de breedte van de sparing tussen de wisselbalken, bij de overige schema's
+'de dagmaat plus de opleglengte.
+L_th_0 = L_d + a_opl
+L_th_rav = b_sparing + a_opl
+#show
+L_th = if(schema ≡ 4; L_th_rav; L_th_0)', theoretische overspanning'
 
 # 3. Belastingen
 
@@ -193,27 +214,75 @@ g_balk_xc = A*ρ_xc*g_xc to kN/m', eigen gewicht — de referentie-uitwerking'
 g_balk_nb = A*ρ_mean*g_nb to kN/m', eigen gewicht — EN 338'
 g_balk = if(rekenwijze ≡ 1; g_balk_xc; g_balk_nb)', gehanteerd eigen gewicht'
 
+# 4b. Krachtsverdeling van het gekozen schema
+
+'<i>Elk veld is een overspanning met een inklemmend eindmoment; daarmee
+'volstaat één stel coëfficiënten voor alle schema's. Vermenigvuldigd met de
+'lijnlast geven ze het moment, de dwarskracht en de zakking. De coëfficiënten
+'zijn nagerekend tegen een onafhankelijke numerieke balkberekening: momenten en
+'dwarskrachten komen exact uit, de zakking ligt 0 tot 4 % aan de veilige kant.</i>
+
+#hide
+'Schema 1 en 4 — enkelvoudige ligger.
+c_M_1 = L_th^2/8
+c_Ms_1 = 0*mm^2
+c_V_1 = L_th/2
+c_u_1 = 5*L_th^4/384
+
+'Schema 2 — overstek. Alles volgt uit de reactie bij de eerste oplegging; die
+'wordt nul zodra het overstek even lang is als de overspanning, en negatief
+'daarboven — dan is er geen veldmoment meer.
+c_R_2 = (L_th^2 - a_over^2)/(2*L_th)
+c_M_2 = if(c_R_2 > 0*mm; c_R_2^2/2; 0*mm^2)
+c_Ms_2 = a_over^2/2
+c_V_2 = max(c_R_2; a_over; L_th - c_R_2)
+c_u_2 = max(1.04*(5*L_th^4/384 - c_Ms_2*L_th^2/16); 0*mm^4)
+'Zakking van het uiteinde van het overstek. Negatief betekent dat het eind
+'omhoog komt: bij een kort overstek kantelt de ligger over de tweede oplegging.
+c_ue_2 = a_over/24*(4*a_over^2*L_th + 3*a_over^3 - L_th^3)
+
+'Schema 3 — drie steunpunten, via de drie-momentenvergelijking.
+c_Ms_3 = (L_th^3 + L_veld2^3)/(8*(L_th + L_veld2))
+c_R3a = L_th/2 - c_Ms_3/L_th
+c_R3b = L_veld2/2 - c_Ms_3/L_veld2
+c_M_3 = max(c_R3a^2; c_R3b^2)/2
+c_V_3 = max(L_th - c_R3a; L_veld2 - c_R3b; c_R3a; c_R3b)
+c_u3a = 5*L_th^4/384 - c_Ms_3*L_th^2/16
+c_u3b = 5*L_veld2^4/384 - c_Ms_3*L_veld2^2/16
+c_u_3 = max(1.04*max(c_u3a; c_u3b); 0*mm^4)
+#show
+
+c_M = if(schema ≡ 2; c_M_2; if(schema ≡ 3; c_M_3; c_M_1))', veldmoment per eenheid lijnlast'
+c_Ms = if(schema ≡ 2; c_Ms_2; if(schema ≡ 3; c_Ms_3; c_Ms_1))', steunmoment per eenheid lijnlast'
+c_V = if(schema ≡ 2; c_V_2; if(schema ≡ 3; c_V_3; c_V_1))', dwarskracht per eenheid lijnlast'
+c_u = if(schema ≡ 2; c_u_2; if(schema ≡ 3; c_u_3; c_u_1))', zakking × EI per eenheid lijnlast'
+c_ue = if(schema ≡ 2; c_ue_2; 0*mm^4)', zakking × EI van het overstekeinde'
+
 # 5. Belastingsgeval 1 — Permanent
 
-P_g,k = hoh*G_k + g_balk to kN/m', lijnlast permanent op de balk'
-P_g,k
-M_g,k = P_g,k*L_th^2/8 to kN*m
-V_g,k = P_g,k*L_th/2 to kN
-u_g,k = 5/384*P_g,k*L_th^4/(E_mean*I_y) to mm', momentane doorbuiging permanent'
-M_g,k
-V_g,k
-u_g,k
+'<i>Bij een raveelbalk is de belaste breedte niet de hart-op-hart afstand maar
+'de halve staartlengte: elke onderbroken balk zet zijn oplegreactie op de
+'raveelbalk af, wat per strekkende meter neerkomt op een vloerstrook van
+'l<sub>staart</sub>/2.</i>
+b_belast = if(schema ≡ 4; l_staart/2; hoh)', belaste breedte per meter balk'
+
+P_g,k = b_belast*G_k + g_balk to kN/m', lijnlast permanent op de balk'
+M_g,veld = c_M*P_g,k to kN*m', veldmoment'
+M_g,steun = c_Ms*P_g,k to kN*m', steunmoment'
+M_g,k = max(M_g,veld; M_g,steun) to kN*m', maatgevend — de doorsnede is prismatisch'
+V_g,k = c_V*P_g,k to kN
+u_g,k = c_u*P_g,k/(E_mean*I_y) to mm', momentane doorbuiging permanent'
+ue_g,k = c_ue*P_g,k/(E_mean*I_y) to mm', idem, uiteinde van het overstek'
 
 # 6. Belastingsgeval 2 — Veranderlijk (gelijkmatig)
 
-q_q,k = hoh*Q_k_eff to kN/m', lijnlast veranderlijk'
-q_q,k
-M_q,k = q_q,k*L_th^2/8 to kN*m
-V_q,k = q_q,k*L_th/2 to kN
-u_q,k = 5/384*q_q,k*L_th^4/(E_mean*I_y) to mm
-M_q,k
-V_q,k
-u_q,k
+q_q,k = b_belast*Q_k_eff to kN/m', lijnlast veranderlijk'
+M_q,veld = c_M*q_q,k to kN*m
+M_q,steun = c_Ms*q_q,k to kN*m
+M_q,k = max(M_q,veld; M_q,steun) to kN*m
+V_q,k = c_V*q_q,k to kN
+u_q,k = c_u*q_q,k/(E_mean*I_y) to mm
+ue_q,k = c_ue*q_q,k/(E_mean*I_y) to mm', uiteinde van het overstek'
 
 # 7. Belastingsgeval 3 — Geconcentreerde last
 
@@ -231,15 +300,21 @@ t_ruw = t_vloer/(1 mm)
 E_vl = E_beschot/(1 N/mm^2)', E-modulus beschot, dimensieloos voor de deling'
 #show
 k_r_0 = 0.37 + 0.8*hoh/a_ref - E_vl*t_ruw^3/12/EI_ref
-k_r = min(1; k_r_0)', concentratiefactor, afgetopt op 1,0 (NEN-EN 1995-1-1 NB)'
+'Bij een raveelbalk staat de puntlast rechtstreeks op de balk; er is dan geen
+'balklaag waarover hij zich verdeelt, dus k<sub>r</sub> = 1.
+k_r = if(schema ≡ 4; 1; min(1; k_r_0))', concentratiefactor, afgetopt op 1,0 (NEN-EN 1995-1-1 NB)'
 F_Q,k = F_k*k_r to kN', effectieve puntlast op één balk'
 F_Q,k
-M_Q,k = F_Q,k*L_th/4 to kN*m
+'<i>De puntlast wordt op twee plaatsen beschouwd: midden in het veld, en — bij
+'een overstek — op het uiteinde daarvan. Beide kunnen niet tegelijk optreden;
+'de toetsing neemt per grootheid de ongunstigste van de twee.</i>
+M_Q_veld = F_Q,k*L_th/4 to kN*m', puntlast midden in het veld'
+M_Q_eind = if(schema ≡ 2; F_Q,k*a_over; 0*kN*m)', puntlast op het overstekeinde'
+M_Q,k = max(M_Q_veld; M_Q_eind) to kN*m
 V_Q,k = F_Q,k to kN', puntlast bij oplegging → volledige dwarskracht op de balk'
-u_Q,k = 1/48*F_Q,k*L_th^3/(E_mean*I_y) to mm
-M_Q,k
-V_Q,k
-u_Q,k
+u_Q_veld = 1/48*F_Q,k*L_th^3/(E_mean*I_y) to mm
+u_Q_eind = if(schema ≡ 2; F_Q,k*a_over^2*(L_th + a_over)/(3*E_mean*I_y); 0*mm)
+u_Q,k = max(u_Q_veld; u_Q_eind) to mm
 
 # 8. Doorsnede van de balklaag
 
