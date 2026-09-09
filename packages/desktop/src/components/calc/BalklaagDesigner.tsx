@@ -315,6 +315,70 @@ function Steunpunten({ x1, x2, y }: { x1: number; x2: number; y: number }) {
 }
 
 /*
+ * Vormfuncties van de drie statische schema's, gelijk aan die in
+ * `templates/balklaag.ts`. Dimensieloos — met q = 1 en EI = 1 — zodat alleen de
+ * vórm overblijft; de tekening schaalt hem daarna op de berekende waarden.
+ * Nagerekend tegen een onafhankelijke numerieke balkberekening: over de hele
+ * lengte exact.
+ */
+interface Vorm {
+  /** Totale lengte van de constructie. */
+  tot: number;
+  /** Zakking, moment en dwarskracht op afstand x vanaf het begin. */
+  u: (x: number) => number;
+  M: (x: number) => number;
+  V: (x: number) => number;
+  /** Plaats van de tweede oplegging, als deel van de totale lengte. */
+  steun2: number;
+  /** Is er een derde oplegging aan het eind? */
+  steun3: boolean;
+}
+
+function vormVan(schema: number, L: number, aOver: number, LVeld2: number, cMs: number): Vorm {
+  const a = schema === 2 ? aOver : 0;
+  const L2 = schema === 3 ? LVeld2 : 0;
+  const tot = L + a + L2;
+  const Ms = cMs;
+  const RA = L / 2 - Ms / L;
+  const RC = L2 > 0 ? L2 / 2 - Ms / L2 : 0;
+
+  // Zakking van een veld: scharnier links, inklemmend moment M rechts.
+  const uv = (x: number, Ls: number, M: number) =>
+    (x * (Ls ** 3 - 2 * Ls * x * x + x ** 3)) / 24 - (M * x * (Ls * Ls - x * x)) / (6 * Ls);
+  // Hoekverdraaiing aan de rechterzijde van datzelfde veld.
+  const tv = (Ls: number, M: number) => (M * Ls) / 3 - Ls ** 3 / 24;
+  // Uitkraging: starre rotatie vanuit het veld plus de eigen doorbuiging.
+  const uo = (t: number) => tv(L, Ms) * t + (t * t * (6 * a * a - 4 * a * t + t * t)) / 24;
+
+  return {
+    tot,
+    steun2: L / tot,
+    steun3: schema === 3,
+    u: (x) => (x <= L ? uv(x, L, Ms) : a > 0 ? uo(x - L) : uv(tot - x, L2, Ms)),
+    M: (x) => (x <= L ? RA * x - (x * x) / 2 : a > 0 ? -((tot - x) ** 2) / 2 : RC * (tot - x) - ((tot - x) ** 2) / 2),
+    V: (x) => (x <= L ? RA - x : a > 0 ? tot - x : tot - x - RC),
+  };
+}
+
+/** Een polylijn uit een vormfunctie, geschaald op zijn eigen piek. */
+function VormLijn({ x1, x2, as, amp, vorm, kleur, dikte = 1.3, streep }: {
+  x1: number; x2: number; as: number; amp: number;
+  vorm: (x: number) => number; kleur: string; dikte?: number; streep?: string;
+}) {
+  const N = 40;
+  const w: number[] = [];
+  for (let i = 0; i <= N; i++) w.push(vorm(i / N));
+  const piek = Math.max(...w.map(Math.abs)) || 1;
+  const punten = w.map((v, i) => `${x1 + ((x2 - x1) * i) / N},${as + (amp * v) / piek}`).join(" ");
+  return (
+    <polyline
+      points={punten}
+      style={{ fill: "none", stroke: kleur, strokeWidth: dikte, strokeDasharray: streep }}
+    />
+  );
+}
+
+/*
  * Vaste kleuren per lastsoort. Permanent en veranderlijk gaan met verschillende
  * partiële factoren de combinatie in (1,20 tegen 1,50) en horen in de quasi-
  * blijvende combinatie verschillend mee te tellen; één kleur voor de som maakt
@@ -511,7 +575,7 @@ export default function BalklaagDesigner() {
     schema, aOver, LVeld2, bSparing, lStaart,
   };
   const {
-    b, h, Lth, Pg, qq, kr, ug, uvar, wfin, wlim, ucDoor,
+    b, h, Lth, cMs, Pg, qq, kr, ug, uvar, wfin, wlim, ucDoor,
     MyEd, VzEd, ucBuig, ucAfsch, f1, ucTril, ucMax, ok,
   } = toets(inv);
 
@@ -868,23 +932,21 @@ export default function BalklaagDesigner() {
             </div>
           </div>
 
-          {/* ── Momenten- en dwarskrachtenlijn (UGT) ─────────────────────
-              Bij een overstek of twee velden heeft de lijn een andere vorm dan
-              hier getekend wordt. Liever niets tonen dan een kromme die niet
-              klopt; de uitwerking geeft de juiste waarden. */}
-          {schema !== 2 && schema !== 3 && (
+          {/* ── Momenten- en dwarskrachtenlijn (UGT) ───────────────────── */}
           <div className="vd-canvas">
             <div className="vd-caption">M- en V-lijn (UGT)</div>
             <div className="vd-stage" style={{ width: W, height: mvH, background: "transparent", border: "none", borderRadius: 0 }}>
               {(() => {
                 const mx = 54;
                 const mx1 = mx, mx2 = Math.max(mx + 80, W - mx);
-                const mmid = (mx1 + mx2) / 2;
-                // De parabool hangt onder zijn as, de V-lijn steekt naar beide
-                // kanten uit — vandaar twee assen met ruimte ertussen.
+                // De M-lijn hangt onder zijn as maar kan er bij een steunmoment
+                // ook bovenuit komen; de V-lijn steekt naar twee kanten. Vandaar
+                // twee assen met ruimte ertussen.
                 const amp = 26;
-                const myAs = 30;
-                const vyAs = 110;
+                const myAs = 40;
+                const vyAs = 112;
+                const vorm = vormVan(schema, Lth, aOver, LVeld2, cMs);
+                const st2 = mx1 + (mx2 - mx1) * vorm.steun2;
                 const Mk = MyEd / 1e6;             // N·mm → kN·m
                 const Vk = VzEd / 1000;            // N → kN
                 return (
@@ -892,74 +954,61 @@ export default function BalklaagDesigner() {
                     <svg width={W} height={mvH} className="vd-svg">
                       {/* M-lijn */}
                       <line x1={mx1 - 8} y1={myAs} x2={mx2 + 8} y2={myAs} style={{ stroke: "#374151", strokeWidth: 0.8 }} />
-                      <path
-                        d={`M ${mx1} ${myAs} Q ${mmid} ${myAs + 2 * amp} ${mx2} ${myAs}`}
-                        style={{ fill: "#DBEAFE", stroke: "#1E40AF", strokeWidth: 1.2 }}
-                      />
-                      <line x1={mmid} y1={myAs} x2={mmid} y2={myAs + amp} style={{ stroke: "#1E40AF", strokeWidth: 0.8, strokeDasharray: "3 3" }} />
-                      <Steunpunten x1={mx1} x2={mx2} y={myAs} />
+                      <VormLijn x1={mx1} x2={mx2} as={myAs} amp={amp} kleur="#1E40AF"
+                        vorm={(t) => vorm.M(t * vorm.tot)} />
+                      <Steunpunten x1={mx1} x2={st2} y={myAs} />
+                      {vorm.steun3 && <Steunpunten x1={mx2} x2={mx2} y={myAs} />}
                       {/* V-lijn */}
                       <line x1={mx1 - 8} y1={vyAs} x2={mx2 + 8} y2={vyAs} style={{ stroke: "#374151", strokeWidth: 0.8 }} />
-                      <polygon points={`${mx1},${vyAs - amp} ${mmid},${vyAs} ${mx1},${vyAs}`} style={{ fill: "#DCFCE7", stroke: "#15803D", strokeWidth: 1.2 }} />
-                      <polygon points={`${mmid},${vyAs} ${mx2},${vyAs + amp} ${mx2},${vyAs}`} style={{ fill: "#DCFCE7", stroke: "#15803D", strokeWidth: 1.2 }} />
-                      <Steunpunten x1={mx1} x2={mx2} y={vyAs} />
+                      <VormLijn x1={mx1} x2={mx2} as={vyAs} amp={-amp} kleur="#15803D"
+                        vorm={(t) => vorm.V(t * vorm.tot)} />
+                      <Steunpunten x1={mx1} x2={st2} y={vyAs} />
+                      {vorm.steun3 && <Steunpunten x1={mx2} x2={mx2} y={vyAs} />}
                     </svg>
-                    <div className="vd-dim-ro" style={{ left: mx1 + 20, top: myAs - 9, color: "#374151", fontWeight: 700 }}>M-lijn</div>
-                    <div className="vd-dim-ro" style={{ left: mmid, top: myAs + amp + 12, color: "#1E40AF", fontWeight: 700 }}>
+                    <div className="vd-dim-ro" style={{ left: mx1 + 34, top: myAs - 12, color: "#1E40AF" }}>M-lijn</div>
+                    <div className="vd-dim-ro" style={{ left: (mx1 + mx2) / 2, top: myAs + amp + 12, color: "#1E40AF" }}>
                       M = {Mk.toFixed(2)} kNm
                     </div>
-                    <div className="vd-dim-ro" style={{ left: mx1 + 20, top: vyAs - 9, color: "#374151", fontWeight: 700 }}>V-lijn</div>
-                    <div className="vd-dim-ro" style={{ left: mx1 + 46, top: vyAs - amp - 4, color: "#15803D", fontWeight: 700 }}>
-                      +V = {Vk.toFixed(2)} kN
-                    </div>
-                    <div className="vd-dim-ro" style={{ left: mx2 - 38, top: vyAs + amp + 4, color: "#15803D", fontWeight: 700 }}>
-                      −V
+                    <div className="vd-dim-ro" style={{ left: mx1 + 34, top: vyAs - 12, color: "#15803D" }}>V-lijn</div>
+                    <div className="vd-dim-ro" style={{ left: (mx1 + mx2) / 2, top: vyAs + amp + 12, color: "#15803D" }}>
+                      V = {Vk.toFixed(2)} kN
                     </div>
                   </>
                 );
               })()}
             </div>
           </div>
-          )}
 
           {/* ── Doorbuigingslijn (BGT) ─────────────────────────────────── */}
-          {schema !== 2 && schema !== 3 && (
           <div className="vd-canvas">
             <div className="vd-caption">Doorbuiging (BGT)</div>
             <div className="vd-stage" style={{ width: W, height: uH, background: "transparent", border: "none", borderRadius: 0 }}>
               {(() => {
                 const mx = 54;
                 const ux1 = mx, ux2 = Math.max(mx + 80, W - mx);
-                const umid = (ux1 + ux2) / 2;
-                const uAs = 26;
-                // De twee zakkingen op dezelfde schaal, zodat je in één blik
-                // ziet hoeveel de kruip er nog bovenop doet.
-                const amp = 34;
-                const grootste = Math.max(wfin, ug + uvar, 1e-6);
-                const sInst = (amp * (ug + uvar)) / grootste;
-                const sFin = (amp * wfin) / grootste;
+                const uas = 34;
+                const uamp = 30;
+                const vorm = vormVan(schema, Lth, aOver, LVeld2, cMs);
+                const st2 = ux1 + (ux2 - ux1) * vorm.steun2;
+                // Beide krommen op dezelfde schaal: alleen zo laat het verschil
+                // zien wat de kruip er bovenop doet.
+                const grootst = Math.max(wfin, ug + uvar, 0.001);
+                const sInst = (uamp * (ug + uvar)) / grootst;
+                const sFin = (uamp * wfin) / grootst;
                 return (
                   <>
                     <svg width={W} height={uH} className="vd-svg">
-                      <line x1={ux1 - 8} y1={uAs} x2={ux2 + 8} y2={uAs} style={{ stroke: "#374151", strokeWidth: 0.8, strokeDasharray: "4 3" }} />
-                      {/* momentaan (6.14b) */}
-                      <path
-                        d={`M ${ux1} ${uAs} Q ${umid} ${uAs + 2 * sInst} ${ux2} ${uAs}`}
-                        style={{ fill: "none", stroke: "#0EA5E9", strokeWidth: 1.2, strokeDasharray: "5 3" }}
-                      />
-                      {/* eindstand incl. kruip (6.16b) */}
-                      <path
-                        d={`M ${ux1} ${uAs} Q ${umid} ${uAs + 2 * sFin} ${ux2} ${uAs}`}
-                        style={{ fill: "rgba(14,165,233,0.10)", stroke: "#0369A1", strokeWidth: 1.4 }}
-                      />
-                      <line x1={umid} y1={uAs} x2={umid} y2={uAs + sFin} style={{ stroke: "#0369A1", strokeWidth: 0.8, strokeDasharray: "3 3" }} />
-                      <Steunpunten x1={ux1} x2={ux2} y={uAs} />
+                      <line x1={ux1 - 8} y1={uas} x2={ux2 + 8} y2={uas}
+                        style={{ stroke: "#374151", strokeWidth: 0.8, strokeDasharray: "4 3" }} />
+                      <VormLijn x1={ux1} x2={ux2} as={uas} amp={sInst} kleur="#0EA5E9" dikte={1.1}
+                        streep="5 3" vorm={(t) => vorm.u(t * vorm.tot)} />
+                      <VormLijn x1={ux1} x2={ux2} as={uas} amp={sFin} kleur="#0369A1"
+                        vorm={(t) => vorm.u(t * vorm.tot)} />
+                      <Steunpunten x1={ux1} x2={st2} y={uas} />
+                      {vorm.steun3 && <Steunpunten x1={ux2} x2={ux2} y={uas} />}
                     </svg>
-                    <div className="vd-dim-ro" style={{ left: ux1 + 26, top: uAs - 9, color: "#374151", fontWeight: 700 }}>onvervormd</div>
-                    <div className="vd-dim-ro" style={{ left: umid + 62, top: uAs + sInst - 4, color: "#0EA5E9", fontWeight: 700 }}>
-                      w<sub>inst</sub> = {(ug + uvar).toFixed(1)} mm
-                    </div>
-                    <div className="vd-dim-ro" style={{ left: umid, top: uAs + sFin + 12, color: "#0369A1", fontWeight: 700 }}>
+                    <div className="vd-dim-ro" style={{ left: ux1 + 40, top: uas - 12, color: "#374151" }}>onvervormd</div>
+                    <div className="vd-dim-ro" style={{ left: (ux1 + ux2) / 2, top: uas + uamp + 18, color: "#0369A1" }}>
                       w<sub>fin</sub> = {wfin.toFixed(1)} mm (grens {wlim.toFixed(1)})
                     </div>
                   </>
@@ -967,7 +1016,6 @@ export default function BalklaagDesigner() {
               })()}
             </div>
           </div>
-          )}
         </div>
       </div>
 
