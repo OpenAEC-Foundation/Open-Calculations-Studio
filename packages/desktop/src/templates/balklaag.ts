@@ -264,10 +264,14 @@ c_ue = if(schema ≡ 2; c_ue_2; 0*mm^4)', zakking × EI van het overstekeinde'
 'nagerekend tegen een numerieke balkberekening: over de hele lengte exact.</i>
 
 #hide
-d_L = L_th/(1 mm)', overspanning van het eerste veld'
+'Ondergrens van 1 mm op de lengtes. Bij het allereerste renderen staan de
+'invoervelden nog op nul; zonder die ondergrens deelt alles hieronder door nul
+'en zet elk van de dertig lijnstukken NaN-coordinaten neer. De tekening klopt
+'een tel later vanzelf, maar tot die tijd stroomt de console vol.
+d_L = max(L_th/(1 mm); 1)', overspanning van het eerste veld'
 d_a = if(schema ≡ 2; a_over/(1 mm); 0)', overstek'
 d_L2 = if(schema ≡ 3; L_veld2/(1 mm); 0)', tweede veld'
-d_tot = d_L + d_a + d_L2', totale lengte'
+d_tot = max(d_L + d_a + d_L2; 1)', totale lengte'
 d_Ms = c_Ms/(1 mm^2)', steunmoment per eenheid lijnlast'
 d_RA = d_L/2 - d_Ms/d_L', eindreactie van het eerste veld'
 d_RC = if(d_L2 > 0; d_L2/2 - d_Ms/d_L2; 0)', eindreactie van het tweede veld'
@@ -471,7 +475,7 @@ svgH = by + bh + 46
 'Totale lengte: bij een overstek of een tweede veld hoort daar meer bij dan
 'alleen de overspanning van het eerste veld.
 L_tot = if(schema ≡ 2; L_th + a_over; if(schema ≡ 3; L_th + L_veld2; L_th))
-s_schaal = 360/(L_tot/(1 mm))
+s_schaal = 360/max(L_tot/(1 mm); 1)', ondergrens: bij het eerste renderen is de lengte nog nul'
 sx1 = 60', eerste oplegging
 sx2 = sx1 + s_schaal*L_th/(1 mm)', tweede oplegging
 sx3 = sx1 + s_schaal*L_tot/(1 mm)', einde van de balk, of de derde oplegging
