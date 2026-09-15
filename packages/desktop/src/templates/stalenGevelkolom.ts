@@ -187,7 +187,7 @@ UC_M = M_Ed/M_c,Rd
 
 # 7. Toetsing dwarskracht — §6.2.6
 
-A_v = A - 2*b_profile*t_f + (t_w + 2*0)*t_f', schuifvlak (vereenvoudigd voor I-profielen)
+A_v = A - 2*b_profile*t_f + t_w*t_f', schuifvlak (vereenvoudigd voor I-profielen, wortelstraal r verwaarloosd)
 V_pl,Rd = A_v*(f_y/sqrt(3))/γ_M0
 UC_V = V_Ed/V_pl,Rd
 

@@ -49,8 +49,10 @@ import type { AstNode, ConditionalNode, PlotNode, TextNode } from './types.js';
 const IDENT = '[\\p{L}_][\\p{L}\\p{N}_]*';
 const ASSIGNMENT_RE = new RegExp(`^(${IDENT})\\s*=\\s*(.+)$`, 'u');
 const INPUT_PROMPT_RE = new RegExp(`^(${IDENT})\\s*=\\s*\\?\\s*(.*)$`, 'u');
+// Parameters mogen met een komma of een puntkomma gescheiden worden: CalcPAD
+// schrijft puntkomma's, mathjs komma's, en beide horen hier te werken.
 const USER_FUNC_RE = new RegExp(
-  `^(${IDENT})\\s*\\(\\s*(${IDENT}(?:\\s*,\\s*${IDENT})*)\\s*\\)\\s*=\\s*(.+)$`,
+  `^(${IDENT})\\s*\\(\\s*(${IDENT}(?:\\s*[,;]\\s*${IDENT})*)\\s*\\)\\s*=\\s*(.+)$`,
   'u',
 );
 const VAR_DISPLAY_RE = new RegExp(`^(${IDENT})\\s*$`, 'u');
@@ -318,25 +320,29 @@ function applyMacro(macro: { params: string[]; body: string[]; oneLine: string |
   //   • Always substitute `paramname$`.
   //   • In *code* lines (no leading `'`), also substitute bare `paramname`.
   //   • In *prose* lines, ONLY substitute `$`-suffixed refs.
+  //
+  // True single-pass substitution. Two separate regex passes ($-form then
+  // bare-form) would let the SECOND pass re-match the values produced by
+  // the first: `b$ → l` followed by bare `l → b` corrupts back to the
+  // wrong param. One combined regex with optional `$` captures the type
+  // per match; JS replace advances through the ORIGINAL input so already-
+  // substituted text in the OUTPUT is never re-scanned.
+  const paramMap = new Map<string, string>();
+  for (let i = 0; i < macro.params.length; i++) paramMap.set(macro.params[i], args[i] ?? '');
+  const escNames = macro.params.map(escapeRegExp).join('|');
+  const combinedRe = new RegExp(
+    `(?<![\\p{L}\\p{N}_.])(${escNames})(\\$)?(?![\\p{L}\\p{N}_])`,
+    'gu',
+  );
+
   const substLine = (s: string, isProse: boolean): string => {
-    let result = s;
-    for (let i = 0; i < macro.params.length; i++) {
-      const p = macro.params[i];
-      const a = args[i] ?? '';
-      // 1) `$`-suffixed (always applies)
-      result = result.replace(
-        new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(p)}\\$(?![\\p{L}\\p{N}_])`, 'gu'),
-        a,
-      );
-      // 2) bare reference (skip in prose to protect SVG attribute names)
-      if (!isProse) {
-        result = result.replace(
-          new RegExp(`(?<![\\p{L}\\p{N}_.])${escapeRegExp(p)}(?![\\p{L}\\p{N}_])`, 'gu'),
-          a,
-        );
-      }
-    }
-    return result;
+    if (paramMap.size === 0) return s;
+    return s.replace(combinedRe, (_m, name: string, dollarSuffix?: string) => {
+      // Bare references inside prose lines: skip (would clobber SVG attr
+      // names like `x="..."` when params are single letters).
+      if (!dollarSuffix && isProse) return _m;
+      return paramMap.get(name) ?? _m;
+    });
   };
   if (macro.oneLine !== null) {
     return substLine(macro.oneLine, macro.oneLine.trimStart().startsWith("'"));
@@ -380,13 +386,20 @@ function foldIdentifierDots(source: string): string {
     // CalcPAD vector index by loop-variable: `name.i`, `name.j` (single
     // lowercase letter) → `name[i]`. Distinguishes from dotted identifiers
     // like `Cs.Cd` (uppercase / multi-char RHS) which still get folded.
+    //
+    // The trailing `.` in the lookahead keeps Dutch abbreviations intact:
+    // `t.o.v.` would otherwise fold to `t[o].v.` and `u.c.` to `u[c].`. A
+    // real vector index is never immediately followed by another dot.
     out = out.replace(
-      /(?<![\p{L}\p{N}_.])([\p{L}_][\p{L}\p{N}_]*)\.([a-z])(?![\p{L}\p{N}_])/gu,
+      /(?<![\p{L}\p{N}_.])([\p{L}_][\p{L}\p{N}_]*)\.([a-z])(?![\p{L}\p{N}_.])/gu,
       (_m, name, idx) => `${name}[${idx}]`,
     );
     // Identifier-cluster fold: `Cs.Cd`, `F_0.9G50%TotalWeight` → underscores.
+    //
+    // Same trailing-`.` guard, for the same reason: without it this rule
+    // catches what the one above now leaves alone (`t.o.v` → `t_o_v`).
     out = out.replace(
-      /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*(?:[.%][\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_])/gu,
+      /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*(?:[.%][\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_.])/gu,
       (match) => match.replace(/[.%]/g, '_'),
     );
     return out;
@@ -414,7 +427,13 @@ function foldIdentifierDots(source: string): string {
 function stripFormatSpecs(source: string): string {
   // Match `:F2`, `:N0`, `:G`, `:E3`, `:P0` where preceded by digit/letter/`)`
   // and followed by end-of-token (whitespace, EOL, or expression operator).
-  return source.replace(/(?<=[\p{L}\p{N}_)])\s*:\s*[FNGEPfngep]\d*(?=\s|$|[,;)+\-*/'])/gu, '');
+  // Whitespace around `:` must stay WITHIN the line ([^\S\n], not \s) —
+  // otherwise a prose line ending in `:` swallows the next statement when it
+  // happens to start with one of F/N/G/E/P (e.g. `n = N_Ed/N_plRd`).
+  return source.replace(
+    /(?<=[\p{L}\p{N}_)])[^\S\n]*:[^\S\n]*[FNGEPfngep]\d*(?=[^\S\n]|$|[,;)+\-*/'])/gmu,
+    '',
+  );
 }
 
 /**
@@ -640,7 +659,14 @@ function parseLines(
             if (k % 2 === 0) {
               if (seg !== '') parts.push({ kind: 'literal', value: seg });
             } else {
-              const expr = seg.trim();
+              // Ook een ingevoegde expressie normaliseren, net als elke andere.
+              // Zonder deze stap werkte `max(a; b)` wél in een toekenning maar
+              // niet tussen twee apostrofs in een tekst- of SVG-regel: daar
+              // bleef de puntkomma staan, mislukte de berekening en kwam de
+              // expressie letterlijk in de uitdraai terecht. Alleen de
+              // expressie-delen gaan hier langs; de letterlijke stukken — met
+              // hun CSS en &nbsp; — blijven ongemoeid.
+              const expr = normalizeExpression(seg.trim());
               if (expr !== '') parts.push({ kind: 'expr', value: expr });
             }
           }
@@ -853,13 +879,18 @@ function parseLines(
     // User function — match BEFORE generic assignment
     const fnMatch = trimmed.match(USER_FUNC_RE);
     if (fnMatch) {
-      const params = fnMatch[2].split(',').map((p) => p.trim());
+      const params = fnMatch[2].split(/[,;]/).map((p) => p.trim());
       nodes.push(
         markHidden({
           type: 'user-function',
           name: fnMatch[1],
           params,
-          expression: fnMatch[3].trim(),
+          // Net als elke andere expressie normaliseren. Zonder deze stap bleef
+          // de body van een functie als enige achter met CalcPAD-notatie: een
+          // `if(a; b; c)` erin werd nooit omgezet naar komma's en `≤`, `≡` en π
+          // bleven onvertaald, waarna de aanroep stilzwijgend als tekst in de
+          // uitdraai belandde in plaats van als getal.
+          expression: normalizeExpression(fnMatch[3].trim()),
           raw: trimmed,
         }, state),
       );

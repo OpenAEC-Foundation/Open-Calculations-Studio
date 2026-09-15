@@ -1,44 +1,71 @@
-/// Generate a PDF report using the openaec-core engine.
-///
-/// Accepts a JSON `serde_json::Value` matching the openaec-core `ReportData`
-/// schema (template, project, sections, ...). Returns the PDF bytes so the
-/// frontend can stream/save them via `tauri-plugin-fs` or trigger a download.
-#[tauri::command]
-fn engine_generate_pdf(report: serde_json::Value) -> Result<Vec<u8>, String> {
-    let report_data: openaec_core::ReportData = serde_json::from_value(report)
-        .map_err(|e| format!("Invalid ReportData JSON: {}", e))?;
-    openaec_core::generate_pdf_bytes(&report_data)
-        .map_err(|e| format!("PDF engine failed: {}", e))
+//! Tauri-schil van Open Calculations Studio.
+//!
+//! De PDF-commando's hieronder gebruiken de OpenAEC-rapportengine
+//! (`openaec-core`). Die is **optioneel**: standaard wordt hij niet meegebouwd,
+//! zodat dit project op zichzelf te bouwen is zonder zusterrepo. Zonder de
+//! `rapportengine`-feature bestaan de commando's nog wel — ze geven dan een
+//! nette foutmelding in plaats van dat de aanroep in het niets valt.
+//!
+//! Afdrukken loopt in de app zelf via de browser
+//! (`src/components/calc/PrintDocument.tsx`); die weg neemt ook de tekeningen
+//! mee, wat de rapportengine niet doet. Zie `docs/backlog.md`.
+
+#[cfg(feature = "rapportengine")]
+mod rapport {
+    /// Genereer een PDF met de openaec-core engine.
+    ///
+    /// Verwacht JSON die overeenkomt met het `ReportData`-schema van
+    /// openaec-core (template, project, sections, ...) en geeft de bytes terug.
+    pub fn genereer(report: serde_json::Value) -> Result<Vec<u8>, String> {
+        let report_data: openaec_core::ReportData = serde_json::from_value(report)
+            .map_err(|e| format!("Invalid ReportData JSON: {}", e))?;
+        openaec_core::generate_pdf_bytes(&report_data)
+            .map_err(|e| format!("PDF engine failed: {}", e))
+    }
 }
 
-/// Generate a PDF and write it directly to disk at `path`.
-/// Returns the byte count written so the frontend can confirm success.
+#[cfg(not(feature = "rapportengine"))]
+mod rapport {
+    pub fn genereer(_report: serde_json::Value) -> Result<Vec<u8>, String> {
+        Err("Deze build bevat de OpenAEC-rapportengine niet. Bouw met \
+             `--features rapportengine`, of gebruik Afdrukken (Ctrl+P) — die weg \
+             neemt ook de tekeningen mee."
+            .to_string())
+    }
+}
+
+/// Genereer een PDF en geef de bytes terug.
+#[tauri::command]
+fn engine_generate_pdf(report: serde_json::Value) -> Result<Vec<u8>, String> {
+    rapport::genereer(report)
+}
+
+/// Genereer een PDF en schrijf hem naar `path`. Geeft het aantal bytes terug.
 #[tauri::command]
 fn engine_save_pdf(report: serde_json::Value, path: String) -> Result<usize, String> {
-    let bytes = engine_generate_pdf(report)?;
+    let bytes = rapport::genereer(report)?;
     std::fs::write(&path, &bytes)
         .map_err(|e| format!("Failed to write PDF to {}: {}", path, e))?;
     Ok(bytes.len())
 }
 
-/// Generate a PDF into the OS temp dir and return the absolute path.
-/// Intended for in-app preview: the frontend wraps the path with
-/// `convertFileSrc()` to load it into an <iframe>.
+/// Genereer een PDF in de tijdelijke map en geef het absolute pad terug.
+/// Bedoeld voor de voorbeeldweergave in de app: de frontend wikkelt het pad met
+/// `convertFileSrc()` en laadt het in een <iframe>.
 ///
-/// File name is timestamped so multiple previews don't collide.
+/// De bestandsnaam draagt een tijdstempel, zodat twee voorbeelden elkaar niet
+/// overschrijven.
 #[tauri::command]
 fn engine_preview_pdf(report: serde_json::Value) -> Result<String, String> {
-    let bytes = engine_generate_pdf(report)?;
+    let bytes = rapport::genereer(report)?;
     let dir = std::env::temp_dir().join("open-calculations-studio");
-    std::fs::create_dir_all(&dir)
-        .map_err(|e| format!("Failed to create temp dir: {}", e))?;
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create temp dir: {}", e))?;
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis())
         .unwrap_or(0);
     let path = dir.join(format!("preview-{}.pdf", ts));
-    std::fs::write(&path, &bytes)
-        .map_err(|e| format!("Failed to write preview PDF: {}", e))?;
+    std::fs::write(&path, &bytes).map_err(|e| format!("Failed to write preview PDF: {}", e))?;
     Ok(path.to_string_lossy().into_owned())
 }
 

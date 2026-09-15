@@ -36,7 +36,12 @@ export interface ReportData {
   author: string;
   date: string;
   version: string;
-  status: "draft" | "review" | "final";
+  /**
+   * Let op: de Rust-engine kent alleen deze drie, in hoofdletters en in het
+   * Nederlands. Hier stond "draft", wat door serde geweigerd wordt — daarmee
+   * viel élke aanroep van de engine om op de eerste regel.
+   */
+  status: "CONCEPT" | "DEFINITIEF" | "REVISIE";
   sections: Section[];
   metadata?: Record<string, unknown>;
 }
@@ -134,7 +139,83 @@ export function documentToReport(
     author: options.author ?? "Open Calculations Studio",
     date: new Date().toISOString().slice(0, 10),
     version: "0.1",
-    status: "draft",
+    status: "CONCEPT",
+    sections,
+  };
+}
+
+/** Eén rekenblad zoals het in de projectuitdraai terechtkomt. */
+export interface RapportBlad {
+  naam: string;
+  nodes: EvaluatedNode[];
+}
+
+/**
+ * Zet het héle project in één rapport: een voorblad met de projectgegevens,
+ * daarna elk rekenblad in de volgorde van de projectboom, elk op een nieuwe
+ * pagina en met de naam die het blad in het project heeft.
+ *
+ * Dat is wat "exporteren" hoort te doen zodra een project meerdere bladen kent
+ * — drie balklagen leveren drie hoofdstukken op, niet alleen degene die
+ * toevallig openstond.
+ */
+export function projectToReport(
+  bladen: RapportBlad[],
+  projectNaam: string,
+  gegevens: Record<string, string> = {},
+  options: { author?: string; tenant?: string } = {},
+): ReportData {
+  const sections: Section[] = [];
+
+  // Voorblad — alleen de ingevulde velden, zodat een leeg project geen
+  // pagina vol lege regels oplevert.
+  const kop: Array<[string, string | undefined]> = [
+    ["Projectnummer", gegevens.project_nummer],
+    ["Projectnaam", gegevens.project_naam],
+    ["Onderdeel", gegevens.onderdeel],
+    ["Opdrachtgever", gegevens.opdrachtgever],
+    ["Constructeur", gegevens.constructeur],
+    ["Locatie", gegevens.locatie],
+    ["Gevolgklasse", gegevens.CC ? `CC${gegevens.CC}` : undefined],
+    ["Betrouwbaarheidsklasse", gegevens.RC ? `RC${gegevens.RC}` : undefined],
+    ["Ontwerplevensduur", gegevens.DesignLife ? `${gegevens.DesignLife} jaar` : undefined],
+  ];
+  const voorblad: Section = { title: projectNaam, level: 1, content: [] };
+  for (const [label, waarde] of kop) {
+    if (waarde) voorblad.content.push({ type: "paragraph", text: `${label}: ${waarde}`, style: "Normal" });
+  }
+  voorblad.content.push({
+    type: "paragraph",
+    text: `Deze uitdraai bevat ${bladen.length} ${bladen.length === 1 ? "rekenblad" : "rekenbladen"}.`,
+    style: "Normal",
+  });
+  sections.push(voorblad);
+
+  for (const blad of bladen) {
+    const deel = documentToReport(blad.nodes, blad.naam, options);
+    const eigen = deel.sections;
+    // De naam uit de projectboom wint van de titelregel in de bladtekst: bij
+    // drie balklagen moet je in de PDF kunnen zien wélke je voor je hebt.
+    sections.push({ title: blad.naam, level: 1, content: [], page_break_before: true });
+    for (const sec of eigen) {
+      // Eén niveau inspringen onder de bladkop. Niet dieper dan 2: de mapping
+      // bovenaan dit bestand kent alleen niveau 1 en 2 als sectie, dieper wordt
+      // een kopblok binnen een sectie.
+      sections.push({ ...sec, level: Math.min(sec.level + 1, 2), page_break_before: false });
+    }
+  }
+
+  return {
+    template: "default",
+    project: projectNaam,
+    tenant: options.tenant ?? "openaec_foundation",
+    format: "A4",
+    orientation: "portrait",
+    // Let op: een niet-ingevuld veld is "" en niet undefined, dus || en niet ??.
+    author: options.author || gegevens.constructeur || "Open Calculations Studio",
+    date: new Date().toISOString().slice(0, 10),
+    version: "0.1",
+    status: "CONCEPT",
     sections,
   };
 }
