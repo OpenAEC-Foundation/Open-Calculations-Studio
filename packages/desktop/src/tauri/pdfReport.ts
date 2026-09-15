@@ -7,7 +7,7 @@
  * into the openaec-core ReportData schema first.
  */
 
-import { documentToReport } from "../lib/documentToReport";
+import { documentToReport, type ReportData } from "../lib/documentToReport";
 import type { EvaluatedNode } from "@ifc-calc/core";
 
 function isTauriEnv(): boolean {
@@ -28,7 +28,7 @@ function sanitizeFileName(name: string): string {
  * Returns the saved path, or `null` if the user cancelled.
  */
 export async function savePdfReport(
-  nodes: EvaluatedNode[],
+  nodesOfReport: EvaluatedNode[] | ReportData,
   projectName: string,
 ): Promise<string | null> {
   if (!isTauriEnv()) {
@@ -39,7 +39,11 @@ export async function savePdfReport(
     return null;
   }
 
-  const report = documentToReport(nodes, projectName);
+  // Een kant-en-klaar rapport (het hele project) mag er ook in; dan slaan we
+  // de omzetting van één blad over.
+  const report = Array.isArray(nodesOfReport)
+    ? documentToReport(nodesOfReport, projectName)
+    : nodesOfReport;
   const { save } = await import("@tauri-apps/plugin-dialog");
   const { invoke } = await import("@tauri-apps/api/core");
 

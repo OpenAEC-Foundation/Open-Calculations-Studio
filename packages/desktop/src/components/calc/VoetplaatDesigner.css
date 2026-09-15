@@ -56,6 +56,8 @@
 }
 .vd-uc.ok { color: #047857; background: #d1fae5; }
 .vd-uc.bad { color: #b91c1c; background: #fee2e2; }
+/* Neutrale variant voor modules zonder toetsing (bv. de kruipfactor). */
+.vd-uc.info { color: #1d4ed8; background: #dbeafe; }
 
 /* werkruimte: controls links onder elkaar, tekeningen centraal */
 .vd-body {
@@ -104,32 +106,113 @@
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--theme-text-muted, #6b7280);
-  margin-top: 8px;
-  border-bottom: 1px solid var(--theme-border-subtle, #e5e7eb);
-  padding-bottom: 2px;
+  letter-spacing: 0.06em;
+  color: var(--theme-accent, #d97706);
+  margin-top: 14px;
+  border-bottom: 1.5px solid var(--theme-accent, #d97706);
+  padding-bottom: 3px;
 }
 .vd-ctrl-h:first-child { margin-top: 0; }
 
 /* compacte invoer — label links, smal veld rechts (referentie-look) */
-.vd-compact { width: 258px; gap: 3px; }
+.vd-compact { width: 268px; gap: 0; }
+/* Twee vaste kolommen in plaats van space-between: een label met opmaak
+ * (g<sub>k</sub>, eenheid tussen haakjes) bestaat uit meerdere inline-stukken,
+ * en space-between duwde die uit elkaar — "g    k    (kN/m²)". Met een grid
+ * blijft de tekst één geheel en staan alle velden op dezelfde lijn. */
+/* Let op met grid of space-between: een label als "g<sub>k</sub> (kN/m²)"
+ * bestaat uit drie losse kinderen (tekst, <sub>, tekst). Grid maakt van elk
+ * een cel — dan valt het label over twee rijen; space-between duwt ze uit
+ * elkaar. Daarom flex zonder gap, en alleen het invoerveld met een auto-marge
+ * naar rechts: de tekstdelen blijven tegen elkaar staan. */
 .vd-compact label {
+  display: flex;
   flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 0;
   font-size: 11px;
-  line-height: 1.15;
+  line-height: 1.3;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--theme-border-subtle, rgba(0, 0, 0, 0.05));
+}
+.vd-compact label:last-child {
+  border-bottom: none;
 }
 .vd-compact label > select,
 .vd-compact label > input {
-  width: 94px;
-  flex: 0 0 auto;
-  font-size: 11px;
-  padding: 2px 4px;
+  margin-left: auto;
+  flex: 0 0 96px;
+  width: 96px;
+  font-size: 11.5px;
+  padding: 4px 6px;
 }
-.vd-compact .vd-ctrl-h { margin-top: 6px; }
+.vd-compact label > select:focus,
+.vd-compact label > input:focus {
+  outline: none;
+  border-color: var(--theme-accent, #d97706);
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.15);
+}
+/* De ja/nee-schakelaar deelt de tweede kolom met de invoervelden, zodat
+ * schakelaars en velden op dezelfde lijn beginnen. */
+.vd-compact .vd-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  font-size: 11px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--theme-border-subtle, rgba(0, 0, 0, 0.05));
+}
+.vd-compact .vd-toggle-veld {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex: 0 0 96px;
+}
+.vd-compact .vd-ctrl-h { margin-top: 12px; margin-bottom: 2px; }
+
+/* belasting-tabjes (referentie-look) */
+.gd-tabs { display: flex; gap: 2px; margin-top: 4px; }
+.gd-tab {
+  flex: 1 1 0;
+  padding: 4px 2px;
+  font-size: 10.5px;
+  border: 1px solid var(--theme-border-subtle, #d1d5db);
+  border-bottom: none;
+  background: var(--theme-surface-2, #eef0f3);
+  color: var(--theme-text-muted, #6b7280);
+  border-radius: 5px 5px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gd-tab.active {
+  background: var(--theme-surface, #fff);
+  color: var(--theme-text, #111827);
+  font-weight: 600;
+}
+.gd-tabbody {
+  border: 1px solid var(--theme-border-subtle, #d1d5db);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+.gd-note { font-size: 10px; color: var(--theme-text-muted, #6b7280); line-height: 1.3; }
+
+/* radio-rij (referentie-look: n = 2 / 3 / 4) */
+.mw-radios { display: flex; gap: 9px; align-items: center; flex: 0 0 auto; }
+.vd-compact .mw-radios label {
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.vd-controls .mw-radios input[type="radio"] { width: auto; flex: 0 0 auto; margin: 0; }
+.gd-chk { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.gd-chk input[type="checkbox"] { width: auto; flex: 0 0 auto; }
 
 .vd-layouts {
   display: flex;
@@ -182,6 +265,18 @@
   align-items: center;
   gap: 14px;
   min-width: 0;
+  /* Meerdere tekeningen onder elkaar passen niet altijd in het paneel; laat
+   * de kolom zelf scrollen in plaats van over de voetregel heen te lopen.
+   *
+   * `scrollbar-gutter: stable` is hier geen opsmuk maar noodzaak: de
+   * tekeningen worden op de gemeten breedte geschaald. Verschijnt en verdwijnt
+   * de scrollbar, dan verandert die breedte, herschaalt het beeld, en komt de
+   * scrollbar weer terug — het beeld gaat dan zichtbaar trillen. Met een vaste
+   * goot blijft de breedte constant. */
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 .vd-canvas { display: flex; flex-direction: column; align-items: center; }
 .vd-caption {
@@ -217,7 +312,89 @@
 .vd-dimline line { stroke: #2563eb; stroke-width: 1; }
 .vd-dimext { stroke: #2563eb; stroke-width: 1; }
 .vd-dimmeasure { stroke: #2563eb; stroke-width: 1; }
-.vd-dimarrow { fill: none; stroke: #2563eb; stroke-width: 1.2; }
+.vd-dimarrow { fill: #2563eb; stroke: #2563eb; stroke-width: 0.8; }
+/* Ontwerpknop: staat onder de profielkeuze, want dat is wat hij invult. Geen
+   `label`, dus buiten de regelopmaak van .vd-compact om. */
+.vd-ontwerp {
+  display: flex;
+  align-items: center;
+  /* Is de kolom smal, dan zakt de toelichting naar een eigen regel in plaats
+     van in een smalle strook naast de knop te wringen. */
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--theme-border-subtle, #e5e7eb);
+}
+
+.vd-ontwerp button {
+  flex: none;
+  padding: 4px 14px;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--theme-accent, #d97706);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.vd-ontwerp button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.vd-ontwerp button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.vd-ontwerp span {
+  font-size: 11px;
+  color: var(--theme-text-muted, #6b7280);
+}
+
+.vd-ontwerp-melding {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-text-secondary, #475569);
+}
+
+/* Kleurverklaring onder een tekening: een streepje in de kleur van de lijn,
+   met de bijbehorende grootheid ernaast. */
+.vd-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  gap: 2px 14px;
+  /* De breedte komt inline mee van de tekening ernaast. Zonder die maat groeit
+     een flexregel tot zijn max-content breedte, en omdat de ouder zijn kinderen
+     alleen centreert (niet begrenst) rekt die dan mee — waarna de tekeningkolom
+     horizontaal afklemt en het laatste woord wegvalt. */
+  box-sizing: border-box;
+  min-height: 30px;
+  padding: 2px 4px 0;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--theme-text-secondary, #475569);
+}
+
+.vd-legenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+/* Het streepje is een rand, geen achtergrond: browsers drukken achtergronden
+   standaard niet af (`print-color-adjust: economy`), en dan valt juist de kleur
+   weg die de verklaring moet dragen. Randen gaan altijd mee. */
+.vd-legenda i {
+  flex: none;
+  width: 14px;
+  border-top: 3px solid currentColor;
+}
+
 .vd-dim-ro {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -281,3 +458,102 @@
   color: var(--text-muted, #6b7280);
 }
 .vd-live { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text, #374151); }
+
+/* ── Ja/nee-schakelaar in de invoerkolom ──────────────────────────── */
+
+.vd-toggle-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.vd-toggle-label {
+  min-width: 0;
+}
+
+.vd-toggle {
+  position: relative;
+  width: 34px;
+  height: 19px;
+  padding: 0;
+  flex: none;
+  border: 1px solid var(--theme-border-subtle, #c7cbd1);
+  border-radius: 999px;
+  background: var(--theme-bg-surface, #e5e7eb);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.vd-toggle:hover {
+  border-color: var(--theme-accent, #d97706);
+}
+
+.vd-toggle.aan {
+  background: var(--theme-accent, #d97706);
+  border-color: var(--theme-accent, #d97706);
+}
+
+.vd-toggle-knop {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.vd-toggle.aan .vd-toggle-knop {
+  transform: translateX(15px);
+}
+
+.vd-toggle:focus-visible {
+  outline: 2px solid var(--theme-accent, #d97706);
+  outline-offset: 2px;
+}
+
+.vd-toggle-stand {
+  min-width: 24px;
+  font-size: 11px;
+  color: var(--theme-text-secondary, var(--theme-text-muted, #6b7280));
+}
+
+/* ── Unity checks in de voetregel ─────────────────────────────────── */
+
+.vd-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.vd-uc-chip {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Ruim binnen de grens. */
+.vd-uc-chip.ok { color: #047857; background: #d1fae5; }
+/* Tussen 0,90 en 1,00 — voldoet, maar er zit geen marge meer in. */
+.vd-uc-chip.warn { color: #b45309; background: #fef3c7; }
+/* Boven 1,00 — voldoet niet. */
+.vd-uc-chip.bad { color: #b91c1c; background: #fee2e2; }
+
+.vd-uc-nvt {
+  font-size: 11px;
+  color: var(--theme-text-muted, #9ca3af);
+  font-style: italic;
+}
+
+/* Label met uitleg achter een tooltip — de stippellijn maakt zichtbaar dat
+ * er iets te lezen valt, anders vindt niemand hem. */
+.vd-help {
+  border-bottom: 1px dotted var(--theme-text-muted, #9ca3af);
+  cursor: help;
+}

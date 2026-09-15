@@ -29,28 +29,42 @@ function escapeHtml(str: string): string {
 // ─── Node rendering ─────────────────────────────────────────────────
 
 /**
+ * Replace every `conditional-branch` by the nodes it actually produced.
+ *
+ * The wrapper carries no markup of its own — rendering it just concatenates its
+ * children — so dropping it changes nothing about the output. It does change
+ * what `coalesceSvg` sees: an `#if` that picks which elements to draw would
+ * otherwise sit between two SVG lines and cut the run in two, leaving the
+ * `</svg>` in a later node and the rest of the drawing spilled out as prose.
+ */
+function flattenBranches(nodes: EvaluatedNode[]): EvaluatedNode[] {
+  const out: EvaluatedNode[] = [];
+  for (const n of nodes) {
+    if (n.type === 'conditional-branch') out.push(...flattenBranches(n.children));
+    else out.push(n);
+  }
+  return out;
+}
+
+/**
  * Coalesce consecutive HTML text nodes that together form an `<svg>...</svg>`
  * block into a single `svg` node. This is needed because CalcPAD's SVG macros
  * emit one prose line per element (`'<line .../>`, `'<rect .../>`, etc.), and
  * the default text renderer wraps each in `<p>`, which breaks SVG nesting.
  */
 function coalesceSvg(nodes: EvaluatedNode[]): EvaluatedNode[] {
+  const flat = flattenBranches(nodes);
   const out: EvaluatedNode[] = [];
   let i = 0;
-  while (i < nodes.length) {
-    const n = nodes[i];
-    if (n.type === 'conditional-branch') {
-      out.push({ ...n, children: coalesceSvg(n.children) });
-      i++;
-      continue;
-    }
+  while (i < flat.length) {
+    const n = flat[i];
     if (n.type === 'text' && n.html && /<svg\b/i.test(n.text)) {
       const buf: string[] = [n.text];
       let depth = (n.text.match(/<svg\b/gi)?.length ?? 0)
                 - (n.text.match(/<\/svg>/gi)?.length ?? 0);
       i++;
-      while (i < nodes.length && depth > 0) {
-        const m = nodes[i];
+      while (i < flat.length && depth > 0) {
+        const m = flat[i];
         if (m.type !== 'text' || !m.html) break;
         buf.push(m.text);
         depth += (m.text.match(/<svg\b/gi)?.length ?? 0)

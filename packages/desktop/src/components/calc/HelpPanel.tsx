@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useDocumentStore } from "../../store/documentStore";
+import { useActieveBron, useZetActieveBron } from "../../store/actiefBlad";
 import "./HelpPanel.css";
 
 /**
@@ -139,8 +139,8 @@ const SECTIONS: Section[] = [
 ];
 
 export default function HelpPanel() {
-  const source = useDocumentStore((s) => s.source);
-  const setSource = useDocumentStore((s) => s.setSource);
+  const source = useActieveBron();
+  const setSource = useZetActieveBron();
   // First two sections always open; rest start collapsed.
   const [open, setOpen] = useState<Set<number>>(new Set([0, 1, 2]));
 

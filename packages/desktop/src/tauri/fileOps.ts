@@ -12,8 +12,8 @@
  *   • the round-trippable calc source (consumable by this app)
  *
  * Legacy `.cpd`, `.cpdz` and raw-text `.ifc-calculation` files are still
- * accepted on open — `unwrapFromIfcCalculation` falls through to treating the
- * payload as raw CalcPAD when JSON parsing fails or `source` is absent.
+ * accepted on open; `store/projectBestand.ts` beslist wat een bestand voorstelt
+ * en maakt er zo nodig een project met één rekenblad van.
  */
 
 import type { IfcxDocument } from "@ifc-calc/core";
@@ -28,17 +28,21 @@ function isTauri(): boolean {
 }
 
 const SUPPORTED_FILTERS = [
-  { name: "Calculations", extensions: ["ifc-calculation", "cpd", "cpdz"] },
+  { name: "Calculations", extensions: ["ifccalculation", "ifc-calculation", "cpd", "cpdz"] },
   { name: "CalcPAD bestanden", extensions: ["cpd", "cpdz"] },
-  { name: "OpenAEC Calculations", extensions: ["ifc-calculation"] },
+  { name: "OpenAEC Calculations", extensions: ["ifccalculation", "ifc-calculation"] },
   { name: "Alle bestanden", extensions: ["*"] },
 ];
 
 export interface OpenedFile {
   path: string;
   name: string;
-  /** Raw CalcPAD source — IFCX-wrapping (when present) is already stripped. */
-  content: string;
+  /**
+   * Onbewerkte bestandsinhoud. Het uitpakken gebeurt in
+   * `store/projectBestand.ts`: die kent zowel het projectformaat als de oudere
+   * losse-blad-vormen, en kan als enige beslissen wat een bestand voorstelt.
+   */
+  raw: string;
 }
 
 /**
@@ -58,25 +62,6 @@ export function wrapAsIfcCalculation(source: string, ifcx: IfcxDocument): string
   return JSON.stringify(doc, null, 2);
 }
 
-/**
- * Extract the CalcPAD source from a `.ifc-calculation` file. Accepts either:
- *   • new format: JSON document with `source.content`
- *   • legacy: raw CalcPAD text (also matches `.cpd` / `.cpdz` files)
- */
-export function unwrapFromIfcCalculation(content: string): string {
-  // Quick guard — only try JSON.parse when the payload looks like JSON.
-  const trimmed = content.trimStart();
-  if (!trimmed.startsWith("{")) return content;
-  try {
-    const parsed = JSON.parse(trimmed) as { source?: { content?: unknown } };
-    if (parsed && typeof parsed.source?.content === "string") {
-      return parsed.source.content;
-    }
-  } catch {
-    // Fall through — not JSON, treat as raw CalcPAD.
-  }
-  return content;
-}
 
 /**
  * Open a `.ifc-calculation` or `.cpd` file via the OS file picker.
@@ -96,22 +81,20 @@ export async function openCalculationFile(): Promise<OpenedFile | null> {
     if (!picked || typeof picked !== "string") return null;
 
     const raw = await readTextFile(picked);
-    const content = unwrapFromIfcCalculation(raw);
     const name = pathBaseName(picked);
-    return { path: picked, name, content };
+    return { path: picked, name, raw };
   }
 
   // Browser fallback: HTML <input type=file>
   return new Promise<OpenedFile | null>((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".ifc-calculation,.cpd,.cpdz,.txt";
+    input.accept = ".ifccalculation,.ifc-calculation,.cpd,.cpdz,.txt";
     input.onchange = async () => {
       const f = input.files?.[0];
       if (!f) return resolve(null);
       const raw = await f.text();
-      const content = unwrapFromIfcCalculation(raw);
-      resolve({ path: f.name, name: stripExt(f.name), content });
+      resolve({ path: f.name, name: stripExt(f.name), raw });
     };
     input.oncancel = () => resolve(null);
     input.click();
@@ -124,7 +107,7 @@ function pathBaseName(p: string): string {
 }
 
 function stripExt(s: string): string {
-  return s.replace(/\.(ifc-calculation|cpd|cpdz|txt)$/i, "");
+  return s.replace(/\.(ifccalculation|ifc-calculation|cpd|cpdz|txt)$/i, "");
 }
 
 function sanitizeFileName(name: string): string {
@@ -132,19 +115,16 @@ function sanitizeFileName(name: string): string {
 }
 
 /**
- * Save the current calc as a `.ifc-calculation` file via a Save As dialog.
- *
- * The on-disk payload is an IFCX JSON-LD document with the CalcPAD source
- * embedded under `source.content` — see the module header for the format.
- * The resolved absolute path is returned, or `null` if the user cancelled.
+ * Schrijf een kant-en-klare payload weg als `.ifc-calculation` via een Save
+ * As-dialoog. De payload wordt gebouwd door `store/projectBestand.ts` — dat
+ * bepaalt de vorm, dit bestand doet alleen de schijf.
+ * Het absolute pad komt terug, of `null` als de gebruiker annuleert.
  */
 export async function saveCalculationFile(
-  source: string,
-  ifcx: IfcxDocument,
+  payload: string,
   defaultName: string,
 ): Promise<string | null> {
-  const payload = wrapAsIfcCalculation(source, ifcx);
-  const defaultFile = `${sanitizeFileName(defaultName)}.ifc-calculation`;
+  const defaultFile = `${sanitizeFileName(defaultName)}.ifccalculation`;
 
   if (isTauri()) {
     const { save } = await import("@tauri-apps/plugin-dialog");
@@ -153,7 +133,7 @@ export async function saveCalculationFile(
       title: "Bestand opslaan als",
       defaultPath: defaultFile,
       filters: [
-        { name: "OpenAEC Calculation (IFCX)", extensions: ["ifc-calculation"] },
+        { name: "OpenAEC Calculation (IFCX)", extensions: ["ifccalculation"] },
         { name: "Alle bestanden", extensions: ["*"] },
       ],
     });
