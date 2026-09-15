@@ -9,13 +9,18 @@ import Editor from "./components/calc/Editor";
 import Preview from "./components/calc/Preview";
 import SplitPane from "./components/calc/SplitPane";
 import ProjectBrowser from "./components/calc/ProjectBrowser";
+import { designerVoor } from "./components/calc/designerKeuze";
+import ProjectGegevensPanel from "./components/calc/ProjectGegevensPanel";
+import PrintDocument from "./components/calc/PrintDocument";
+import AfdrukVoorbeeld from "./components/calc/AfdrukVoorbeeld";
 import IfcViewerPanel from "./components/calc/IfcViewerPanel";
-import VoetplaatDesigner from "./components/calc/VoetplaatDesigner";
-import BalklaagDesigner from "./components/calc/BalklaagDesigner";
 import { getSetting } from "./store";
-import { useDocumentStore } from "./store/documentStore";
+import { useProjectStore, PROJECT_ID } from "./store/projectStore";
+import { usePrintStore } from "./store/printStore";
 import { useRecentFiles } from "./hooks/useRecentFiles";
-import { openCalculationFile, unwrapFromIfcCalculation } from "./tauri/fileOps";
+import { useSneltoetsen } from "./hooks/useSneltoetsen";
+import { openCalculationFile } from "./tauri/fileOps";
+import { leesProjectBestand } from "./store/projectBestand";
 import { setAngleMode, type AngleMode } from "@ifc-calc/core";
 import { UNITS_DEFAULTS, type UnitsSettings } from "./components/settings/SettingsDialog";
 
@@ -56,16 +61,57 @@ export default function App() {
     applyTheme(newTheme);
   };
 
-  const loadTemplate = useDocumentStore((s) => s.loadTemplate);
-  const markSaved = useDocumentStore((s) => s.markSaved);
-  const source = useDocumentStore((s) => s.source);
+  const activeId = useProjectStore((s) => s.activeId);
+  const exemplaren = useProjectStore((s) => s.exemplaren);
+  const laadProject = useProjectStore((s) => s.laadProject);
+  const markeerOpgeslagen = useProjectStore((s) => s.markeerOpgeslagen);
+  const actief = exemplaren.find((e) => e.id === activeId) ?? null;
+  const source = actief?.source ?? "";
   const { addRecentFile } = useRecentFiles();
+  useSneltoetsen();
 
-  // De visuele designer-pane bestaat voor sheets met een parametrisch beeld.
-  const designerPane = source.includes("Voetplaatverbinding") ? <VoetplaatDesigner />
-    : source.includes("Balklaag") ? <BalklaagDesigner />
-    : null;
-  const hasDesigner = designerPane !== null;
+  // De afdrukweergave bestaat alleen tijdens het printen. Even wachten voordat
+  // de printdialoog opent: de parametrische beelden meten hun tekengebied met
+  // een ResizeObserver, en die vuurt pas ná de eerste opmaakronde. Print je te
+  // vroeg, dan staan de tekeningen er nog niet of op de verkeerde maat.
+  const printBezig = usePrintStore((s) => s.bezig);
+  const printVoorbeeld = usePrintStore((s) => s.voorbeeld);
+  const printKlaar = usePrintStore((s) => s.klaar);
+  // Alleen het échte printen zet de app weg. Het afdrukvoorbeeld is een paneel
+  // binnen de applicatie: lint, projectboom en statusbalk blijven staan.
+  const afdrukmodus = printBezig;
+
+  // De afdrukopmaak hangt aan een klasse op <html> in plaats van aan
+  // `@media print`, zodat het voorbeeld op het scherm er precies zo uitziet.
+  useEffect(() => {
+    const el = document.documentElement;
+    if (afdrukmodus) el.classList.add("afdrukmodus");
+    else el.classList.remove("afdrukmodus");
+    return () => el.classList.remove("afdrukmodus");
+  }, [afdrukmodus]);
+
+  useEffect(() => {
+    if (!printBezig) return;
+    let afgebroken = false;
+    const id = window.setTimeout(() => {
+      if (afgebroken) return;
+      try {
+        window.print();
+      } finally {
+        printKlaar();
+      }
+    }, 250);
+    return () => {
+      afgebroken = true;
+      clearTimeout(id);
+    };
+  }, [printBezig, printKlaar]);
+
+  const designerPane = designerVoor(source);
+  // Het projectgegevens-formulier is geen rekenblad: geen editor, geen
+  // uitwerking, geen splitsing — alleen het formulier.
+  const toontProjectGegevens = activeId === PROJECT_ID;
+  const hasDesigner = designerPane !== null && !toontProjectGegevens;
   const mode = hasDesigner ? splitMode : "cu";
   const leftPane = mode === "vu" ? designerPane : <Editor />;
   const rightPane = mode === "cv" ? designerPane : <Preview />;
@@ -74,8 +120,8 @@ export default function App() {
     try {
       const file = await openCalculationFile();
       if (!file) return;
-      loadTemplate(file.content, file.name);
-      markSaved(file.path);
+      laadProject(leesProjectBestand(file.raw, file.name));
+      markeerOpgeslagen(file.path);
       await addRecentFile({
         path: file.path,
         name: file.name,
@@ -85,7 +131,7 @@ export default function App() {
     } catch (err) {
       alert(`Bestand openen mislukt: ${(err as Error).message}`);
     }
-  }, [loadTemplate, markSaved, addRecentFile]);
+  }, [laadProject, markeerOpgeslagen, addRecentFile]);
 
   const handleOpenRecent = useCallback(async (path: string) => {
     try {
@@ -97,15 +143,14 @@ export default function App() {
       }
       const { readTextFile } = await import("@tauri-apps/plugin-fs");
       const raw = await readTextFile(path);
-      const content = unwrapFromIfcCalculation(raw);
       const name = path.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, "") ?? path;
-      loadTemplate(content, name);
-      markSaved(path);
+      laadProject(leesProjectBestand(raw, name));
+      markeerOpgeslagen(path);
       await addRecentFile(path);
     } catch (err) {
       alert(`Bestand openen mislukt: ${(err as Error).message}`);
     }
-  }, [loadTemplate, markSaved, addRecentFile]);
+  }, [laadProject, markeerOpgeslagen, addRecentFile]);
 
   return (
     <>
@@ -120,8 +165,21 @@ export default function App() {
       <main className="main-view" style={{ flex: 1, minHeight: 0, display: "flex" }}>
         <ProjectBrowser />
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          {activeView === "ifc" ? (
+          {printVoorbeeld ? (
+            <AfdrukVoorbeeld />
+          ) : activeView === "ifc" ? (
             <IfcViewerPanel />
+          ) : toontProjectGegevens ? (
+            <ProjectGegevensPanel />
+          ) : !actief ? (
+            <div className="werkruimte-leeg">
+              <h2>Nog geen rekenblad geopend</h2>
+              <p>
+                Kies links een module om er een aan dit project toe te voegen. Elk blad dat je
+                toevoegt heeft zijn eigen invoer — je kunt dezelfde module meerdere keren
+                gebruiken zonder dat de bladen elkaar beïnvloeden.
+              </p>
+            </div>
           ) : (
             <>
               {hasDesigner && (
@@ -139,6 +197,7 @@ export default function App() {
         </div>
       </main>
       <StatusBar />
+      {afdrukmodus && <PrintDocument />}
       <Backstage
         open={backstageOpen}
         onClose={() => setBackstageOpen(false)}

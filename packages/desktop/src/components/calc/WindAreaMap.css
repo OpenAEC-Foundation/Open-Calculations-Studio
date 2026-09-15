@@ -1,0 +1,155 @@
+.wind-area-map {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 14px;
+  background: var(--theme-bg);
+  border: 1px solid var(--theme-border-subtle);
+  border-radius: 8px;
+}
+
+.wind-area-search {
+  display: flex;
+  gap: 6px;
+}
+
+.wind-area-input {
+  flex: 1;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  border: 1px solid var(--theme-border-subtle);
+  border-radius: 4px;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+}
+
+.wind-area-input:focus {
+  outline: none;
+  border-color: var(--theme-accent);
+}
+
+.wind-area-search-btn {
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--theme-accent);
+  color: var(--theme-accent-text, #fff);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.wind-area-search-btn:hover {
+  filter: brightness(1.05);
+}
+
+.wind-area-search-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.wind-area-error {
+  padding: 6px 10px;
+  background: #fef2f2;
+  border-left: 3px solid #dc2626;
+  color: #991b1b;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.wind-area-result {
+  padding: 8px 12px;
+  background: var(--theme-accent-soft);
+  border-left: 4px solid var(--theme-accent);
+  font-size: 13px;
+  border-radius: 0 4px 4px 0;
+}
+
+.wind-area-result-warn {
+  background: #fffbeb;
+  border-left-color: #d97706;
+  color: #92400e;
+}
+
+.wind-area-mapwrap {
+  height: 360px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--theme-border-subtle);
+}
+
+.wind-area-leaflet {
+  height: 100%;
+  width: 100%;
+}
+
+.wind-area-legend {
+  display: flex;
+  gap: 8px;
+}
+
+.wind-area-legend-item {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--theme-text-secondary, var(--theme-text-muted, #666));
+  background: var(--theme-bg, #fff);
+  border: 1px solid var(--theme-border-subtle, rgba(0, 0, 0, 0.1));
+  border-radius: 4px;
+}
+
+.wind-area-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* Kaart-tegels in grijstinten — de kaart is een referentie-achtergrond;
+ * alleen de gebied-vlakken en labels dragen betekenis. */
+.wind-area-leaflet .leaflet-tile-pane {
+  filter: grayscale(1) contrast(0.9) brightness(1.05);
+}
+
+/* Romeinse gebied-nummers óp de kaart. */
+.wind-area-gebiedlabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading, system-ui);
+  font-size: 13px;
+  font-weight: 700;
+  color: #4b5563;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(75, 85, 99, 0.35);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.wind-area-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--theme-text-secondary, var(--theme-text-muted, #888));
+}
+
+/* Label bij de 52°-lijn — de zuidgrens van gebied I. */
+.wind-area-graadlabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #4b5563;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 3px;
+  pointer-events: none;
+}

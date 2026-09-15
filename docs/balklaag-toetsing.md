@@ -76,10 +76,10 @@ Legenda oordeel: 🟠 afwijkende keuze · ⚪ onduidelijk/informatief · 🟢 ak
 ### B-04 — Eigengewicht balk: referentie rekent met ρ = 550 kg/m³ 🟠
 
 - **Referentie:** G = 8,63 kg/m. Met A = 15691 mm² volgt ρ = 8,63 / 0,015691 =
-  **550 kg/m³** (de XConstruct-aanname, niet EN 338 ρ_mean = 420).
+  **550 kg/m³** (de referentie-aanname, niet EN 338 ρ_mean = 420).
 - **Template:** standaard `eigengewicht` = "EN 338 (ρ_mean)" → 420 kg/m³ →
   G = 6,59 kg/m. Om de referentie te reproduceren moet de optie
-  **"XConstruct (550 kg/m³)"** gekozen worden; dan G = 8,63 kg/m (exacte match).
+  **"Referentie (550 kg/m³)"** gekozen worden; dan G = 8,63 kg/m (exacte match).
 - **Oordeel:** geen fout, maar een **instelling-afhankelijke afwijking**. De
   template kán de referentie exact reproduceren, maar niet met de default.
 - **Nuance uit rekenstap BG1:** de referentie rekent de eigengewicht-**last** met

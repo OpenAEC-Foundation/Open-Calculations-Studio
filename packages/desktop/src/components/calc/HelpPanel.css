@@ -6,6 +6,13 @@
   background: var(--theme-bg);
   font-family: var(--font-sans, system-ui);
   line-height: 1.5;
+  /* Verticale scrollbar verbergen — consistent met preview. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.help-panel::-webkit-scrollbar {
+  display: none;
 }
 
 .help-panel-header {

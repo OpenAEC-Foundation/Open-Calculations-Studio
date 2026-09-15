@@ -1,14 +1,17 @@
 /**
  * Balklaag — houten vloerbalken volgens NEN-EN 1995-1-1+C1+A1:2011/NB:2013.
  *
- * Reproduceert de XConstruct-uitwerking: 3 belastingsgevallen (permanent UDL,
+ * Reproduceert de referentie-uitwerking: 3 belastingsgevallen (permanent UDL,
  * veranderlijk UDL, geconcentreerde last met concentratiefactor k_r),
  * BGT-doorbuiging (w_fin met kruip k_def) en UGT (buiging §6.1.6 + afschuiving
  * §6.1.7).
  *
  * Eigengewicht balk: A · ρ_mean · g volgens EN 1991-1-1 / EN 338 (ρ_mean per
- * sterkteklasse). XConstruct rekent dit ~5,5 kN/m³ (te hoog voor C24); hier de
- * correcte ρ_mean (C24 = 420 kg/m³ ≈ 4,12 kN/m³).
+ * sterkteklasse). De referentie-uitwerking rekent met een vaste 550 kg/m³ én g = 10 m/s²;
+ * hier de correcte ρ_mean (C24 = 420 kg/m³) met g = 9,81. Zie punt 8 in
+ * docs/afwijkingen-referentie.md.
+ *
+ * Gecalibreerd op document1 t/m document9 — zie scripts/check-balklaag.mjs.
  */
 
 export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
@@ -39,6 +42,14 @@ export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
   96×221 = 17
   96×246 = 18
   96×271 = 19
+  SLS 38×89 = 20
+  SLS 38×140 = 21
+  SLS 38×184 = 22
+  SLS 38×235 = 23
+  SLS 38×285 = 24
+  SLS dubbel 76×184 = 25
+  SLS dubbel 76×235 = 26
+  SLS dubbel 76×285 = 27
 @end
 
 @select sterkteklasse "Sterkteklasse"
@@ -62,20 +73,12 @@ export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
   Blijvend = 4
 @end
 
-@select eigengewicht "Eigengewicht-dichtheid balk"
-  EN 338 (ρ_mean, normconform) = 0
-  XConstruct (550 kg/m³) = 550
-@end
-
-@select gevolgklasse "Gevolgklasse (CC)"
-  CC1 (K_FI 0,90) = 0.9
-  CC2 (K_FI 1,00) = 1.0
-  CC3 (K_FI 1,10) = 1.1
-@end
-
 #hide
 'Profielmatrix: [id | b(mm) | h(mm)]
-profielen = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19 |46; 46; 46; 46; 63; 63; 63; 63; 71; 71; 71; 71; 71; 71; 96; 96; 96; 96; 96 |96; 146; 171; 196; 146; 171; 196; 221; 146; 171; 196; 221; 246; 271; 171; 196; 221; 246; 271]
+'Regels 20 t/m 27 zijn SLS-maten: geschaafd naaldhout in de Noord-Amerikaanse
+'maatvoering (38 mm dik), zoals dat in de houtskeletbouw wordt geleverd. De
+'dubbele varianten zijn twee stuks tegen elkaar.
+profielen = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19; 20; 21; 22; 23; 24; 25; 26; 27 |46; 46; 46; 46; 63; 63; 63; 63; 71; 71; 71; 71; 71; 71; 96; 96; 96; 96; 96; 38; 38; 38; 38; 38; 76; 76; 76 |96; 146; 171; 196; 146; 171; 196; 221; 146; 171; 196; 221; 246; 271; 171; 196; 221; 246; 271; 89; 140; 184; 235; 285; 184; 235; 285]
 'Materiaalmatrix: [id | f_m,k | f_v,k | E_mean | ρ_mean | γ_M]
 materialen = [1; 2; 3; 4; 5 |18; 24; 30; 24; 28 |3.4; 4.0; 4.0; 3.5; 3.5 |9000; 11000; 12000; 11500; 12600 |380; 420; 460; 420; 425 |1.30; 1.30; 1.30; 1.25; 1.25]
 
@@ -91,7 +94,14 @@ k_mod_12 = if(duurklasse ≡ 1; 0.90; if(duurklasse ≡ 2; 0.80; if(duurklasse �
 k_mod_3 = if(duurklasse ≡ 1; 0.70; if(duurklasse ≡ 2; 0.65; if(duurklasse ≡ 3; 0.55; 0.50)))
 k_mod = if(klimaat ≡ 3; k_mod_3; k_mod_12)
 k_def = if(klimaat ≡ 1; 0.60; if(klimaat ≡ 2; 0.80; 2.00))', kruipfactor (Tabel 3.2)'
-ρ_eg = if(eigengewicht ≡ 0; ρ_mean; 550 kg/m^3)', dichtheid voor eigengewicht'
+'Hoogtefactor k_h op f_m,k — massief §3.2(3) bij h < 150 mm, gelijmd gelamineerd
+'§3.3(3) bij h < 600 mm. Op 71×221 is k_h = 1 voor massief en 1,10 voor GL.
+h_ruw = hlookup(profielen; profiel; 1; 3)', balkhoogte als kaal getal in mm'
+gelijmd = if(sterkteklasse ≡ 4; 1; if(sterkteklasse ≡ 5; 1; 0))
+k_h_massief = if(h_ruw < 150; min(1.3; (150/h_ruw)^0.2); 1)
+k_h_gelijmd = if(h_ruw < 600; min(1.1; (600/h_ruw)^0.1); 1)
+k_h = if(gelijmd ≡ 1; k_h_gelijmd; k_h_massief)
+f_m,k_eff = k_h*f_m,k', karakteristieke buigsterkte incl. hoogtefactor'
 #show
 
 '<h6>Gekozen profiel en materiaal</h6>
@@ -101,55 +111,89 @@ f_m,k
 f_v,k
 E_mean
 k_mod
+k_h
+f_m,k_eff
 
-f_m,d = k_mod*f_m,k/γ_M', rekenwaarde buigsterkte'
+f_m,d = k_mod*f_m,k_eff/γ_M', rekenwaarde buigsterkte (incl. k_h)'
 f_v,d = k_mod*f_v,k/γ_M', rekenwaarde afschuifsterkte'
 f_m,d
 f_v,d
 
-# 2. Geometrie
+# 2. Geometrie en statisch schema
+
+@select schema "Statisch schema"
+  Enkelvoudige ligger op twee steunpunten = 1
+  Ligger met overstek aan één zijde = 2
+  Ligger op drie steunpunten (twee velden) = 3
+  Raveelbalk langs een sparing = 4
+@end
 
 L_d = ?*(mm)', dagmaat (vrije overspanning)'
 a_opl = ?*(mm)', opleglengte per zijde'
 hoh = ?*(mm)', hart-op-hart afstand van de balken'
-t_vloer = ?*(mm)', dikte vloerhout (vloerplaat)'
+t_vloer = ?*(mm)', dikte beschot'
+E_beschot = ?*(N/mm^2)', E-modulus beschot (E_0,ser,rep)'
+b_vloer = ?*(m)', breedte van het vloerveld — nodig voor de trillingstoets'
 
-L_th = L_d + a_opl', theoretische overspanning (= L_d + 2·a_opl/2)'
-L_th
+'<i>De maten hieronder gelden alleen voor het gekozen schema; bij een ander
+'schema blijven ze buiten beschouwing.</i>
+a_over = ?*(mm)', lengte van het overstek — alleen bij schema 2'
+L_veld2 = ?*(mm)', tweede overspanning — alleen bij schema 3'
+b_sparing = ?*(mm)', breedte van de sparing = overspanning raveelbalk — schema 4'
+l_staart = ?*(mm)', staartlengte van de onderbroken balken — schema 4'
+
+#hide
+'De theoretische overspanning van het maatgevende veld. Bij een raveelbalk is
+'dat de breedte van de sparing tussen de wisselbalken, bij de overige schema's
+'de dagmaat plus de opleglengte.
+L_th_0 = L_d + a_opl
+L_th_rav = b_sparing + a_opl
+#show
+L_th = if(schema ≡ 4; L_th_rav; L_th_0)', theoretische overspanning'
 
 # 3. Belastingen
 
-g_vloerplaat = ?*(kN/m^2)', e.g. vloerplaat'
-g_wanden = ?*(kN/m^2)', e.g. scheidingswanden'
-g_plafond = ?*(kN/m^2)', e.g. plafond'
-g_overig = ?*(kN/m^2)', overig permanent'
-q_k = ?*(kN/m^2)', veranderlijke vloerbelasting'
-Q_k = ?*(kN)', geconcentreerde last'
+'<i>Eén permanente en één veranderlijke vloerbelasting. Wat daarin thuishoort
+'bepaal je zelf: vloerafwerking, plafond, vaste scheidingswanden en overige
+'blijvende lasten tellen op in G<sub>k</sub>. Verplaatsbare scheidingswanden
+'horen volgens EN 1991-1-1 §6.3.1.2 juist bij de veranderlijke last Q<sub>k</sub>.
+'Het eigen gewicht van de balk zelf komt hier niet bij — dat rekent de sheet
+'in §5 zelf uit de doorsnede en de dichtheid.</i>
 
-@select belastingcat "Belastingcategorie (ψ-waarden)"
-  Vloer (woning/kantoor) = 2
-  Dak = 1
-  Zelf invullen = 3
-@end
+G_k = ?*(kN/m^2)', permanente vloerbelasting'
+Q_k = ?*(kN/m^2)', veranderlijke vloerbelasting'
+F_k = ?*(kN)', geconcentreerde last'
 
-@select verplaatsbaar "Scheidingswanden verplaatsbaar"
-  Nee (vast) = 0
-  Ja (verplaatsbaar) = 1
+@select belastingcat "Belastingcategorie (Tabel NB.2 — A1.1)"
+  A — woon- en verblijfsruimtes = 1
+  B — kantoorruimtes = 2
+  C — bijeenkomstruimtes = 3
+  D — winkelruimtes = 4
+  E — opslagruimtes = 5
+  F — verkeersruimte, voertuig ≤ 25 kN = 6
+  G — verkeersruimte, 25 < voertuig ≤ 160 kN = 7
+  H — daken = 8
+  Sneeuwbelasting = 9
+  Windbelasting = 10
+  Zelf invullen = 11
 @end
 
 ψ_0_zelf = ?', ψ0 — alleen bij "zelf invullen"'
 ψ_2_zelf = ?', ψ2 — alleen bij "zelf invullen"'
-ψ_0 = if(belastingcat ≡ 1; 0; if(belastingcat ≡ 2; 0.5; ψ_0_zelf))
-ψ_2 = if(belastingcat ≡ 1; 0; if(belastingcat ≡ 2; 0.3; ψ_2_zelf))
-ψ_0
-ψ_2
 
-'<i>Verplaatsbare scheidingswanden worden als gelijkmatig verdeelde veranderlijke
-'last meegenomen (EN 1991-1-1 §6.3.1.2); vaste wanden tellen als permanent.</i>
-g_k = g_vloerplaat + g_plafond + g_overig + if(verplaatsbaar ≡ 0; g_wanden; 0 kN/m^2)', permanente vloerbelasting'
-q_k_eff = q_k + if(verplaatsbaar ≡ 1; g_wanden; 0 kN/m^2)', veranderlijk incl. verplaatsbare wanden'
-g_k
-q_k_eff
+#hide
+'ψ-factoren uit NEN-EN 1990 Tabel NB.2 — A1.1. Dezelfde waarden als het
+'normblad "EN 1990 — Rekenwaarden" in de bibliotheek; één bron, zodat de
+'twee niet uit elkaar kunnen lopen.
+'   [categorie | ψ_0 | ψ_1 | ψ_2]
+ψ_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 |0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 |0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 |0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
+#show
+
+ψ_0 = if(belastingcat ≡ 11; ψ_0_zelf; hlookup(ψ_tabel; belastingcat; 1; 2))
+ψ_1 = if(belastingcat ≡ 11; ψ_0_zelf; hlookup(ψ_tabel; belastingcat; 1; 3))
+ψ_2 = if(belastingcat ≡ 11; ψ_2_zelf; hlookup(ψ_tabel; belastingcat; 1; 4))
+
+Q_k_eff = Q_k', veranderlijke vloerbelasting'
 
 # 4. Doorsnede-eigenschappen
 
@@ -157,92 +201,366 @@ A = b_balk*h_balk
 I_y = b_balk*h_balk^3/12', traagheidsmoment'
 W_y = b_balk*h_balk^2/6', weerstandsmoment'
 S_y = b_balk*h_balk^2/8', statisch moment (NL) voor afschuiving'
-A
-I_y
-W_y
-S_y
+
+'<i><b>Splitspunt — eigen gewicht (register punt 8).</b> De referentie-uitwerking rekent met een
+'vaste 550 kg/m³ én g = 10 m/s²; de norm met ρ<sub>mean</sub> uit EN 338 en
+'g = 9,81. Welke van de twee de conclusie stuurt staat in de projectgegevens.</i>
+#hide
+ρ_xc = 550 kg/m^3
+g_xc = 10 m/s^2
+g_nb = 9.81 m/s^2
+#show
+g_balk_xc = A*ρ_xc*g_xc to kN/m', eigen gewicht — de referentie-uitwerking'
+g_balk_nb = A*ρ_mean*g_nb to kN/m', eigen gewicht — EN 338'
+g_balk = if(rekenwijze ≡ 1; g_balk_xc; g_balk_nb)', gehanteerd eigen gewicht'
+
+# 4b. Krachtsverdeling van het gekozen schema
+
+'<i>Elk veld is een overspanning met een inklemmend eindmoment; daarmee
+'volstaat één stel coëfficiënten voor alle schema's. Vermenigvuldigd met de
+'lijnlast geven ze het moment, de dwarskracht en de zakking. De coëfficiënten
+'zijn nagerekend tegen een onafhankelijke numerieke balkberekening: momenten en
+'dwarskrachten komen exact uit, de zakking ligt 0 tot 4 % aan de veilige kant.</i>
 
 #hide
-g_n = 9.81 m/s^2
+'Schema 1 en 4 — enkelvoudige ligger.
+c_M_1 = L_th^2/8
+c_Ms_1 = 0*mm^2
+c_V_1 = L_th/2
+c_u_1 = 5*L_th^4/384
+
+'Schema 2 — overstek. Alles volgt uit de reactie bij de eerste oplegging; die
+'wordt nul zodra het overstek even lang is als de overspanning, en negatief
+'daarboven — dan is er geen veldmoment meer.
+c_R_2 = (L_th^2 - a_over^2)/(2*L_th)
+c_M_2 = if(c_R_2 > 0*mm; c_R_2^2/2; 0*mm^2)
+c_Ms_2 = a_over^2/2
+c_V_2 = max(c_R_2; a_over; L_th - c_R_2)
+c_u_2 = max(1.04*(5*L_th^4/384 - c_Ms_2*L_th^2/16); 0*mm^4)
+'Zakking van het uiteinde van het overstek. Negatief betekent dat het eind
+'omhoog komt: bij een kort overstek kantelt de ligger over de tweede oplegging.
+c_ue_2 = a_over/24*(4*a_over^2*L_th + 3*a_over^3 - L_th^3)
+
+'Schema 3 — drie steunpunten, via de drie-momentenvergelijking.
+c_Ms_3 = (L_th^3 + L_veld2^3)/(8*(L_th + L_veld2))
+c_R3a = L_th/2 - c_Ms_3/L_th
+c_R3b = L_veld2/2 - c_Ms_3/L_veld2
+c_M_3 = max(c_R3a^2; c_R3b^2)/2
+c_V_3 = max(L_th - c_R3a; L_veld2 - c_R3b; c_R3a; c_R3b)
+c_u3a = 5*L_th^4/384 - c_Ms_3*L_th^2/16
+c_u3b = 5*L_veld2^4/384 - c_Ms_3*L_veld2^2/16
+c_u_3 = max(1.04*max(c_u3a; c_u3b); 0*mm^4)
 #show
-g_balk = A*ρ_eg*g_n', eigengewicht balk'
-g_balk
+
+c_M = if(schema ≡ 2; c_M_2; if(schema ≡ 3; c_M_3; c_M_1))', veldmoment per eenheid lijnlast'
+c_Ms = if(schema ≡ 2; c_Ms_2; if(schema ≡ 3; c_Ms_3; c_Ms_1))', steunmoment per eenheid lijnlast'
+c_V = if(schema ≡ 2; c_V_2; if(schema ≡ 3; c_V_3; c_V_1))', dwarskracht per eenheid lijnlast'
+c_u = if(schema ≡ 2; c_u_2; if(schema ≡ 3; c_u_3; c_u_1))', zakking × EI per eenheid lijnlast'
+c_ue = if(schema ≡ 2; c_ue_2; 0*mm^4)', zakking × EI van het overstekeinde'
+
+'<i>Voor de diagrammen verderop zijn ook de vórmen nodig, niet alleen de
+'uiterste waarden. Hieronder staan ze dimensieloos — met q = 1 en EI = 1 — zodat
+'de tekeningen ze op de berekende waarden kunnen schalen. Ook deze zijn
+'nagerekend tegen een numerieke balkberekening: over de hele lengte exact.</i>
+
+#hide
+'Ondergrens van 1 mm op de lengtes. Bij het allereerste renderen staan de
+'invoervelden nog op nul; zonder die ondergrens deelt alles hieronder door nul
+'en zet elk van de dertig lijnstukken NaN-coordinaten neer. De tekening klopt
+'een tel later vanzelf, maar tot die tijd stroomt de console vol.
+d_L = max(L_th/(1 mm); 1)', overspanning van het eerste veld'
+d_a = if(schema ≡ 2; a_over/(1 mm); 0)', overstek'
+d_L2 = if(schema ≡ 3; L_veld2/(1 mm); 0)', tweede veld'
+d_tot = max(d_L + d_a + d_L2; 1)', totale lengte'
+d_Ms = c_Ms/(1 mm^2)', steunmoment per eenheid lijnlast'
+d_RA = d_L/2 - d_Ms/d_L', eindreactie van het eerste veld'
+d_RC = if(d_L2 > 0; d_L2/2 - d_Ms/d_L2; 0)', eindreactie van het tweede veld'
+
+'Zakking van een veld: scharnier links, inklemmend moment M rechts.
+uv(x; L; M) = x*(L^3 - 2*L*x^2 + x^3)/24 - M*x*(L^2 - x^2)/(6*L)
+'Hoekverdraaiing aan de rechterzijde van datzelfde veld.
+tv(L; M) = M*L/3 - L^3/24
+'Zakking van een uitkraging, gemeten vanaf de oplegging: de starre rotatie
+'vanuit het veld plus de eigen doorbuiging van de kraag.
+uo(t; a; L; M) = tv(L; M)*t + t^2*(6*a^2 - 4*a*t + t^2)/24
+
+'Zakking, moment en dwarskracht op afstand x vanaf het begin.
+uz(x) = if(x ≤ d_L; uv(x; d_L; d_Ms); if(d_a > 0; uo(x - d_L; d_a; d_L; d_Ms); uv(d_tot - x; d_L2; d_Ms)))
+mz(x) = if(x ≤ d_L; d_RA*x - x^2/2; if(d_a > 0; -(d_tot - x)^2/2; d_RC*(d_tot - x) - (d_tot - x)^2/2))
+vz(x) = if(x ≤ d_L; d_RA - x; if(d_a > 0; d_tot - x; (d_tot - x) - d_RC))
+
+'Pieken om op te schalen; die volgen uit de coefficienten hierboven.
+d_Mp = max(max(c_M; c_Ms)/(1 mm^2); 0.001)
+d_Vp = max(c_V/(1 mm); 0.001)
+d_up = max(max(c_u/(1 mm^4); abs(c_ue)/(1 mm^4)); 0.001)
+'Plaats van de opleggingen als deel van de tekenbreedte.
+d_o2 = d_L/d_tot
+#show
 
 # 5. Belastingsgeval 1 — Permanent
 
-P_g,k = hoh*g_k + g_balk', lijnlast permanent op de balk'
-P_g,k
-M_g,k = P_g,k*L_th^2/8
-V_g,k = P_g,k*L_th/2
-u_g,k = 5/384*P_g,k*L_th^4/(E_mean*I_y)', momentane doorbuiging permanent'
-M_g,k
-V_g,k
-u_g,k
+'<i>Bij een raveelbalk is de belaste breedte niet de hart-op-hart afstand maar
+'de halve staartlengte: elke onderbroken balk zet zijn oplegreactie op de
+'raveelbalk af, wat per strekkende meter neerkomt op een vloerstrook van
+'l<sub>staart</sub>/2.</i>
+b_belast = if(schema ≡ 4; l_staart/2; hoh)', belaste breedte per meter balk'
+
+P_g,k = b_belast*G_k + g_balk to kN/m', lijnlast permanent op de balk'
+M_g,veld = c_M*P_g,k to kN*m', veldmoment'
+M_g,steun = c_Ms*P_g,k to kN*m', steunmoment'
+M_g,k = max(M_g,veld; M_g,steun) to kN*m', maatgevend — de doorsnede is prismatisch'
+V_g,k = c_V*P_g,k to kN
+u_g,k = c_u*P_g,k/(E_mean*I_y) to mm', momentane doorbuiging permanent'
+ue_g,k = c_ue*P_g,k/(E_mean*I_y) to mm', idem, uiteinde van het overstek'
 
 # 6. Belastingsgeval 2 — Veranderlijk (gelijkmatig)
 
-q_q,k = hoh*q_k_eff', lijnlast veranderlijk'
-q_q,k
-M_q,k = q_q,k*L_th^2/8
-V_q,k = q_q,k*L_th/2
-u_q,k = 5/384*q_q,k*L_th^4/(E_mean*I_y)
-M_q,k
-V_q,k
-u_q,k
+q_q,k = b_belast*Q_k_eff to kN/m', lijnlast veranderlijk'
+M_q,veld = c_M*q_q,k to kN*m
+M_q,steun = c_Ms*q_q,k to kN*m
+M_q,k = max(M_q,veld; M_q,steun) to kN*m
+V_q,k = c_V*q_q,k to kN
+u_q,k = c_u*q_q,k/(E_mean*I_y) to mm
+ue_q,k = c_ue*q_q,k/(E_mean*I_y) to mm', uiteinde van het overstek'
 
 # 7. Belastingsgeval 3 — Geconcentreerde last
 
-'<i>Een puntlast verdeelt zich via het vloerhout over meerdere balken. De
+'<i>Een puntlast verdeelt zich via het beschot over meerdere balken. De
 'concentratiefactor k<sub>r</sub> bepaalt het deel dat op één balk komt
-'(NEN-EN 1995-1-1 NB). Stijver vloerhout (dikker) → kleinere k<sub>r</sub>.</i>
+'(NEN-EN 1995-1-1 NB). Stijver beschot (dikker) → kleinere k<sub>r</sub>.</i>
 
 #hide
 a_ref = 1000 mm
-C_kr = 85700 mm^3', kalibratie XConstruct — derde term = t_vloer³/C_kr (onafh. van I_y)'
+'Derde term = (EI)_l/EI_ref, met (EI)_l = E_beschot·t³/12 per mm plaatbreedte.
+'De E-modulus van het beschot is invoer (§2); vroeger stond hier een vaste
+'7000 N/mm², waardoor een stijver of slapper beschot niet doorwerkte.
+EI_ref = 50000000', referentiestijfheid per mm plaatbreedte (N·mm)'
+t_ruw = t_vloer/(1 mm)
+E_vl = E_beschot/(1 N/mm^2)', E-modulus beschot, dimensieloos voor de deling'
 #show
-k_r = 0.37 + 0.8*hoh/a_ref - t_vloer^3/C_kr', concentratiefactor (NEN-EN 1995-1-1 NB)'
-k_r
-F_Q,k = Q_k*k_r', effectieve puntlast op één balk'
+k_r_0 = 0.37 + 0.8*hoh/a_ref - E_vl*t_ruw^3/12/EI_ref
+'Bij een raveelbalk staat de puntlast rechtstreeks op de balk; er is dan geen
+'balklaag waarover hij zich verdeelt, dus k<sub>r</sub> = 1.
+k_r = if(schema ≡ 4; 1; min(1; k_r_0))', concentratiefactor, afgetopt op 1,0 (NEN-EN 1995-1-1 NB)'
+F_Q,k = F_k*k_r to kN', effectieve puntlast op één balk'
 F_Q,k
-M_Q,k = F_Q,k*L_th/4
-V_Q,k = F_Q,k', puntlast bij oplegging → volledige dwarskracht op de balk'
-u_Q,k = 1/48*F_Q,k*L_th^3/(E_mean*I_y)
-M_Q,k
-V_Q,k
-u_Q,k
+'<i>De puntlast wordt op twee plaatsen beschouwd: midden in het veld, en — bij
+'een overstek — op het uiteinde daarvan. Beide kunnen niet tegelijk optreden;
+'de toetsing neemt per grootheid de ongunstigste van de twee.</i>
+M_Q_veld = F_Q,k*L_th/4 to kN*m', puntlast midden in het veld'
+M_Q_eind = if(schema ≡ 2; F_Q,k*a_over; 0*kN*m)', puntlast op het overstekeinde'
+M_Q,k = max(M_Q_veld; M_Q_eind) to kN*m
+V_Q,k = F_Q,k to kN', puntlast bij oplegging → volledige dwarskracht op de balk'
+u_Q_veld = 1/48*F_Q,k*L_th^3/(E_mean*I_y) to mm
+u_Q_eind = if(schema ≡ 2; F_Q,k*a_over^2*(L_th + a_over)/(3*E_mean*I_y); 0*mm)
+u_Q,k = max(u_Q_veld; u_Q_eind) to mm
 
 # 8. Doorsnede van de balklaag
 
 '<i>Vloerhout (dikte t<sub>vloer</sub>) op de balken, hart-op-hart afstand hoh.</i>
 
 #hide
+'De doorsnede staat op schaal: balkbreedte, balkhoogte, beschotdikte en de
+'hart-op-hart afstand krijgen allemaal dezelfde factor, zodat de verhoudingen
+'kloppen met het gekozen profiel. Eerder stonden er vaste pixelmaten, waardoor
+'een slanke balk er even plomp uitzag als een zware.
 svgW = 480
 n_balk = 4
-gap = 96', pixelafstand tussen balken (representatief)
-bw = 30', balkbreedte in pixels
-bh = 70', balkhoogte in pixels
+mm_ruw = 1 mm', hulpeenheid om maten kaal te maken'
+b_ruw = b_balk/mm_ruw
+h_ruw2 = h_balk/mm_ruw
+hoh_ruw = hoh/mm_ruw
+t_ruw2 = t_vloer/mm_ruw
+'Breedte van de balkengroep in mm, en de schaal die hem in 420 px laat passen.
+groep_mm = (n_balk - 1)*hoh_ruw + b_ruw
+sc_x = 420/groep_mm
+'Hoogte begrenzen: beschot + balk mag niet boven de 110 px uitkomen.
+sc_y = 110/(t_ruw2 + h_ruw2)
+sc = min(sc_x; sc_y)
+bw = b_ruw*sc
+bh = h_ruw2*sc
+gap = hoh_ruw*sc
+vt = max(4; t_ruw2*sc)
 x0 = (svgW - (n_balk - 1)*gap - bw)/2
-vy = 60', bovenkant vloerhout
-vt = 16', dikte vloerhout in pixels
-by = vy + vt', bovenkant balken
+vy = 46', bovenkant beschot'
+by = vy + vt', bovenkant balken'
+svgH = by + bh + 46
 #show
-'<svg viewbox="0 0 480 220" xmlns="http://www.w3.org/2000/svg" style="font-size:12px; width:100%; max-height:240px;">
-'  <rect x="20" y="'vy'" width="440" height="'vt'" style="fill:#D9B382; stroke:#8B6F47; stroke-width:1.5"/>
+'<svg viewbox="0 0 480 'svgH'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'svgH'px;">
+'  <rect x="24" y="'vy'" width="432" height="'vt'" style="fill:#D9B382; stroke:#8B6F47; stroke-width:0.8"/>
 #for i = 0 : n_balk - 1
-'  <rect x="'x0 + i*gap'" y="'by'" width="'bw'" height="'bh'" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:1.5"/>
+'  <rect x="'x0 + i*gap'" y="'by'" width="'bw'" height="'bh'" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:0.8"/>
 #loop
-'  <line x1="'x0 + bw/2'" y1="'by + bh + 16'" x2="'x0 + gap + bw/2'" y2="'by + bh + 16'" style="stroke:#1E40AF; stroke-width:1"/>
-'  <polygon points="'x0 + bw/2','by + bh + 12' 'x0 + bw/2 + 6','by + bh + 16' 'x0 + bw/2','by + bh + 20'" style="fill:#1E40AF"/>
-'  <polygon points="'x0 + gap + bw/2','by + bh + 12' 'x0 + gap + bw/2 - 6','by + bh + 16' 'x0 + gap + bw/2','by + bh + 20'" style="fill:#1E40AF"/>
-'  <text x="'x0 + gap/2 + bw/2'" y="'by + bh + 12'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">hoh = 'hoh'</text>
-'  <text x="30" y="'vy - 6'" style="fill:#8B6F47">vloerhout t = 't_vloer'</text>
-'  <text x="'x0 - 4'" y="'by + bh/2'" text-anchor="end" style="fill:#8B6F47">'b_balk' × 'h_balk'</text>
+'  <line x1="'x0 + bw/2'" y1="'by + bh + 18'" x2="'x0 + gap + bw/2'" y2="'by + bh + 18'" style="stroke:#1E40AF; stroke-width:0.7"/>
+'  <circle cx="'x0 + bw/2'" cy="'by + bh + 18'" r="2.2" style="fill:#1E40AF"/>
+'  <circle cx="'x0 + gap + bw/2'" cy="'by + bh + 18'" r="2.2" style="fill:#1E40AF"/>
+'  <text x="'x0 + gap/2 + bw/2'" y="'by + bh + 13'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">hoh = 'hoh'</text>
+'  <text x="26" y="'vy - 5'" style="fill:#8B6F47">beschot t = 't_vloer'</text>
+'  <text x="456" y="'by + bh + 13'" text-anchor="end" style="fill:#8B6F47">balk 'b_balk' × 'h_balk'</text>
 '</svg>'
+
+# 8b. Statisch schema
+
+#if schema ≡ 4
+    '<i>Plattegrond van de sparing. De onderbroken balken eindigen op de
+    'raveelbalk; die draagt zijn last af op de twee wisselbalken ernaast. De
+    'tekening staat op schaal.</i>
+
+    #hide
+    'Tekengebied: de sparing plus anderhalve balkafstand aan weerszijden, en in
+    'de lengte de staart plus de helft daarvan om de sparing zelf te tonen.
+    pw = b_sparing + 3*hoh
+    ph = 1.5*l_staart
+    p_s = min(400/(pw/(1 mm)); 150/(ph/(1 mm)))
+    p_b = p_s*pw/(1 mm)
+    p_h = p_s*ph/(1 mm)
+    p_x0 = 40 + (400 - p_b)/2
+    p_y0 = 30
+    p_spb = p_s*b_sparing/(1 mm)
+    p_st = p_s*l_staart/(1 mm)
+    p_hoh = p_s*hoh/(1 mm)
+    p_mid = p_x0 + p_b/2
+    p_wl = p_mid - p_spb/2
+    p_wr = p_mid + p_spb/2
+    p_rav = p_y0 + p_st
+    p_ond = p_y0 + p_h
+    p_n = max(1; floor(b_sparing/hoh) - 1)
+    p_stap = p_spb/(p_n + 1)
+    #show
+    '<svg viewbox="0 0 480 220" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:230px;">
+    '  <!-- de muur waar de balken op liggen -->
+    '  <line x1="'p_x0 - 10'" y1="'p_y0'" x2="'p_x0 + p_b + 10'" y2="'p_y0'" style="stroke:#374151; stroke-width:2"/>
+    #for i = 0 : 20
+    '  <line x1="'p_x0 - 10 + i*(p_b + 20)/20'" y1="'p_y0'" x2="'p_x0 - 16 + i*(p_b + 20)/20'" y2="'p_y0 - 7'" style="stroke:#374151; stroke-width:0.7"/>
+    #loop
+    '  <!-- doorlopende balken naast de wisselbalken -->
+    '  <line x1="'p_wl - p_hoh'" y1="'p_y0'" x2="'p_wl - p_hoh'" y2="'p_ond'" style="stroke:#8B6F47; stroke-width:1.4"/>
+    '  <line x1="'p_wr + p_hoh'" y1="'p_y0'" x2="'p_wr + p_hoh'" y2="'p_ond'" style="stroke:#8B6F47; stroke-width:1.4"/>
+    '  <!-- de sparing -->
+    '  <rect x="'p_wl'" y="'p_rav'" width="'p_spb'" height="'p_ond - p_rav'" style="fill:#F1F5F9; stroke:#94A3B8; stroke-width:0.8; stroke-dasharray:4 3"/>
+    '  <text x="'p_mid'" y="'(p_rav + p_ond)/2 + 4'" text-anchor="middle" style="fill:#64748B">sparing</text>
+    '  <!-- onderbroken balken: van de muur tot op de raveelbalk -->
+    #for i = 1 : p_n
+    '  <line x1="'p_wl + i*p_stap'" y1="'p_y0'" x2="'p_wl + i*p_stap'" y2="'p_rav'" style="stroke:#8B6F47; stroke-width:1.4"/>
+    #loop
+    '  <!-- wisselbalken: die dragen de raveelbalk -->
+    '  <rect x="'p_wl - 3'" y="'p_y0'" width="6" height="'p_ond - p_y0'" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:1.2"/>
+    '  <rect x="'p_wr - 3'" y="'p_y0'" width="6" height="'p_ond - p_y0'" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:1.2"/>
+    '  <text x="'p_wl - 8'" y="'p_ond + 12'" text-anchor="end" style="fill:#8B6F47">wisselbalk</text>
+    '  <text x="'p_wr + 8'" y="'p_ond + 12'" style="fill:#8B6F47">wisselbalk</text>
+    '  <!-- de raveelbalk zelf -->
+    '  <rect x="'p_wl'" y="'p_rav - 4'" width="'p_spb'" height="8" style="fill:#B45309; stroke:#7C2D12; stroke-width:1"/>
+    '  <text x="'p_mid'" y="'p_rav - 8'" text-anchor="middle" style="fill:#7C2D12; font-weight:700">raveelbalk</text>
+    '  <!-- maatlijnen -->
+    '  <line x1="'p_wl'" y1="'p_ond + 26'" x2="'p_wr'" y2="'p_ond + 26'" style="stroke:#1E40AF; stroke-width:1"/>
+    '  <circle cx="'p_wl'" cy="'p_ond + 26'" r="2.6" style="fill:#1E40AF"/>
+    '  <circle cx="'p_wr'" cy="'p_ond + 26'" r="2.6" style="fill:#1E40AF"/>
+    '  <text x="'p_mid'" y="'p_ond + 22'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">b<tspan baseline-shift="sub" font-size="8">sparing</tspan> = 'b_sparing'</text>
+    '  <line x1="'p_x0 - 26'" y1="'p_y0'" x2="'p_x0 - 26'" y2="'p_rav'" style="stroke:#1E40AF; stroke-width:1"/>
+    '  <circle cx="'p_x0 - 26'" cy="'p_y0'" r="2.6" style="fill:#1E40AF"/>
+    '  <circle cx="'p_x0 - 26'" cy="'p_rav'" r="2.6" style="fill:#1E40AF"/>
+    '  <text x="'p_x0 - 30'" y="'(p_y0 + p_rav)/2'" text-anchor="end" style="fill:#1E40AF; font-weight:700">l<tspan baseline-shift="sub" font-size="8">staart</tspan> = 'l_staart'</text>
+    '</svg>'
+
+    '<i>De raveelbalk overspant de sparing en draagt per strekkende meter een
+    'vloerstrook ter breedte van l<sub>staart</sub>/2. Hieronder staat hij als
+    'gewone ligger op twee steunpunten.</i>
+#end if
+
+'<i>De ligger met de lijnlasten uit §5 en §6 en de geconcentreerde last uit §7.
+'De lasten zijn de karakteristieke waarden per balk — de rekenwaarden voor de
+'UGT volgen in §10. De tekening staat op schaal.</i>
+
+#hide
+'Totale lengte: bij een overstek of een tweede veld hoort daar meer bij dan
+'alleen de overspanning van het eerste veld.
+L_tot = if(schema ≡ 2; L_th + a_over; if(schema ≡ 3; L_th + L_veld2; L_th))
+s_schaal = 360/max(L_tot/(1 mm); 1)', ondergrens: bij het eerste renderen is de lengte nog nul'
+sx1 = 60', eerste oplegging
+sx2 = sx1 + s_schaal*L_th/(1 mm)', tweede oplegging
+sx3 = sx1 + s_schaal*L_tot/(1 mm)', einde van de balk, of de derde oplegging
+sy = 96', hoogte van de balk-as
+smid = (sx1 + sx2)/2
+s_stap = (sx3 - sx1)/14', pijlafstand in de lastbanden
+#show
+'<svg viewbox="0 0 480 190" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:210px;">
+'  <!-- veranderlijke verdeelde last: eigen band met eigen basislijn -->
+#if q_q,k > 0 kN/m
+    #for i = 0 : 14
+    '  <line x1="'sx1 + i*s_stap'" y1="'sy - 76'" x2="'sx1 + i*s_stap'" y2="'sy - 62'" style="stroke:#B45309; stroke-width:0.9"/>
+    '  <polygon points="'sx1 + i*s_stap','sy - 58' 'sx1 + i*s_stap - 3.5','sy - 66' 'sx1 + i*s_stap + 3.5','sy - 66'" style="fill:#B45309"/>
+    #loop
+    '  <line x1="'sx1'" y1="'sy - 76'" x2="'sx3'" y2="'sy - 76'" style="stroke:#B45309; stroke-width:1"/>
+    '  <text x="'sx1 + 50'" y="'sy - 80'" style="fill:#B45309; font-weight:700">q<tspan baseline-shift="sub" font-size="8">q,k</tspan> = 'q_q,k' kN/m</text>
+#end if
+'  <!-- permanente verdeelde last: band direct op de balk -->
+#for i = 0 : 14
+'  <line x1="'sx1 + i*s_stap'" y1="'sy - 46'" x2="'sx1 + i*s_stap'" y2="'sy - 8'" style="stroke:#475569; stroke-width:0.9"/>
+'  <polygon points="'sx1 + i*s_stap','sy - 4' 'sx1 + i*s_stap - 3.5','sy - 12' 'sx1 + i*s_stap + 3.5','sy - 12'" style="fill:#475569"/>
+#loop
+'  <line x1="'sx1'" y1="'sy - 46'" x2="'sx3'" y2="'sy - 46'" style="stroke:#475569; stroke-width:1"/>
+'  <text x="'sx1 + 50'" y="'sy - 50'" style="fill:#475569; font-weight:700">P<tspan baseline-shift="sub" font-size="8">g,k</tspan> = 'P_g,k' kN/m</text>
+'  <!-- geconcentreerde veranderlijke last; de witte onderlaag houdt hem
+'       leesbaar waar hij door de twee lastbanden heen zakt -->
+#if F_Q,k > 0 kN
+    '  <line x1="'smid'" y1="'sy - 92'" x2="'smid'" y2="'sy - 12'" style="stroke:#ffffff; stroke-width:4"/>
+    '  <line x1="'smid'" y1="'sy - 92'" x2="'smid'" y2="'sy - 12'" style="stroke:#B91C1C; stroke-width:1.4"/>
+    '  <polygon points="'smid','sy - 7' 'smid - 5','sy - 18' 'smid + 5','sy - 18'" style="fill:#B91C1C"/>
+    '  <text x="'smid + 8'" y="'sy - 84'" style="fill:#B91C1C; font-weight:700">F<tspan baseline-shift="sub" font-size="8">Q,k</tspan> = 'F_Q,k' kN</text>
+#end if
+'  <!-- de balk over zijn volle lengte -->
+'  <rect x="'sx1'" y="'sy - 6'" width="'sx3 - sx1'" height="12" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:0.9"/>
+'  <!-- eerste oplegging: scharnier -->
+'  <polygon points="'sx1','sy + 6' 'sx1 - 11','sy + 26' 'sx1 + 11','sy + 26'" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+'  <line x1="'sx1 - 18'" y1="'sy + 27'" x2="'sx1 + 18'" y2="'sy + 27'" style="stroke:#374151; stroke-width:0.9"/>
+'  <!-- tweede oplegging: rol -->
+'  <polygon points="'sx2','sy + 6' 'sx2 - 11','sy + 22' 'sx2 + 11','sy + 22'" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+'  <circle cx="'sx2 - 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+'  <circle cx="'sx2 + 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+'  <line x1="'sx2 - 18'" y1="'sy + 31'" x2="'sx2 + 18'" y2="'sy + 31'" style="stroke:#374151; stroke-width:0.9"/>
+#if schema ≡ 3
+    '  <!-- derde oplegging -->
+    '  <polygon points="'sx3','sy + 6' 'sx3 - 11','sy + 22' 'sx3 + 11','sy + 22'" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+    '  <circle cx="'sx3 - 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+    '  <circle cx="'sx3 + 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
+    '  <line x1="'sx3 - 18'" y1="'sy + 31'" x2="'sx3 + 18'" y2="'sy + 31'" style="stroke:#374151; stroke-width:0.9"/>
+#end if
+'  <!-- maatlijn van het eerste veld -->
+'  <line x1="'sx1'" y1="'sy + 52'" x2="'sx2'" y2="'sy + 52'" style="stroke:#1E40AF; stroke-width:1"/>
+'  <circle cx="'sx1'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
+'  <circle cx="'sx2'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
+'  <text x="'smid'" y="'sy + 48'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">L<tspan baseline-shift="sub" font-size="8">th</tspan> = 'L_th'</text>
+#if schema ≡ 2
+    '  <line x1="'sx2'" y1="'sy + 52'" x2="'sx3'" y2="'sy + 52'" style="stroke:#1E40AF; stroke-width:1"/>
+    '  <circle cx="'sx3'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
+    '  <text x="'(sx2 + sx3)/2'" y="'sy + 48'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">a = 'a_over'</text>
+#end if
+#if schema ≡ 3
+    '  <line x1="'sx2'" y1="'sy + 52'" x2="'sx3'" y2="'sy + 52'" style="stroke:#1E40AF; stroke-width:1"/>
+    '  <circle cx="'sx3'" cy="'sy + 52'" r="2.6" style="fill:#1E40AF"/>
+    '  <text x="'(sx2 + sx3)/2'" y="'sy + 48'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">L<tspan baseline-shift="sub" font-size="8">2</tspan> = 'L_veld2'</text>
+#end if
+'</svg>'
+'<span style="display:inline-block; width:14px; border-top:3px solid #475569; vertical-align:middle"></span>&nbsp;permanent &nbsp;&nbsp; <span style="display:inline-block; width:14px; border-top:3px solid #B45309; vertical-align:middle"></span>&nbsp;veranderlijk, verdeeld &nbsp;&nbsp; <span style="display:inline-block; width:14px; border-top:3px solid #B91C1C; vertical-align:middle"></span>&nbsp;veranderlijk, geconcentreerd
+
+'<i>Permanent en veranderlijk staan apart omdat ze met verschillende partiële
+'factoren de UGT-combinatie in gaan (1,20 tegen 1,50) en in de BGT-combinaties
+'elk hun eigen ψ-factor krijgen.</i>'
 
 # 9. Toetsing BGT — doorbuiging (§7.2)
 
-'<i>Eindstand-doorbuiging incl. kruip: w<sub>fin</sub> = (1+k<sub>def</sub>)·u<sub>g</sub>
-'+ (1+ψ<sub>2</sub>·k<sub>def</sub>)·u<sub>var</sub>. Grens: 0,004·L (= L/250).</i>
+'<i>De BGT kent twee combinaties die hier meedoen (EN 1990 §6.5.3):
+'<ul>
+'<li><b>Karakteristiek (6.14b)</b> — G<sub>k</sub> "+" Q<sub>k,1</sub> "+" Σψ<sub>0,i</sub>·Q<sub>k,i</sub>.
+'Dit is de momentane doorbuiging w<sub>inst</sub>, zonder kruip: het doorzakken
+'dat je meteen na het aanbrengen van de belasting ziet.</li>
+'<li><b>Quasi-blijvend (6.16b)</b> — G<sub>k</sub> "+" Σψ<sub>2,i</sub>·Q<sub>k,i</sub>.
+'Dit is het deel dat langdurig aanwezig blijft en dus kruipt. Met de kruipfactor
+'k<sub>def</sub> (Tabel 3.2) volgt de eindstand w<sub>fin</sub>.</li>
+'</ul>
+'De eindstand combineert beide: w<sub>fin</sub> = (1+k<sub>def</sub>)·u<sub>g</sub>
+'+ (1+ψ<sub>2</sub>·k<sub>def</sub>)·u<sub>var</sub> — de permanente last kruipt
+'volledig, de veranderlijke alleen voor het quasi-blijvende deel ψ<sub>2</sub>.</i>
 
 @select controleer "Controleer doorbuiging"
   Ja = 1
@@ -256,41 +574,222 @@ by = vy + vt', bovenkant balken
 @end
 
 #if controleer ≡ 1
-    u_var = max(u_q,k; u_Q,k)', maatgevende veranderlijke doorbuiging'
-    w_fin = (1 + k_def)*u_g,k + (1 + ψ_2*k_def)*u_var
+    'Splitspunt — welke veranderlijke doorbuiging meetelt (register punt 9).
+    u_var_xc = u_q,k to mm', de referentie-uitwerking: alleen de gelijkmatig verdeelde variant'
+    u_var_nb = max(u_q,k; u_Q,k) to mm', de norm: de maatgevende van de twee'
+    u_var = if(rekenwijze ≡ 1; u_var_xc; u_var_nb) to mm', gehanteerd'
+    '<h6>9.1 Karakteristieke combinatie (6.14b) — momentane doorbuiging</h6>
+    'w<sub>inst</sub> = u<sub>g</sub> + u<sub>var</sub>, zonder kruip:
+    w_inst = u_g,k + u_var to mm
+
+    '<h6>9.2 Quasi-blijvende combinatie (6.16b) — kruipdeel</h6>
+    'Alleen het deel dat langdurig blijft staan kruipt: de volledige permanente
+    'last plus ψ<sub>2</sub> maal de veranderlijke.
+    w_qp = u_g,k + ψ_2*u_var to mm', doorbuiging onder de quasi-blijvende combinatie'
+    w_kruip = k_def*w_qp to mm', bijkomende doorbuiging door kruip'
+
+    '<h6>9.3 Eindstand (§7.2, formule 7.2)</h6>
+    w_fin = (1 + k_def)*u_g,k + (1 + ψ_2*k_def)*u_var to mm
     w_lim = grensfactor*L_th
-    w_fin
-    w_lim
     UC_doorbuiging = w_fin/w_lim
     #if UC_doorbuiging ≤ 1.0
         'UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
     #else
         'UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
     #end if
+
+    '<h6>9.4 Doorbuigingslijn</h6>
+    '<i>De onderbroken lijn is de momentane zakking (6.14b), de doorgetrokken
+    'de eindstand inclusief kruip (6.16b). Beide op dezelfde schaal, zodat het
+    'verschil laat zien wat de kruip er nog bovenop doet. De vorm volgt het
+    'gekozen statische schema.</i>
+    #hide
+    ux1 = 60
+    ux2 = 420
+    uas = 40', hoogte van de onvervormde as'
+    uamp = 40', pixels voor de grootste zakking'
+    'Beide krommen op dezelfde schaal, anders valt niet te zien wat de kruip
+    'er bovenop doet.
+    w_grootst_u = max(max(w_fin; w_inst); 0.001 mm)
+    u_inst_s = uamp*w_inst/w_grootst_u
+    u_fin_s = uamp*w_fin/w_grootst_u
+    #show
+    '<svg viewbox="0 0 480 140" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:150px;">
+    '  <line x1="'ux1 - 8'" y1="'uas'" x2="'ux2 + 8'" y2="'uas'" style="stroke:#374151; stroke-width:0.8; stroke-dasharray:4 3"/>
+    #for i = 0 : 29
+    '  <line x1="'ux1 + (ux2 - ux1)*i/30'" y1="'uas + u_inst_s*uz(i*d_tot/30)/d_up'" x2="'ux1 + (ux2 - ux1)*(i + 1)/30'" y2="'uas + u_inst_s*uz((i + 1)*d_tot/30)/d_up'" style="stroke:#0EA5E9; stroke-width:1.1; stroke-dasharray:5 3"/>
+    '  <line x1="'ux1 + (ux2 - ux1)*i/30'" y1="'uas + u_fin_s*uz(i*d_tot/30)/d_up'" x2="'ux1 + (ux2 - ux1)*(i + 1)/30'" y2="'uas + u_fin_s*uz((i + 1)*d_tot/30)/d_up'" style="stroke:#0369A1; stroke-width:1.3"/>
+    #loop
+    '  <!-- opleggingen -->
+    '  <polygon points="'ux1','uas' 'ux1 - 7','uas + 14' 'ux1 + 7','uas + 14'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <line x1="'ux1 - 10'" y1="'uas + 14'" x2="'ux1 + 10'" y2="'uas + 14'" style="stroke:#6b7280; stroke-width:0.9"/>
+    '  <polygon points="'ux1 + (ux2 - ux1)*d_o2','uas' 'ux1 + (ux2 - ux1)*d_o2 - 7','uas + 11' 'ux1 + (ux2 - ux1)*d_o2 + 7','uas + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <circle cx="'ux1 + (ux2 - ux1)*d_o2 - 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <circle cx="'ux1 + (ux2 - ux1)*d_o2 + 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <line x1="'ux1 + (ux2 - ux1)*d_o2 - 10'" y1="'uas + 17'" x2="'ux1 + (ux2 - ux1)*d_o2 + 10'" y2="'uas + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+    #if schema ≡ 3
+        '  <polygon points="'ux2','uas' 'ux2 - 7','uas + 11' 'ux2 + 7','uas + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+        '  <circle cx="'ux2 - 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+        '  <circle cx="'ux2 + 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+        '  <line x1="'ux2 - 10'" y1="'uas + 17'" x2="'ux2 + 10'" y2="'uas + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+    #end if
+    '  <text x="'ux1 + 4'" y="'uas - 6'" style="fill:#374151; font-weight:700">onvervormd</text>
+    '  <text x="'ux1 + 8'" y="'uas + uamp + 24'" style="fill:#0369A1; font-weight:700">w<tspan baseline-shift="sub" font-size="8">fin</tspan> (6.16b + kruip) = 'w_fin' — grens 'w_lim'</text>
+    '  <text x="'ux1 + 8'" y="'uas + uamp + 38'" style="fill:#0EA5E9; font-weight:700">w<tspan baseline-shift="sub" font-size="8">inst</tspan> (6.14b) = 'w_inst'</text>
+    '</svg>'
 #else
     'Doorbuiging wordt niet getoetst (Controleer doorbuiging = Nee).
     UC_doorbuiging = 0
+#end if
+
+# 9b. Toetsing BGT — trillingen (§7.3.3)
+
+'<i>De trillingstoets voor woonvloeren kent twee criteria naast de
+'frequentie-eis: de stijfheid onder een puntlast van 1 kN (formule 7.3) en
+'de responssnelheid op een eenheidsimpuls (formule 7.4). Beide gelden alleen
+'als f<sub>1</sub> ≥ 8 Hz; daaronder vraagt de norm een volledige
+'trillingsanalyse (§7.3.3(2)).</i>
+
+@select controleer_trilling "Controleer trilling"
+  Ja = 1
+  Nee = 0
+@end
+
+ζ = ?', dempingsratio (§7.3.1: 0,01 voor vloeren zonder afwerklaag)'
+a_tril = ?*(mm/kN)', grenswaarde stijfheid a (Tabel NB — 1,0 mm/kN)'
+b_tril = ?', parameter b bij de snelheidseis (Figuur 7.2, ca. 120)'
+
+#if controleer_trilling ≡ 1
+    '<h6>9b.1 Stijfheden</h6>
+    'Beschot, per meter vloerbreedte — draagt loodrecht op de balken:
+    I_beschot = 1 m*t_vloer^3/12 to m^4
+    EI_l = E_beschot*I_beschot/(1 m) to N*m^2/m', (EI)_l — beschot'
+    'Balklaag, per meter vloerbreedte — de balken dragen in de overspanning:
+    EI_b = E_mean*I_y/hoh to N*m^2/m', (EI)_b — balken'
+
+    '<h6>9b.2 Eigenfrequentie (formule 7.5)</h6>
+    'Trillende massa per m² — alleen het permanente gewicht (§7.3.3): de
+    'veranderlijke belasting telt niet mee, want de vloer trilt in de staat
+    'waarin hij normaal wordt gebruikt, niet onder vol belastingsontwerp.
+    m_opp = (G_k + g_balk/hoh)/(9.81 m/s^2) to kg/m^2
+    f_1 = π/(2*L_th^2)*sqrt(EI_b/m_opp) to Hz
+    #if f_1 ≥ 8 Hz
+        'f<sub>1</sub> = 'f_1'<span style="color: green"> ≥ 8 Hz → de twee criteria hieronder zijn van toepassing</span>
+    #else
+        'f<sub>1</sub> = 'f_1'<span style="color: red"> < 8 Hz → de vereenvoudigde toets vervalt; §7.3.3(2) vraagt een volledige trillingsanalyse</span>
+    #end if
+
+    '<h6>9b.3 Criterium 1 — stijfheid onder 1 kN (formule 7.3)</h6>
+    'De puntlast spreidt over meerdere balken; k<sub>r</sub> uit §7 geeft het
+    'deel dat op de zwaarst belaste balk komt.
+    F_tril = 1 kN*k_r to kN', effectieve puntlast op één balk'
+    w_1kN = F_tril*L_th^3/(48*E_mean*I_y) to mm
+    w_per_kN = w_1kN/(1 kN) to mm/kN
+    UC_tril_a = w_per_kN/a_tril
+    #if UC_tril_a ≤ 1.0
+        'UC<sub>w/F</sub> = 'UC_tril_a'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+    #else
+        'UC<sub>w/F</sub> = 'UC_tril_a'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+    #end if
+
+    '<h6>9b.4 Criterium 2 — responssnelheid (formules 7.4, 7.6, 7.7)</h6>
+    'Aantal eigenmodi onder 40 Hz (formule 7.7). Bij een zeer stijve vloer
+    'ligt f_1 al boven 40 Hz; dan is er geen enkele eigenmode onder de 40 Hz
+    'en wordt de term onder de wortel op nul afgekapt.
+    n_40_arg = max(0; (40 Hz/f_1)^2 - 1)
+    n_40 = (n_40_arg*(b_vloer/L_th)^4*EI_l/EI_b)^0.25
+    'Responssnelheid op een eenheidsimpuls (formule 7.6):
+    v_resp = 4*(0.4 + 0.6*n_40)/(m_opp*b_vloer*L_th + 200 kg) to m/(N*s^2)
+    'Grenswaarde (formule 7.4): b^(f_1·ζ − 1)
+    v_lim = b_tril^(f_1*ζ/(1 Hz) - 1)*1 m/(N*s^2)
+    UC_tril_v = v_resp/v_lim
+    #if UC_tril_v ≤ 1.0
+        'UC<sub>v</sub> = 'UC_tril_v'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+    #else
+        'UC<sub>v</sub> = 'UC_tril_v'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+    #end if
+
+    UC_trilling = max(UC_tril_a; UC_tril_v)
+    #if UC_trilling ≤ 1.0
+        '<b>Trillingen voldoen</b> (maatgevende UC = 'UC_trilling')
+    #else
+        '<b><span style="color: red">Trillingen voldoen niet</span></b> (maatgevende UC = 'UC_trilling')
+    #end if
+#else
+    'Trilling wordt niet getoetst (Controleer trilling = Nee).
+    UC_trilling = 0
 #end if
 
 # 10. Toetsing UGT
 
 '<h6>10.1 Maatgevende krachten</h6>
 'Permanent + veranderlijk (UDL):
-M_yEd_1 = 1.20*M_g,k + 1.50*M_q,k
-V_zEd_1 = 1.20*V_g,k + 1.50*V_q,k
+M_yEd_1 = 1.20*M_g,k + 1.50*M_q,k to kN*m
+V_zEd_1 = 1.20*V_g,k + 1.50*V_q,k to kN
 'Permanent + geconcentreerde last:
-M_yEd_2 = 1.20*M_g,k + 1.50*M_Q,k
-V_zEd_2 = 1.20*V_g,k + 1.50*V_Q,k
+M_yEd_2 = 1.20*M_g,k + 1.50*M_Q,k to kN*m
+V_zEd_2 = 1.20*V_g,k + 1.50*V_Q,k to kN
 
-K_FI = gevolgklasse', gevolgklasse-factor (EN 1990)'
-M_y,Ed = K_FI*max(M_yEd_1; M_yEd_2)', incl. K_FI'
-V_z,Ed = K_FI*max(V_zEd_1; V_zEd_2)', incl. K_FI'
-K_FI
+'<i>De gevolgklasse staat in de projectgegevens; K<sub>FI</sub> volgt daaruit
+'(Tabel NB.A1.1) en geldt voor alle bladen van dit project.</i>
+K_FI', gevolgklasse-factor uit de projectgegevens (EN 1990)'
+M_y,Ed = K_FI*max(M_yEd_1; M_yEd_2) to kN*m', incl. K_FI'
+V_z,Ed = K_FI*max(V_zEd_1; V_zEd_2) to kN', incl. K_FI'
 M_y,Ed
 V_z,Ed
 
+'<h6>10.1b Momenten- en dwarskrachtenlijn (UGT)</h6>
+
+'<i>Beide lijnen volgen het gekozen statische schema. Bij een overstek of een
+'tweede veld loopt het moment over de oplegging heen naar de andere kant — dat
+'is de trek aan de bóvenzijde die de doorsnede daar te verduren krijgt.</i>
+
+#hide
+mx1 = 60
+mx2 = 420
+mmid = (mx1 + mx2)/2
+'De M-lijn hangt onder zijn as maar kan er bij een steunmoment ook bovenuit
+'komen; de V-lijn steekt naar twee kanten. Vandaar ruime tussenruimte.
+mh = 38', halve hoogte van elk diagram in pixels
+my = 60', as van de M-lijn
+vy2 = 195', as van de V-lijn
+#show
+'<svg viewbox="0 0 480 250" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:260px;">
+'  <!-- M-lijn -->
+'  <line x1="'mx1 - 10'" y1="'my'" x2="'mx2 + 10'" y2="'my'" style="stroke:#374151; stroke-width:1"/>
+#for i = 0 : 29
+'  <line x1="'mx1 + (mx2 - mx1)*i/30'" y1="'my + mh*mz(i*d_tot/30)/d_Mp'" x2="'mx1 + (mx2 - mx1)*(i + 1)/30'" y2="'my + mh*mz((i + 1)*d_tot/30)/d_Mp'" style="stroke:#1E40AF; stroke-width:1.3"/>
+#loop
+'  <text x="'mx1 - 10'" y="'my - 8'" style="fill:#374151; font-weight:700">M-lijn</text>
+'  <text x="'mmid'" y="'my + mh + 16'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">M<tspan baseline-shift="sub" font-size="8">y,Ed</tspan> = 'M_y,Ed'</text>
+'  <!-- V-lijn -->
+'  <line x1="'mx1 - 10'" y1="'vy2'" x2="'mx2 + 10'" y2="'vy2'" style="stroke:#374151; stroke-width:1"/>
+#for i = 0 : 29
+'  <line x1="'mx1 + (mx2 - mx1)*i/30'" y1="'vy2 - mh*vz(i*d_tot/30)/d_Vp'" x2="'mx1 + (mx2 - mx1)*(i + 1)/30'" y2="'vy2 - mh*vz((i + 1)*d_tot/30)/d_Vp'" style="stroke:#15803D; stroke-width:1.3"/>
+#loop
+'  <text x="'mx1 - 10'" y="'vy2 - 8'" style="fill:#374151; font-weight:700">V-lijn</text>
+'  <text x="'mx1 + 4'" y="'vy2 - mh - 6'" style="fill:#15803D; font-weight:700">+V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan> = 'V_z,Ed'</text>
+'  <!-- opleggingen onder beide assen -->
+#for j = 0 : 1
+'  <polygon points="'mx1','my + j*(vy2 - my)' 'mx1 - 7','my + j*(vy2 - my) + 14' 'mx1 + 7','my + j*(vy2 - my) + 14'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+'  <line x1="'mx1 - 10'" y1="'my + j*(vy2 - my) + 14'" x2="'mx1 + 10'" y2="'my + j*(vy2 - my) + 14'" style="stroke:#6b7280; stroke-width:0.9"/>
+'  <polygon points="'mx1 + (mx2 - mx1)*d_o2','my + j*(vy2 - my)' 'mx1 + (mx2 - mx1)*d_o2 - 7','my + j*(vy2 - my) + 11' 'mx1 + (mx2 - mx1)*d_o2 + 7','my + j*(vy2 - my) + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+'  <circle cx="'mx1 + (mx2 - mx1)*d_o2 - 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+'  <circle cx="'mx1 + (mx2 - mx1)*d_o2 + 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+'  <line x1="'mx1 + (mx2 - mx1)*d_o2 - 10'" y1="'my + j*(vy2 - my) + 17'" x2="'mx1 + (mx2 - mx1)*d_o2 + 10'" y2="'my + j*(vy2 - my) + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+#loop
+#if schema ≡ 3
+    #for j = 0 : 1
+    '  <polygon points="'mx2','my + j*(vy2 - my)' 'mx2 - 7','my + j*(vy2 - my) + 11' 'mx2 + 7','my + j*(vy2 - my) + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <circle cx="'mx2 - 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <circle cx="'mx2 + 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
+    '  <line x1="'mx2 - 10'" y1="'my + j*(vy2 - my) + 17'" x2="'mx2 + 10'" y2="'my + j*(vy2 - my) + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+    #loop
+#end if
+'</svg>'
+
 '<h6>10.2 Buiging — §6.1.6 (6.11)</h6>
-σ_m,y,d = M_y,Ed/W_y
+σ_m,y,d = M_y,Ed/W_y to N/mm^2
 σ_m,y,d
 UC_buiging = σ_m,y,d/f_m,d
 #if UC_buiging ≤ 1.0
@@ -300,8 +799,7 @@ UC_buiging = σ_m,y,d/f_m,d
 #end if
 
 '<h6>10.3 Afschuiving — §6.1.7 (6.13)</h6>
-τ_d = V_z,Ed*S_y/(b_balk*I_y)
-τ_d
+τ_d = V_z,Ed*S_y/(b_balk*I_y) to N/mm^2
 UC_afsch = τ_d/f_v,d
 #if UC_afsch ≤ 1.0
     'UC<sub>afschuiving</sub> = τ<sub>d</sub>/f<sub>v,d</sub> = 'UC_afsch'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
@@ -309,9 +807,74 @@ UC_afsch = τ_d/f_v,d
     'UC<sub>afschuiving</sub> = τ<sub>d</sub>/f<sub>v,d</sub> = 'UC_afsch'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
 #end if
 
-# 11. Samenvatting
+# 11. Samenvatting — alle unity checks
 
-UC_max = max(UC_doorbuiging; UC_buiging; UC_afsch)
+UC_max = max(UC_doorbuiging; UC_buiging; UC_afsch; UC_trilling)
+
+#hide
+'Kleur per regel: rood zodra een toets boven 1,0 uitkomt, oranje vanaf 0,90
+'(voldoet, maar zonder marge), anders groen.
+kl_buig = if(UC_buiging > 1; 1; if(UC_buiging > 0.9; 2; 3))
+kl_afsch = if(UC_afsch > 1; 1; if(UC_afsch > 0.9; 2; 3))
+kl_door = if(UC_doorbuiging > 1; 1; if(UC_doorbuiging > 0.9; 2; 3))
+kl_tril = if(UC_trilling > 1; 1; if(UC_trilling > 0.9; 2; 3))
+c_1 = "#b91c1c"
+c_2 = "#b45309"
+c_3 = "#047857"
+kleur_buig = if(kl_buig ≡ 1; c_1; if(kl_buig ≡ 2; c_2; c_3))
+kleur_afsch = if(kl_afsch ≡ 1; c_1; if(kl_afsch ≡ 2; c_2; c_3))
+kleur_door = if(kl_door ≡ 1; c_1; if(kl_door ≡ 2; c_2; c_3))
+kleur_tril = if(kl_tril ≡ 1; c_1; if(kl_tril ≡ 2; c_2; c_3))
+oordeel_buig = if(UC_buiging ≤ 1; "voldoet"; "voldoet niet")
+oordeel_afsch = if(UC_afsch ≤ 1; "voldoet"; "voldoet niet")
+oordeel_door = if(UC_doorbuiging ≤ 1; "voldoet"; "voldoet niet")
+oordeel_tril = if(UC_trilling ≤ 1; "voldoet"; "voldoet niet")
+#show
+
+'<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
+'<tr style="border-bottom:2px solid #374151;">
+'<th style="text-align:left; padding:5px 8px;">Toets</th>
+'<th style="text-align:left; padding:5px 8px;">Norm</th>
+'<th style="text-align:right; padding:5px 8px;">UC</th>
+'<th style="text-align:left; padding:5px 8px;">Oordeel</th></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Buiging</td>
+'<td style="padding:5px 8px;">§6.1.6 (6.11)</td>
+'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_buig'">'UC_buiging'</td>
+'<td style="padding:5px 8px; color:'kleur_buig'">'oordeel_buig'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Afschuiving</td>
+'<td style="padding:5px 8px;">§6.1.7 (6.13)</td>
+'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_afsch'">'UC_afsch'</td>
+'<td style="padding:5px 8px; color:'kleur_afsch'">'oordeel_afsch'</td></tr>
+#if controleer ≡ 1
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Doorbuiging</td>
+'<td style="padding:5px 8px;">§7.2 (7.2)</td>
+'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_door'">'UC_doorbuiging'</td>
+'<td style="padding:5px 8px; color:'kleur_door'">'oordeel_door'</td></tr>
+#else
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Doorbuiging</td>
+'<td style="padding:5px 8px;">§7.2</td>
+'<td style="padding:5px 8px; text-align:right; color:#9ca3af;">—</td>
+'<td style="padding:5px 8px; color:#9ca3af;">niet getoetst</td></tr>
+#end if
+#if controleer_trilling ≡ 1
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Trilling</td>
+'<td style="padding:5px 8px;">§7.3.3 (7.3, 7.4)</td>
+'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_tril'">'UC_trilling'</td>
+'<td style="padding:5px 8px; color:'kleur_tril'">'oordeel_tril'</td></tr>
+#else
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:5px 8px;">Trilling</td>
+'<td style="padding:5px 8px;">§7.3.3</td>
+'<td style="padding:5px 8px; text-align:right; color:#9ca3af;">—</td>
+'<td style="padding:5px 8px; color:#9ca3af;">niet getoetst</td></tr>
+#end if
+'</table>
+
 #if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1.0 → <b>Balklaag voldoet</b></span>
 #else
@@ -321,13 +884,20 @@ UC_max = max(UC_doorbuiging; UC_buiging; UC_afsch)
 '<hr/>
 '<i>Aandachtspunten / vereenvoudigingen:
 '<ul>
-'<li>Eigengewicht balk met EN 338 ρ<sub>mean</sub> (C24 = 420 kg/m³). XConstruct
-'hanteert ~5,5 kN/m³ (hoger); resultaten hier daardoor iets gunstiger.</li>
-'<li>Concentratiefactor k<sub>r</sub> met kalibratieconstante uit de XConstruct-
-'voorbeelden; nog te verifiëren met een referentiecase.</li>
+'<li>Eigengewicht balk met EN 338 ρ<sub>mean</sub> (C24 = 420 kg/m³) en
+'g = 9,81 m/s². de referentie-uitwerking hanteert een vaste 550 kg/m³ met g = 10; resultaten
+'hier daardoor iets gunstiger.</li>
+'<li>Concentratiefactor k<sub>r</sub> geverifieerd op vier referentiebladen
+'(beschot 18 en 25 mm, hoh 600 en 1000, twee profielen).</li>
+'<li>Hoogtefactor k<sub>h</sub> geverifieerd in beide takken: gelijmd
+'gelamineerd (GL24h, 221 mm → 1,10) en massief (71×146 → 1,005).</li>
 '<li>Afschuiving met volle balkbreedte b (geen k<sub>cr</sub>-reductie), conform
-'de XConstruct-uitwerking.</li>
+'de referentie-uitwerking.</li>
 '<li>Trillingstoets (§7.3) en kip zijn niet opgenomen (vloerbalk zijdelings
-'gesteund door het vloerhout).</li>
+'gesteund door het beschot). Let op: bij overspanningen rond 5 m ligt f<sub>1</sub>
+'onder de 8 Hz en is §7.3.3 wél van toepassing.</li>
+'<li>Oplegdruk (§6.1.5) wordt niet getoetst, net zomin als in de referentie-uitwerking. Op het
+'basisgeval is die u.c. 0,89 met k<sub>c,90</sub> = 1,25 — krap genoeg om apart
+'na te lopen.</li>
 '</ul></i>
 `;

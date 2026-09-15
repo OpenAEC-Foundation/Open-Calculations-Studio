@@ -478,3 +478,30 @@ body,
 .detached-dock-btn:hover {
   background: rgba(255,255,255,0.35);
 }
+
+/* Werkruimte zonder geopend rekenblad — wegwijzer in plaats van leegte. */
+.werkruimte-leeg {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 24px;
+  text-align: center;
+  color: var(--theme-text-secondary);
+  font-family: var(--font-body);
+}
+
+.werkruimte-leeg h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+.werkruimte-leeg p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+}

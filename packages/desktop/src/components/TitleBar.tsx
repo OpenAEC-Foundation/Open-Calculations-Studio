@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useAfdrukken } from "../store/printStore";
 import "./TitleBar.css";
 
 interface TitleBarProps {
@@ -8,6 +9,7 @@ interface TitleBarProps {
 
 function TitleBar({ onSettingsClick }: TitleBarProps) {
   const { t } = useTranslation();
+  const afdrukken = useAfdrukken();
   const [isMaximized, setIsMaximized] = useState(false);
   const [appVersion, setAppVersion] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -128,6 +130,7 @@ function TitleBar({ onSettingsClick }: TitleBarProps) {
           title={`${t("print")} (Ctrl+P)`}
           aria-label={t("print")}
           tabIndex={-1}
+          onClick={afdrukken}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 6 2 18 2 18 9" />
