@@ -43,8 +43,8 @@ f_cm = f_ck + 8 N/mm^2
 
 Gemiddelde treksterkte (Tabel 3.1, formule 3.1):
 
-#if f_ck < 51
-  f_ctm = 0.30 * f_ck^(2/3) * 1 N/mm^2
+#if sterkteklasse < 51
+  f_ctm = 0.30 * sterkteklasse^(2/3) * 1 N/mm^2
 #else
   f_ctm = 2.12 * ln(1 + f_cm / (10 N/mm^2)) * 1 N/mm^2
 #end if
@@ -111,12 +111,12 @@ f_yd = f_yk / gamma_S to N/mm^2
 
 ## Rechthoekig spanningsblok (art. 3.1.7, formules 3.19-3.22)
 
-#if f_ck < 51
-  lambda = 0.8 (voor f_ck <= 50 MPa)
-  eta = 1.0 (voor f_ck <= 50 MPa)
+#if sterkteklasse < 51
+  lambda = 0.8', voor f_ck ≤ 50 MPa'
+  eta = 1.0', voor f_ck ≤ 50 MPa'
 #else
-  lambda = 0.8 - (f_ck - 50 N/mm^2) / (400 N/mm^2)
-  eta = 1.0 - (f_ck - 50 N/mm^2) / (200 N/mm^2)
+  lambda = 0.8 - (sterkteklasse - 50) / 400
+  eta = 1.0 - (sterkteklasse - 50) / 200
 #end if
 
 Reductiefactor dwarskracht (formule 6.6N):
@@ -231,15 +231,15 @@ UC_buiging = M_Ed / M_Rd
 
 ## Minimumwapening (art. 9.2.1.1)
 
-f_ctm = 0.30 * f_ck^(2/3) * 1 N/mm^2
+f_ctm = 0.30 * sterkteklasse^(2/3) * 1 N/mm^2
 
 A_smin1 = 0.26 * f_ctm / f_yk * b * d to mm^2
 A_smin2 = 0.0013 * b * d to mm^2
 
 #if A_smin1 > A_smin2
-  A_smin = A_smin1 (maatgevend).
+  A_smin = A_smin1', (maatgevend)'
 #else
-  A_smin = A_smin2 (maatgevend).
+  A_smin = A_smin2', (maatgevend)'
 #end if
 
 #if A_s < A_smin1
@@ -450,9 +450,9 @@ V_Rdmax = alpha_cw * b_w * z * nu_1 * f_cd / (cot_theta + tan_theta) to kN
 Maatgevend is de kleinste waarde:
 
 #if V_Rds < V_Rdmax
-  V_Rd = V_Rds (beugels maatgevend).
+  V_Rd = V_Rds', (beugels maatgevend)'
 #else
-  V_Rd = V_Rdmax (drukdiagonaal maatgevend).
+  V_Rd = V_Rdmax', (drukdiagonaal maatgevend)'
 #end if
 
 UC_Vrds = V_Ed / V_Rds
@@ -645,7 +645,7 @@ C50/60 -- f_ck=50 = 50
 
 f_ck = sterkteklasse * 1 N/mm^2
 f_cm = f_ck + 8 N/mm^2
-f_ctm = 0.30 * f_ck^(2/3) * 1 N/mm^2
+f_ctm = 0.30 * sterkteklasse^(2/3) * 1 N/mm^2
 
 Effectieve treksterkte op moment van scheuren:
 
@@ -896,7 +896,7 @@ C50/60 -- f_ck=50 = 50
 
 f_ck = sterkteklasse * 1 N/mm^2
 f_cm = f_ck + 8 N/mm^2
-f_ctm = 0.30 * f_ck^(2/3) * 1 N/mm^2
+f_ctm = 0.30 * sterkteklasse^(2/3) * 1 N/mm^2
 E_cm = 22000 * (f_cm / (10 N/mm^2))^0.3 * 1 N/mm^2
 
 @select staalsoort "Betonstaalsoort"

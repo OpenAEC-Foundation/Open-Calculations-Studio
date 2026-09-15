@@ -31,7 +31,7 @@
   "ready": "Ready",
   "items": "Items",
   "zoom": "Zoom",
-  "version": "Open Calculations Studio v0.1.0",
+  "version": "Open Calculations Studio v0.1.5",
   "section": "Section {{number}}",
   "contentPlaceholder": "Content here",
   "sendFeedback": "Send Feedback",

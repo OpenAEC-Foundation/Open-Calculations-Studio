@@ -1,0 +1,236 @@
+/* Spuwer-wizard layout — 3 kolommen, schaalt mee met preview-paneel. */
+
+.spuwer-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.8fr) minmax(360px, 2.2fr);
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+  background: var(--theme-bg-canvas, var(--theme-bg-surface));
+  font-family: var(--font-body);
+  color: var(--theme-text);
+  font-size: 13px;
+}
+
+.spuwer-inputs,
+.spuwer-canvas,
+.spuwer-results {
+  background: var(--theme-bg, #fff);
+  border: 1px solid var(--theme-border-subtle, rgba(0,0,0,0.08));
+  border-radius: var(--radius-md, 6px);
+  overflow: auto;
+  padding: 12px;
+  /* Geen visuele scrollbar — consistent met preview */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.spuwer-inputs::-webkit-scrollbar,
+.spuwer-canvas::-webkit-scrollbar,
+.spuwer-results::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Linker kolom: inputs ─────────────────────────────────────────── */
+
+.spuwer-title,
+.spuwer-results-title {
+  margin: -12px -12px 8px;
+  padding: 8px 12px;
+  background: var(--theme-bg-surface, #f3f4f6);
+  border-bottom: 1px solid var(--theme-border-subtle);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--theme-text-secondary, var(--theme-text-muted));
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.spuwer-name {
+  width: 100%;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--theme-border-subtle);
+  border-radius: 4px;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.spuwer-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 36px;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--theme-border-subtle, rgba(0,0,0,0.04));
+}
+
+.spuwer-row:last-child {
+  border-bottom: none;
+}
+
+.spuwer-row-label {
+  font-size: 12px;
+  color: var(--theme-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spuwer-row-input {
+  width: 100%;
+  padding: 3px 6px;
+  border: 1px solid var(--theme-border-subtle);
+  border-radius: 3px;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  text-align: right;
+}
+
+.spuwer-row-input:focus {
+  outline: 2px solid var(--theme-accent, #D97706);
+  outline-offset: 0;
+}
+
+.spuwer-row-unit {
+  font-size: 11px;
+  color: var(--theme-text-secondary, var(--theme-text-muted));
+  font-family: var(--font-mono, monospace);
+}
+
+/* ── Midden: parametrische tekening ───────────────────────────────── */
+
+.spuwer-canvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spuwer-drawing {
+  max-width: 100%;
+  max-height: 100%;
+  height: auto;
+}
+
+/* ── Klikbare maatlijnen in de SVG ─────────────────────────────────
+ * Een hover-cue (lichte kleurwissel + pointer-cursor) maakt duidelijk
+ * dat een maatlijn klikbaar is. Bij klik focust de bijbehorende input
+ * in de linkerkolom en wordt de waarde geselecteerd. */
+.spuwer-dim {
+  cursor: pointer;
+  transition: fill 0.12s ease, stroke 0.12s ease;
+}
+
+.spuwer-dim line,
+.spuwer-dim text {
+  transition: stroke 0.12s ease, fill 0.12s ease;
+}
+
+.spuwer-dim:hover line {
+  stroke: var(--theme-accent, #D97706);
+}
+
+.spuwer-dim:hover text {
+  fill: var(--theme-accent, #D97706);
+}
+
+.spuwer-dim:focus {
+  outline: none;
+}
+
+.spuwer-dim:focus-visible rect {
+  fill: rgba(217, 119, 6, 0.08);
+  stroke: var(--theme-accent, #D97706);
+  stroke-width: 0.5;
+  stroke-dasharray: 2 2;
+}
+
+/* ── Rechter kolom: berekeningsresultaten ─────────────────────────── */
+
+.spuwer-results h4 {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-text);
+  border-bottom: 1px solid var(--theme-border-subtle);
+  padding-bottom: 4px;
+}
+
+.spuwer-results h4:first-of-type {
+  margin-top: 0;
+}
+
+.spuwer-table {
+  display: grid;
+  grid-template-columns: minmax(180px, auto) 1fr;
+  gap: 4px 12px;
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+
+.spuwer-table dt {
+  color: var(--theme-text-secondary, var(--theme-text-muted));
+  align-self: center;
+}
+
+.spuwer-table dd {
+  margin: 0;
+  color: var(--theme-text);
+  align-self: center;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.spuwer-table dd .katex {
+  font-size: 1em;
+}
+
+.spuwer-cell-note {
+  font-size: 11px;
+  color: var(--theme-text-muted, #888);
+  text-align: right;
+  font-style: italic;
+}
+
+.spuwer-note {
+  margin: 8px 0;
+  padding: 6px 10px;
+  background: rgba(217,119,6,0.08);
+  border-left: 3px solid var(--theme-accent, #D97706);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.spuwer-verdict {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.spuwer-verdict.ok {
+  background: rgba(5,150,105,0.12);
+  color: #047857;
+  border: 1px solid rgba(5,150,105,0.4);
+}
+
+.spuwer-verdict.fail {
+  background: rgba(220,38,38,0.12);
+  color: #b91c1c;
+  border: 1px solid rgba(220,38,38,0.4);
+}
+
+/* Wanneer het preview-paneel smaller wordt, stack de kolommen. */
+@media (max-width: 1100px) {
+  .spuwer-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+  }
+}

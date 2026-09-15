@@ -7,3 +7,18 @@ PROMPTS.md
 # Debug scripts (rendered html / scratch)
 scripts/debug-*.mjs
 scripts/last-render.html
+
+# Claude Code state — NOOIT in de repo (chat-historie, worktrees, sessions).
+# Het tracked `.claude/launch.json`-bestand blijft expliciet wel toegestaan.
+.claude/projects/
+.claude/worktrees/
+.claude/sessions/
+.claude/transcripts/
+.claude/memory/
+.claude/settings.local.json
+.claude/local.json
+**/*.jsonl
+
+# Editor / IDE local state
+.vscode/
+.idea/

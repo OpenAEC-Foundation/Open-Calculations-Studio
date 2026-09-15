@@ -41,6 +41,9 @@ math.import({
   asin: (v: unknown) => fromRadians(nativeAsin(v as number)),
   acos: (v: unknown) => fromRadians(nativeAcos(v as number)),
   atan: (v: unknown) => fromRadians(nativeAtan(v as number)),
+  // CalcPAD schrijft `ln` voor de natuurlijke logaritme; mathjs kent alleen
+  // `log` (dat zonder base-argument al natural log is).
+  ln: (v: unknown) => math.log(v as number),
 }, { override: true });
 
 // CalcPAD-style helper functions that mathjs doesn't ship with.
@@ -175,6 +178,47 @@ math.import(
       }
       return rowVal;
     },
+    // CalcPAD `row(M; i)` / `col(M; j)` — pluk één rij/kolom als PLATTE
+    // vector (1-based). Let op de representatie: CalcPAD schrijft een matrix
+    // als `[rij1 | rij2 | …]`, maar onze rewriteMatrixLiterals transponeert
+    // de `|`-secties naar mathjs-KOLOMMEN (daar bouwen de hlookup-sheets op).
+    // CalcPAD's `row(M; i)` komt in die representatie dus overeen met het
+    // plukken van kolom i — en `col(M; j)` met het plukken van rij j.
+    // mathjs' eigen row() geeft bovendien een 1×N-matrix terug, waarna
+    // vector-indexering (`r.3` → r[3]) stukloopt op "Dimension mismatch";
+    // deze wrappers geven altijd een platte vector.
+    row: function (m: unknown, i: unknown) {
+      const a = toArrayLike(m);
+      if (!a) return m;
+      const idx = Math.max(1, Math.trunc(asNumber(i))) - 1;
+      const first = toArrayLike(a[0]);
+      if (!first) return a[Math.min(idx, a.length - 1)];
+      return a.map((r) => {
+        const rr = toArrayLike(r);
+        return rr ? rr[Math.min(idx, rr.length - 1)] : r;
+      });
+    },
+    col: function (m: unknown, j: unknown) {
+      const a = toArrayLike(m);
+      if (!a) return m;
+      const idx = Math.max(1, Math.trunc(asNumber(j))) - 1;
+      const picked = a[Math.min(idx, a.length - 1)];
+      return toArrayLike(picked) ?? picked;
+    },
+    // CalcPAD logische functies — hoofdletter-varianten met variadische
+    // argumenten (`#if Or(uc_1 > 1; uc_2 > 1; …)`).
+    Or: function (...args: unknown[]) {
+      return args.some((a) => Boolean(a)) ? 1 : 0;
+    },
+    And: function (...args: unknown[]) {
+      return args.every((a) => Boolean(a)) ? 1 : 0;
+    },
+    Not: function (a: unknown) {
+      return Boolean(a) ? 0 : 1;
+    },
+    Xor: function (...args: unknown[]) {
+      return args.filter((a) => Boolean(a)).length % 2 === 1 ? 1 : 0;
+    },
   },
   { override: true },
 );
@@ -257,9 +301,41 @@ export interface SelectValues {
   [key: string]: string;
 }
 
-export function evaluate(nodes: AstNode[], selectValues?: SelectValues): EvaluatedNode[] {
-  const scope: Scope = {};
+/**
+ * Evaluate a parsed document.
+ *
+ * `initialScope` seeds the scope before the first line runs. De desktop-app
+ * gebruikt dat voor de projectgegevens: gevolgklasse, ontwerplevensduur en de
+ * projectkop staan één keer op projectniveau en zijn in elk rekenblad
+ * beschikbaar zonder dat ze in de bladtekst herhaald worden. Een blad mag de
+ * naam gewoon overschrijven — de seed is een startwaarde, geen slot.
+ */
+export function evaluate(
+  nodes: AstNode[],
+  selectValues?: SelectValues,
+  initialScope?: Scope,
+): EvaluatedNode[] {
+  const scope: Scope = { ...(initialScope ?? {}) };
   return evaluateNodes(nodes, scope, selectValues || {});
+}
+
+/**
+ * Evaluate a sheet ONLY to extract its final scope (variables that ended
+ * up bound after running). Used by hosts that need to inherit globals
+ * from a parent sheet without rendering its output. Errors are silently
+ * ignored — partial scope is still returned.
+ */
+export function extractScope(nodes: AstNode[], selectValues?: SelectValues): Scope {
+  const scope: Scope = {};
+  try {
+    evaluateNodes(nodes, scope, selectValues || {});
+  } catch {
+    /* swallow — best-effort scope extraction */
+  }
+  // Strip internal flags.
+  delete scope[BREAK_FLAG];
+  delete scope['_i'];
+  return scope;
 }
 
 /** Sentinel key on `scope` used by `#break` to short-circuit out of a loop. */
@@ -332,9 +408,15 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
       }
 
       case 'user-function': {
-        // mathjs supports the `f(x) = expr` form natively via its parser.
+        // mathjs supports the `f(x) = expr` form natively via its parser, maar
+        // wel in zíjn eigen notatie. Daarom de genormaliseerde body gebruiken
+        // en niet de rauwe regel: die staat er nog in CalcPAD-notatie, met
+        // puntkomma's in `if(a; b; c)` en tekens als ≤ en ≡. mathjs slikte dat
+        // niet, de definitie mislukte, en omdat de fout bij een verborgen regel
+        // wordt ingeslikt bleef de aanroep verderop stilzwijgend als tekst in
+        // de uitdraai staan.
         try {
-          math.evaluate(node.raw, scope);
+          math.evaluate(`${node.name}(${node.params.join(', ')}) = ${node.expression}`, scope);
         } catch (err) {
           // Surface error as a hidden text — function won't be callable later.
           if (!node.hidden) {
