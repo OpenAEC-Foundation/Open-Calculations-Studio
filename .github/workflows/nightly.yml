@@ -99,6 +99,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Checkout openaec-reports (path dependency of openaec-core)
+        run: git clone --depth 1 https://github.com/OpenAEC-Foundation/openaec-reports.git ../openaec-reports
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
