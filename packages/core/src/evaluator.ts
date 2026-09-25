@@ -388,12 +388,24 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
 
       case 'input-prompt': {
         // CalcPAD `?` prompt — pick the user-supplied value or fall back to the default.
-        const raw = selectValues[node.name] ?? node.defaultValue;
+        // Het veld toont wat er is ingetypt; gerekend wordt met een punt. Een
+        // komma is hier altijd een decimaalteken: "0,42" is 0,42.
+        const invoer = String(selectValues[node.name] ?? node.defaultValue);
+        const raw = invoer.trim().replace(',', '.');
         const fullExpr = node.unit ? `${raw} ${node.unit}` : raw;
         try {
           scope[node.name] = math.evaluate(fullExpr, {});
         } catch {
-          scope[node.name] = parseFloat(raw) || 0;
+          // Een halve invoer (tijdens het typen "0." of "") telt als getal, en
+          // houdt zijn eenheid: zonder eenheid liep elke regel die er verderop
+          // mee rekende vast op "Units do not match".
+          const getal = parseFloat(raw);
+          const n = Number.isFinite(getal) ? getal : 0;
+          try {
+            scope[node.name] = node.unit ? math.evaluate(`${n} ${node.unit}`, {}) : n;
+          } catch {
+            scope[node.name] = n;
+          }
         }
         if (!node.hidden) {
           result.push({
@@ -401,7 +413,7 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
             name: node.name,
             label: node.label,
             unit: node.unit,
-            currentValue: raw,
+            currentValue: invoer,
           });
         }
         break;

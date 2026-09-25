@@ -208,13 +208,16 @@ function renderInputPrompt(node: {
   const unitSuffix = node.unit
     ? `<span class="calc-input-unit">${escapeHtml(node.unit)}</span>`
     : '';
+  // Een tekstveld en geen type="number": daarin is een tussenstand als "0," of
+  // "0." ongeldig en leest de waarde als leeg, zodat een getal met een komma of
+  // punt niet in te typen was. inputmode="decimal" geeft op een tablet toch het
+  // numerieke toetsenbord; de rekenkern leest een komma als decimaalteken.
   return `<div class="calc-input-prompt">
   <label class="calc-input-label">${escapeHtml(node.label)} =</label>
-  <input type="number"
+  <input type="text" inputmode="decimal" autocomplete="off" spellcheck="false"
     class="calc-input-value"
     data-prompt="${escapeHtml(node.name)}"
-    value="${escapeHtml(node.currentValue)}"
-    step="any" />
+    value="${escapeHtml(node.currentValue)}" />
   ${unitSuffix}
 </div>`;
 }
