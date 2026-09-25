@@ -14,6 +14,9 @@
  * referentieprogramma rekent toch met 15; in de norm-stand geldt 10, en
  * daarmee een lagere f_k en een hogere u.c.
  *
+ * Daarna de gevallen zonder referentieblad: steengroep 2 (β = 1,0),
+ * A_b/A_ef boven 0,45, de nevenvoorwaarden in het eindoordeel en trek.
+ *
  * Draaien:  node scripts/check-opleg-metselwerk.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
@@ -42,6 +45,52 @@ let fouten = 0;
 for (const ref of REFERENTIES) {
   const got = reken(tpl, { ...BASIS, ...ref.invoer }, PROJECT);
   fouten += toets(ref.blad, got, ref.verwacht);
+}
+
+// ── Buiten de referenties ─────────────────────────────────────────────────
+// De vergroting β geldt alleen voor steengroep 1 (§6.1.3(2)); groep 2 krijgt
+// β = 1,0 (§6.1.3(3)). Boven A_b/A_ef = 0,45 rekent het blad zonder
+// vergroting; in dat geval gaf het blad eerder β = 1,48 en "voldoet". Het
+// eindoordeel telt e ≤ t/4, de oplegging van 90 mm en h_c > 0 mee, en trek
+// keurt af.
+const GEVALLEN = [
+  { naam: "blad 1 met kalkzandsteen <55 % (groep 2)", ref: 0, invoer: { steensoort: "4" },
+    verwacht: { "β": "1.00", N_Rdc: "105.6", UC: "3.42" }, voldoet: false },
+  { naam: "blad 2 met baksteen <55 % (groep 2)", ref: 1, invoer: { steensoort: "2" },
+    verwacht: { "β": "1.00", N_Rdc: "44.82", UC: "1.14" }, voldoet: false },
+  { naam: "A_b/A_ef boven 0,45 — geen vergroting", ref: 0,
+    invoer: { a_L: "600", a_t: "150", h: "800", a_1: "1000" },
+    verwacht: { ratio_Ab: "0.49", "β": "1.00", UC: "1.02" }, voldoet: false },
+  { naam: "excentriciteit groter dan t/4", ref: 1, invoer: { exc: "60" },
+    verwacht: { UC: "0.76" }, voldoet: false },
+  { naam: "oplegging korter dan 90 mm", ref: 1, invoer: { a_t: "80", N_Edc: "30" },
+    verwacht: { opleg_min: "80", UC: "0.93" }, voldoet: false },
+  { naam: "keep even hoog als de wand (h_c = 0)", ref: 1, invoer: { h_k: "2800" },
+    verwacht: { h_c: "0", UC: "0.95" }, voldoet: false },
+  { naam: "trek op de oplegging", ref: 1, invoer: { N_Edc: "-50" },
+    verwacht: { N_Ed: "-48.9" }, uc: "∞", voldoet: false },
+  { naam: "blad 2 zelf voldoet", ref: 1, invoer: {}, verwacht: {}, voldoet: true },
+];
+
+/** De slotzin van het blad: "Maatgevende UC = … → Oplegging voldoet (niet)". */
+function slotzin(got) {
+  const i = got.text.lastIndexOf("Maatgevende UC");
+  return i < 0 ? "" : got.text.slice(i, i + 160);
+}
+
+for (const g of GEVALLEN) {
+  const got = reken(tpl, { ...BASIS, ...REFERENTIES[g.ref].invoer, ...g.invoer }, PROJECT);
+  fouten += toets(g.naam, got, g.verwacht);
+  const zin = slotzin(got);
+  if (g.uc !== undefined) {
+    const ok = zin.startsWith(`Maatgevende UC = ${g.uc}`);
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} slotzin   ${zin.slice(0, 60) || "(geen)"}   verwacht UC = ${g.uc}`);
+  }
+  const voldoet = !/voldoet niet/.test(zin) && /voldoet/.test(zin);
+  const ok = voldoet === g.voldoet;
+  if (!ok) fouten++;
+  console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel   ${voldoet ? "voldoet" : "voldoet niet"}`);
 }
 
 // ── Norm-stand ────────────────────────────────────────────────────────────
