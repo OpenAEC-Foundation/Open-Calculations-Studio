@@ -80,7 +80,7 @@ export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
 'dubbele varianten zijn twee stuks tegen elkaar.
 profielen = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19; 20; 21; 22; 23; 24; 25; 26; 27 |46; 46; 46; 46; 63; 63; 63; 63; 71; 71; 71; 71; 71; 71; 96; 96; 96; 96; 96; 38; 38; 38; 38; 38; 76; 76; 76 |96; 146; 171; 196; 146; 171; 196; 221; 146; 171; 196; 221; 246; 271; 171; 196; 221; 246; 271; 89; 140; 184; 235; 285; 184; 235; 285]
 'Materiaalmatrix: [id | f_m,k | f_v,k | E_mean | ρ_mean | γ_M]
-materialen = [1; 2; 3; 4; 5 |18; 24; 30; 24; 28 |3.4; 4.0; 4.0; 3.5; 3.5 |9000; 11000; 12000; 11500; 12600 |380; 420; 460; 420; 425 |1.30; 1.30; 1.30; 1.25; 1.25]
+materialen = [1; 2; 3; 4; 5 |18; 24; 30; 24; 28 |3.4; 4.0; 4.0; 3.5; 3.5 |9000; 11000; 12000; 11500; 12600 |380; 420; 460; 420; 460 |1.30; 1.30; 1.30; 1.25; 1.25]
 
 b_balk = hlookup(profielen; profiel; 1; 2)*mm
 h_balk = hlookup(profielen; profiel; 1; 3)*mm
@@ -479,51 +479,49 @@ s_schaal = 360/max(L_tot/(1 mm); 1)', ondergrens: bij het eerste renderen is de 
 sx1 = 60', eerste oplegging
 sx2 = sx1 + s_schaal*L_th/(1 mm)', tweede oplegging
 sx3 = sx1 + s_schaal*L_tot/(1 mm)', einde van de balk, of de derde oplegging
-sy = 96', hoogte van de balk-as
+sy = 124', hoogte van de balk-as
 smid = (sx1 + sx2)/2
 s_stap = (sx3 - sx1)/14', pijlafstand in de lastbanden
 #show
-'<svg viewbox="0 0 480 190" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:210px;">
-'  <!-- veranderlijke verdeelde last: eigen band met eigen basislijn -->
+'<svg viewbox="0 0 480 212" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:232px;">
+'  <!-- veranderlijke verdeelde last: bovenste band, met een regel eronder voor het label van de permanente last -->
 #if q_q,k > 0 kN/m
     #for i = 0 : 14
-    '  <line x1="'sx1 + i*s_stap'" y1="'sy - 76'" x2="'sx1 + i*s_stap'" y2="'sy - 62'" style="stroke:#B45309; stroke-width:0.9"/>
-    '  <polygon points="'sx1 + i*s_stap','sy - 58' 'sx1 + i*s_stap - 3.5','sy - 66' 'sx1 + i*s_stap + 3.5','sy - 66'" style="fill:#B45309"/>
+    '  <line x1="'sx1 + i*s_stap'" y1="'sy - 90'" x2="'sx1 + i*s_stap'" y2="'sy - 71'" style="stroke:#B45309; stroke-width:1.6"/>
+    '  <polygon points="'sx1 + i*s_stap','sy - 64' 'sx1 + i*s_stap - 3.6','sy - 72' 'sx1 + i*s_stap + 3.6','sy - 72'" style="fill:#B45309"/>
     #loop
-    '  <line x1="'sx1'" y1="'sy - 76'" x2="'sx3'" y2="'sy - 76'" style="stroke:#B45309; stroke-width:1"/>
-    '  <text x="'sx1 + 50'" y="'sy - 80'" style="fill:#B45309; font-weight:700">q<tspan baseline-shift="sub" font-size="8">q,k</tspan> = 'q_q,k' kN/m</text>
+    '  <line x1="'sx1'" y1="'sy - 90'" x2="'sx3'" y2="'sy - 90'" style="stroke:#B45309; stroke-width:2; stroke-linecap:round"/>
+    '  <text x="'sx1 + (sx3 - sx1)*0.68'" y="'sy - 95'" text-anchor="middle" style="fill:#B45309; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">q<tspan baseline-shift="sub" font-size="8">q,k</tspan> = 'q_q,k' kN/m · veranderlijk</text>
 #end if
 '  <!-- permanente verdeelde last: band direct op de balk -->
 #for i = 0 : 14
-'  <line x1="'sx1 + i*s_stap'" y1="'sy - 46'" x2="'sx1 + i*s_stap'" y2="'sy - 8'" style="stroke:#475569; stroke-width:0.9"/>
-'  <polygon points="'sx1 + i*s_stap','sy - 4' 'sx1 + i*s_stap - 3.5','sy - 12' 'sx1 + i*s_stap + 3.5','sy - 12'" style="fill:#475569"/>
+'  <line x1="'sx1 + i*s_stap'" y1="'sy - 44'" x2="'sx1 + i*s_stap'" y2="'sy - 14'" style="stroke:#475569; stroke-width:1.6"/>
+'  <polygon points="'sx1 + i*s_stap','sy - 6' 'sx1 + i*s_stap - 3.6','sy - 14' 'sx1 + i*s_stap + 3.6','sy - 14'" style="fill:#475569"/>
 #loop
-'  <line x1="'sx1'" y1="'sy - 46'" x2="'sx3'" y2="'sy - 46'" style="stroke:#475569; stroke-width:1"/>
-'  <text x="'sx1 + 50'" y="'sy - 50'" style="fill:#475569; font-weight:700">P<tspan baseline-shift="sub" font-size="8">g,k</tspan> = 'P_g,k' kN/m</text>
+'  <line x1="'sx1'" y1="'sy - 44'" x2="'sx3'" y2="'sy - 44'" style="stroke:#475569; stroke-width:2; stroke-linecap:round"/>
+'  <text x="'sx1 + (sx3 - sx1)*0.3'" y="'sy - 49'" text-anchor="middle" style="fill:#475569; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">P<tspan baseline-shift="sub" font-size="8">g,k</tspan> = 'P_g,k' kN/m · permanent</text>
 '  <!-- geconcentreerde veranderlijke last; de witte onderlaag houdt hem
 '       leesbaar waar hij door de twee lastbanden heen zakt -->
 #if F_Q,k > 0 kN
-    '  <line x1="'smid'" y1="'sy - 92'" x2="'smid'" y2="'sy - 12'" style="stroke:#ffffff; stroke-width:4"/>
-    '  <line x1="'smid'" y1="'sy - 92'" x2="'smid'" y2="'sy - 12'" style="stroke:#B91C1C; stroke-width:1.4"/>
-    '  <polygon points="'smid','sy - 7' 'smid - 5','sy - 18' 'smid + 5','sy - 18'" style="fill:#B91C1C"/>
-    '  <text x="'smid + 8'" y="'sy - 84'" style="fill:#B91C1C; font-weight:700">F<tspan baseline-shift="sub" font-size="8">Q,k</tspan> = 'F_Q,k' kN</text>
+    '  <line x1="'smid'" y1="'sy - 110'" x2="'smid'" y2="'sy - 15'" style="stroke:#ffffff; stroke-width:6"/>
+    '  <line x1="'smid'" y1="'sy - 110'" x2="'smid'" y2="'sy - 15'" style="stroke:#B91C1C; stroke-width:2.6"/>
+    '  <polygon points="'smid','sy - 6' 'smid - 5.5','sy - 17' 'smid + 5.5','sy - 17'" style="fill:#B91C1C"/>
+    '  <text x="'smid'" y="'sy - 115'" text-anchor="middle" style="fill:#B91C1C; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">F<tspan baseline-shift="sub" font-size="8">Q,k</tspan> = 'F_Q,k' kN</text>
 #end if
 '  <!-- de balk over zijn volle lengte -->
-'  <rect x="'sx1'" y="'sy - 6'" width="'sx3 - sx1'" height="12" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:0.9"/>
-'  <!-- eerste oplegging: scharnier -->
-'  <polygon points="'sx1','sy + 6' 'sx1 - 11','sy + 26' 'sx1 + 11','sy + 26'" style="fill:none; stroke:#374151; stroke-width:0.9"/>
-'  <line x1="'sx1 - 18'" y1="'sy + 27'" x2="'sx1 + 18'" y2="'sy + 27'" style="stroke:#374151; stroke-width:0.9"/>
-'  <!-- tweede oplegging: rol -->
-'  <polygon points="'sx2','sy + 6' 'sx2 - 11','sy + 22' 'sx2 + 11','sy + 22'" style="fill:none; stroke:#374151; stroke-width:0.9"/>
-'  <circle cx="'sx2 - 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
-'  <circle cx="'sx2 + 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
-'  <line x1="'sx2 - 18'" y1="'sy + 31'" x2="'sx2 + 18'" y2="'sy + 31'" style="stroke:#374151; stroke-width:0.9"/>
+'  <rect x="'sx1'" y="'sy - 6'" width="'sx3 - sx1'" height="12" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:1.2"/>
+'  <!-- opleggingen: scharnier, rol, en bij twee velden een tweede rol -->
+'  <polygon points="'sx1','sy + 6' 'sx1 - 8','sy + 6 + 15' 'sx1 + 8','sy + 6 + 15'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+'  <line x1="'sx1 - 12'" y1="'sy + 6 + 15'" x2="'sx1 + 12'" y2="'sy + 6 + 15'" style="stroke:#92400e; stroke-width:1.2"/>
+'  <polygon points="'sx2','sy + 6' 'sx2 - 8','sy + 6 + 12' 'sx2 + 8','sy + 6 + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+'  <circle cx="'sx2 - 3.6'" cy="'sy + 6 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+'  <circle cx="'sx2 + 3.6'" cy="'sy + 6 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+'  <line x1="'sx2 - 12'" y1="'sy + 6 + 17.6'" x2="'sx2 + 12'" y2="'sy + 6 + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
 #if schema ≡ 3
-    '  <!-- derde oplegging -->
-    '  <polygon points="'sx3','sy + 6' 'sx3 - 11','sy + 22' 'sx3 + 11','sy + 22'" style="fill:none; stroke:#374151; stroke-width:0.9"/>
-    '  <circle cx="'sx3 - 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
-    '  <circle cx="'sx3 + 6'" cy="'sy + 26'" r="4" style="fill:none; stroke:#374151; stroke-width:0.9"/>
-    '  <line x1="'sx3 - 18'" y1="'sy + 31'" x2="'sx3 + 18'" y2="'sy + 31'" style="stroke:#374151; stroke-width:0.9"/>
+    '  <polygon points="'sx3','sy + 6' 'sx3 - 8','sy + 6 + 12' 'sx3 + 8','sy + 6 + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+    '  <circle cx="'sx3 - 3.6'" cy="'sy + 6 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    '  <circle cx="'sx3 + 3.6'" cy="'sy + 6 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    '  <line x1="'sx3 - 12'" y1="'sy + 6 + 17.6'" x2="'sx3 + 12'" y2="'sy + 6 + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
 #end if
 '  <!-- maatlijn van het eerste veld -->
 '  <line x1="'sx1'" y1="'sy + 52'" x2="'sx2'" y2="'sy + 52'" style="stroke:#1E40AF; stroke-width:1"/>
@@ -614,28 +612,27 @@ s_stap = (sx3 - sx1)/14', pijlafstand in de lastbanden
     u_inst_s = uamp*w_inst/w_grootst_u
     u_fin_s = uamp*w_fin/w_grootst_u
     #show
-    '<svg viewbox="0 0 480 140" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:150px;">
-    '  <line x1="'ux1 - 8'" y1="'uas'" x2="'ux2 + 8'" y2="'uas'" style="stroke:#374151; stroke-width:0.8; stroke-dasharray:4 3"/>
-    #for i = 0 : 29
-    '  <line x1="'ux1 + (ux2 - ux1)*i/30'" y1="'uas + u_inst_s*uz(i*d_tot/30)/d_up'" x2="'ux1 + (ux2 - ux1)*(i + 1)/30'" y2="'uas + u_inst_s*uz((i + 1)*d_tot/30)/d_up'" style="stroke:#0EA5E9; stroke-width:1.1; stroke-dasharray:5 3"/>
-    '  <line x1="'ux1 + (ux2 - ux1)*i/30'" y1="'uas + u_fin_s*uz(i*d_tot/30)/d_up'" x2="'ux1 + (ux2 - ux1)*(i + 1)/30'" y2="'uas + u_fin_s*uz((i + 1)*d_tot/30)/d_up'" style="stroke:#0369A1; stroke-width:1.3"/>
+    '<svg viewbox="0 0 480 150" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:160px;">
+    '  <line x1="'ux1 - 8'" y1="'uas'" x2="'ux2 + 8'" y2="'uas'" style="stroke:#9ca3af; stroke-width:1; stroke-dasharray:4 4"/>
+    #for i = 0 : 39
+    '  <line x1="'ux1 + (ux2 - ux1)*i/40'" y1="'uas + u_inst_s*uz(i*d_tot/40)/d_up'" x2="'ux1 + (ux2 - ux1)*(i + 1)/40'" y2="'uas + u_inst_s*uz((i + 1)*d_tot/40)/d_up'" style="stroke:#93c5fd; stroke-width:1.6; stroke-dasharray:6 4"/>
+    '  <line x1="'ux1 + (ux2 - ux1)*i/40'" y1="'uas + u_fin_s*uz(i*d_tot/40)/d_up'" x2="'ux1 + (ux2 - ux1)*(i + 1)/40'" y2="'uas + u_fin_s*uz((i + 1)*d_tot/40)/d_up'" style="stroke:#2563eb; stroke-width:2.6; stroke-linecap:round"/>
     #loop
     '  <!-- opleggingen -->
-    '  <polygon points="'ux1','uas' 'ux1 - 7','uas + 14' 'ux1 + 7','uas + 14'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-    '  <line x1="'ux1 - 10'" y1="'uas + 14'" x2="'ux1 + 10'" y2="'uas + 14'" style="stroke:#6b7280; stroke-width:0.9"/>
-    '  <polygon points="'ux1 + (ux2 - ux1)*d_o2','uas' 'ux1 + (ux2 - ux1)*d_o2 - 7','uas + 11' 'ux1 + (ux2 - ux1)*d_o2 + 7','uas + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-    '  <circle cx="'ux1 + (ux2 - ux1)*d_o2 - 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-    '  <circle cx="'ux1 + (ux2 - ux1)*d_o2 + 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-    '  <line x1="'ux1 + (ux2 - ux1)*d_o2 - 10'" y1="'uas + 17'" x2="'ux1 + (ux2 - ux1)*d_o2 + 10'" y2="'uas + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+    '  <polygon points="'ux1','uas' 'ux1 - 8','uas + 15' 'ux1 + 8','uas + 15'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+    '  <line x1="'ux1 - 12'" y1="'uas + 15'" x2="'ux1 + 12'" y2="'uas + 15'" style="stroke:#92400e; stroke-width:1.2"/>
+    '  <polygon points="'ux1 + (ux2 - ux1)*d_o2','uas' 'ux1 + (ux2 - ux1)*d_o2 - 8','uas + 12' 'ux1 + (ux2 - ux1)*d_o2 + 8','uas + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+    '  <circle cx="'ux1 + (ux2 - ux1)*d_o2 - 3.6'" cy="'uas + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    '  <circle cx="'ux1 + (ux2 - ux1)*d_o2 + 3.6'" cy="'uas + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    '  <line x1="'ux1 + (ux2 - ux1)*d_o2 - 12'" y1="'uas + 17.6'" x2="'ux1 + (ux2 - ux1)*d_o2 + 12'" y2="'uas + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
     #if schema ≡ 3
-        '  <polygon points="'ux2','uas' 'ux2 - 7','uas + 11' 'ux2 + 7','uas + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-        '  <circle cx="'ux2 - 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-        '  <circle cx="'ux2 + 3.5'" cy="'uas + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-        '  <line x1="'ux2 - 10'" y1="'uas + 17'" x2="'ux2 + 10'" y2="'uas + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+        '  <polygon points="'ux2','uas' 'ux2 - 8','uas + 12' 'ux2 + 8','uas + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+        '  <circle cx="'ux2 - 3.6'" cy="'uas + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+        '  <circle cx="'ux2 + 3.6'" cy="'uas + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+        '  <line x1="'ux2 - 12'" y1="'uas + 17.6'" x2="'ux2 + 12'" y2="'uas + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
     #end if
-    '  <text x="'ux1 + 4'" y="'uas - 6'" style="fill:#374151; font-weight:700">onvervormd</text>
-    '  <text x="'ux1 + 8'" y="'uas + uamp + 24'" style="fill:#0369A1; font-weight:700">w<tspan baseline-shift="sub" font-size="8">fin</tspan> (6.16b + kruip) = 'w_fin' — grens 'w_lim'</text>
-    '  <text x="'ux1 + 8'" y="'uas + uamp + 38'" style="fill:#0EA5E9; font-weight:700">w<tspan baseline-shift="sub" font-size="8">inst</tspan> (6.14b) = 'w_inst'</text>
+    '  <text x="'ux1 + 8'" y="'uas + uamp + 30'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">w<tspan baseline-shift="sub" font-size="8">fin</tspan> (6.16b + kruip) = 'w_fin' mm — grens 'w_lim' mm</text>
+    '  <text x="'ux1 + 8'" y="'uas + uamp + 44'" style="fill:#60a5fa; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">w<tspan baseline-shift="sub" font-size="8">inst</tspan> (6.14b) = 'w_inst' mm, onderbroken lijn</text>
     '</svg>'
 #else
     'Doorbuiging wordt niet getoetst (Controleer doorbuiging = Nee).
@@ -740,51 +737,111 @@ V_z,Ed
 
 '<h6>10.1b Momenten- en dwarskrachtenlijn (UGT)</h6>
 
-'<i>Beide lijnen volgen het gekozen statische schema. Bij een overstek of een
-'tweede veld loopt het moment over de oplegging heen naar de andere kant — dat
-'is de trek aan de bóvenzijde die de doorsnede daar te verduren krijgt.</i>
+'<i>Beide lijnen horen bij de rekenwaarde van de lijnlast, K<sub>FI</sub>·(1,2·P<sub>g,k</sub> + 1,5·q<sub>q,k</sub>), en volgen het gekozen statische schema. Het moment staat aan de trekzijde: een veldmoment onder de as, een steunmoment erboven. Is de puntlast maatgevend, dan gelden de waarden M<sub>y,Ed</sub> en V<sub>z,Ed</sub> uit §10.1.</i>
 
 #hide
 mx1 = 60
 mx2 = 420
-mmid = (mx1 + mx2)/2
-'De M-lijn hangt onder zijn as maar kan er bij een steunmoment ook bovenuit
-'komen; de V-lijn steekt naar twee kanten. Vandaar ruime tussenruimte.
-mh = 38', halve hoogte van elk diagram in pixels
-my = 60', as van de M-lijn
-vy2 = 195', as van de V-lijn
+q_Ed,l = K_FI*(1.2*P_g,k + 1.5*q_q,k)
+'Kenmerkende plaatsen: de veldmomenten, het steunmoment en de dwarskracht vlak naast de opleggingen.
+x_m1 = max(0; min(d_RA; d_L))
+x_m2 = if(d_L2 > 0; d_tot - max(0; d_RC); d_L)
+M_e1 = q_Ed,l*mz(x_m1)*mm^2 to kN*m
+M_e2 = q_Ed,l*mz(x_m2)*mm^2 to kN*m
+M_es = q_Ed,l*mz(d_L)*mm^2 to kN*m
+V_e0 = q_Ed,l*vz(0)*mm to kN
+V_eL = q_Ed,l*vz(d_L)*mm to kN
+V_eR = q_Ed,l*vz(d_L*(1 + 10^-9))*mm to kN
+V_eE = q_Ed,l*vz(d_tot*(1 - 10^-9))*mm to kN
+'Schaal: het positieve en het negatieve deel van elke lijn passen samen in 80 px.
+mpos = max(if(d_RA > 0; d_RA^2/2; 0); if(d_RC > 0; d_RC^2/2; 0); 0.001)
+m_s = 80/max(mpos + d_Ms; 0.001)
+my = 50 + d_Ms*m_s', as van de M-lijn'
+vpos = max(d_RA; if(schema ≡ 2; d_a; 0); if(schema ≡ 3; d_L2 - d_RC; 0); 0.001)
+vneg = max(d_L - d_RA; if(schema ≡ 3; d_RC; 0); -d_RA; 0)
+v_s = 80/max(vpos + vneg; 0.001)
+vy2 = my + mpos*m_s + 76 + vpos*v_s', as van de V-lijn'
+svg_mv = vy2 + vneg*v_s + 40
+mX(x) = mx1 + (mx2 - mx1)*x/d_tot
+mY(x) = my + m_s*mz(x)
+vY(x) = vy2 - v_s*vz(x)
+'Bemonstering per veld, zodat de sprong in de dwarskracht precies op de oplegging valt.
+xa(i) = d_L*i/30
+xb(i) = d_L + (d_tot - d_L)*max(i; 0.0001)/30
+twee = bool(d_tot > d_L*1.0001)
 #show
-'<svg viewbox="0 0 480 250" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:260px;">
-'  <!-- M-lijn -->
-'  <line x1="'mx1 - 10'" y1="'my'" x2="'mx2 + 10'" y2="'my'" style="stroke:#374151; stroke-width:1"/>
+'<svg viewbox="0 0 480 'svg_mv'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'svg_mv + 10'px;">
+'  <!-- M-lijn: gevuld vlak aan de trekzijde -->
 #for i = 0 : 29
-'  <line x1="'mx1 + (mx2 - mx1)*i/30'" y1="'my + mh*mz(i*d_tot/30)/d_Mp'" x2="'mx1 + (mx2 - mx1)*(i + 1)/30'" y2="'my + mh*mz((i + 1)*d_tot/30)/d_Mp'" style="stroke:#1E40AF; stroke-width:1.3"/>
+'  <polygon points="'mX(xa(i))','my' 'mX(xa(i))','mY(xa(i))' 'mX(xa(i + 1))','mY(xa(i + 1))' 'mX(xa(i + 1))','my'" style="fill:rgba(239,68,68,0.22); stroke:none"/>
+'  <line x1="'mX(xa(i))'" y1="'mY(xa(i))'" x2="'mX(xa(i + 1))'" y2="'mY(xa(i + 1))'" style="stroke:#dc2626; stroke-width:2; stroke-linecap:round"/>
 #loop
-'  <text x="'mx1 - 10'" y="'my - 8'" style="fill:#374151; font-weight:700">M-lijn</text>
-'  <text x="'mmid'" y="'my + mh + 16'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">M<tspan baseline-shift="sub" font-size="8">y,Ed</tspan> = 'M_y,Ed'</text>
-'  <!-- V-lijn -->
-'  <line x1="'mx1 - 10'" y1="'vy2'" x2="'mx2 + 10'" y2="'vy2'" style="stroke:#374151; stroke-width:1"/>
-#for i = 0 : 29
-'  <line x1="'mx1 + (mx2 - mx1)*i/30'" y1="'vy2 - mh*vz(i*d_tot/30)/d_Vp'" x2="'mx1 + (mx2 - mx1)*(i + 1)/30'" y2="'vy2 - mh*vz((i + 1)*d_tot/30)/d_Vp'" style="stroke:#15803D; stroke-width:1.3"/>
-#loop
-'  <text x="'mx1 - 10'" y="'vy2 - 8'" style="fill:#374151; font-weight:700">V-lijn</text>
-'  <text x="'mx1 + 4'" y="'vy2 - mh - 6'" style="fill:#15803D; font-weight:700">+V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan> = 'V_z,Ed'</text>
-'  <!-- opleggingen onder beide assen -->
-#for j = 0 : 1
-'  <polygon points="'mx1','my + j*(vy2 - my)' 'mx1 - 7','my + j*(vy2 - my) + 14' 'mx1 + 7','my + j*(vy2 - my) + 14'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-'  <line x1="'mx1 - 10'" y1="'my + j*(vy2 - my) + 14'" x2="'mx1 + 10'" y2="'my + j*(vy2 - my) + 14'" style="stroke:#6b7280; stroke-width:0.9"/>
-'  <polygon points="'mx1 + (mx2 - mx1)*d_o2','my + j*(vy2 - my)' 'mx1 + (mx2 - mx1)*d_o2 - 7','my + j*(vy2 - my) + 11' 'mx1 + (mx2 - mx1)*d_o2 + 7','my + j*(vy2 - my) + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-'  <circle cx="'mx1 + (mx2 - mx1)*d_o2 - 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-'  <circle cx="'mx1 + (mx2 - mx1)*d_o2 + 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-'  <line x1="'mx1 + (mx2 - mx1)*d_o2 - 10'" y1="'my + j*(vy2 - my) + 17'" x2="'mx1 + (mx2 - mx1)*d_o2 + 10'" y2="'my + j*(vy2 - my) + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
-#loop
-#if schema ≡ 3
-    #for j = 0 : 1
-    '  <polygon points="'mx2','my + j*(vy2 - my)' 'mx2 - 7','my + j*(vy2 - my) + 11' 'mx2 + 7','my + j*(vy2 - my) + 11'" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-    '  <circle cx="'mx2 - 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-    '  <circle cx="'mx2 + 3.5'" cy="'my + j*(vy2 - my) + 14'" r="2.4" style="fill:none; stroke:#6b7280; stroke-width:0.9"/>
-    '  <line x1="'mx2 - 10'" y1="'my + j*(vy2 - my) + 17'" x2="'mx2 + 10'" y2="'my + j*(vy2 - my) + 17'" style="stroke:#6b7280; stroke-width:0.9"/>
+#if twee ≡ 1
+    #for i = 0 : 29
+    '  <polygon points="'mX(xb(i))','my' 'mX(xb(i))','mY(xb(i))' 'mX(xb(i + 1))','mY(xb(i + 1))' 'mX(xb(i + 1))','my'" style="fill:rgba(239,68,68,0.22); stroke:none"/>
+    '  <line x1="'mX(xb(i))'" y1="'mY(xb(i))'" x2="'mX(xb(i + 1))'" y2="'mY(xb(i + 1))'" style="stroke:#dc2626; stroke-width:2; stroke-linecap:round"/>
     #loop
+#end if
+'  <line x1="'mx1 - 10'" y1="'my'" x2="'mx2 + 10'" y2="'my'" style="stroke:#374151; stroke-width:1.4"/>
+'  <text x="'mx1 - 10'" y="'my - d_Ms*m_s - 30'" style="fill:#dc2626; font-weight:700">M-lijn</text>
+'  <text x="'mx2 + 10'" y="'my - d_Ms*m_s - 30'" text-anchor="end" style="fill:#374151">M<tspan baseline-shift="sub" font-size="8">y,Ed</tspan> = 'M_y,Ed' kNm (maatgevend)</text>
+'  <circle cx="'mX(x_m1)'" cy="'mY(x_m1)'" r="2.4" style="fill:#dc2626"/>
+'  <text x="'mX(x_m1)'" y="'mY(x_m1) + 15'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'M_e1' kNm</text>
+#if schema ≡ 3
+    '  <circle cx="'mX(x_m2)'" cy="'mY(x_m2)'" r="2.4" style="fill:#dc2626"/>
+    '  <text x="'mX(x_m2)'" y="'mY(x_m2) + 15'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'M_e2' kNm</text>
+#end if
+#if twee ≡ 1
+    '  <circle cx="'mX(d_L)'" cy="'mY(d_L)'" r="2.4" style="fill:#dc2626"/>
+    '  <text x="'mX(d_L)'" y="'mY(d_L) - 8'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'M_es' kNm</text>
+#end if
+'  <!-- V-lijn: gevuld vlak met arcering -->
+#for i = 0 : 29
+'  <polygon points="'mX(xa(i))','vy2' 'mX(xa(i))','vY(xa(i))' 'mX(xa(i + 1))','vY(xa(i + 1))' 'mX(xa(i + 1))','vy2'" style="fill:rgba(59,130,246,0.20); stroke:none"/>
+'  <line x1="'mX(xa(i))'" y1="'vy2'" x2="'mX(xa(i))'" y2="'vY(xa(i))'" style="stroke:#2563eb; stroke-width:0.6; opacity:0.7"/>
+'  <line x1="'mX(xa(i))'" y1="'vY(xa(i))'" x2="'mX(xa(i + 1))'" y2="'vY(xa(i + 1))'" style="stroke:#2563eb; stroke-width:2; stroke-linecap:round"/>
+#loop
+#if twee ≡ 1
+    #for i = 0 : 29
+    '  <polygon points="'mX(xb(i))','vy2' 'mX(xb(i))','vY(xb(i))' 'mX(xb(i + 1))','vY(xb(i + 1))' 'mX(xb(i + 1))','vy2'" style="fill:rgba(59,130,246,0.20); stroke:none"/>
+    '  <line x1="'mX(xb(i))'" y1="'vy2'" x2="'mX(xb(i))'" y2="'vY(xb(i))'" style="stroke:#2563eb; stroke-width:0.6; opacity:0.7"/>
+    '  <line x1="'mX(xb(i))'" y1="'vY(xb(i))'" x2="'mX(xb(i + 1))'" y2="'vY(xb(i + 1))'" style="stroke:#2563eb; stroke-width:2; stroke-linecap:round"/>
+    #loop
+    '  <line x1="'mX(d_L)'" y1="'vY(d_L)'" x2="'mX(d_L)'" y2="'vY(xb(0))'" style="stroke:#2563eb; stroke-width:2"/>
+#end if
+'  <line x1="'mx1 - 10'" y1="'vy2'" x2="'mx2 + 10'" y2="'vy2'" style="stroke:#374151; stroke-width:1.4"/>
+'  <text x="'mx1 - 10'" y="'vy2 - vpos*v_s - 30'" style="fill:#2563eb; font-weight:700">V-lijn</text>
+'  <text x="'mx2 + 10'" y="'vy2 - vpos*v_s - 30'" text-anchor="end" style="fill:#374151">V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan> = 'V_z,Ed' kN (maatgevend)</text>
+'  <text x="'mX(0) + 5'" y="'vY(0) + if(V_e0 < 0 kN; 15; -7)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'V_e0' kN</text>
+'  <text x="'mX(d_L) - 5'" y="'vY(d_L) + if(V_eL < 0 kN; 15; -7)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'V_eL' kN</text>
+#if twee ≡ 1
+    '  <text x="'mX(d_L) + 5'" y="'vY(xb(0)) + if(V_eR < 0 kN; 15; -7)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'V_eR' kN</text>
+#end if
+#if schema ≡ 3
+    '  <text x="'mX(d_tot) - 5'" y="'vY(d_tot*(1 - 10^-9)) + if(V_eE < 0 kN; 15; -7)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'V_eE' kN</text>
+#end if
+'  <!-- opleggingen onder beide assen -->
+'  <polygon points="'mx1','my' 'mx1 - 8','my + 15' 'mx1 + 8','my + 15'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+'  <line x1="'mx1 - 12'" y1="'my + 15'" x2="'mx1 + 12'" y2="'my + 15'" style="stroke:#92400e; stroke-width:1.2"/>
+'  <polygon points="'mX(d_L)','my' 'mX(d_L) - 8','my + 12' 'mX(d_L) + 8','my + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+'  <circle cx="'mX(d_L) - 3.6'" cy="'my + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+'  <circle cx="'mX(d_L) + 3.6'" cy="'my + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+'  <line x1="'mX(d_L) - 12'" y1="'my + 17.6'" x2="'mX(d_L) + 12'" y2="'my + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
+'  <polygon points="'mx1','vy2' 'mx1 - 8','vy2 + 15' 'mx1 + 8','vy2 + 15'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+'  <line x1="'mx1 - 12'" y1="'vy2 + 15'" x2="'mx1 + 12'" y2="'vy2 + 15'" style="stroke:#92400e; stroke-width:1.2"/>
+'  <polygon points="'mX(d_L)','vy2' 'mX(d_L) - 8','vy2 + 12' 'mX(d_L) + 8','vy2 + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+'  <circle cx="'mX(d_L) - 3.6'" cy="'vy2 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+'  <circle cx="'mX(d_L) + 3.6'" cy="'vy2 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+'  <line x1="'mX(d_L) - 12'" y1="'vy2 + 17.6'" x2="'mX(d_L) + 12'" y2="'vy2 + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
+#if schema ≡ 3
+    '  <polygon points="'mx2','my' 'mx2 - 8','my + 12' 'mx2 + 8','my + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+    '  <circle cx="'mx2 - 3.6'" cy="'my + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    '  <circle cx="'mx2 + 3.6'" cy="'my + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    '  <line x1="'mx2 - 12'" y1="'my + 17.6'" x2="'mx2 + 12'" y2="'my + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
+    '  <polygon points="'mx2','vy2' 'mx2 - 8','vy2 + 12' 'mx2 + 8','vy2 + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
+    '  <circle cx="'mx2 - 3.6'" cy="'vy2 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    '  <circle cx="'mx2 + 3.6'" cy="'vy2 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    '  <line x1="'mx2 - 12'" y1="'vy2 + 17.6'" x2="'mx2 + 12'" y2="'vy2 + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
 #end if
 '</svg>'
 
