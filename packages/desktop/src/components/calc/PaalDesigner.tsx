@@ -17,6 +17,11 @@ import "./VoetplaatDesigner.css";
  *
  * De sonderingen zelf staan als tekst in de invoer van het blad
  * (`sondering_1` … `sondering_6`), zodat ze met het project worden opgeslagen.
+ *
+ * Zonder GEF tekent het beeld rechts de gemiddelden die in het blad staan, als
+ * getrapt profiel per sondering: III van 8·D_eq boven de punt naar de punt,
+ * dan I omlaag tot 4·D_eq en II terug omhoog — de volgorde van Koppejan — en
+ * de schachtwaarde q_cs als stippellijn over ΔL.
  */
 const MARKER = "Paaldraagvermogen — NEN 9997-1 art. 7.6.2.3";
 const MAX_S = 6;
@@ -101,6 +106,15 @@ export default function PaalDesigner() {
   const sonderingen = Array.from({ length: MAX_S }, (_, i) => leesSondering(waarden[`sondering_${i + 1}`]));
   const geladen = sonderingen.filter((s): s is Sondering => s !== null);
   const avegaar = paaltype === 5;
+  // Zonder GEF: de gemiddelden die in het blad zijn ingevuld, per sondering.
+  const handmatig = geladen.length === 0;
+  const gemiddelden = Array.from({ length: nS }, (_, i) => {
+    const j = i + 1;
+    return {
+      qcI: Math.max(0, d(`q_cI_${j}`)), qcII: Math.max(0, d(`q_cII_${j}`)), qcIII: Math.max(0, d(`q_cIII_${j}`)),
+      qcs: Math.max(0, d(`q_cs_${j}`)), dl: Math.max(0, d(`ΔL_${j}`)),
+    };
+  });
   const uitkomsten = sonderingen.map((s, i) => {
     if (!s) return null;
     const kop = koppejan(s, zPunt, Deq, avegaar);
@@ -158,13 +172,15 @@ export default function PaalDesigner() {
   const mT = 26, mB = 26;
   const sch = (H - mT - mB) / Math.max(zTop - zBot, 1);
   const Y = (z: number) => mT + (zTop - z) * sch;
-  // links de grond en de paal, rechts de sonderingen
-  const splits = geladen.length ? Math.round(W * 0.46) : W;
+  // links de grond en de paal, rechts de sonderingen of hun ingevulde gemiddelden
+  const splits = Math.round(W * 0.46);
   const gx0 = 48, gx1 = splits - 18;
   const px = (gx0 + gx1) / 2 + 10;
   const pw = clamp(Deq * sch * 1.4, 8, 36);
   const qx0 = splits + 30, qx1 = W - 14;
-  const qMax = Math.max(20, ...geladen.flatMap((s) => s.qc.filter((_, i) => s.z[i] <= zTop && s.z[i] >= zBot))) * 1.05;
+  const qMax = handmatig
+    ? Math.max(20, ...gemiddelden.flatMap((g) => [g.qcI, g.qcII, g.qcIII, g.qcs])) * 1.05
+    : Math.max(20, ...geladen.flatMap((s) => s.qc.filter((_, i) => s.z[i] <= zTop && s.z[i] >= zBot))) * 1.05;
   const QX = (q: number) => qx0 + ((qx1 - qx0) * Math.min(q, qMax)) / qMax;
 
   const lagenZ = lagen.reduce<{ j: number; top: number; bot: number; phi: number }[]>((acc, l) => {
@@ -236,8 +252,17 @@ export default function PaalDesigner() {
             </>
           )}
           {melding && <p className="vd-ontwerp-melding">{melding}</p>}
-          {geladen.length === 0 && (
-            <span className="gd-note">Zonder GEF-bestand vul je de gemiddelde conusweerstanden per sondering zelf in het rekenblad in.</span>
+          {handmatig && (
+            <>
+              <span className="gd-note">Zonder GEF-bestand vul je de gemiddelde conusweerstanden per sondering zelf in het rekenblad in. De tekening toont die gemiddelden.</span>
+              <span className="gd-note">
+                {gemiddelden.map((g, i) => (
+                  <span key={i} style={{ display: "block", color: KLEUREN[i] }}>
+                    {i + 1}. I {fmt(g.qcI, 1)} · II {fmt(g.qcII, 1)} · III {fmt(g.qcIII, 1)} · schacht {fmt(g.qcs, 1)} MPa over {fmt(g.dl, 1)} m
+                  </span>
+                ))}
+              </span>
+            </>
           )}
         </div>
 
@@ -298,6 +323,42 @@ export default function PaalDesigner() {
                       <polyline key={i} fill="none" stroke={KLEUREN[i]} strokeWidth={1.2}
                         points={s.z.map((z, k) => (z <= zTop && z >= zBot ? `${QX(s.qc[k])},${Y(z)}` : null)).filter(Boolean).join(" ")} />
                     ))}
+                    <line x1={qx0} y1={mT} x2={qx0} y2={H - mB} stroke="#374151" strokeWidth={1} />
+                  </g>
+                )}
+
+                {/* zonder GEF: de ingevulde gemiddelden als getrapt profiel */}
+                {handmatig && (
+                  <g>
+                    {[0, 5, 10, 15, 20, 25, 30].filter((q) => q <= qMax).map((q) => (
+                      <g key={q}>
+                        <line x1={QX(q)} y1={mT} x2={QX(q)} y2={H - mB} stroke="#e5e7eb" strokeWidth={0.8} />
+                        <text x={QX(q)} y={mT - 6} textAnchor="middle" fontSize={9} fill="#6b7280">{q}</text>
+                      </g>
+                    ))}
+                    <text x={qx1} y={H - 8} textAnchor="end" fontSize={9} fill="#6b7280">q<tspan baselineShift="sub" fontSize={7}>c</tspan> (MPa), ingevulde gemiddelden</text>
+                    <rect x={qx0} y={Y(zPunt)} width={qx1 - qx0} height={Y(zPunt - 4 * Deq) - Y(zPunt)} fill="#fca5a5" opacity={0.18} />
+                    <rect x={qx0} y={Y(zPunt + 8 * Deq)} width={qx1 - qx0} height={Y(zPunt) - Y(zPunt + 8 * Deq)} fill="#93c5fd" opacity={0.18} />
+                    <line x1={qx0} y1={Y(zPunt)} x2={qx1} y2={Y(zPunt)} stroke="#334155" strokeWidth={1} strokeDasharray="6 3" />
+                    {gemiddelden.map((g, i) => {
+                      const kleur = KLEUREN[i];
+                      // Een kleine verschuiving per sondering houdt gelijke waarden uit elkaar.
+                      const dx = (i - (nS - 1) / 2) * 2;
+                      const x = (q: number) => QX(q) + dx;
+                      const yIII = Y(zPunt + 8 * Deq), yP = Y(zPunt), yI = Y(zPunt - 4 * Deq);
+                      return (
+                        <g key={i}>
+                          <polyline fill="none" stroke={kleur} strokeWidth={1.6}
+                            points={`${x(g.qcIII)},${yIII} ${x(g.qcIII)},${yP} ${x(g.qcI)},${yP} ${x(g.qcI)},${yI} ${x(g.qcII)},${yI} ${x(g.qcII)},${yP}`} />
+                          {g.dl > 0 && (
+                            <line x1={x(g.qcs)} y1={yP} x2={x(g.qcs)} y2={Y(zPunt + g.dl)} stroke={kleur} strokeWidth={1.4} strokeDasharray="2 3" />
+                          )}
+                        </g>
+                      );
+                    })}
+                    <text x={qx0 + 4} y={(Y(zPunt) + Y(zPunt - 4 * Deq)) / 2 + 3} fontSize={9} fill="#b91c1c">I, II</text>
+                    <text x={qx0 + 4} y={(Y(zPunt) + Y(zPunt + 8 * Deq)) / 2 + 3} fontSize={9} fill="#2563eb">III</text>
+                    <text x={qx0 + 4} y={Y(zPunt + Math.max(...gemiddelden.map((g) => g.dl), 8 * Deq)) - 4} fontSize={9} fill="#6b7280">q<tspan baselineShift="sub" fontSize={7}>cs</tspan> over ΔL (stippel)</text>
                     <line x1={qx0} y1={mT} x2={qx0} y2={H - mB} stroke="#374151" strokeWidth={1} />
                   </g>
                 )}
