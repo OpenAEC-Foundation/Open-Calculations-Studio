@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
-import { useProjectCC, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useProjectCC, useProjectGetal, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
@@ -39,20 +39,18 @@ const RANDEN: { v: number; label: string }[] = [
 // Het percentage is het holtepercentage → steengroep (≤25 % = groep 1, hoger =
 // groep 2), dat de factor K bepaalt. `kwal` bepaalt hoe de sterkteklasse van de
 // steen wordt aangeduid: f_b-waarden, CS-klassen of G-klassen.
-// f_k = K·f_b^α·f_m^β. Metselmortel heeft altijd α = 0,65 en β = 0,25; bij
-// lijmmortel verschillen K, α en β per steensoort. Tegen een referentie
-// geverifieerd: kalkzandsteen<25%+metselmortel, baksteen<25%+lijmmortel
-// (K=0,8 α=0,75 β=0,1) en cellenbeton<25%+lijmmortel (K=0,8 α=0,85 β=0). De
-// overige lijmmortel-cellen volgen dat patroon (klei → 0,75/0,10, overig →
-// 0,85/0) en zijn NIET geverifieerd.
+// f_k = K·f_b^α·f_m^β met K, α en β uit tabel NB-2. Metselmortel heeft altijd
+// α = 0,65 en β = 0,25; bij lijmmortel verschillen K, α en β per steensoort.
+// Tegen een referentie getoetst: kalkzandsteen<25%+metselmortel,
+// baksteen<25%+lijmmortel en cellenbeton<25%+lijmmortel.
 interface Steen { name: string; Km: number; Kl: number; al: number; bl: number; kwal: "fb" | "CS" | "G" }
 const STENEN: Record<number, Steen> = {
   1: { name: "Baksteen <25%", Km: 0.6, Kl: 0.80, al: 0.75, bl: 0.10, kwal: "fb" },
-  2: { name: "Baksteen <55%", Km: 0.5, Kl: 0.70, al: 0.75, bl: 0.10, kwal: "fb" },
+  2: { name: "Baksteen <55%", Km: 0.5, Kl: 0.70, al: 0.70, bl: 0, kwal: "fb" },
   3: { name: "Kalkzandsteen <25%", Km: 0.6, Kl: 0.80, al: 0.85, bl: 0, kwal: "CS" },
-  4: { name: "Kalkzandsteen <55%", Km: 0.5, Kl: 0.70, al: 0.85, bl: 0, kwal: "CS" },
+  4: { name: "Kalkzandsteen <55%", Km: 0.5, Kl: 0.65, al: 0.85, bl: 0, kwal: "CS" },
   5: { name: "Betonsteen <25%", Km: 0.6, Kl: 0.80, al: 0.85, bl: 0, kwal: "fb" },
-  6: { name: "Betonsteen <60%", Km: 0.5, Kl: 0.70, al: 0.85, bl: 0, kwal: "fb" },
+  6: { name: "Betonsteen <60%", Km: 0.5, Kl: 0.65, al: 0.85, bl: 0, kwal: "fb" },
   7: { name: "Cellenbeton <25%", Km: 0.6, Kl: 0.80, al: 0.85, bl: 0, kwal: "G" },
 };
 const MORTELTYPE: { v: number; label: string }[] = [
@@ -84,7 +82,7 @@ const DEFAULTS: Record<string, number> = {
 };
 
 const LAMBDA_MAX = 27; // §5.5.1.4 — grens slankheid ongewapende wand
-const K_E = 700;       // E = 700·f_k (NB:2018), teruggerekend uit de referenties
+const K_E = 700;       // E = 700·f_k (NB bij 3.7.2(2))
 
 export default function MetselwerkwandDesigner() {
   // Invoer hoort bij het exemplaar dat openstaat: twee bladen van dezelfde
@@ -154,6 +152,8 @@ export default function MetselwerkwandDesigner() {
   const cat = CATEGORIE.find((c) => c.v === catId) ?? CATEGORIE[0];
   // Gevolgklasse komt van het project, niet van dit blad.
   const cc = useProjectCC();
+  // Zelfde tak als het blad bij de grens f_m ≤ 2·f_b (register punt 14).
+  const refStand = Math.round(useProjectGetal("rekenwijze", 1)) === 1;
   const morteltype = Math.round(d("morteltype"));
   const isLijm = morteltype === 2;
   const fb = d("f_b"), fmRaw = d("f_m"), phiInf = d("phi_inf");
@@ -165,7 +165,11 @@ export default function MetselwerkwandDesigner() {
   const alpha = isLijm ? steen.al : 0.65;
   const betaExp = isLijm ? steen.bl : 0.25;
   const K = isLijm ? steen.Kl : steen.Km;
-  const f_k = K * fb ** alpha * Math.min(fmRaw, 20) ** betaExp;
+  // NB bij 3.6.1.2: f_b ≤ 75 (metselmortel) of 50 (lijmmortel); f_m ≤ 20 en bij
+  // metselmortel in de norm-stand ook ≤ 2·f_b.
+  const fbEff = Math.min(fb, isLijm ? 50 : 75);
+  const fmEff = Math.min(fmRaw, 20, !isLijm && !refStand ? 2 * fbEff : 20);
+  const f_k = K * fbEff ** alpha * fmEff ** betaExp;
   const f_d = f_k / gammaM;
   const E_mw = K_E * f_k;
 
@@ -220,7 +224,9 @@ export default function MetselwerkwandDesigner() {
   const Phi_ib = 1 - (2 * e_ib) / t_w;
 
   const e_m = ecc(M_m + (dM_t + dM_b) / 2) + e_init;
-  const e_k = 0.002 * phiInf * (h_ef / t_ef) * Math.sqrt(t_w * e_m);
+  // Nul zolang λ ≤ λ_c = 27 (NB bij 6.1.2.2(2)).
+  const kruip = (lam: number, em: number) => (lam <= LAMBDA_MAX ? 0 : 0.002 * phiInf * lam * Math.sqrt(t_w * em));
+  const e_k = kruip(h_ef / t_ef, e_m);
   const e_mk = Math.max(e_m + e_k, 0.05 * t_ef);
   /** Φ volgens bijlage G (G.1)-(G.4). */
   const phiG = (hef: number, emk: number) => {
@@ -240,12 +246,12 @@ export default function MetselwerkwandDesigner() {
   const e_m2 = Math.max(10, h_ef2 / 300);
   const minExc = UC_1 <= 1.0;
   const lambda2 = h_ef2 / t_ef;
-  const e_mk2 = Math.max(e_m2 + e_k, 0.05 * t_w);
+  const e_mk2 = Math.max(e_m2 + kruip(lambda2, e_m2), 0.05 * t_w);
   const Phi_m2 = phiG(h_ef2, e_mk2);
   const N_Rdm2 = NRd(Phi_m2);
   const UC_2 = minExc && N_Rdm2 > 0 ? N_Ed_max / N_Rdm2 : 0;
   const UC_lam2 = minExc ? lambda2 / LAMBDA_MAX : 0;
-  void e_m2;
+
 
   const UC_max = Math.max(UC_lam, UC_lam2, UC_1, UC_2);
   const ok = UC_max <= 1.0;
@@ -429,7 +435,7 @@ export default function MetselwerkwandDesigner() {
               {(isLijm ? VOEG_LIJM : VOEG_METSEL).map((v) => <option key={v} value={v}>{(isLijm ? "L" : "M") + v}</option>)}
             </select>
           </label>
-          <label title="Eindkruipgetal voor e_k (6.7) — NB:2018 geeft 0">Eindkruipgetal φ<sub>∞</sub>
+          <label title="Eindkruipcoëfficiënt voor e_k (6.7), tabel NB-3 — telt pas mee boven λ_c = 27 (NB bij 6.1.2.2(2))">Eindkruipgetal φ<sub>∞</sub>
             <input type="number" step={0.1} value={phiInf} onChange={(e) => setVal("phi_inf", parseFloat(e.target.value))} />
           </label>
 

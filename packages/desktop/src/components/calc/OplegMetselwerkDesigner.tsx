@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
-import { useProjectCC, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useProjectCC, useProjectGetal, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
@@ -21,22 +21,19 @@ const MARKER = "Oplegging op metselwerk";
 // Het percentage is het holtepercentage → steengroep (≤25 % = groep 1, hoger =
 // groep 2), dat de factor K bepaalt (tabel 3.3 NB). `kwal` bepaalt hoe de
 // sterkteklasse van de steen wordt aangeduid: f_b-waarden, CS-klassen of G-klassen.
-// K/α/β voor f_k = K·f_b^α·f_m^β (EN 1996-1-1 form. 3.2 + NB). `verified` = de
-// waarden zijn afgeleid uit de referentie-referentieberekening (document1.pdf);
-// de overige rijen zijn nog te bevestigen met de NB:2018-tabel (zie noot).
-interface Steen { name: string; Km: number; Kl: number; kwal: "fb" | "CS" | "G"; verM?: boolean; verL?: boolean }
-// f_k = K·f_b^α·f_m^β. Uit de de referentie-uitwerking-referenties:
-//  • Metselmortel (M-klasse): α=0,65 · β=0,25 · Km = 0,6 (groep 1 <25%) / 0,5 (groep 2).
-//  • Lijmmortel   (L-klasse): α=0,85 · β=0   · Kl per steensoort (EN-tabel).
-// verM/verL = 1-op-1 gecheckt tegen een PDF; overige waarden volgen het patroon/EN.
+// K/α/β voor f_k = K·f_b^α·f_m^β volgens tabel NB-2 (NEN-EN 1996-1-1 NB:2018).
+// Metselmortel: α = 0,65 · β = 0,25 · Km = 0,6 (groep 1) / 0,5 (groep 2).
+// Lijmmortel: Kl, al en bl per steensoort.
+// verM/verL = tegen een referentieberekening gecheckt.
+interface Steen { name: string; Km: number; Kl: number; al: number; bl: number; kwal: "fb" | "CS" | "G"; verM?: boolean; verL?: boolean }
 const STENEN: Record<number, Steen> = {
-  1: { name: "Baksteen <25%", Km: 0.6, Kl: 0.75, kwal: "fb" },
-  2: { name: "Baksteen <55%", Km: 0.5, Kl: 0.70, kwal: "fb", verM: true },
-  3: { name: "Kalkzandsteen <25%", Km: 0.6, Kl: 0.80, kwal: "CS", verM: true },
-  4: { name: "Kalkzandsteen <55%", Km: 0.5, Kl: 0.70, kwal: "CS" },
-  5: { name: "Betonsteen <25%", Km: 0.6, Kl: 0.80, kwal: "fb" },
-  6: { name: "Betonsteen <60%", Km: 0.5, Kl: 0.70, kwal: "fb" },
-  7: { name: "Cellenbeton <25%", Km: 0.6, Kl: 0.80, kwal: "G", verM: true, verL: true },
+  1: { name: "Baksteen <25%", Km: 0.6, Kl: 0.80, al: 0.75, bl: 0.10, kwal: "fb" },
+  2: { name: "Baksteen <55%", Km: 0.5, Kl: 0.70, al: 0.70, bl: 0, kwal: "fb", verM: true },
+  3: { name: "Kalkzandsteen <25%", Km: 0.6, Kl: 0.80, al: 0.85, bl: 0, kwal: "CS", verM: true },
+  4: { name: "Kalkzandsteen <55%", Km: 0.5, Kl: 0.65, al: 0.85, bl: 0, kwal: "CS" },
+  5: { name: "Betonsteen <25%", Km: 0.6, Kl: 0.80, al: 0.85, bl: 0, kwal: "fb" },
+  6: { name: "Betonsteen <60%", Km: 0.5, Kl: 0.65, al: 0.85, bl: 0, kwal: "fb" },
+  7: { name: "Cellenbeton <25%", Km: 0.6, Kl: 0.80, al: 0.85, bl: 0, kwal: "G", verM: true, verL: true },
 };
 const MORTELTYPE: { v: number; label: string }[] = [
   { v: 1, label: "Metselmortel" }, { v: 2, label: "Lijmmortel" },
@@ -51,13 +48,11 @@ const KWALITEIT: Record<Steen["kwal"], { v: number; label: string }[]> = {
   G: [2, 3, 4, 6, 8].map((v) => ({ v, label: `G${v}` })),
 };
 const KWAL_DEFAULT: Record<Steen["kwal"], number> = { fb: 10, CS: 12, G: 4 };
-// Steencategorie → basis-γ_M (geldt voor CC2 én CC3). Alleen CC1 verlaagt met 0,2.
-// Gekalibreerd op de referenties: Cat I → CC1=1,5 · CC2=1,7 · CC3=1,7; Cat II → CC1=2,0.
-// base: Cat I=1,7 · Cat II=2,2 (uit CC1=2,0 + 0,2) · Cat III=2,7 (geëxtrapoleerd).
+// Steencategorie → γ_M volgens tabel NB-1 (CC2 én CC3); CC1 is 0,2 lager.
+// De stenennormen kennen alleen categorie I en II.
 const CATEGORIE: { v: number; label: string; base: number }[] = [
   { v: 1, label: "I", base: 1.7 },
   { v: 2, label: "II", base: 2.2 },
-  { v: 3, label: "III", base: 2.7 },
 ];
 const OVERSPANNING: { v: number; label: string }[] = [
   { v: 1, label: "Loodrecht" },
@@ -142,9 +137,11 @@ export default function OplegMetselwerkDesigner() {
   const steenId = Math.round(d("steensoort"));
   const steen = STENEN[steenId] ?? STENEN[1];
   const catId = Math.round(d("steencategorie"));
-  const cat = CATEGORIE.find((c) => c.v === catId) ?? CATEGORIE[0];
+  // Een oud blad kan nog categorie III bevatten; het blad rekent die als II.
+  const cat = CATEGORIE.find((c) => c.v === catId) ?? (catId > 1 ? CATEGORIE[1] : CATEGORIE[0]);
   // Gevolgklasse komt van het project, niet van dit blad.
   const cc = useProjectCC();
+  const xc = Math.round(useProjectGetal("rekenwijze", 1)) === 1;
   const gammaM = cat.base - (cc === 1 ? 0.2 : 0);     // alleen CC1 verlaagt γ_M met 0,2
   const morteltype = Math.round(d("morteltype"));     // 1 = metselmortel, 2 = lijmmortel
   const isLijm = morteltype === 2;
@@ -162,13 +159,15 @@ export default function OplegMetselwerkDesigner() {
   const exc = d("exc");       // mm — excentriciteit
 
   // ── materiaal (EN 1996-1-1 §3.6.1, form. 3.2) ───────────────────────────────
-  // Metselmortel: α=0,65 · β=0,25. Lijmmortel: α=0,85 · β=0 (f_m valt weg).
-  // Referentie (de referentie-uitwerking) begrenst f_m NIET op 2·f_b; alleen ≤ 20 N/mm².
-  const alpha = isLijm ? 0.85 : 0.65;
-  const betaExp = isLijm ? 0 : 0.25;
+  // K, α en β uit tabel NB-2. f_b ≤ 75 (metsel) / 50 (lijm), f_m ≤ 20 en bij
+  // metselmortel in de norm-stand ook ≤ 2·f_b — het referentieprogramma past die
+  // laatste grens niet toe (register punt 14), net als het blad.
+  const alpha = isLijm ? steen.al : 0.65;
+  const betaExp = isLijm ? steen.bl : 0.25;
   const K = isLijm ? steen.Kl : steen.Km;
-  const fmEff = Math.min(fmRaw, 20);
-  const f_k = K * fb ** alpha * fmEff ** betaExp;
+  const fbEff = Math.min(fb, isLijm ? 50 : 75);
+  const fmEff = Math.min(fmRaw, 20, !isLijm && !xc ? 2 * fbEff : 20);
+  const f_k = K * fbEff ** alpha * fmEff ** betaExp;
   const f_d = f_k / gammaM;                            // N/mm² (3.1)
 
   // ── geometrie: effectieve hoogte + lastspreiding onder 60° (art. 6.1.3) ─────
