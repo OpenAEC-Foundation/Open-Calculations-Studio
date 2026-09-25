@@ -247,11 +247,21 @@ export default function SchijfwerkingDesigner() {
   const railX0 = detail === 2 ? xW0 + stijlPx : xW0;
   const railW = detail === 2 ? Math.max(0, Wpx - 2 * stijlPx) : Wpx;
 
-  // stijl- en board-posities (mm vanaf links)
-  const nGap = Math.max(1, Math.round(b / hoh));
-  const studXs = Array.from({ length: nGap + 1 }, (_, i) => (i * b) / nGap);
-  const nBoard = Math.max(1, Math.round(b / bi));
-  const boardXs = Array.from({ length: nBoard - 1 }, (_, i) => ((i + 1) * b) / nBoard);
+  // Stijl- en plaatnaadposities (mm vanaf links). De tussenstijlen staan op
+  // hart-op-hartafstand hoh vanaf de linkerrand, de naden op veelvouden van de
+  // plaatbreedte b_i: met b_i = 2·hoh valt elke naad op het hart van een stijl,
+  // zoals in de uitvoering. Eerder werden stijlen en naden elk gelijkmatig over
+  // de wandlengte verdeeld; een naad viel dan naast een stijl en de maat b_i
+  // klopte niet met de getekende naad. De kopstijlen staan aan beide randen.
+  const studXs: number[] = [0];
+  if (hoh > 0) for (let x = hoh; x < b - tStijl && studXs.length < 400; x += hoh) studXs.push(x);
+  studXs.push(b);
+  const boardXs: number[] = [];
+  if (bi > 0) for (let x = bi; x < b - 1 && boardXs.length < 200; x += bi) boardXs.push(x);
+  // De hoh-maat loopt van hart tot hart van twee opeenvolgende tussenstijlen;
+  // vanaf de wandrand gemeten kwam hij uit op de buitenkant van de kopstijl.
+  const hohA = studXs.length > 3 ? studXs[1] : 0;
+  const hohB = studXs.length > 3 ? studXs[2] : Math.min(hoh, b);
   const px = (mm: number) => xW0 + mm * s;
   // Linkerkant van een stijl. De tussenstijlen staan op hun hartlijn; de
   // kopstijlen liggen met hun buitenkant gelijk met de wandrand. Op de rand
@@ -384,9 +394,9 @@ export default function SchijfwerkingDesigner() {
                 </g>
                 {/* hoh-maat (onder-links) */}
                 <g className="vd-dimline">
-                  <line x1={xW0} y1={yE1 - regelPx - 26} x2={xW0} y2={yE1 - regelPx - 8} className="vd-dimext" />
-                  <line x1={px(hoh)} y1={yE1 - regelPx - 26} x2={px(hoh)} y2={yE1 - regelPx - 8} className="vd-dimext" />
-                  <line x1={xW0} y1={yE1 - regelPx - 20} x2={px(hoh)} y2={yE1 - regelPx - 20} className="vd-dimmeasure" markerStart="url(#swDim)" markerEnd="url(#swDim)" />
+                  <line x1={px(hohA)} y1={yE1 - regelPx - 26} x2={px(hohA)} y2={yE1 - regelPx - 8} className="vd-dimext" />
+                  <line x1={px(hohB)} y1={yE1 - regelPx - 26} x2={px(hohB)} y2={yE1 - regelPx - 8} className="vd-dimext" />
+                  <line x1={px(hohA)} y1={yE1 - regelPx - 20} x2={px(hohB)} y2={yE1 - regelPx - 20} className="vd-dimmeasure" markerStart="url(#swDim)" markerEnd="url(#swDim)" />
                 </g>
                 {/* h-maat (rechts) — schone verticale maatlijn, zonder extensielijnen */}
                 <line x1={xW1 + 42} y1={yE0} x2={xW1 + 42} y2={yE1} className="vd-dimmeasure" markerStart="url(#swDim)" markerEnd="url(#swDim)" />
@@ -412,7 +422,7 @@ export default function SchijfwerkingDesigner() {
 
               {/* klikbare chips */}
               <Dim name="bi" value={bi} x={(xW0 + px(bi)) / 2} y={yE0 + regelPx + 20} step={10} label="bi" unit=" mm" />
-              <Dim name="hoh" value={hoh} x={(xW0 + px(hoh)) / 2} y={yE1 - regelPx - 20} step={10} label="hoh" unit=" mm" />
+              <Dim name="hoh" value={hoh} x={(px(hohA) + px(hohB)) / 2} y={yE1 - regelPx - 20} step={10} label="hoh" unit=" mm" />
               <Dim name="h" value={h} x={xW1 + 42} y={(yE0 + yE1) / 2} step={0.1} factor={0.001} label="h" unit=" m" />
               <Dim name="b" value={b} x={(xW0 + xW1) / 2} y={ySec1 + 20} step={0.1} factor={0.001} label="b" unit=" m" />
               <Force name="F1" value={F1} x={xW0 + 12} y={yE0 - 40} label="F1" />
