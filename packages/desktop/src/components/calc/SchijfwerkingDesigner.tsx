@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
 import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useBladUitkomst } from "./bladResultaat";
+import { UitkomstKop } from "./designerKit";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
@@ -10,7 +12,9 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
  * en de stijlen. In dezelfde stijl als de andere designers (transparant,
  * scheidingslijn, streepjes-maatlijnen, responsief, gecentreerd, uniforme schaal).
  *
- * NB: dit is (voorlopig) alleen het visueel — de rekenregels volgen nog.
+ * Het beeld rekent zelf niets: de kop toont de maatgevende UC en het oordeel
+ * van het blad (templates/schijfwerking.ts), de voetregel de afzonderlijke
+ * toetsen uit dezelfde uitwerking. Eerder rekende het beeld de toetsing na.
  */
 const MARKER = "Schijfwerking";
 
@@ -28,12 +32,6 @@ const DETAIL: { v: number; label: string }[] = [
 const STERKTE: { v: number; label: string }[] = [
   { v: 1, label: "C18" }, { v: 2, label: "C24" }, { v: 3, label: "C30" },
 ];
-// C-klasse materiaal (EN 338) — karakteristieke waarden voor de toetsingen
-const MAT: Record<number, { name: string; fc0k: number; fc90k: number; fvk: number; E005: number }> = {
-  1: { name: "C18", fc0k: 18, fc90k: 2.2, fvk: 3.4, E005: 6000 },
-  2: { name: "C24", fc0k: 21, fc90k: 2.5, fvk: 4.0, E005: 7400 },
-  3: { name: "C30", fc0k: 23, fc90k: 2.7, fvk: 4.0, E005: 8000 },
-};
 const KLIMAAT: { v: number; label: string }[] = [
   { v: 1, label: "1" }, { v: 2, label: "2" }, { v: 3, label: "3" },
 ];
@@ -66,6 +64,8 @@ export default function SchijfwerkingDesigner() {
     [activeId, seedWaarden],
   );
   const [editing, setEditing] = useState<string | null>(null);
+  // De uitkomst en de toetsen van het blad zelf.
+  const uitkomst = useBladUitkomst();
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 760, h: 540 });
@@ -117,52 +117,10 @@ export default function SchijfwerkingDesigner() {
   const b = d("b"), h = d("h"), bi = d("bi"), hoh = d("hoh");
   const F1 = d("F1"), F2 = d("F2"), F_ivEd = d("F_ivEd");
 
-  // ── toetsing — Methode A (EN 1995-1-1 §9.2.4.2) + stijl-knik (§6.3.2) ────────
-  // Gecalibreerd op de referentieberekening (document1, Set 1). Wind → duurklasse
-  // Kort (kmod = 0,90; klimaat 3 lager). γ_M = 1,30 (gezaagd hout).
-  const mat = MAT[sterkte] ?? MAT[2];
-  const gammaM = 1.30;
-  const kmod = klim === 3 ? 0.70 : 0.90;               // Kort — klimaat 1/2 → 0,90, klimaat 3 → 0,70 (de referentie-uitwerking bevestigd)
-  const kc90 = 1.25, betaC = 0.2;
-  const fc0d = (mat.fc0k * kmod) / gammaM;
-  const fc90d = (mat.fc90k * kc90 * kmod) / gammaM;
-
-  const b0 = h / 2;                                     // b_o = h/2
-  const ci = Math.min(1, bi / b0);                      // plaatbreedte-factor
-  const F_ivRd = s_verb > 0 ? (F_f_Rd * b * ci * nZij) / s_verb : 0;   // (9.21) [kN]
-  const UC_sterkte = F_ivRd > 0 ? F_ivEd / F_ivRd : 0;
-
-  const F_itEd = b > 0 ? (F_ivEd * h) / b : 0;          // (9.23) verankeringskracht [kN]
-  const F_tot = F_itEd + F1;                            // verticale last op stijl A-C
-
-  // Druk⊥ op de regel geldt alléén bij detailaansluiting A-C Type 1 (stijl draagt via de
-  // regel af → druk haaks op de vezel). Bij Type 2 draagt de stijl direct af (hold-down),
-  // dan vervalt de druk⊥-toets. Set 2 (Type 1) toont hem, Set 3 (Type 2) niet — beide exact.
-  const druk90Actief = detail === 1;
-  const A_rail = tRegel * bRegel;                       // regel-doorsnede [mm²]
-  const sigma_c90 = A_rail > 0 ? (F_tot * 1e3) / A_rail : 0;
-  const UC_druk90 = druk90Actief && fc90d > 0 ? sigma_c90 / fc90d : 0;
-
-  const p_opn = 100;                                   // plooi-limiet p_opn (Set 2 bevestigd: de referentie-uitwerking 600/12/100 = 0,50)
-  const UC_plooi = tBepl > 0 ? (hoh / tBepl) / p_opn : 0;
-  const sMax = 150;                                     // vaste max h.o.h. verbindingsmiddel [mm] (Set 2 bevestigd: s=100 → 0,67)
-  const UC_hoh = s_verb / sMax;
-
-  const A_stud = tStijl * bStijl;                       // stijl-doorsnede [mm²]
-  const iy = bStijl / Math.sqrt(12), iz = tStijl / Math.sqrt(12);
-  const Lcr_y = Math.max(1, h - tStijl - tRegel), Lcr_z = s_verb;
-  const relY = (Lcr_y / iy / Math.PI) * Math.sqrt(mat.fc0k / mat.E005);
-  const relZ = (Lcr_z / iz / Math.PI) * Math.sqrt(mat.fc0k / mat.E005);
-  const kcFac = (rel: number) => {
-    if (rel <= 0.3) return 1.0;
-    const k = 0.5 * (1 + betaC * (rel - 0.3) + rel * rel);
-    return 1 / (k + Math.sqrt(Math.max(0, k * k - rel * rel)));
-  };
-  const sigma_c0 = A_stud > 0 ? (F_tot * 1e3) / A_stud : 0;
-  const UC_stud = fc0d > 0 ? Math.max(sigma_c0 / (kcFac(relY) * fc0d), sigma_c0 / (kcFac(relZ) * fc0d)) : 0;
-
-  const UC_max = Math.max(UC_sterkte, UC_druk90, UC_plooi, UC_hoh, UC_stud);
-  const ok = UC_max <= 1.0;
+  // Toetsen uit de uitwerking; "—" zolang het blad ze niet toont.
+  const fmt = (v: number, dec: number) => v.toFixed(dec).replace(".", ",");
+  const g = uitkomst?.getallen ?? {};
+  const w = (naam: string, dec: number) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));
 
   // ── klikbare maat/kracht-chips ────────────────────────────────────────────
   function Dim(props: { name: string; value: number; x: number; y: number; step?: number; factor?: number; unit?: string; label?: string }) {
@@ -229,8 +187,10 @@ export default function SchijfwerkingDesigner() {
   const mL = 104, mR = 118, mT = 46, mB = 40;
   const gapMid = 46;                                   // ruimte tussen aanzicht en doorsnede
   const secDepth = bStijl + 2 * tBepl;                 // doorsnede-dikte (wanddiepte)
-  const availW = W - mL - mR;
-  const s = Math.min(availW / b, (H - mT - mB - gapMid) / (h + secDepth));  // uniforme fit-schaal
+  // In een smal paneel wordt de ruimte naast de marges negatief; dan krimpt de
+  // tekening tot een ondergrens in plaats van met negatieve maten om te klappen.
+  const availW = Math.max(20, W - mL - mR);
+  const s = Math.min(availW / b, Math.max(20, H - mT - mB - gapMid) / (h + secDepth));  // uniforme fit-schaal
   const Wpx = b * s, Hpx = h * s;
   const xW0 = mL + Math.max(0, (availW - Wpx) / 2), xW1 = xW0 + Wpx;
   const contentH = Hpx + gapMid + secDepth * s;
@@ -272,15 +232,10 @@ export default function SchijfwerkingDesigner() {
 
   return (
     <div className="vd-panel">
-      <div className="vd-head">
-        <strong>Parametrisch beeld — schijfwerking</strong>
-        <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
-          UC<sub>max</sub> = {UC_max.toFixed(2)} {ok ? "✓ voldoet" : "✗ voldoet niet"}
-        </span>
-      </div>
+      <UitkomstKop titel="Parametrisch beeld — schijfwerking" uitkomst={uitkomst} />
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
-        <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
+        <div className="vd-controls vd-compact" style={{ alignSelf: "stretch", overflowY: "auto", minHeight: 0 }}>
           <span className="vd-ctrl-h">Verbinding</span>
           <label>Verbindingsmiddel
             <select value={verb} onChange={(e) => setVal("verbindingsmiddel", parseInt(e.target.value))}>
@@ -437,7 +392,8 @@ export default function SchijfwerkingDesigner() {
       <div className="vd-foot">
         <span>Klik op een blauwe maat of rode kracht om die te wijzigen — stroomt direct terug in de rekensheet.</span>
         <span className="vd-live">
-          c<sub>i</sub> = {ci.toFixed(2)} · F<sub>i,v,Rd</sub> = {F_ivRd.toFixed(1)} kN · sterkte {UC_sterkte.toFixed(2)} · h.o.h. {UC_hoh.toFixed(2)} · druk⊥ {druk90Actief ? UC_druk90.toFixed(2) : "n.v.t. (Type 2)"} · plooi {UC_plooi.toFixed(2)} · stijl {UC_stud.toFixed(2)}
+          c<sub>i</sub> = {w("c_i", 2)} · F<sub>i,v,Rd</sub> = {w("F_ivRd", 1)} kN · sterkte {g.UC_sterkte !== undefined ? fmt(g.UC_sterkte, 2) : uitkomst ? "∞" : "—"} ·
+          h.o.h. {w("UC_hoh", 2)} · druk⊥ {detail === 1 ? w("UC_druk90", 2) : "n.v.t. (stijl doorlopend)"} · plooi {w("UC_plooi", 2)} · stijl {w("UC_stijl", 2)}
         </span>
       </div>
     </div>
