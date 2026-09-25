@@ -35,8 +35,8 @@
  *   • Een verticale randsteuning vervalt bij L_v ≥ 15·t (n = 3, set 4) resp.
  *     L_v ≥ 30·t (n = 4, set 7 blijft n = 4 bij L_v = 2000 < 3600).
  *   • ρ_2 = 0,75 vervalt zodra de excentriciteit aan de kop e_t = |M_1Ed|/|N_Ed|
- *     groter is dan 0,25·t (§5.5.1.2(4), set 10: 50 > 30 mm → ρ_2 = 1,00). De
- *     regel kijkt alléén naar de kop, niet naar M_2Ed.
+ *     groter is dan 0,25·t (§5.5.1.2(11)(i), set 10: 50 > 30 mm → ρ_2 = 1,00).
+ *     De regel kijkt alléén naar de kop, niet naar M_2Ed.
  *   • ρ_3/ρ_4 rekenen met L_v, niet met ℓ.
  *   • Lage-belastingstak N_Ed/(ℓ·t·f_d) ≤ 0,1 (set 6): e_i wordt begrensd op
  *     t/2 − N_Ed/(2·ℓ·f_d) en het afgekapte deel komt als ΔM = (e_i,f − e_i)·N_Ed
@@ -46,6 +46,17 @@
  *     N_Ed,max, en wordt overgeslagen zodra de eerste toets al niet voldoet
  *     (sets 3, 4, 9).
  *   • N_Rd = min(N_Rd,t; N_Rd,b; N_Rd,m); UC = N_Ed/N_Rd.
+ *
+ * Buiten de referenties, volgens de norm (check-metselwerkwand.mjs):
+ *   • Een vloer aan één zijde klemt alleen in bij een oplegging van ten minste
+ *     ⅔·t (beton, §5.5.1.2(11)(i)); een houten vloer aan één zijde telt pas als
+ *     steun bij ⅔·t en 85 mm (§5.5.1.2(11)(ii)). De opties 5 en 6 dekken de
+ *     kortere opleggingen af en rekenen met ρ_2 = 1,00.
+ *   • Φ wordt niet kleiner dan nul. Valt de resultante buiten de doorsnede
+ *     (e ≥ t/2), dan is N_Rd = 0 en de UC oneindig. Eerder gaf een negatieve
+ *     Φ een negatieve N_Rd, een negatieve UC en dus "voldoet".
+ *   • Trek (N_Ed of N_Ed,max negatief) keurt het blad af: ongewapend metselwerk
+ *     neemt geen trek op.
  *
  * Variabelenamen komen exact overeen met MetselwerkwandDesigner.tsx.
  */
@@ -62,9 +73,11 @@ export const metselwerkwand = `"Dragende metselwerkwand — druk (EN 1996-1-1 §
 
 @select ondersteuning "Ondersteuning boven/onder (bepaalt ρ₂)"
   wand met aan beide zijden betonvloer of -dak = 1
-  betonvloer of -dak opgelegd aan één zijde van de wand = 2
+  betonvloer of -dak aan één zijde, oplegging ten minste ⅔·t = 2
   wand met aan beide zijden houten vloer of dak = 3
-  houten vloer of dak opgelegd aan één zijde van de wand = 4
+  houten vloer of dak aan één zijde, oplegging ten minste ⅔·t en 85 mm = 4
+  betonvloer of -dak aan één zijde, oplegging korter dan ⅔·t = 5
+  houten vloer of dak aan één zijde, kortere oplegging = 6
 @end
 
 @select n_rand "Aantal gesteunde randen n"
@@ -152,10 +165,11 @@ M_2Ed = ?*(kN*m)', moment aan de voet'
 
 '<i>ρ<sub>2</sub> = 0,75 bij inklemming door betonvloeren — maar alléén zolang de
 'excentriciteit aan de kop e<sub>t</sub> = |M<sub>1Ed</sub>|/|N<sub>Ed</sub>| niet groter is dan
-'0,25·t (§5.5.1.2(4)); daarboven vervalt de inklemming en wordt ρ<sub>2</sub> = 1,00. Een
+'0,25·t; daarboven vervalt de inklemming en wordt ρ<sub>2</sub> = 1,00 (§5.5.1.2(11)(i)). Een
+'betonvloer aan één zijde klemt alleen in bij een oplegging van ten minste ⅔·t. Een
 'verticale randsteuning telt alleen mee zolang L<sub>v</sub> < 15·t (n = 3) respectievelijk
 'L<sub>v</sub> < 30·t (n = 4); daarboven valt de wand terug op n = 2. ρ<sub>3</sub> en
-'ρ<sub>4</sub> volgen uit (5.3)-(5.6) met L<sub>v</sub> als afstand tussen de stijve randen.</i>
+'ρ<sub>4</sub> volgen uit (5.6)-(5.9) met L<sub>v</sub> als afstand tussen de stijve randen.</i>
 #hide
 'Terugval op n = 2 zodra de gesteunde rand te ver weg staat.
 n_lim = if(n_rand ≡ 4; 30*t_w; 15*t_w)
@@ -164,12 +178,12 @@ N_min = max(abs(N_Ed); 0.001*kN)
 #show
 e_t0 = abs(M_1Ed)/N_min to mm', eerste-orde excentriciteit aan de kop (bepaalt of ρ_2 = 0,75 mag)'
 e_t0
-e_grens = 0.25*t_w', grens waarboven de inklemming vervalt (§5.5.1.2(4))'
+e_grens = 0.25*t_w', grens waarboven de inklemming vervalt (§5.5.1.2(11))'
 e_grens
 #hide
-'Beton (optie 1-2) → 0,75; hout (optie 3-4) → 1,00. Bij een oplegging aan één
-'zijde geldt 0,75 alleen bij een opleglengte ≥ ⅔·t en ≥ 85 mm.
-rho_2 = if(ondersteuning ≥ 3; 1.0; if(e_t0 > e_grens; 1.0; 0.75))
+'Beton (optie 1-2) → 0,75; hout (optie 3-4) → 1,00. Een vloer aan één zijde met
+'een te korte oplegging (optie 5-6) klemt niet in → 1,00.
+rho_2 = if(ondersteuning ≤ 2; if(e_t0 > e_grens; 1.0; 0.75); 1.0)
 rho_3 = if(h_w ≤ 3.5*L_v; rho_2/(1 + (rho_2*h_w/(3*L_v))^2); 1.5*L_v/h_w)
 rho_4 = if(h_w ≤ 1.15*L_v; rho_2/(1 + (rho_2*h_w/L_v)^2); 0.5*L_v/h_w)
 rho_n = if(n_eff ≡ 3; rho_3; if(n_eff ≡ 4; rho_4; rho_2))
@@ -179,6 +193,15 @@ rho_3m = if(h_w ≤ 3.5*L_v; 1/(1 + (h_w/(3*L_v))^2); 1.5*L_v/h_w)
 rho_4m = if(h_w ≤ 1.15*L_v; 1/(1 + (h_w/L_v)^2); 0.5*L_v/h_w)
 rho_nm = if(n_eff ≡ 3; rho_3m; if(n_eff ≡ 4; rho_4m; 1.0))
 #show
+#if ondersteuning ≡ 5
+    '<i>De betonvloer ligt aan één zijde op met minder dan ⅔·t: die klemt de wand niet in
+    '(§5.5.1.2(11)(i)), dus ρ<sub>2</sub> = 1,00.</i>
+#else if ondersteuning ≡ 6
+    '<span style="color: #b45309"><b>Let op:</b> een houten vloer aan één zijde telt pas als steun
+    'bij een oplegging van ten minste ⅔·t en 85 mm (§5.5.1.2(11)(ii)). Dit blad rekent met
+    'ρ<sub>2</sub> = 1,00 en gaat ervan uit dat de wandkop op een andere manier zijdelings is
+    'gesteund, bijvoorbeeld met muurankers.</span>
+#end if
 n_eff', aantal gesteunde randen na toetsing van L_v'
 rho_2
 rho_n
@@ -210,24 +233,32 @@ e_cap = t_w/2 - N_Ed/(2*l_w*f_d) to mm', grens-excentriciteit bij de lage-belast
 
 e_t = M_1Ed/N_min to mm', excentriciteit aan de kop'
 e_itf = max(abs(e_t) + e_init; 0.05*t_w)', excentriciteit kop vóór begrenzing (6.5)'
-e_it = if(ratio_N > 0.1; e_itf; min(e_itf; e_cap))', maatgevende excentriciteit kop'
+#if ratio_N > 0.1
+    e_it = e_itf', maatgevende excentriciteit kop, niet begrensd'
+#else
+    e_it = min(e_itf; e_cap)', maatgevende excentriciteit kop, begrensd op e_cap'
+#end if
 e_t
 e_itf
 e_it
 dM_t = (e_itf - e_it)*N_Ed to kN*m', restmoment kop'
-Phi_it = 1 - 2*e_it/t_w', reductiefactor kop (6.4)'
+Phi_it = max(1 - 2*e_it/t_w; 0)', reductiefactor kop (6.4), niet kleiner dan nul'
 Phi_it
 N_Rdt = Phi_it*l_w*t_w*f_d to kN', capaciteit aan de kop (6.2)'
 N_Rdt
 
 e_b = M_2Ed/N_min to mm', excentriciteit aan de voet'
 e_ibf = max(abs(e_b) + e_init; 0.05*t_w)', excentriciteit voet vóór begrenzing (6.5)'
-e_ib = if(ratio_N > 0.1; e_ibf; min(e_ibf; e_cap))', maatgevende excentriciteit voet'
+#if ratio_N > 0.1
+    e_ib = e_ibf', maatgevende excentriciteit voet, niet begrensd'
+#else
+    e_ib = min(e_ibf; e_cap)', maatgevende excentriciteit voet, begrensd op e_cap'
+#end if
 e_b
 e_ibf
 e_ib
 dM_b = (e_ibf - e_ib)*N_Ed to kN*m', restmoment voet'
-Phi_ib = 1 - 2*e_ib/t_w', reductiefactor voet (6.4)'
+Phi_ib = max(1 - 2*e_ib/t_w; 0)', reductiefactor voet (6.4), niet kleiner dan nul'
 Phi_ib
 N_Rdb = Phi_ib*l_w*t_w*f_d to kN', capaciteit aan de voet (6.2)'
 N_Rdb
@@ -242,7 +273,11 @@ e_Edm = M_Edmc/N_min to mm
 e_m = abs(e_Edm) + e_init', eerste-orde excentriciteit halve hoogte'
 e_Edm
 e_m
-e_k = if(h_ef/t_ef ≤ 27; 0 mm; 0.002*phi_inf*(h_ef/t_ef)*sqrt(t_w*e_m))', kruip-excentriciteit (6.7), nul bij λ ≤ λ_c = 27'
+#if lam ≤ 27
+    e_k = 0*mm', kruip-excentriciteit, nul bij λ ≤ λ_c = 27'
+#else
+    e_k = 0.002*phi_inf*lam*sqrt(t_w*e_m)', kruip-excentriciteit (6.7)'
+#end if
 e_k
 e_mk = max(abs(e_m) + e_k; 0.05*t_ef)', totale excentriciteit halve hoogte (6.6)'
 e_mk
@@ -253,7 +288,7 @@ lam_F = (h_ef/t_ef)*sqrt(f_k/E_mw)', slankheidsparameter (G.4)'
 lam_F
 u_m = (lam_F - 0.063)/(0.73 - 1.17*e_mk/t_ef)', (G.3)'
 u_m
-Phi_m = A_1*exp(-u_m^2/2)', reductiefactor halve hoogte (G.1)'
+Phi_m = max(A_1*exp(-u_m^2/2); 0)', reductiefactor halve hoogte (G.1), niet kleiner dan nul'
 Phi_m
 N_Rdm = Phi_m*l_w*t_w*f_d to kN', capaciteit op halve hoogte (6.2)'
 N_Rdm
@@ -262,11 +297,25 @@ N_Rdm
 
 N_Rd = min(N_Rdt; N_Rdb; N_Rdm)', maatgevende capaciteit'
 N_Rd
-UC_1 = N_Ed/N_Rd
-#if UC_1 ≤ 1.0
-    'UC = N<sub>Ed</sub>/N<sub>Rd</sub> = 'UC_1'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+#if N_Ed < 0 kN or N_Ed_max < 0 kN
+    '<span style="color: red"><b>Trek</b>: ongewapend metselwerk neemt geen trek op, en dit blad
+    'toetst alleen druk → <b>voldoet niet</b></span>
+    #hide
+    UC_1 = 1/0
+    #show
+#else if N_Rd > 0 kN
+    UC_1 = N_Ed/N_Rd
+    #if UC_1 ≤ 1.0
+        'UC = N<sub>Ed</sub>/N<sub>Rd</sub> = 'UC_1'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+    #else
+        'UC = N<sub>Ed</sub>/N<sub>Rd</sub> = 'UC_1'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+    #end if
 #else
-    'UC = N<sub>Ed</sub>/N<sub>Rd</sub> = 'UC_1'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+    '<span style="color: red">N<sub>Rd</sub> = 0: de resultante valt buiten de wanddoorsnede
+    '(e ≥ t/2), dus de wand kan deze belasting niet afdragen → <b>voldoet niet</b></span>
+    #hide
+    UC_1 = 1/0
+    #show
 #end if
 
 # 9. Constante minimale eerste-orde excentriciteit
@@ -288,7 +337,11 @@ e_m2
     #else
         'λ = h<sub>ef2</sub>/t<sub>ef</sub> = 'lam_2' > 27 — u.c. = 'UC_lam2'<span style="color: red"> → <b>voldoet niet</b></span>
     #end if
-    e_k2 = if(lam_2 ≤ 27; 0 mm; 0.002*phi_inf*lam_2*sqrt(t_w*e_m2))', kruip-excentriciteit bij h_ef2 (6.7)'
+    #if lam_2 ≤ 27
+        e_k2 = 0*mm', kruip-excentriciteit bij h_ef2, nul bij λ ≤ λ_c = 27'
+    #else
+        e_k2 = 0.002*phi_inf*lam_2*sqrt(t_w*e_m2)', kruip-excentriciteit bij h_ef2 (6.7)'
+    #end if
     e_mk2 = max(e_m2 + e_k2; 0.05*t_w)', (6.6)'
     e_mk2
     A_12 = 1 - 2*e_mk2/t_w', (G.2)'
@@ -297,15 +350,23 @@ e_m2
     lam_F2
     u_2 = (lam_F2 - 0.063)/(0.73 - 1.17*e_mk2/t_w)', (G.3)'
     u_2
-    Phi_m2 = A_12*exp(-u_2^2/2)', (G.1)'
+    Phi_m2 = max(A_12*exp(-u_2^2/2); 0)', (G.1), niet kleiner dan nul'
     Phi_m2
     N_Rdm2 = Phi_m2*l_w*t_w*f_d to kN', (6.2)'
     N_Rdm2
-    UC_2 = N_Ed_max/N_Rdm2
-    #if UC_2 ≤ 1.0
-        'UC = N<sub>Ed,max</sub>/N<sub>Rd,m2</sub> = 'UC_2'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+    #if N_Rdm2 > 0 kN
+        UC_2 = N_Ed_max/N_Rdm2
+        #if UC_2 ≤ 1.0
+            'UC = N<sub>Ed,max</sub>/N<sub>Rd,m2</sub> = 'UC_2'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+        #else
+            'UC = N<sub>Ed,max</sub>/N<sub>Rd,m2</sub> = 'UC_2'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+        #end if
     #else
-        'UC = N<sub>Ed,max</sub>/N<sub>Rd,m2</sub> = 'UC_2'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+        '<span style="color: red">N<sub>Rd,m2</sub> = 0: de minimale excentriciteit reikt tot buiten
+        'de wanddoorsnede → <b>voldoet niet</b></span>
+        #hide
+        UC_2 = 1/0
+        #show
     #end if
     UC_lam2m = UC_lam2
 #else
@@ -330,12 +391,19 @@ UC_max = max(UC_lam; UC_lam2m; UC_1; UC_2)
 'categorie I, CC2 en CC3, n = 2/3/4, N<sub>Ed</sub> = 30 tot 300 kN, M = 0 tot 10 kNm): alle exact
 'gereproduceerd.</li>
 '<li>ρ<sub>2</sub> = 0,75 geldt alléén zolang e<sub>t</sub> = |M<sub>1Ed</sub>|/|N<sub>Ed</sub>| ≤ 0,25·t;
-'daarboven vervalt de inklemming en wordt ρ<sub>2</sub> = 1,00 (§5.5.1.2(4)). De regel kijkt alleen
-'naar de kop.</li>
+'daarboven vervalt de inklemming en wordt ρ<sub>2</sub> = 1,00 (§5.5.1.2(11)(i)). De regel kijkt
+'alleen naar de kop.</li>
 '<li><b>Nog niet geverifieerd:</b> de ρ<sub>2</sub> per ondersteuningsoptie. De vier
 'referentiebladen met elk een andere optie hebben allemaal e<sub>t</sub> = 50 mm > 0,25·t,
 'waardoor ρ<sub>2</sub> = 1,00 wordt ongeacht de keuze — ze zijn vanaf blad 2 identiek. Dit blad
-'volgt EN 1996-1-1 §5.5.1.2: beton (optie 1-2) → 0,75, hout (optie 3-4) → 1,00.</li>
+'volgt EN 1996-1-1 §5.5.1.2(11): beton (optie 1-2) → 0,75, hout (optie 3-4) → 1,00.</li>
+'<li>Een vloer aan één zijde klemt de wand alleen in bij een oplegging van ten minste ⅔·t; een
+'houten vloer aan één zijde telt pas als steun bij ⅔·t en 85 mm. Met een kortere oplegging
+'(optie 5-6) rekent het blad met ρ<sub>2</sub> = 1,00; bij hout moet de wandkop dan op een andere
+'manier zijdelings gesteund zijn.</li>
+'<li>Φ wordt niet kleiner dan nul. Valt de resultante buiten de doorsnede (e ≥ t/2), dan is
+'N<sub>Rd</sub> = 0 en de UC oneindig. Trek keurt het blad af: ongewapend metselwerk neemt geen
+'trek op.</li>
 '<li>E = 700·f<sub>k</sub> (NB bij 3.7.2). De kruip-excentriciteit e<sub>k</sub> is nul zolang
 'λ ≤ λ<sub>c</sub> = 27 (NB bij 6.1.2.2(2)); boven die slankheid voldoet de wand al niet aan §5.5.1.4.</li>
 '<li>K, α en β komen uit tabel NB-2 en hangen af van steensoort en morteltype. Tegen een referentie
