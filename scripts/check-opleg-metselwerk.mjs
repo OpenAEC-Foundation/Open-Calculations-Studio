@@ -1,14 +1,17 @@
 /**
  * Controlescript voor de module Oplegging op metselwerk (EN 1996-1-1 §6.1.3).
  *
- * Twee referentiebladen, metselwerk-oplegging-1 en -2:
+ * Drie referentiebladen, metselwerk-oplegging-1 tot en met -3:
  *
  *   1  kalkzandsteen <25 % CS12 + M15, categorie I, t = 200, a_1 = 300,
  *      N_Edc = 360 kN — β begrensd op β_max = 1,31, voldoet niet (2,18)
  *   2  baksteen <25 % fb 5 + M15, categorie II, t = 150, a_1 = 0 (oplegging
  *      tegen het wandeinde), N_Edc = 50 kN — voldoet (0,76)
+ *   3  kalkzandsteen <25 % CS12 + lijmmortel, categorie I, CC2, t = 100,
+ *      oplegging 180 × 100 op 300 mm van het wandeinde, geen keep,
+ *      N_Edc = 23 kN — β = 1,31, voldoet (0,25)
  *
- * Beide in CC1: γ_M = 1,5 (categorie I) en 2,0 (categorie II), tabel NB-1.
+ * Bladen 1 en 2 in CC1: γ_M = 1,5 (categorie I) en 2,0 (categorie II), tabel NB-1.
  *
  * Blad 2 raakt register punt 14: f_m = 15 is groter dan 2·f_b = 10. Het
  * referentieprogramma rekent toch met 15; in de norm-stand geldt 10, en
@@ -46,6 +49,18 @@ for (const ref of REFERENTIES) {
   const got = reken(tpl, { ...BASIS, ...ref.invoer }, PROJECT);
   fouten += toets(ref.blad, got, ref.verwacht);
 }
+
+// Derde tegenproef, uit een eigen rekenblad: lijmmortel, CC2 (γ_M = 1,70) en
+// een wand zonder keep (h_c = h). Dat blad vult f_k afgerond in (6,6), vandaar
+// de ruimere marge op f_d en N_Rdc.
+const RONDT_FK_AF = "het rekenblad rondt f_k af op 6,6";
+fouten += toets("metselwerk-oplegging-3 — kalkzandsteen CS12 + lijmmortel, oplegging 180 × 100",
+  reken(tpl, {
+    ...BASIS, steensoort: "3", f_b: "12", morteltype: "2", f_m: "12.5", steencategorie: "1",
+    t: "100", a_L: "180", a_t: "100", h: "2600", h_k: "0", a_1: "300", L_r: "2220", q_Edc: "0", N_Edc: "23",
+  }, { ...PROJECT, CC: 2 }),
+  { f_k: "6.6", f_d: { waarde: "3.88", tol: 0.015, waarom: RONDT_FK_AF }, A_b: "18000", l_efm: "1231",
+    "β": "1.31", N_Rdc: { waarde: "91.4", tol: 0.3, waarom: RONDT_FK_AF }, UC: "0.25", ratio_Ab: "0.15" });
 
 // ── Buiten de referenties ─────────────────────────────────────────────────
 // De vergroting β geldt alleen voor steengroep 1 (§6.1.3(2)); groep 2 krijgt
