@@ -8,6 +8,7 @@ import { balklaag } from "./balklaag";
 import { oplegMetselwerk } from "./oplegMetselwerk";
 import { schijfwerking } from "./schijfwerking";
 import { hsbStabiliteit } from "./hsbStabiliteit";
+import { nagelSchroefverbinding } from "./nagelSchroefverbinding";
 import { gording } from "./gording";
 import { kolom } from "./kolom";
 import { metselwerkwand } from "./metselwerkwand";
@@ -66,6 +67,7 @@ export const templates: Record<string, string> = {
   "opleg-metselwerk": oplegMetselwerk,
   "schijfwerking": schijfwerking,
   "hsb-stabiliteit": hsbStabiliteit,
+  "nagel-schroef": nagelSchroefverbinding,
   "gording": gording,
   "kolom": kolom,
   "metselwerkwand": metselwerkwand,
