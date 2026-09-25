@@ -224,9 +224,9 @@ export default function SchijfwerkingDesigner() {
   // ── layout: vult het gemeten tekengebied, gecentreerd, uniforme schaal ─────
   const capH = 26;
   const W = box.w, H = box.h - capH;
-  // Links ruimte voor de kracht F_i,v,Ed onderaan; met 66 viel die chip half
-  // buiten het tekenvlak.
-  const mL = 104, mR = 84, mT = 46, mB = 40;
+  // Ruimte voor de krachten F_i,v,Ed links onder en rechts boven; met 66 en 84
+  // vielen die chips half buiten het tekenvlak.
+  const mL = 104, mR = 118, mT = 46, mB = 40;
   const gapMid = 46;                                   // ruimte tussen aanzicht en doorsnede
   const secDepth = bStijl + 2 * tBepl;                 // doorsnede-dikte (wanddiepte)
   const availW = W - mL - mR;
