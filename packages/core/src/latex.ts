@@ -63,7 +63,9 @@ function symbolToLatex(name: string): string {
   const underscoreIdx = name.indexOf('_');
   if (underscoreIdx > 0) {
     const base = name.substring(0, underscoreIdx);
-    const sub = name.substring(underscoreIdx + 1);
+    // Elk volgend liggend streepje is een gevouwen komma: `F_v,Rd` wordt bij
+    // het inlezen `F_v_Rd`. In beeld hoort de notatie van de norm, F_{v,Rd}.
+    const sub = name.substring(underscoreIdx + 1).replace(/_/g, ',');
     const baseLatex = GREEK[base] || base;
     return `{${baseLatex}_{\\text{${escapeText(sub)}}}}`;
   }
