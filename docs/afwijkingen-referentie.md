@@ -533,6 +533,30 @@ terugvallen op één combinatie.
 
 ---
 
+## 14. Metselwerk — f_m ≤ 2·f_b wordt niet toegepast
+
+| | |
+|---|---|
+| Modules | Oplegging op metselwerk (`templates/oplegMetselwerk.ts`), Dragende metselwerkwand (`templates/metselwerkwand.ts`) |
+| Norm | NEN-EN 1996-1-1 NB bij 3.6.1.2 |
+| Referenties | metselwerk-oplegging-2 (baksteen fb 5, M15) |
+| Status | **open** |
+
+De Nederlandse bijlage begrenst de mortelsterkte in formule (3.2) op 20 N/mm²,
+en bij metselmortel bovendien op 2·f_b. Het referentieprogramma past alleen de
+eerste grens toe:
+
+```
+referentie:  f_k = 0,6 × 5^0,65 × 15^0,25 = 3,36 N/mm²
+norm:        f_k = 0,6 × 5^0,65 × 10^0,25 = 3,04 N/mm²    (f_m = 2 × 5)
+```
+
+Het scheelt 10 % op f_k, en alleen bij een zwakke steen met een sterke mortel
+(f_m > 2·f_b). In de referentiestand rekent het blad met f_m = min(f_m; 20),
+in de norm-stand met min(f_m; 20; 2·f_b).
+
+---
+
 ## Weergavefouten (geen rekengevolg)
 
 Deze zijn puur cosmetisch aan de referentie-uitwerking-zijde, maar goed om te kennen bij het

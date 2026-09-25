@@ -23,14 +23,15 @@
  *                                      wint, dus ρ_2 = 1,00 ongeacht de optie)
  *
  * Uit de referentiebladen afgeleide de referentie-uitwerking-keuzes:
- *   • E = 700·f_k (NB:2018) — bevestigd op f_k = 5,94 / 9,00 / 4,51.
- *   • e_k = 0: φ_∞ = 0 in NB:2018. Blijft invoerbaar (6.7), default 0.
- *   • f_k-exponenten hangen af van het morteltype én de steensoort:
- *     metselmortel altijd α = 0,65 / β = 0,25; lijmmortel op baksteen
- *     α = 0,75 / β = 0,10 met K = 0,8 (set 8), lijmmortel op cellenbeton
- *     α = 0,85 / β = 0 met K = 0,8 (oplegmodule). Overige lijm-cellen volgen dat
- *     patroon maar zijn NIET geverifieerd.
- *   • γ_M is gelijk voor CC2 en CC3 (set 9); alleen CC1 verlaagt met 0,2.
+ *   • E = 700·f_k (NB bij 3.7.2(2)) — bevestigd op f_k = 5,94 / 9,00 / 4,51.
+ *   • e_k = 0 zolang λ ≤ λ_c = 27 (NB bij 6.1.2.2(2)); φ_∞ (tabel NB-3) telt
+ *     pas daarboven, waar de wand al niet aan §5.5.1.4 voldoet.
+ *   • K, α en β uit tabel NB-2: metselmortel altijd α = 0,65 / β = 0,25;
+ *     lijmmortel per steensoort. Getoetst: lijmmortel op baksteen (set 8) en op
+ *     cellenbeton (oplegmodule).
+ *   • f_b ≤ 75 (metselmortel) / 50 (lijmmortel) en f_m ≤ 20 (NB bij 3.6.1.2);
+ *     f_m ≤ 2·f_b bij metselmortel alleen in de norm-stand (register punt 14).
+ *   • γ_M volgens tabel NB-1: gelijk voor CC2 en CC3 (set 9); CC1 0,2 lager.
  *   • Een verticale randsteuning vervalt bij L_v ≥ 15·t (n = 3, set 4) resp.
  *     L_v ≥ 30·t (n = 4, set 7 blijft n = 4 bij L_v = 2000 < 3600).
  *   • ρ_2 = 0,75 vervalt zodra de excentriciteit aan de kop e_t = |M_1Ed|/|N_Ed|
@@ -103,22 +104,28 @@ f_m = ?', mortelsterkte f_m [N/mm²] — M-klasse (metselmortel) of L-klasse (li
   Categorie II = 2
 @end
 
-phi_inf = ?', eindkruipgetal φ_∞ voor de kruip-excentriciteit e_k (6.7); NB:2018 → 0'
+phi_inf = ?', eindkruipcoëfficiënt φ_∞ (tabel NB-3); telt alleen bij een slankheid boven λ_c = 27'
 
 #hide
-'Kolommen: [id | K_metsel | K_lijm | α_lijm | β_lijm]. Metselmortel heeft altijd
-'α = 0,65 en β = 0,25. Geverifieerd: kalkzandsteen<25%+metselmortel (set 1-6, 9),
-'baksteen<25%+lijmmortel (set 8: K=0,8 α=0,75 β=0,1) en cellenbeton<25%+lijmmortel
-'(oplegmodule: K=0,8 α=0,85 β=0). De overige lijmmortel-cellen volgen dat patroon
-'(klei → 0,75/0,10; overig → 0,85/0) en zijn NIET tegen een referentie getoetst.
-steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.80; 0.70; 0.80; 0.70; 0.80; 0.70; 0.80 |0.75; 0.75; 0.85; 0.85; 0.85; 0.85; 0.85 |0.10; 0.10; 0; 0; 0; 0; 0]
+'Kolommen: [id | K_metsel | K_lijm | α_lijm | β_lijm], alle uit tabel NB-2.
+'Metselmortel heeft altijd α = 0,65 en β = 0,25. Tegen een referentie getoetst:
+'kalkzandsteen<25%+metselmortel (set 1-6, 9), baksteen<25%+lijmmortel (set 8) en
+'cellenbeton<25%+lijmmortel (oplegmodule).
+steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.80; 0.70; 0.80; 0.65; 0.80; 0.65; 0.80 |0.75; 0.70; 0.85; 0.85; 0.85; 0.85; 0.85 |0.10; 0; 0; 0; 0; 0; 0]
 K = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 3); hlookup(steenmat; steensoort; 1; 2))
 alfa = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 4); 0.65)
 bexp = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 5); 0.25)
 'EN 771-1 t/m 6 kent alleen categorie I en II.
 gam_base = if(steencategorie ≡ 1; 1.7; 2.2)
 gam_M = gam_base - if(CC ≡ 1; 0.2; 0)
-f_meff = min(f_m; 20)
+'NB bij 3.6.1.2: f_b hoogstens 75 N/mm² bij metselmortel en 50 N/mm² bij
+'lijmmortel; f_m hoogstens 20 N/mm², en bij metselmortel ook hoogstens 2·f_b.
+'Die laatste grens past het referentieprogramma niet toe (oplegreferentie 2:
+'fb 5 met M15 geeft daar f_k = 3,36 in plaats van 3,04) — register punt 14.
+f_beff = min(f_b; if(morteltype ≡ 1; 75; 50))
+f_meff_XC = min(f_m; 20)
+f_meff_nb = min(f_m; 20; if(morteltype ≡ 1; 2*f_beff; 20))
+f_meff = if(rekenwijze ≡ 1; f_meff_XC; f_meff_nb)
 K_E = 700
 #show
 
@@ -126,7 +133,7 @@ K', factor K (steengroep + morteltype)'
 alfa', exponent α'
 bexp', exponent β'
 gam_M
-f_k = K*f_b^alfa*f_meff^bexp*N/mm^2', karakteristieke druksterkte metselwerk (3.2)'
+f_k = K*f_beff^alfa*f_meff^bexp*N/mm^2', karakteristieke druksterkte metselwerk (3.2)'
 f_k
 f_d = f_k/gam_M', rekenwaarde druksterkte (3.1)'
 f_d
@@ -228,14 +235,14 @@ N_Rdb
 # 7. Excentriciteit op halve hoogte — §6.1.2.2 + bijlage G
 
 '<i>M<sub>Ed,mc</sub> = M<sub>mEd</sub> + (ΔM<sub>t</sub> + ΔM<sub>b</sub>)/2, met de
-'restmomenten uit de begrenzing hierboven. De kruip-excentriciteit e<sub>k</sub> volgt uit (6.7) met φ<sub>∞</sub>;
-'NB:2018 geeft φ<sub>∞</sub> = 0, waardoor e<sub>k</sub> vervalt.</i>
+'restmomenten uit de begrenzing hierboven. De kruip-excentriciteit e<sub>k</sub> mag nul zijn zolang
+'de slankheid niet boven λ<sub>c</sub> = 27 komt (NB bij 6.1.2.2(2)); daarboven volgt hij uit (6.7).</i>
 M_Edmc = M_mEd + (dM_t + dM_b)/2', maatgevend moment op halve hoogte'
 e_Edm = M_Edmc/N_min to mm
 e_m = abs(e_Edm) + e_init', eerste-orde excentriciteit halve hoogte'
 e_Edm
 e_m
-e_k = 0.002*phi_inf*(h_ef/t_ef)*sqrt(t_w*e_m)', kruip-excentriciteit (6.7)'
+e_k = if(h_ef/t_ef ≤ 27; 0 mm; 0.002*phi_inf*(h_ef/t_ef)*sqrt(t_w*e_m))', kruip-excentriciteit (6.7), nul bij λ ≤ λ_c = 27'
 e_k
 e_mk = max(abs(e_m) + e_k; 0.05*t_ef)', totale excentriciteit halve hoogte (6.6)'
 e_mk
@@ -281,7 +288,8 @@ e_m2
     #else
         'λ = h<sub>ef2</sub>/t<sub>ef</sub> = 'lam_2' > 27 — u.c. = 'UC_lam2'<span style="color: red"> → <b>voldoet niet</b></span>
     #end if
-    e_mk2 = max(e_m2 + e_k; 0.05*t_w)', (6.6)'
+    e_k2 = if(lam_2 ≤ 27; 0 mm; 0.002*phi_inf*lam_2*sqrt(t_w*e_m2))', kruip-excentriciteit bij h_ef2 (6.7)'
+    e_mk2 = max(e_m2 + e_k2; 0.05*t_w)', (6.6)'
     e_mk2
     A_12 = 1 - 2*e_mk2/t_w', (G.2)'
     A_12
@@ -328,12 +336,12 @@ UC_max = max(UC_lam; UC_lam2m; UC_1; UC_2)
 'referentiebladen met elk een andere optie hebben allemaal e<sub>t</sub> = 50 mm > 0,25·t,
 'waardoor ρ<sub>2</sub> = 1,00 wordt ongeacht de keuze — ze zijn vanaf blad 2 identiek. Dit blad
 'volgt EN 1996-1-1 §5.5.1.2: beton (optie 1-2) → 0,75, hout (optie 3-4) → 1,00.</li>
-'<li>E = 700·f<sub>k</sub> (NB:2018) en φ<sub>∞</sub> = 0, dus e<sub>k</sub> = 0 — beide uit de
-'referenties teruggerekend. φ<sub>∞</sub> is invoerbaar voor het geval een andere NB-waarde geldt.</li>
-'<li>De f<sub>k</sub>-exponenten hangen af van steensoort én morteltype. Geverifieerd zijn
-'kalkzandsteen + metselmortel (0,6 / 0,65 / 0,25), baksteen + lijmmortel (0,8 / 0,75 / 0,10) en
-'cellenbeton + lijmmortel (0,8 / 0,85 / 0). <b>De overige lijmmortel-combinaties volgen dat patroon
-'maar zijn niet tegen een referentie getoetst.</b></li>
+'<li>E = 700·f<sub>k</sub> (NB bij 3.7.2). De kruip-excentriciteit e<sub>k</sub> is nul zolang
+'λ ≤ λ<sub>c</sub> = 27 (NB bij 6.1.2.2(2)); boven die slankheid voldoet de wand al niet aan §5.5.1.4.</li>
+'<li>K, α en β komen uit tabel NB-2 en hangen af van steensoort en morteltype. Tegen een referentie
+'getoetst zijn kalkzandsteen + metselmortel, baksteen + lijmmortel en cellenbeton + lijmmortel.</li>
+'<li>f<sub>m</sub> ≤ 2·f<sub>b</sub> bij metselmortel (NB bij 3.6.1.2) past het referentieprogramma niet
+'toe; in de norm-stand wel (register punt 14).</li>
 '<li>Een verticale randsteuning vervalt zodra L<sub>v</sub> ≥ 15·t (n = 3) respectievelijk
 'L<sub>v</sub> ≥ 30·t (n = 4); beide grenzen zijn geverifieerd.</li>
 '<li>N<sub>Ed,max</sub> komt uitsluitend voor in de minimale-excentriciteitstoets. Die toets

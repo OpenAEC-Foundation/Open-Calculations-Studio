@@ -14,9 +14,9 @@
  *
  * De variabelenamen komen exact overeen met OplegMetselwerkDesigner.tsx.
  *
- * ⚠ Openstaand (zie noten onderaan): de factoren K/α/β zijn alleen voor
- * cellenbeton geverifieerd tegen de referentie; de overige steensoorten staan
- * op standaard EN-waarden (0,7/0,3) en moeten nog tegen NB:2018 worden getoetst.
+ * K, α en β komen uit tabel NB-2 (NEN-EN 1996-1-1 NB:2018). De grens
+ * f_m ≤ 2·f_b bij metselmortel past het referentieprogramma niet toe; die geldt
+ * alleen in de norm-stand (register punt 14).
  */
 
 export const oplegMetselwerk = `"Oplegging op metselwerk — geconcentreerde last (EN 1996-1-1 §6.1.3)
@@ -52,31 +52,34 @@ f_b = ?', genormaliseerde druksterkte steen f_b [N/mm²] — fb-waarde (baksteen
 
 f_m = ?', mortelsterkte f_m [N/mm²] — M-klasse (metselmortel) of L-klasse (lijmmortel); bij lijmmortel niet van invloed op f_k (β=0)'
 
-@select steencategorie "Steencategorie / uitvoeringsklasse (basis γ_M)"
+@select steencategorie "Steencategorie (γ_M, tabel NB-1)"
   Categorie I = 1
   Categorie II = 2
-  Categorie III = 3
 @end
 
 #hide
-'Steenmatrix: [id | K_metsel | K_lijm]. f_k = K·f_b^α·f_m^β.
-'Metselmortel: α=0,65 · β=0,25 · K = 0,6 (groep 1 <25%) / 0,5 (groep 2 <55%/<60%).
-'Lijmmortel:   α=0,85 · β=0   · K per steensoort (EN-tabel; cellenbeton<25% = 0,8 geverifieerd).
-steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.75; 0.70; 0.80; 0.70; 0.80; 0.70; 0.80]
+'Steenmatrix uit tabel NB-2: [id | K_metsel | K_lijm | α_lijm | β_lijm].
+'Metselmortel heeft altijd α = 0,65 en β = 0,25.
+steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.80; 0.70; 0.80; 0.65; 0.80; 0.65; 0.80 |0.75; 0.70; 0.85; 0.85; 0.85; 0.85; 0.85 |0.10; 0; 0; 0; 0; 0; 0]
 K_metsel = hlookup(steenmat; steensoort; 1; 2)
 K_lijm = hlookup(steenmat; steensoort; 1; 3)
 K = if(morteltype ≡ 2; K_lijm; K_metsel)
-α = if(morteltype ≡ 2; 0.85; 0.65)
-β_exp = if(morteltype ≡ 2; 0; 0.25)
-'γ_M = basis(categorie), alleen CC1 verlaagt met 0,2 (CC2 = CC3 = basis). Gekalibreerd:
-'Cat I → CC1=1,5 · CC2=1,7 · CC3=1,7; Cat II → CC1=2,0. base: I=1,7 · II=2,2 · III=2,7(geëxtrapoleerd).
-γ_base = if(steencategorie ≡ 1; 1.7; if(steencategorie ≡ 2; 2.2; 2.7))
+α = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 4); 0.65)
+β_exp = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 5); 0.25)
+'γ_M uit tabel NB-1: categorie I 1,7 en II 2,2 bij CC2 en CC3; bij CC1 0,2 lager.
+γ_base = if(steencategorie ≡ 1; 1.7; 2.2)
 γ_M = γ_base - if(CC ≡ 1; 0.2; 0)
-'Referentie past de bovengrens f_m ≤ 2·f_b NIET toe (alleen ≤ 20 N/mm²).
-f_m_eff = min(f_m; 20)
+'NB bij 3.6.1.2: f_b hoogstens 75 N/mm² (metselmortel) of 50 N/mm² (lijmmortel);
+'f_m hoogstens 20 N/mm², en bij metselmortel ook hoogstens 2·f_b. Die laatste
+'grens past het referentieprogramma niet toe (referentie 2: fb 5 met M15 geeft
+'daar f_k = 3,36 in plaats van 3,04) — register punt 14.
+f_b_eff = min(f_b; if(morteltype ≡ 1; 75; 50))
+f_m_eff_XC = min(f_m; 20)
+f_m_eff_nb = min(f_m; 20; if(morteltype ≡ 1; 2*f_b_eff; 20))
+f_m_eff = if(rekenwijze ≡ 1; f_m_eff_XC; f_m_eff_nb)
 #show
 
-f_k = K*f_b^α*f_m_eff^β_exp', karakteristieke druksterkte metselwerk (form. 3.2) [N/mm²]'
+f_k = K*f_b_eff^α*f_m_eff^β_exp', karakteristieke druksterkte metselwerk (form. 3.2) [N/mm²]'
 f_k
 f_d = f_k/γ_M', rekenwaarde druksterkte (3.1) [N/mm²]'
 f_d
@@ -177,17 +180,13 @@ opleg_min = min(a_L; a_t)
 '<hr/>
 '<i>Aandachtspunten / open punten (status t.o.v. de referentie-uitwerking-referenties):
 '<ul>
-'<li><b>Metselmortel (M-klasse):</b> f_k = K·f_b<sup>0,65</sup>·f_m<sup>0,25</sup>; K per steengroep
-'(groep 1 &lt;25% = 0,6 · groep 2 &lt;55%/&lt;60% = 0,5). Gecheckt: KZS&lt;25%, cellenbeton&lt;25% (K=0,6)
-'en baksteen&lt;55% (K=0,5). Baksteen&lt;25%, betonsteen en KZS&lt;55% volgen het groep-patroon.</li>
-'<li><b>Lijmmortel (L-klasse):</b> f_k = K·f_b<sup>0,85</sup> (β=0, f_m valt weg); K per steensoort
-'(EN-tabel). Gecheckt: cellenbeton&lt;25% (K=0,8). Overige lijm-K's nog te bevestigen.</li>
-'<li><b>γ_M — afhankelijk van categorie én CC:</b> basiswaarde per categorie (I=1,7 · II=2,2 ·
-'III=2,7), waarbij alleen CC1 met 0,2 verlaagt (CC2 = CC3 = basis). Geverifieerd: Cat I CC1=1,5,
-'CC2=1,7, CC3=1,7 en Cat II CC1=2,0. Cat III (basis 2,7) en Cat II CC2/CC3 geëxtrapoleerd.</li>
-'<li><b>f<sub>m</sub>-bovengrens:</b> de referentie past de EN-eis f<sub>m</sub> ≤ 2·f<sub>b</sub>
-'(§3.6.1.2) NIET toe (alleen f<sub>m</sub> ≤ 20). Hier idem om de referentie te reproduceren —
-'<b>afwijkend van de norm</b>; controleer of dit gewenst is.</li>
+'<li><b>K, α en β</b> uit tabel NB-2: metselmortel altijd α = 0,65 en β = 0,25 met K = 0,6
+'(groep 1) of 0,5 (groep 2); lijmmortel per steensoort. Tegen een referentie getoetst:
+'kalkzandsteen, cellenbeton en baksteen met metselmortel, cellenbeton met lijmmortel.</li>
+'<li><b>γ<sub>M</sub></b> uit tabel NB-1: categorie I 1,7 en II 2,2 bij CC2 en CC3, bij CC1 0,2
+'lager. Een categorie III kennen de stenennormen niet.</li>
+'<li><b>f<sub>m</sub> ≤ 2·f<sub>b</sub></b> bij metselmortel (NB bij 3.6.1.2) past het
+'referentieprogramma niet toe; in de norm-stand wel (register punt 14).</li>
 '<li><b>N<sub>Ed</sub>:</b> de wandlast draagt mee via N<sub>Ed</sub> = N<sub>Edc</sub> + a<sub>L</sub>·q<sub>Edc</sub>.</li>
 '<li><b>l<sub>efm</sub>:</b> spreiding 60° over ½·h<sub>c</sub> met h<sub>c</sub> = h − h<sub>k</sub>,
 'begrensd door wandeinde (a<sub>1</sub>, mag 0 zijn) en beschikbare wandlengte.</li>
