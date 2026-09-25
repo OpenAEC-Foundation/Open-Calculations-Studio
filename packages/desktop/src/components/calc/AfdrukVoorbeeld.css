@@ -116,6 +116,8 @@
   line-height: 1.45;
 }
 
+/* Dezelfde loopkop en -voet als de echte afdruk; het paginanummer staat daar
+   in de paginamarge, hier in het midden van de voet. */
 .av-loopkop,
 .av-loopvoet {
   position: absolute;
@@ -123,20 +125,38 @@
   right: 16mm;
   display: flex;
   justify-content: space-between;
+  font-family: var(--font-body, "Inter", system-ui, sans-serif);
   font-size: 8pt;
-  color: #555;
+  color: #6b6b73;
 }
 
 .av-loopkop {
   top: 13mm;
   padding-bottom: 3pt;
-  border-bottom: 0.5pt solid #bbb;
+  border-bottom: 0.75pt solid #D97706;
+  font-weight: 500;
 }
 
 .av-loopvoet {
   bottom: 11mm;
   padding-top: 3pt;
-  border-top: 0.5pt solid #bbb;
+  border-top: 0.5pt solid #d4d4d8;
+}
+
+.av-bereik {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.av-bereik select {
+  max-width: 260px;
+  padding: 2px 4px;
+  font: inherit;
+  border: 1px solid var(--theme-border-subtle, #d5d9de);
+  border-radius: 4px;
+  background: var(--theme-bg-surface, #fff);
+  color: inherit;
 }
 
 /* Vel plus bijschrift. Het nummer staat bewust búiten het papier: het hoort

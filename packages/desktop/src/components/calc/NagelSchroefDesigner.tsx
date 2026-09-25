@@ -149,7 +149,7 @@ export default function NagelSchroefDesigner() {
   const opbouwLabel = OPBOUW.find((o) => o.v === opbouw)?.label ?? "";
 
   return (
-    <div className="vd-panel">
+    <div className="vd-panel" data-afdrukhoogte="150">
       <div className="vd-head">
         <strong>Parametrisch beeld — nagel- en schroefverbinding</strong>
         <span className="vd-uc info">{n1 * n2}× {middelLabel.toLowerCase()} {fmt(dv, 1)} × {fmt(lv)} · {opbouwLabel.toLowerCase()}</span>

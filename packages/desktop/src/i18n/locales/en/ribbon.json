@@ -20,6 +20,9 @@
     "undo": "Undo",
     "redo": "Redo",
     "pdf": "PDF",
+    "preview": "Preview",
+    "pdfSheet": "PDF sheet",
+    "pdfSave": "PDF project",
     "ifcExport": "IFC"
   },
   "insert": {
