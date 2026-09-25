@@ -636,11 +636,11 @@ draaien met:
 npm run check
 ```
 
-Dat bouwt de core en draait `check-spuwer`, `check-kruipfactor`,
-`check-verankeringslengte`, `check-boutberekening`, `check-balklaag`,
-`check-gording`, `check-kolom`, `check-afkortingen` en
-`check-projectvariabelen` (die laatste bewaakt de grens tussen projectgegevens
-en bladinvoer — zie `docs/projectmodel.md`).
+Dat bouwt de core en draait elk `scripts/check-*.mjs`: per gecalibreerde
+module één, plus de algemene bewakers zoals `check-afkortingen`,
+`check-designerkeuze`, `check-renders` en `check-projectvariabelen` (die
+laatste bewaakt de grens tussen projectgegevens en bladinvoer — zie
+`docs/projectmodel.md`).
 Elk script zet de invoer van de referentiebladen in de module en vergelijkt de
 tussenstappen met het afgedrukte getal; de tolerantie volgt uit de
 gedocumenteerde precisie, dus `96` toetst op ±0,5 en `45,7` op ±0,05. De
