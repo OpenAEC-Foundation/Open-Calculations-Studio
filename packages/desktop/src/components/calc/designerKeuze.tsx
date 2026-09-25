@@ -7,6 +7,7 @@ import BoutDesigner from "./BoutDesigner";
 import BrandwerendheidDesigner from "./BrandwerendheidDesigner";
 import DwarskrachtDesigner from "./DwarskrachtDesigner";
 import GordingDesigner from "./GordingDesigner";
+import HsbStabiliteitDesigner from "./HsbStabiliteitDesigner";
 import KolomDesigner from "./KolomDesigner";
 import KruipfactorDesigner from "./KruipfactorDesigner";
 import LasDesigner from "./LasDesigner";
@@ -35,6 +36,9 @@ import VoetplaatDesigner from "./VoetplaatDesigner";
  * het blad dat openstaat.
  */
 const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
+  // Vooraan: de uitleg in dit blad noemt wandschijven en ankers, en een latere,
+  // ruimere kop mag hem niet wegkapen.
+  { marker: "Stabiliteit HSB-wanden", beeld: () => <HsbStabiliteitDesigner /> },
   { marker: "Voetplaatverbinding", beeld: () => <VoetplaatDesigner /> },
   { marker: "Balklaag", beeld: () => <BalklaagDesigner /> },
   { marker: "Spuwer", beeld: () => <SpuwerDesigner /> },

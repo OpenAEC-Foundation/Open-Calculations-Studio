@@ -7,6 +7,7 @@ import { voetplaatverbinding } from "./voetplaatverbinding";
 import { balklaag } from "./balklaag";
 import { oplegMetselwerk } from "./oplegMetselwerk";
 import { schijfwerking } from "./schijfwerking";
+import { hsbStabiliteit } from "./hsbStabiliteit";
 import { gording } from "./gording";
 import { kolom } from "./kolom";
 import { metselwerkwand } from "./metselwerkwand";
@@ -64,6 +65,7 @@ export const templates: Record<string, string> = {
   "balklaag": balklaag,
   "opleg-metselwerk": oplegMetselwerk,
   "schijfwerking": schijfwerking,
+  "hsb-stabiliteit": hsbStabiliteit,
   "gording": gording,
   "kolom": kolom,
   "metselwerkwand": metselwerkwand,
