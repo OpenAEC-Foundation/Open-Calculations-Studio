@@ -235,7 +235,9 @@ export default function SchijfwerkingDesigner() {
   const yE0 = mT + Math.max(0, (H - mT - mB - contentH) / 2), yE1 = yE0 + Hpx;
   const ySec0 = yE1 + gapMid, ySec1 = ySec0 + secDepth * s;
 
-  const regelPx = Math.max(4, bRegel * s);             // regel-hoogte in aanzicht
+  // In het aanzicht zie je van een regel zijn dikte; de breedte loopt de wand in.
+  // Met b_regel (184) werd een regel van 76 mm ruim twee keer te dik getekend.
+  const regelPx = Math.max(3, tRegel * s);             // regel-hoogte in aanzicht
   const stijlPx = Math.max(2, tStijl * s);             // stijl-breedte
   const beplPx = Math.max(2, tBepl * s);               // beplatingsdikte in doorsnede
   // detail A-C: regel doorlopend (regel over de volle breedte) of stijl doorlopend
@@ -322,9 +324,8 @@ export default function SchijfwerkingDesigner() {
                 {defs}
 
                 {/* ── VOORAANZICHT ─────────────────────────────────────────── */}
-                {/* beplating-vlak (sheathing) */}
-                <rect x={xW0} y={yE0} width={Wpx} height={Hpx} fill="#eef2fb" stroke="#1d4ed8" strokeWidth={1.5} />
-                {/* stijlen + regels — bij "Stijl doorlopend" lopen alleen de KOPSTIJLEN door */}
+                {/* stijlen + regels eerst — bij "Stijl doorlopend" lopen alleen de
+                    KOPSTIJLEN door. De beplating komt er daarna overheen. */}
                 {(() => {
                   const stud = (mm: number, i: number, full: boolean) => (
                     <rect key={i} x={px(mm) - stijlPx / 2} y={full ? yE0 : yE0 + regelPx}
@@ -342,6 +343,10 @@ export default function SchijfwerkingDesigner() {
                   // stijl doorlopend: alleen de kopstijlen full-height, regels ertussen
                   return <>{mids}{railTop}{railBot}{stud(studXs[0], 0, true)}{stud(studXs[last], last, true)}</>;
                 })()}
+                {/* beplating tot de rand: de platen dekken de hele wand, ook de
+                    regels en de kopstijlen. Doorschijnend, zodat het raamwerk
+                    erachter zichtbaar blijft. */}
+                <rect x={xW0} y={yE0} width={Wpx} height={Hpx} fill="#dbe4f5" fillOpacity={0.55} />
                 {/* beplatingsvoegen (dashed) */}
                 {boardXs.map((mm, i) => (
                   <line key={i} x1={px(mm)} y1={yE0} x2={px(mm)} y2={yE1} stroke="#1d4ed8" strokeWidth={1} strokeDasharray="6 4" />
