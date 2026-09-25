@@ -374,7 +374,11 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
           }
           result.push({ type: 'text', text: out.join(''), html: true, ...(node.inline ? { inline: true } : {}) });
         } else {
-          result.push({ type: 'text', text: node.text, html: node.html, ...(node.inline ? { inline: true } : {}) });
+          // De normbladen schrijven een uitkomst als {{naam}} in een tekstregel,
+          // zoals in een tekening. Zonder invulling stond er letterlijk
+          // "UC = {{UC_druk}}" op het blad.
+          const text = node.text.includes('{{') ? interpolateBraces(node.text, scope) : node.text;
+          result.push({ type: 'text', text, html: node.html, ...(node.inline ? { inline: true } : {}) });
         }
         break;
 
@@ -518,7 +522,7 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
 
       case 'svg': {
         if (node.hidden) break;
-        const interpolated = interpolateSvg(node.content, scope);
+        const interpolated = interpolateBraces(node.content, scope);
         result.push({ type: 'svg', content: interpolated });
         break;
       }
@@ -976,7 +980,8 @@ function stringifyInterpolated(v: unknown): string {
   return String(v);
 }
 
-function interpolateSvg(content: string, scope: Scope): string {
+/** Vult {{naam}} in met de waarde uit de scope, zonder eenheid; onbekende namen blijven staan. */
+function interpolateBraces(content: string, scope: Scope): string {
   return content.replace(/\{\{(\w+)\}\}/g, (_, varName: string) => {
     if (varName in scope) {
       const val = scope[varName];
