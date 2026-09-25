@@ -89,7 +89,8 @@ function unitToLatex(name: string): string {
 // ─── Number formatting ──────────────────────────────────────────────
 
 function numberToLatex(value: number): string {
-  if (!isFinite(value)) return String(value);
+  if (Number.isNaN(value)) return 'NaN';
+  if (!isFinite(value)) return value > 0 ? '\\infty' : '-\\infty';
   if (value === 0) return '0';
 
   // Integer in reasonable range
@@ -135,6 +136,7 @@ function nodeToLatex(node: MathNode): string {
 
     case 'SymbolNode': {
       const name = nd.name!;
+      if (name === 'Infinity') return '\\infty';
       if (isKnownUnit(name)) return unitToLatex(name);
       return symbolToLatex(name);
     }
@@ -269,7 +271,7 @@ function functionToLatex(nd: AnyNode): string {
 
 /** Format a result value (number + unit) as LaTeX */
 export function resultToLatex(numStr: string, unitStr: string): string {
-  const num = escapeLatex(numStr);
+  const num = numStr.includes('∞') ? numStr.replace(/∞/g, '\\infty') : escapeLatex(numStr);
   if (!unitStr) return num;
   return `${num} \\; ${unitPartToLatex(unitStr)}`;
 }

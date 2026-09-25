@@ -296,7 +296,8 @@ function renderAssignment(node: {
     // Full chain: name = expr = substitution = result
     let subTex: string;
     try {
-      subTex = exprToLatex(node.substitution);
+      // Een ingevulde ∞ leest mathjs alleen als `Infinity`.
+      subTex = exprToLatex(node.substitution.replace(/∞/g, 'Infinity'));
     } catch {
       subTex = escapeLatexStr(node.substitution);
     }
@@ -309,7 +310,7 @@ function renderAssignment(node: {
 
 /** Split a result string like "150000 mm^2" into number and unit */
 function splitResult(result: string): { numStr: string; unitStr: string } {
-  const match = result.match(/^([+-]?\d+\.?\d*(?:e[+-]?\d+)?)\s+(.+)$/i);
+  const match = result.match(/^([+-]?(?:\d+\.?\d*(?:e[+-]?\d+)?|∞))\s+(.+)$/i);
   if (match) {
     return { numStr: match[1], unitStr: match[2] };
   }

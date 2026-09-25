@@ -100,7 +100,7 @@ function onderzoek(html) {
   for (const svg of html.match(/<svg[\s\S]*?<\/svg>/g) || []) {
     for (const m of svg.matchAll(GETALATTRIBUTEN)) {
       const waarde = m[2];
-      if (/NaN|Infinity/.test(waarde)) { nanTekening++; continue; }
+      if (/NaN|Infinity|∞/.test(waarde)) { nanTekening++; continue; }
       // Getallen, eventueel met een SVG-lengte-eenheid erachter: KaTeX tekent
       // wortel- en haaktekens als SVG met `width="400em"`, en dat is geldig.
       // Een expressie die niet is uitgerekend bevat daarentegen namen en
@@ -156,7 +156,7 @@ for (const { bestand, naam, tpl } of bladen) {
     const leeg = rekenblad(tpl, {}, undefined, scope);
     let n = 0;
     for (const svg of leeg.match(/<svg[\s\S]*?<\/svg>/g) || []) {
-      n += (svg.match(/="[^"]*(NaN|Infinity)[^"]*"/g) || []).length;
+      n += (svg.match(/="[^"]*(NaN|Infinity|∞)[^"]*"/g) || []).length;
     }
     if (n) ruis.push(`${bestand} :: ${naam} — ${n} attribuut/attributen`);
   } catch {
