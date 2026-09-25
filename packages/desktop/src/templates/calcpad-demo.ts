@@ -83,12 +83,12 @@ UC
 ' Loop body sees iteration index _i (1-based). Useful for parametric studies.
 
 #hide
-F_sweep_kN = 0
+F_sweep = 0 kN
 #show
 
 #repeat 5
-  F_sweep_kN = 50 * _i
-  M_sweep = F_sweep_kN * L / 4 to kN*m
+  F_sweep = 50 kN * _i
+  M_sweep = F_sweep * L / 4 to kN*m
   UC_sweep = M_sweep / M_Rd
 #end repeat
 

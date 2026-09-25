@@ -149,7 +149,7 @@ tri_h = tri_w*sh/sw
 '  <text x="20" y="'y1 + 30'" style="fill:#525252; font-size:11px">type: 'type_label' · α = 'α_deg'°</text>
 '  <g transform="translate('tri_x', 'tri_y')">
 '    <line x1="0" y1="0" x2="'tri_w'" y2="0" style="stroke:#DC2626; stroke-width:2"/>
-'    <polygon points="'tri_w - 6',-4 'tri_w','0 'tri_w - 6',4" style="fill:#DC2626"/>
+'    <polygon points="'tri_w - 6',-4 'tri_w',0 'tri_w - 6',4" style="fill:#DC2626"/>
 '    <text x="'tri_w/2'" y="-6" text-anchor="middle" style="fill:#DC2626; font-size:11px; font-weight:600">F<tspan baseline-shift="sub">h</tspan></text>
 '    <line x1="'tri_w'" y1="0" x2="'tri_w'" y2="'tri_h'" style="stroke:#7C3AED; stroke-width:2"/>
 '    <polygon points="'tri_w - 4','tri_h - 6' 'tri_w','tri_h' 'tri_w + 4','tri_h - 6'" style="fill:#7C3AED"/>
