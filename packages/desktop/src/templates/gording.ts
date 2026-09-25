@@ -173,7 +173,15 @@ q_par = ?*(kN/m)', door muurplaat/nokgording opgenomen ∥-belasting'
 @end
 Q_k = ?*(kN)', geconcentreerde last'
 q_var = ?*(kN/m^2)', verdeelde veranderlijke belasting'
-s_k = ?*(kN/m^2)', karakteristieke sneeuwbelasting (grondvlak)'
+@select sk_manual "Sneeuwbelasting op de grond"
+  NL-waarde 0,70 kN/m² = 0
+  Zelf invullen = 1
+@end
+#if sk_manual ≡ 1
+    s_k = ?*(kN/m^2)', karakteristieke sneeuwbelasting (grondvlak)'
+#else
+    s_k = 0.70 kN/m^2', grondwaarde voor heel Nederland (NB bij NEN-EN 1991-1-3)'
+#end if
 
 '<h6>Wind</h6>
 '<i>Windgebied en terreincategorie staan in de <b>projectgegevens</b>; de
@@ -285,7 +293,16 @@ Md_z', moment verdeelde last (zwakke as)'
 
 # 7. Belastingsgeval 3 — Sneeuw
 
-μ_1 = if(α_deg ≤ 30; 0.8; if(α_deg ≥ 60; 0; 0.8*(60 - α_deg)/30))', vormcoëfficiënt'
+@select mu1_manual "Vormcoëfficiënt μ_1"
+  Uit de dakhelling (tabel 5.2) = 0
+  Zelf invullen = 1
+@end
+#if mu1_manual ≡ 1
+    mu1_val = ?', vormcoëfficiënt, zelf ingevuld'
+    μ_1 = mu1_val
+#else
+    μ_1 = if(α_deg ≤ 30; 0.8; if(α_deg ≥ 60; 0; 0.8*(60 - α_deg)/30))', vormcoëfficiënt'
+#end if
 P_sn = μ_1*s_k', sneeuw op het dak (grondvlak)'
 q_sn = hoh*P_sn*cos_α to kN/m', verticale sneeuw-lijnlast per gording'
 μ_1
