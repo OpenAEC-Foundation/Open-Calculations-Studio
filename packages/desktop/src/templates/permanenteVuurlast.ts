@@ -82,7 +82,9 @@ Q_pvc = m_pvc*H_u_pvc
 Q_pe = m_pe*H_u_pe
 Q_overig = m_overig*H_u_overig
 
-Q_totaal = Q_hout + Q_pir + Q_eps + Q_bitumen + Q_pvc + Q_pe + Q_overig', (E.2)'
+Q_a = Q_hout + Q_pir + Q_eps', hout en schuimisolatie'
+Q_b = Q_bitumen + Q_pvc + Q_pe', dakbedekking en leidingen'
+Q_totaal = Q_a + Q_b + Q_overig', totale energie-inhoud (E.2)'
 
 # 5. Permanente vuurbelasting
 
@@ -105,9 +107,9 @@ Q_totaal = Q_hout + Q_pir + Q_eps + Q_bitumen + Q_pvc + Q_pe + Q_overig', (E.2)'
 q_grens = 500*MJ/m^2', grens uit het Bbl'
 UC_max = q_f,k/q_grens
 #if UC_max ≤ 1.0
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>permanente vuurbelasting niet groter dan 500 MJ/m²</b></span>
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: de permanente vuurbelasting is niet groter dan 500 MJ/m²</span>
 #else
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>permanente vuurbelasting groter dan 500 MJ/m², voldoet niet aan de grens</b></span>
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: de permanente vuurbelasting is groter dan 500 MJ/m²</span>
 #end if
 
 # 7. Schatting van massa's (hulp)
