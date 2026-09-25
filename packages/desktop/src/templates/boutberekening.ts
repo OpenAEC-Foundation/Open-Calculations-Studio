@@ -2,8 +2,8 @@
  * Boutberekening — weerstanden van één bout volgens NEN-EN 1993-1-8 tabel 3.4.
  *
  * BOUWSTEEN: dit blad levert F_v,Rd, F_b,Rd, F_t,Rd en B_p,Rd voor één bout.
- * De momentverbinding, dwarskrachtverbinding, schoorverbinding en penverbinding
- * hangen daaraan; de formules staan daarom bewust op zichzelf, zonder aannames
+ * De momentverbinding, dwarskrachtverbinding en schoorverbinding hangen
+ * daaraan; de formules staan daarom bewust op zichzelf, zonder aannames
  * over de verbinding waarin de bout zit.
  *
  * Gecalibreerd op zes referentieberekeningen (document1C t/m 6C), basis

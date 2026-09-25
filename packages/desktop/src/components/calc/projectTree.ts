@@ -87,7 +87,7 @@ export const moduleCatalogus: TreeNode[] = [
     id: "cat-staal",
     label: "Staal",
     defaultExpanded: true,
-    count: 12,
+    count: 10,
     children: [
       // "Stalen ligger IPE 300" stond hier als module, maar is een uitgewerkt
       // voorbeeld met de doorsnede hard ingetypt — geen profielkeuze, geen
@@ -102,13 +102,12 @@ export const moduleCatalogus: TreeNode[] = [
         id: "cat-staal-concept",
         label: "Nog uit te werken",
         defaultExpanded: true,
-        count: 7,
+        count: 6,
         children: [
           { kind: "item", id: "sheet-stalen-kolom", label: "Stalen kolom", templateId: "stalen-kolom", status: "concept" },
           { kind: "item", id: "sheet-momentverbinding", label: "Momentverbinding", templateId: "momentverbinding", status: "concept" },
           { kind: "item", id: "sheet-dwarskrachtverbinding", label: "Dwarskrachtverbinding", templateId: "dwarskrachtverbinding", status: "concept" },
           { kind: "item", id: "sheet-schoorverbinding", label: "Schoorverbinding", templateId: "schoorverbinding", status: "concept" },
-          { kind: "item", id: "sheet-penverbinding", label: "Penverbinding", templateId: "penverbinding", status: "concept" },
           { kind: "item", id: "sheet-lasberekening", label: "Lasberekening", templateId: "lasberekening", status: "concept" },
           { kind: "item", id: "sheet-brandwerendheid", label: "Brandwerendheid", templateId: "brandwerendheid", status: "concept" },
         ],
