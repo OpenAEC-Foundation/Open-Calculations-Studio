@@ -30,12 +30,21 @@ const tpl = laadTemplate("balklaag.ts");
  */
 const PROJECT = { K_FI: 1, rekenwijze: 1 };
 
+/**
+ * De referentiebladen kennen één permanente vloerlast (1,00), een verdeelde
+ * veranderlijke (1,75) en een puntlast (2 kN). In het blad heten die G_k, Q_k
+ * en F_k. Het beschot rekent in de referentie met E = 7000 N/mm², en
+ * belastingcategorie B geeft dezelfde ψ_0 = 0,5 en ψ_2 = 0,3 als het
+ * referentiegeval. Trilling en de overige statische schema's staan uit: die
+ * komen in geen enkel referentieblad voor.
+ */
 const BASIS = {
-  profiel: "12", sterkteklasse: "2", klimaat: "1", duurklasse: "2",
-  L_d: "5000", a_opl: "50", hoh: "600", t_vloer: "18",
-  g_vloerplaat: "1.0", g_wanden: "0", g_plafond: "0", g_overig: "0",
-  q_k: "1.75", Q_k: "2", belastingcat: "2", verplaatsbaar: "0",
+  profiel: "12", sterkteklasse: "2", klimaat: "1", duurklasse: "2", schema: "1",
+  L_d: "5000", a_opl: "50", hoh: "600", t_vloer: "18", E_beschot: "7000", b_vloer: "5",
+  a_over: "0", L_veld2: "0", b_sparing: "0", l_staart: "0",
+  G_k: "1.0", Q_k: "1.75", F_k: "2", belastingcat: "2",
   "ψ_0_zelf": "0", "ψ_2_zelf": "0", controleer: "1", grensfactor: "0.004",
+  controleer_trilling: "0", "ζ": "0.01", a_tril: "1", b_tril: "120",
 };
 
 const REFERENTIES = [
