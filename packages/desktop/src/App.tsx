@@ -13,6 +13,7 @@ import { designerVoor } from "./components/calc/designerKeuze";
 import ProjectGegevensPanel from "./components/calc/ProjectGegevensPanel";
 import PrintDocument from "./components/calc/PrintDocument";
 import AfdrukVoorbeeld from "./components/calc/AfdrukVoorbeeld";
+import ModuleKiezer from "./components/calc/ModuleKiezer";
 import IfcViewerPanel from "./components/calc/IfcViewerPanel";
 import { getSetting } from "./store";
 import { useProjectStore, PROJECT_ID } from "./store/projectStore";
@@ -175,7 +176,7 @@ export default function App() {
             <div className="werkruimte-leeg">
               <h2>Nog geen rekenblad geopend</h2>
               <p>
-                Kies links een module om er een aan dit project toe te voegen. Elk blad dat je
+                Voeg een module toe met <b>Module</b> in het lint (tab Start). Elk blad dat je
                 toevoegt heeft zijn eigen invoer — je kunt dezelfde module meerdere keren
                 gebruiken zonder dat de bladen elkaar beïnvloeden.
               </p>
@@ -214,6 +215,7 @@ export default function App() {
         theme={theme}
         onThemeChange={handleThemeChange}
       />
+      <ModuleKiezer />
     </>
   );
 }

@@ -23,7 +23,9 @@
     "preview": "Voorbeeld",
     "pdfSheet": "PDF blad",
     "pdfSave": "PDF project",
-    "ifcExport": "IFC"
+    "ifcExport": "IFC",
+    "insert": "Invoegen",
+    "module": "Module"
   },
   "insert": {
     "elements": "Elementen",
