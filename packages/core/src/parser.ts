@@ -69,7 +69,10 @@ const SVG_START_RE = /^@svg\s*$/;
 const BLOCK_END_RE = /^@end\s*$/;
 const IMG_RE = /^@img\((.+)\)\s*$/;
 const SELECT_START_RE = /^@select\s+([a-zA-Z_]\w*)\s+"([^"]+)"\s*$/;
-const SELECT_OPTION_RE = /^(.+?)\s*=\s*(.+)$/;
+// Het label mag zelf een "=" bevatten ("Categorie A (psi_0 = 0.4) = 0.4"): de
+// waarde staat na de laatste "=". Eerder werd bij de eerste gesplitst, zodat
+// het label afbrak en de keuze een verkeerde waarde kreeg.
+const SELECT_OPTION_RE = /^(.+)\s*=\s*(.+)$/;
 const GEF_RE = /^@gef\s+([a-zA-Z_]\w*)\s*$/;
 // Directive recognizers. All allow trailing characters after the keyword because
 // CalcPAD frequently packs persisted-input values onto the same line as the
