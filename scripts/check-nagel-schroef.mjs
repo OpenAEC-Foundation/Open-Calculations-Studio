@@ -351,8 +351,8 @@ for (const set of SETS) {
   if (set.handwerk) fouten += toets(`${set.naam} — handberekening`, got, set.handwerk);
 
   // Eindoordeel en maatgevende UC staan in een tekstregel.
-  const m = got.text.match(/Maatgevende UC = ([\d.]+|Infinity)/);
-  const ucBlad = m ? (m[1] === "Infinity" ? Infinity : parseFloat(m[1])) : NaN;
+  const m = got.text.match(/Maatgevende UC = ([\d.]+|∞)/);
+  const ucBlad = m ? (m[1] === "∞" ? Infinity : parseFloat(m[1])) : NaN;
   // Zonder sterkte (k_mod = 0) noemt het blad geen UC maar de reden.
   const ucOk = Number.isFinite(r.UCmax)
     ? Number.isFinite(ucBlad) && Math.abs(ucBlad - r.UCmax) <= Math.max(0.002 * r.UCmax, 1e-4)

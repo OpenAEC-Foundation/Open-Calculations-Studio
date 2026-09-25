@@ -737,7 +737,10 @@ function getNumericValue(value: MathUnit): number {
 // ─── Number formatting ──────────────────────────────────────────────
 
 function formatNumber(n: number): string {
-  if (!isFinite(n)) return String(n);
+  // Een deling door een weerstand nul geeft een oneindige unity check; die
+  // hoort als ∞ op het blad, niet als het woord "Infinity".
+  if (Number.isNaN(n)) return 'NaN';
+  if (!isFinite(n)) return n > 0 ? '∞' : '-∞';
   if (n === 0) return '0';
 
   // If integer and not too large, show exact
