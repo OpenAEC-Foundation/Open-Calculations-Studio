@@ -111,7 +111,7 @@ export const PROJECT_VELDEN: VeldDef[] = [
       { label: "II — Noord-Holland, Groningen, Friesland, Flevoland, Zuid-Holland, Zeeland (27,0)", waarde: "2" },
       { label: "III — Overig Nederland (24,5)", waarde: "3" },
     ],
-    hint: "Volgt uit de gemeente (Tabel NB.1). Het beeld van de gording rekent q_p hieruit; de rekenbladen van gording en gevelkolom vragen q_p nog als los getal — zie docs/backlog.md.",
+    hint: "Volgt uit de gemeente (Tabel NB.1). De gording en de stalen gevelkolom rekenen q_p hieruit, met de referentiehoogte uit het blad.",
   },
   {
     groep: "Wind (NEN-EN 1991-1-4 + NB)",

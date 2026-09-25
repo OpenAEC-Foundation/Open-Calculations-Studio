@@ -6,6 +6,7 @@ import BetonkolomDesigner from "./BetonkolomDesigner";
 import BoutDesigner from "./BoutDesigner";
 import BrandwerendheidDesigner from "./BrandwerendheidDesigner";
 import DwarskrachtDesigner from "./DwarskrachtDesigner";
+import GevelkolomDesigner from "./GevelkolomDesigner";
 import GordingDesigner from "./GordingDesigner";
 import HsbStabiliteitDesigner from "./HsbStabiliteitDesigner";
 import KolomDesigner from "./KolomDesigner";
@@ -56,6 +57,7 @@ const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
   { marker: "Lasberekening", beeld: () => <LasDesigner /> },
   { marker: "Schoorverbinding", beeld: () => <SchoorDesigner /> },
   { marker: "Penverbinding", beeld: () => <PenDesigner /> },
+  { marker: "Stalen gevelkolom", beeld: () => <GevelkolomDesigner /> },
   { marker: "Stalen kolom", beeld: () => <StalenKolomDesigner /> },
   { marker: "Brandwerendheid", beeld: () => <BrandwerendheidDesigner /> },
   { marker: "Momentverbinding", beeld: () => <MomentverbindingDesigner /> },
