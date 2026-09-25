@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useProjectStore } from "../../store/projectStore";
 import { useActiefExemplaar, useAlleenLezen, useProjectGetal } from "../../store/actiefBlad";
+import { ucTekst, type BladUitkomst } from "./bladResultaat";
 
 /**
  * Gedeelde bouwstenen voor de parametrische beelden.
@@ -306,6 +307,28 @@ export function Kop({ titel, badge, staat }: { titel: string; badge: ReactNode; 
       <strong>{titel}</strong>
       <span className={`vd-uc ${staat ?? "info"}`}>{badge}</span>
     </div>
+  );
+}
+
+/**
+ * Paneelkop met de uitkomst van het blad zelf: de maatgevende UC en het
+ * oordeel zoals de uitwerking ernaast ze geeft. Het beeld rekent de toetsing
+ * dus niet na, en kan het blad niet tegenspreken.
+ */
+export function UitkomstKop({ titel, uitkomst }: { titel: string; uitkomst: BladUitkomst | null }) {
+  const r = uitkomst?.resultaat;
+  if (!r || (r.uc === null && r.voldoet === null)) return <Kop titel={titel} badge="—" />;
+  return (
+    <Kop
+      titel={titel}
+      staat={r.voldoet === null ? "info" : r.voldoet ? "ok" : "bad"}
+      badge={
+        <>
+          {r.uc !== null && <>UC<sub>max</sub> = {ucTekst(r.uc)} </>}
+          {r.voldoet === null ? null : r.voldoet ? "✓ voldoet" : "✗ voldoet niet"}
+        </>
+      }
+    />
   );
 }
 
