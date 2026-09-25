@@ -20,6 +20,9 @@
     "undo": "Ongedaan",
     "redo": "Opnieuw",
     "pdf": "PDF",
+    "preview": "Voorbeeld",
+    "pdfSheet": "PDF blad",
+    "pdfSave": "PDF project",
     "ifcExport": "IFC"
   },
   "insert": {

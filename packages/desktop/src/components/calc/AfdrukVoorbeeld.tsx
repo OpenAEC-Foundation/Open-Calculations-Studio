@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePrintStore } from "../../store/printStore";
-import { useUitdraai, PrintVoorblad, PrintBlad } from "./PrintDocument";
+import { useUitdraai, UitdraaiInhoud, loopkopLinks } from "./PrintDocument";
 import { meetBlokken, verdeelInPaginas, pxPerMm, INHOUD } from "./paginering";
 import "./PrintDocument.css";
 import "./AfdrukVoorbeeld.css";
@@ -21,9 +21,13 @@ const ZOOMSTANDEN = [0.5, 0.75, 1, 1.25, 1.5];
  */
 export default function AfdrukVoorbeeld() {
   const uitdraai = useUitdraai();
-  const { bladen, projectNaam, projectNummer, onderdeel, datum } = uitdraai;
+  const { bladen, alleBladen, onderdeel, datum } = uitdraai;
   const sluitVoorbeeld = usePrintStore((s) => s.sluitVoorbeeld);
   const afdrukken = usePrintStore((s) => s.afdrukken);
+  const selectie = usePrintStore((s) => s.selectie);
+  const kiesSelectie = usePrintStore((s) => s.kiesSelectie);
+  // De keuzelijst kent twee soorten: het hele project, of één blad.
+  const bereik = selectie && selectie.length === 1 ? selectie[0] : "project";
 
   const meetRef = useRef<HTMLDivElement>(null);
   const vellenRef = useRef<HTMLDivElement>(null);
@@ -32,7 +36,7 @@ export default function AfdrukVoorbeeld() {
   const [bezig, setBezig] = useState(true);
 
   // Kopregels per vel: dezelfde als de loopkop van de echte afdruk.
-  const linksBoven = (projectNummer ? `${projectNummer} · ` : "") + projectNaam;
+  const linksBoven = loopkopLinks(uitdraai);
 
   const bouwPaginas = useCallback(() => {
     const bron = meetRef.current;
@@ -60,9 +64,10 @@ export default function AfdrukVoorbeeld() {
 
       const voet = document.createElement("div");
       voet.className = "av-loopvoet";
-      voet.innerHTML = "<span></span><span></span>";
-      (voet.firstChild as HTMLElement).textContent = "Open Calculations Studio";
-      (voet.lastChild as HTMLElement).textContent = datum;
+      voet.innerHTML = "<span></span><span></span><span></span>";
+      (voet.children[0] as HTMLElement).textContent = "Open Calculations Studio";
+      (voet.children[1] as HTMLElement).textContent = `Pagina ${i + 1} van ${paginas.length}`;
+      (voet.children[2] as HTMLElement).textContent = datum;
 
       // De sectieklasse mee: de opmaakregels hangen eraan, en zonder die ouder
       // valt een losgeknipte regel terug op de schermopmaak.
@@ -158,6 +163,19 @@ export default function AfdrukVoorbeeld() {
         <span className="av-tel">
           {bezig ? "pagina's opmaken…" : `${aantal} pagina${aantal === 1 ? "" : "'s"}`}
         </span>
+        <span className="av-bereik">
+          <label htmlFor="av-bereik">Bereik</label>
+          <select
+            id="av-bereik"
+            value={bereik}
+            onChange={(e) => kiesSelectie(e.target.value === "project" ? null : [e.target.value])}
+          >
+            <option value="project">Hele project ({alleBladen.length} {alleBladen.length === 1 ? "blad" : "bladen"})</option>
+            {alleBladen.map((ex) => (
+              <option key={ex.id} value={ex.id}>Alleen: {ex.naam}</option>
+            ))}
+          </select>
+        </span>
         <span className="av-rek" />
         <span className="av-zoom">
           <label htmlFor="av-zoom">Zoom</label>
@@ -171,7 +189,7 @@ export default function AfdrukVoorbeeld() {
             ))}
           </select>
         </span>
-        <button className="av-primair" onClick={afdrukken}>Afdrukken…</button>
+        <button className="av-primair" onClick={() => afdrukken()}>PDF / afdrukken…</button>
         <button onClick={sluitVoorbeeld}>Sluiten</button>
       </div>
 
@@ -181,10 +199,7 @@ export default function AfdrukVoorbeeld() {
 
       {/* De meetopstelling: buiten beeld, op ware bladbreedte. */}
       <div className="av-meet print-opmaak" ref={meetRef} aria-hidden="true">
-        <PrintVoorblad uitdraai={uitdraai} />
-        {bladen.map(({ ex, html }, i) => (
-          <PrintBlad key={ex.id} ex={ex} html={html} nummer={i + 1} />
-        ))}
+        <UitdraaiInhoud uitdraai={uitdraai} />
       </div>
     </div>
   );

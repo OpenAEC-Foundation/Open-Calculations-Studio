@@ -566,14 +566,17 @@ export default function BalklaagDesigner() {
   // paneel en blijft dimensioneel correct (x = y).
   const capH = 26;                                 // ruimte voor het onderschrift boven de stage
   const nJ = 4;
-  const schemaH = 186;                             // vaste hoogte voor het statisch schema
-  const mH = 150, vH = 150;                        // idem voor de M- en de V-lijn
-  const uH = 140;                                  // en voor de doorbuigingslijn
+  // Op papier compacter: vijf tekeningen moeten samen op één bladspiegel.
+  const schemaH = alleenLezen ? 154 : 186;         // vaste hoogte voor het statisch schema
+  const mH = alleenLezen ? 112 : 150;              // idem voor de M-lijn
+  const vH = mH;                                   // en de V-lijn
+  const uH = alleenLezen ? 100 : 140;              // en voor de doorbuigingslijn
   const W = box.w;
   // De doorsnede (bij een raveelbalk de plattegrond) krijgt wat overblijft;
   // 4 × 14 px tussenruimte tussen de vijf tekeningen (`gap` op .vd-canvases).
   const gapH = 4 * 14;
-  const H = Math.max(schema === 4 ? 240 : 130, box.h - 5 * capH - schemaH - mH - vH - uH - gapH);
+  const hMin = schema === 4 ? (alleenLezen ? 128 : 240) : (alleenLezen ? 110 : 130);
+  const H = Math.max(hMin, box.h - 5 * capH - schemaH - mH - vH - uH - gapH);
   const mX = 46, mTop = 26, mBot = 48;             // marges (px)
   const totalMM = (nJ - 1) * hoh + b;              // breedte van de balken-groep
   const availW = W - 2 * mX, availH = H - mTop - mBot;
@@ -610,7 +613,7 @@ export default function BalklaagDesigner() {
   }
 
   return (
-    <div className="vd-panel">
+    <div className="vd-panel" data-afdrukhoogte="212">
       <div className="vd-head">
         <strong>Parametrisch beeld — balklaag</strong>
         <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
@@ -847,17 +850,20 @@ export default function BalklaagDesigner() {
                 const sx1 = mx, sxE = Math.max(mx + 80, W - mx);
                 const sx2 = sx1 + ((sxE - sx1) * Lth) / Math.max(Ltot, 1);
                 const smid = (sx1 + sx2) / 2;
-                const ay = 124;                      // hoogte van de balk-as
+                // Op papier is het schema lager; alle maten schuiven mee.
+                const kort_ = alleenLezen;
+                const maatAf = kort_ ? 40 : 46;
+                const ay = schemaH - maatAf - 12;    // hoogte van de balk-as
                 const yBalk = ay - 6;                // bovenkant van de balk
-                const gTop = yBalk - 30;             // bovenlijn van de permanente last
+                const gTop = yBalk - (kort_ ? 24 : 30); // bovenlijn van de permanente last
                 // De veranderlijke last staat erboven, met een regel ertussen
                 // voor het label van de permanente last.
-                const qTip = gTop - 17;
-                const qTop = qTip - 26;              // bovenlijn van de veranderlijke last
+                const qTip = gTop - (kort_ ? 14 : 17);
+                const qTop = qTip - (kort_ ? 20 : 26); // bovenlijn van de veranderlijke last
                 // De puntlast staat waar hij maatgevend is: midden in het veld,
                 // of bij een lang overstek op het uiteinde.
                 const xF = schema === 2 && aOver > Lth / 4 ? sxE : smid;
-                const yMaat = ay + 46;
+                const yMaat = ay + maatAf;
                 // In een smal paneel de lastlabels zonder de omschrijving.
                 const kort = W < 440;
                 return (
@@ -871,7 +877,7 @@ export default function BalklaagDesigner() {
                       {qq > 0 && <LijnLast x1={sx1} x2={sxE} yTop={qTop} yBalk={qTip} kleur={KLEUR_Q} />}
                       <LijnLast x1={sx1} x2={sxE} yTop={gTop} yBalk={yBalk} kleur={KLEUR_G} />
                       {Qk > 0 && (
-                        <PuntLast x={xF} yTop={qTop - 18} yBalk={yBalk} kleur={KLEUR_F}
+                        <PuntLast x={xF} yTop={qTop - (kort_ ? 14 : 18)} yBalk={yBalk} kleur={KLEUR_F}
                           label={<>F<tspan baselineShift="sub" fontSize={8}>Q,k</tspan> = {nl(Qk * kr)} kN</>} />
                       )}
                       {/* labels als laatste: de puntlast loopt er dan niet doorheen */}

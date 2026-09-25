@@ -19,6 +19,29 @@
   size: A4 portrait;
   /* Ruimer boven en onder: daar staan de loopkop en de loopvoet in. */
   margin: 24mm 16mm 20mm 16mm;
+  /* Het paginanummer in de ondermarge, midden tussen de loopvoet links en
+     rechts. Alleen de paginamarge kent de teller van het totaal. */
+  @bottom-center {
+    content: "Pagina " counter(page) " van " counter(pages);
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 8pt;
+    color: #6b6b73;
+    vertical-align: middle;
+  }
+}
+
+/*
+ * Huisstijl van de uitdraai (OpenAEC-brandbook): Construction Amber als
+ * accent, Deep Forge voor tekst en koppen, Space Grotesk voor de koppen en
+ * Inter voor de lopende tekst.
+ */
+.print-opmaak {
+  --pr-accent: #D97706;
+  --pr-tekst: #36363E;
+  --pr-zacht: #6b6b73;
+  --pr-lijn: #e4e4e7;
+  --pr-vlak: #FAFAF9;
+  --pr-kop: "Space Grotesk", system-ui, sans-serif;
 }
 
 /*
@@ -86,19 +109,20 @@ html.afdrukmodus .print-loopvoet {
   display: flex;
   justify-content: space-between;
   font-size: 8pt;
-  color: #555;
+  color: #6b6b73;
 }
 
 html.afdrukmodus .print-loopkop {
   top: -13mm;
   padding-bottom: 3pt;
-  border-bottom: 0.5pt solid #bbb;
+  border-bottom: 0.75pt solid #D97706;
+  font-weight: 500;
 }
 
 html.afdrukmodus .print-loopvoet {
   bottom: -11mm;
   padding-top: 3pt;
-  border-top: 0.5pt solid #bbb;
+  border-top: 0.5pt solid #d4d4d8;
 }
 
 /* ─── Voorblad ────────────────────────────────────────────────── */
@@ -106,53 +130,180 @@ html.afdrukmodus .print-loopvoet {
 .print-opmaak .print-voorblad {
   break-after: page;
   page-break-after: always;
+  color: var(--pr-tekst);
+}
+
+.print-opmaak .print-voorblad-band {
+  width: 44mm;
+  height: 5pt;
+  margin: 6pt 0 16pt;
+  border-radius: 1pt;
+  background: var(--pr-accent);
 }
 
 .print-opmaak .print-soort {
   margin: 0 0 4pt;
-  font-size: 9pt;
-  letter-spacing: 0.14em;
+  font-family: var(--pr-kop);
+  font-size: 8.5pt;
+  font-weight: 600;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #666;
+  color: var(--pr-accent);
 }
 
 .print-opmaak .print-voorblad h1 {
-  margin: 0 0 18pt;
-  font-size: 20pt;
+  margin: 0 0 3pt;
+  font-family: var(--pr-kop);
+  font-size: 26pt;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--pr-tekst);
 }
 
-.print-opmaak .print-voorblad table {
+.print-opmaak .print-ondertitel {
+  margin: 0 0 16pt;
+  font-size: 12.5pt;
+  color: var(--pr-zacht);
+}
+
+.print-opmaak .print-gegevens {
+  width: 100%;
   border-collapse: collapse;
-  margin-bottom: 22pt;
+  margin: 10pt 0 0;
+  font-size: 9.5pt;
 }
 
-.print-opmaak .print-voorblad th {
+.print-opmaak .print-gegevens th,
+.print-opmaak .print-gegevens td {
+  padding: 3.5pt 0;
+  border-bottom: 0.5pt solid var(--pr-lijn);
   text-align: left;
-  font-weight: 600;
-  padding: 2pt 18pt 2pt 0;
   vertical-align: top;
+}
+
+.print-opmaak .print-gegevens th {
+  width: 48mm;
+  font-weight: 500;
+  color: var(--pr-zacht);
+}
+
+.print-opmaak .print-sectiekop {
+  margin: 22pt 0 6pt;
+  padding-bottom: 3pt;
+  border-bottom: 1.5pt solid var(--pr-accent);
+  font-family: var(--pr-kop);
+  font-size: 12pt;
+  font-weight: 700;
+  color: var(--pr-tekst);
+}
+
+.print-opmaak .print-resultaten {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5pt;
+}
+
+.print-opmaak .print-resultaten th {
+  padding: 3pt 5pt;
+  border-bottom: 0.75pt solid var(--pr-tekst);
+  font-size: 7.5pt;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--pr-zacht);
+}
+
+.print-opmaak .print-resultaten td {
+  padding: 4pt 5pt;
+  border-bottom: 0.5pt solid var(--pr-lijn);
+  vertical-align: middle;
+}
+
+.print-opmaak .print-resultaten .nr {
+  width: 7mm;
+  color: #9a9aa2;
+  font-variant-numeric: tabular-nums;
+}
+
+.print-opmaak .print-resultaten .norm {
+  font-size: 8.5pt;
+  color: var(--pr-zacht);
+}
+
+.print-opmaak .print-resultaten .uc {
+  width: 14mm;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.print-opmaak .print-resultaten-noot {
+  margin: 6pt 0 0;
+  font-size: 8pt;
+  color: var(--pr-zacht);
+}
+
+.print-opmaak .print-voorblad-voet {
+  display: flex;
+  justify-content: space-between;
+  gap: 12pt;
+  margin-top: 26pt;
+  padding-top: 5pt;
+  border-top: 0.5pt solid #d4d4d8;
+  font-size: 8.5pt;
+  color: var(--pr-zacht);
+}
+
+/* Het oordeel als label: groen voldoet, rood voldoet niet. */
+.print-opmaak .print-oordeel {
+  display: inline-block;
+  padding: 1pt 6pt;
+  border-radius: 8pt;
+  font-size: 8pt;
+  font-weight: 600;
   white-space: nowrap;
 }
 
-.print-opmaak .print-voorblad td {
-  padding: 2pt 0;
+.print-opmaak .print-oordeel.goed {
+  color: #166534;
+  background: #dcfce7;
 }
 
-.print-opmaak .print-inhoud-kop {
-  margin: 0 0 4pt;
-  font-weight: 700;
+.print-opmaak .print-oordeel.fout {
+  color: #991b1b;
+  background: #fee2e2;
 }
 
-.print-opmaak .print-inhoud {
+.print-opmaak .print-oordeel.neutraal {
+  color: #9a9aa2;
+  padding: 0;
+}
+
+/* ─── Projectregel bij een losse berekening ───────────────────── */
+
+.print-opmaak .print-projectregel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 1pt 10pt;
+  margin: -6pt 0 10pt;
+  padding: 3pt 6pt;
+  background: var(--pr-vlak);
+  border-left: 2.5pt solid var(--pr-accent);
+  font-size: 8pt;
+  color: var(--pr-zacht);
+}
+
+.print-opmaak .print-projectregel .print-soort {
   margin: 0;
-  padding-left: 18pt;
+  font-size: 7.5pt;
 }
 
-.print-opmaak .print-datum {
-  margin-top: 28pt;
-  font-size: 9pt;
-  color: #666;
+.print-opmaak .print-projectregel b {
+  font-weight: 600;
+  color: var(--pr-tekst);
 }
 
 /* ─── Rekenbladen ─────────────────────────────────────────────── */
@@ -168,20 +319,65 @@ html.afdrukmodus .print-loopvoet {
   page-break-before: auto;
 }
 
+/* De kop van een blad: nummer, naam met de grondslag eronder, en rechts de
+   uitkomst — zo staat het oordeel ook bovenaan het blad zelf. */
 .print-opmaak .print-blad-kop {
+  display: flex;
+  align-items: center;
+  gap: 8pt;
   margin: 0 0 10pt;
-  padding-bottom: 4pt;
-  border-bottom: 1pt solid #999;
-  font-size: 13pt;
+  padding-bottom: 5pt;
+  border-bottom: 1.5pt solid var(--pr-accent);
+  color: var(--pr-tekst);
+}
+
+.print-opmaak .print-blad-nr {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18pt;
+  height: 18pt;
+  border-radius: 4pt;
+  background: var(--pr-tekst);
+  color: #fff;
+  font-family: var(--pr-kop);
+  font-size: 10pt;
   font-weight: 700;
 }
 
-/* Bladnummer voor de kop, zodat de volgorde uit de boom leesbaar blijft. */
-.print-opmaak .print-blad-nr {
-  display: inline-block;
-  min-width: 16pt;
-  color: #777;
-  font-weight: 400;
+.print-opmaak .print-blad-titel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.print-opmaak .print-blad-naam {
+  font-family: var(--pr-kop);
+  font-size: 14pt;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.print-opmaak .print-blad-norm {
+  font-size: 8.5pt;
+  color: var(--pr-zacht);
+}
+
+.print-opmaak .print-blad-uitkomst {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6pt;
+}
+
+.print-opmaak .print-blad-uc {
+  font-family: var(--pr-kop);
+  font-size: 10pt;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Niet midden in een formule of tekening afbreken. */
@@ -310,6 +506,8 @@ html.afdrukmodus .print-loopvoet {
 .print-opmaak .print-beeld .vd-body {
   height: 100% !important;
   min-height: 0 !important;
+  /* Op papier geen binnenmarge: de bladspiegel heeft al zijn eigen marge. */
+  padding: 4px 0 !important;
 }
 
 /* Op papier valt er niets te scrollen: de tekeningkolom moet gewoon zijn
@@ -384,4 +582,16 @@ html.afdrukmodus .print-loopvoet {
  */
 .print-opmaak .print-blad .calc-svg svg {
   max-height: 150px !important;
+}
+
+/* Een beeld met meer tekeningen onder elkaar vraagt een hogere afdrukmaat;
+   de designer geeft die zelf op (de balklaag: vijf tekeningen). */
+.print-opmaak .print-beeld .vd-panel[data-afdrukhoogte="212"] {
+  height: 212mm !important;
+}
+
+/* Twee kleine aanzichten (de nagel- en schroefverbinding) hebben genoeg aan
+   minder; dan past het beeld nog op de eerste pagina onder het titelblok. */
+.print-opmaak .print-beeld .vd-panel[data-afdrukhoogte="150"] {
+  height: 150mm !important;
 }

@@ -22,7 +22,7 @@ import {
 import { useProjectStore } from "../../store/projectStore";
 import { projectScope } from "../../store/projectGegevens";
 import { bouwProjectBestand, leesProjectBestand, PROJECT_FORMAAT_VERSIE } from "../../store/projectBestand";
-import { useAfdrukken, usePrintStore } from "../../store/printStore";
+import { usePrintStore } from "../../store/printStore";
 import { openCalculationFile, saveCalculationFile } from "../../tauri/fileOps";
 import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
 import { useRecentFiles } from "../../hooks/useRecentFiles";
@@ -42,8 +42,9 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
   const opnieuw = useProjectStore((s) => s.opnieuw);
   const kanOngedaan = useProjectStore((s) => s.verleden.length > 0);
   const kanOpnieuw = useProjectStore((s) => s.toekomst.length > 0);
-  const afdrukken = useAfdrukken();
+  const afdrukken = usePrintStore((s) => s.afdrukken);
   const toonVoorbeeld = usePrintStore((s) => s.toonVoorbeeld);
+  const activeId = useProjectStore((s) => s.activeId);
   const { addRecentFile } = useRecentFiles();
 
   const handleOpen = useCallback(async () => {
@@ -139,15 +140,25 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
       alert("Dit project bevat nog geen rekenbladen.");
       return;
     }
-    afdrukken();
+    afdrukken(null);
   }, [afdrukken]);
+
+  /** Alleen de berekening die openstaat, als losse uitdraai met een titelblok. */
+  const bladOpen = exemplaren.some((e) => e.id === activeId);
+  const handlePrintBlad = useCallback(() => {
+    if (!useProjectStore.getState().exemplaren.some((e) => e.id === activeId)) {
+      alert("Open eerst het rekenblad dat je als PDF wilt opslaan.");
+      return;
+    }
+    afdrukken([activeId]);
+  }, [afdrukken, activeId]);
 
   const handleVoorbeeld = useCallback(() => {
     if (useProjectStore.getState().exemplaren.length === 0) {
       alert("Dit project bevat nog geen rekenbladen.");
       return;
     }
-    toonVoorbeeld();
+    toonVoorbeeld(null);
   }, [toonVoorbeeld]);
 
   return (
@@ -191,7 +202,14 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
           />
           <RibbonButton
             icon={pdfIcon}
-            label={t("calc.pdfSave", "PDF opslaan")}
+            label={t("calc.pdfSheet", "PDF blad")}
+            size="large"
+            disabled={!bladOpen}
+            onClick={handlePrintBlad}
+          />
+          <RibbonButton
+            icon={pdfIcon}
+            label={t("calc.pdfSave", "PDF project")}
             size="large"
             onClick={handlePrint}
           />

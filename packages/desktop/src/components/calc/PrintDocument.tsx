@@ -1,8 +1,10 @@
-import { useMemo } from "react";
-import { process, defaultStyles } from "@ifc-calc/core";
+import { useMemo, type ReactNode } from "react";
+import { parse, evaluate, render, defaultStyles } from "@ifc-calc/core";
+import type { EvaluatedNode } from "@ifc-calc/core";
 import { useProjectStore, type Exemplaar } from "../../store/projectStore";
 import { projectScope } from "../../store/projectGegevens";
 import { ExemplaarContext } from "../../store/actiefBlad";
+import { usePrintStore } from "../../store/printStore";
 import { designerVoor } from "./designerKeuze";
 import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
 import "./PrintDocument.css";
@@ -18,18 +20,102 @@ function zorgVoorKernstijlen() {
   stijlenGeplaatst = true;
 }
 
-/** Eén rekenblad in de uitdraai: het parametrische beeld, dan de uitwerking. */
-export function PrintBlad({ ex, html, nummer }: { ex: Exemplaar; html: string; nummer: number }) {
+/** Wat de uitdraai per blad over de uitkomst weet. */
+export interface Resultaat {
+  /** De kop van het rekenblad, zonder normverwijzing. */
+  titel: string;
+  /** Het deel van de kop na het gedachtestreepje: de norm of het hoofdstuk. */
+  norm: string;
+  /** De maatgevende unity check (UC_max), als het blad die noemt. */
+  uc: number | null;
+  /** Het eindoordeel van het blad; null als het blad er geen geeft. */
+  voldoet: boolean | null;
+}
+
+/** Loopt de uitgerekende knopen door, ook die binnen een voorwaardelijk blok. */
+function* knopen(lijst: EvaluatedNode[]): Generator<EvaluatedNode> {
+  for (const n of lijst) {
+    yield n;
+    if (n.type === "conditional-branch") yield* knopen(n.children);
+  }
+}
+
+/**
+ * Leest de uitkomst uit een doorgerekend blad.
+ *
+ * De maatgevende UC is de laatste zichtbare `UC_max`. Het oordeel komt uit de
+ * slotzin ("Maatgevende UC = … → voldoet"), want een blad kan ondanks een UC
+ * onder 1,0 afkeuren, bijvoorbeeld op de detaillering. Zonder slotzin beslist
+ * de UC.
+ */
+function leesResultaat(nodes: EvaluatedNode[], html: string, naam: string): Resultaat {
+  let titel = naam;
+  let norm = "";
+  let uc: number | null = null;
+  for (const n of knopen(nodes)) {
+    if (n.type === "heading" && n.level === 1 && titel === naam) {
+      const [voor, na] = n.text.split(/\s+—\s+/, 2);
+      titel = voor || naam;
+      norm = na ?? "";
+    }
+    if ((n.type === "assignment" || n.type === "var-display") && n.name === "UC_max") {
+      const w = parseFloat(String(n.result).replace(",", "."));
+      if (Number.isFinite(w)) uc = w;
+    }
+  }
+  const tekst = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  const slot = tekst.lastIndexOf("Maatgevende UC");
+  let voldoet: boolean | null = null;
+  if (slot >= 0) {
+    const zin = tekst.slice(slot, slot + 240);
+    voldoet = !/voldoe[nt] niet/.test(zin) && /voldoe[nt]/.test(zin);
+    // Staat UC_max niet zichtbaar in het blad, dan het getal uit de slotzin.
+    if (uc === null) {
+      const m = zin.match(/Maatgevende UC\s*=\s*([\d.,]+)/);
+      const w = m ? parseFloat(m[1].replace(",", ".")) : NaN;
+      if (Number.isFinite(w)) uc = w;
+    }
+  } else if (uc !== null) {
+    voldoet = uc <= 1;
+  }
+  return { titel, norm, uc, voldoet };
+}
+
+/** Nederlandse getalnotatie met twee decimalen. */
+export const ucTekst = (uc: number) => uc.toFixed(2).replace(".", ",");
+
+/** Het oordeel als klein label: groen, rood of neutraal. */
+export function Oordeel({ r }: { r: Resultaat }) {
+  if (r.voldoet === null) return <span className="print-oordeel neutraal">—</span>;
+  return (
+    <span className={`print-oordeel ${r.voldoet ? "goed" : "fout"}`}>
+      {r.voldoet ? "voldoet" : "voldoet niet"}
+    </span>
+  );
+}
+
+/** Eén rekenblad in de uitdraai: de kop, het parametrische beeld, dan de uitwerking. */
+export function PrintBlad({ ex, html, nummer, resultaat, projectregel }: {
+  ex: Exemplaar; html: string; nummer: number; resultaat: Resultaat; projectregel?: ReactNode;
+}) {
   // Het beeld tekent zichzelf uit de waarden van dít exemplaar, niet uit het
   // blad dat toevallig openstaat. `alleenLezen` houdt tegen dat het afdrukken
   // standaardwaarden aanvult of iets anders aan het project verandert.
   const beeld = designerVoor(ex.source);
   return (
     <section className="print-blad">
-      <h2 className="print-blad-kop">
+      <header className="print-blad-kop">
         <span className="print-blad-nr">{nummer}</span>
-        {ex.naam}
-      </h2>
+        <span className="print-blad-titel">
+          <span className="print-blad-naam">{ex.naam}</span>
+          {resultaat.norm && <span className="print-blad-norm">{resultaat.norm}</span>}
+        </span>
+        <span className="print-blad-uitkomst">
+          {resultaat.uc !== null && <span className="print-blad-uc">UC {ucTekst(resultaat.uc)}</span>}
+          <Oordeel r={resultaat} />
+        </span>
+      </header>
+      {projectregel}
       {beeld && (
         <div className="print-beeld">
           <ExemplaarContext.Provider value={{ exemplaar: ex, alleenLezen: true }}>
@@ -45,45 +131,53 @@ export function PrintBlad({ ex, html, nummer }: { ex: Exemplaar; html: string; n
 /** Wat er op het voorblad en in de uitdraai staat. */
 export interface Uitdraai {
   projectNaam: string;
-  bladen: { ex: Exemplaar; html: string }[];
+  bladen: { ex: Exemplaar; html: string; resultaat: Resultaat }[];
+  /** Alle bladen van het project, voor de keuze in het afdrukvoorbeeld. */
+  alleBladen: Exemplaar[];
+  /** Eén losse berekening: geen voorblad, wel een projectregel onder de bladkop. */
+  enkel: boolean;
   /** De ingevulde projectgegevens, als label/waarde-paren. */
   kopregels: [string, string][];
   datum: string;
   onderdeel: string | undefined;
   projectNummer: string | undefined;
+  constructeur: string | undefined;
 }
 
 /**
- * Bouwt het hele project één keer door en levert alles wat een uitdraai nodig
- * heeft. Zowel de afdruk als het afdrukvoorbeeld in de app gebruiken deze
- * hook, zodat er maar één opbouw bestaat en de twee niet uiteen kunnen lopen.
+ * Bouwt de gekozen bladen één keer door en levert alles wat een uitdraai
+ * nodig heeft. Zowel de afdruk als het afdrukvoorbeeld in de app gebruiken
+ * deze hook, zodat er maar één opbouw bestaat en de twee niet uiteen kunnen
+ * lopen.
  */
 export function useUitdraai(): Uitdraai {
   const projectNaam = useProjectStore((s) => s.projectNaam);
   const gegevens = useProjectStore((s) => s.gegevens);
   const exemplaren = useProjectStore((s) => s.exemplaren);
+  const selectie = usePrintStore((s) => s.selectie);
 
   zorgVoorKernstijlen();
 
   const bladen = useMemo(() => {
     const scope = projectScope(gegevens);
-    return exemplaren.map((ex) => {
+    // Een selectie met alleen verdwenen bladen valt terug op het hele project.
+    const gekozen = selectie ? exemplaren.filter((e) => selectie.includes(e.id)) : exemplaren;
+    return (gekozen.length ? gekozen : exemplaren).map((ex) => {
       let html: string;
+      let resultaat: Resultaat = { titel: ex.naam, norm: "", uc: null, voldoet: null };
       try {
-        html = process(
-          ex.source,
-          ex.waarden,
-          { includes: calcpadIncludes, imageUrls: calcpadImageUrls },
-          scope,
-        );
+        const opties = { includes: calcpadIncludes, imageUrls: calcpadImageUrls };
+        const nodes = evaluate(parse(ex.source, opties), ex.waarden, scope);
+        html = render(nodes);
+        resultaat = leesResultaat(nodes, html, ex.naam);
       } catch (err) {
         html = `<p class="calc-text" style="color:#b91c1c">Dit blad kon niet worden doorgerekend: ${
           (err as Error).message
         }</p>`;
       }
-      return { ex, html };
+      return { ex, html, resultaat };
     });
-  }, [exemplaren, gegevens]);
+  }, [exemplaren, gegevens, selectie]);
 
   const kop: Array<[string, string | undefined]> = [
     ["Projectnummer", gegevens.project_nummer],
@@ -110,22 +204,66 @@ export function useUitdraai(): Uitdraai {
   return {
     projectNaam,
     bladen,
+    alleBladen: exemplaren,
+    enkel: bladen.length === 1,
     kopregels: kop.filter((r): r is [string, string] => !!r[1]),
     datum: new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }),
     onderdeel: gegevens.onderdeel,
     projectNummer: gegevens.project_nummer,
+    constructeur: gegevens.constructeur,
   };
 }
 
-/** Het voorblad: projectgegevens plus de inhoudsopgave. */
+/** De resultatentabel: per blad de norm, de maatgevende UC en het oordeel. */
+function Resultaten({ uitdraai }: { uitdraai: Uitdraai }) {
+  const { bladen } = uitdraai;
+  const nietGoed = bladen.filter((b) => b.resultaat.voldoet === false).length;
+  return (
+    <>
+      <p className="print-sectiekop">Inhoud en resultaten</p>
+      <table className="print-resultaten">
+        <thead>
+          <tr>
+            <th className="nr">#</th>
+            <th>Onderdeel</th>
+            <th>Grondslag</th>
+            <th className="uc">UC</th>
+            <th>Oordeel</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bladen.map(({ ex, resultaat }, i) => (
+            <tr key={ex.id}>
+              <td className="nr">{i + 1}</td>
+              <td>{ex.naam}</td>
+              <td className="norm">{resultaat.norm || "—"}</td>
+              <td className="uc">{resultaat.uc !== null ? ucTekst(resultaat.uc) : "—"}</td>
+              <td><Oordeel r={resultaat} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="print-resultaten-noot">
+        {nietGoed === 0
+          ? "Alle getoetste onderdelen voldoen."
+          : `${nietGoed} van de ${bladen.length} onderdelen ${nietGoed === 1 ? "voldoet" : "voldoen"} niet; zie het betreffende blad.`}
+        {" "}UC is de maatgevende unity check van het blad; — betekent dat het blad geen eindtoets heeft.
+      </p>
+    </>
+  );
+}
+
+/** Het voorblad: projectgegevens plus de inhoud met de resultaten. */
 export function PrintVoorblad({ uitdraai }: { uitdraai: Uitdraai }) {
-  const { projectNaam, kopregels, bladen, datum } = uitdraai;
+  const { projectNaam, kopregels, datum, onderdeel, projectNummer, constructeur } = uitdraai;
   return (
     <section className="print-voorblad">
+      <div className="print-voorblad-band" />
       <p className="print-soort">Constructieve berekening</p>
       <h1>{projectNaam || "Berekening"}</h1>
+      {onderdeel && <p className="print-ondertitel">{onderdeel}</p>}
       {kopregels.length > 0 && (
-        <table>
+        <table className="print-gegevens">
           <tbody>
             {kopregels.map(([label, waarde]) => (
               <tr key={label}>
@@ -136,19 +274,56 @@ export function PrintVoorblad({ uitdraai }: { uitdraai: Uitdraai }) {
           </tbody>
         </table>
       )}
-      <p className="print-inhoud-kop">Inhoud</p>
-      <ol className="print-inhoud">
-        {bladen.map(({ ex }) => (
-          <li key={ex.id}>{ex.naam}</li>
-        ))}
-      </ol>
-      <p className="print-datum">{datum}</p>
+      <Resultaten uitdraai={uitdraai} />
+      <div className="print-voorblad-voet">
+        <span>{projectNummer ? `Project ${projectNummer}` : ""}</span>
+        <span>{constructeur ? `Opgesteld door ${constructeur}` : ""}</span>
+        <span>{datum}</span>
+      </div>
     </section>
   );
 }
 
 /**
- * Het hele project als één afdrukbaar document.
+ * De projectgegevens bij een losse berekening, als één compacte regel onder
+ * de bladkop. Een apart titelblok kostte zoveel hoogte dat een groot
+ * parametrisch beeld niet meer op de eerste pagina paste en die pagina
+ * verder leeg bleef; het project staat bovendien al in de loopkop.
+ */
+export function PrintProjectregel({ uitdraai }: { uitdraai: Uitdraai }) {
+  const { kopregels, datum } = uitdraai;
+  // Naam en nummer staan al in de loopkop; hier de rest van de gegevens.
+  const regels = kopregels.filter(([label]) => label !== "Projectnaam" && label !== "Projectnummer");
+  return (
+    <p className="print-projectregel">
+      <span className="print-soort">Constructieve berekening</span>
+      {regels.map(([label, waarde]) => (
+        <span key={label}><b>{label}</b> {waarde}</span>
+      ))}
+      <span>{datum}</span>
+    </p>
+  );
+}
+
+/** Voorblad plus bladen, of bij één blad het blad met een projectregel. */
+export function UitdraaiInhoud({ uitdraai }: { uitdraai: Uitdraai }) {
+  const { bladen, enkel } = uitdraai;
+  return (
+    <>
+      {!enkel && <PrintVoorblad uitdraai={uitdraai} />}
+      {bladen.map(({ ex, html, resultaat }, i) => (
+        <PrintBlad key={ex.id} ex={ex} html={html} nummer={i + 1} resultaat={resultaat}
+          projectregel={enkel ? <PrintProjectregel uitdraai={uitdraai} /> : undefined} />
+      ))}
+    </>
+  );
+}
+
+/** Tekst voor de loopkop links: projectnummer en -naam. */
+export const loopkopLinks = (u: Uitdraai) => (u.projectNummer ? `${u.projectNummer} · ` : "") + u.projectNaam;
+
+/**
+ * De gekozen bladen als één afdrukbaar document.
  *
  * Waarom via de browser en niet via de rapportengine: die levert alleen
  * rekentabellen — geen koppen, geen proza, geen variabelenamen en geen
@@ -157,13 +332,14 @@ export function PrintVoorblad({ uitdraai }: { uitdraai: Uitdraai }) {
  */
 export default function PrintDocument() {
   const uitdraai = useUitdraai();
-  const { projectNaam, bladen, datum, onderdeel, projectNummer } = uitdraai;
+  const { datum, onderdeel } = uitdraai;
 
   return (
     <div className="print-root print-opmaak" aria-hidden="true">
-      {/* Loopt op elke pagina mee: vaste elementen herhaalt de browser bij het printen. */}
+      {/* Loopt op elke pagina mee: vaste elementen herhaalt de browser bij het printen.
+          Het paginanummer staat in de paginamarge zelf (@page in de CSS). */}
       <div className="print-loopkop">
-        <span>{projectNummer ? `${projectNummer} · ` : ""}{projectNaam}</span>
+        <span>{loopkopLinks(uitdraai)}</span>
         <span>{onderdeel}</span>
       </div>
       <div className="print-loopvoet">
@@ -171,11 +347,7 @@ export default function PrintDocument() {
         <span>{datum}</span>
       </div>
 
-      <PrintVoorblad uitdraai={uitdraai} />
-
-      {bladen.map(({ ex, html }, i) => (
-        <PrintBlad key={ex.id} ex={ex} html={html} nummer={i + 1} />
-      ))}
+      <UitdraaiInhoud uitdraai={uitdraai} />
     </div>
   );
 }
