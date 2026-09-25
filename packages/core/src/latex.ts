@@ -249,8 +249,11 @@ function functionToLatex(nd: AnyNode): string {
     }
   }
 
-  // Fallback
-  return `\\text{${fnName}}\\left(${args.map(a => nodeToLatex(a)).join(', ')}\\right)`;
+  // Fallback — overige functies, waaronder de eigen functies van een blad.
+  // Die naam gaat door dezelfde opmaak als een variabele: `R_pA` wordt R met
+  // subscript pA. Een kale `\text{R_pA}` liet KaTeX struikelen over de `_`,
+  // waarna de hele formuleregel als ruwe LaTeX in de uitwerking stond.
+  return `${symbolToLatex(fnName)}\\left(${args.map(a => nodeToLatex(a)).join(', ')}\\right)`;
 }
 
 // ─── Result formatting ──────────────────────────────────────────────

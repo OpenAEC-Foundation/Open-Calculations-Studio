@@ -59,6 +59,9 @@ const VAR_DISPLAY_RE = new RegExp(`^(${IDENT})\\s*$`, 'u');
 
 const TITLE_RE = /^"(.*)$/;           // CalcPAD title: "Quadratic Equation
 const PROSE_RE = /^'(.*)$/;           // CalcPAD prose: 'free text with <i>HTML</i>
+// Merkteken voor tekst die op dezelfde bronregel achter een rekendeel stond
+// (`x = a*b', uitleg'`). Een stuurteken, zodat het nooit in echte tekst staat.
+const INLINE_MARK = '\u0001';
 const COMMENT_SLASH_RE = /^\/\//;
 
 const HEADING_RE = /^(#{1,6})\s+(.+)$/;
@@ -123,10 +126,71 @@ interface ParserState {
  * identifiers.
  */
 function foldSubscriptCommas(source: string): string {
-  return source.replace(
-    /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*_[\p{L}\p{N}_]+(?:,[\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_])/gu,
-    (match) => match.replace(/,/g, '_'),
+  return alleenInCode(source, (code) =>
+    code.replace(
+      /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*_[\p{L}\p{N}_]+(?:,[\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_])/gu,
+      (match) => match.replace(/,/g, '_'),
+    ),
   );
+}
+
+/**
+ * Past `fn` alleen toe op de rekendelen van de bron, nooit op tekst.
+ *
+ * De herschrijvingen voor namen (`V_b,0` → `V_b_0`, `Cs.Cd` → `Cs_Cd`,
+ * `v.2` → `v[2]`) zijn bedoeld voor expressies. Liepen ze over de hele regel,
+ * dan raakten ze ook de toelichting: "Tabel NB.2" werd "NB[2]", "(NB.8.1)"
+ * werd "NB_8_1" en "F_ax,Rk" in een commentaar "F_ax_Rk".
+ *
+ * Een regel wordt op enkele aanhalingstekens gesplitst, behalve binnen een
+ * tekenreeks tussen dubbele aanhalingstekens in een rekendeel. De stukken om
+ * en om zijn rekendeel en tekst: bij een prozaregel (`'tekst'expr'tekst`) is
+ * het eerste, lege stuk rekendeel en volgt daarna tekst; bij een rekenregel met
+ * commentaar (`x = expr', uitleg'`) is het eerste stuk rekendeel en het tweede
+ * commentaar. Koppen (`# …`) zijn geheel tekst, net als de keuzes binnen een
+ * `@select`-blok; van de `@select`-regel zelf telt alleen de naam als code.
+ */
+function alleenInCode(source: string, fn: (code: string) => string): string {
+  let inSelect = false;
+  return source
+    .split('\n')
+    .map((regel) => {
+      const t = regel.trim();
+      if (inSelect) {
+        if (/^@end\b/.test(t)) inSelect = false;
+        return regel;
+      }
+      if (/^@select\b/.test(t)) {
+        inSelect = true;
+        const label = regel.indexOf('"');
+        return label === -1 ? fn(regel) : fn(regel.slice(0, label)) + regel.slice(label);
+      }
+      if (/^#+(\s|$)/.test(t)) return regel;
+      let uit = '';
+      let stuk = '';
+      let code = true;
+      let inString = false;
+      for (const ch of regel) {
+        if (code) {
+          if (ch === '"') inString = !inString;
+          if (ch === "'" && !inString) {
+            uit += fn(stuk) + ch;
+            stuk = '';
+            code = false;
+            continue;
+          }
+        } else if (ch === "'") {
+          uit += stuk + ch;
+          stuk = '';
+          code = true;
+          inString = false;
+          continue;
+        }
+        stuk += ch;
+      }
+      return uit + (code ? fn(stuk) : stuk);
+    })
+    .join('\n');
 }
 
 /**
@@ -405,14 +469,11 @@ function foldIdentifierDots(source: string): string {
     return out;
   };
 
-  return source
-    .split('\n')
-    .map((line) => {
-      if (line.indexOf('"') === -1) return transformOutsideQuotes(line);
-      const segs = line.split('"');
-      return segs.map((seg, i) => (i % 2 === 1 ? seg : transformOutsideQuotes(seg))).join('"');
-    })
-    .join('\n');
+  return alleenInCode(source, (code) => {
+    if (code.indexOf('"') === -1) return transformOutsideQuotes(code);
+    const segs = code.split('"');
+    return segs.map((seg, i) => (i % 2 === 1 ? seg : transformOutsideQuotes(seg))).join('"');
+  });
 }
 
 /**
@@ -596,11 +657,16 @@ export function parse(source: string, options: ParseOptions = {}): AstNode[] {
     }
     // Toggle split — alternating code / prose fragments (`a = ?', 'b = ?`)
     const parts = raw.split("'");
+    let naCode = false;
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       const isCode = i % 2 === 0;
       if (part.trim() === '') continue;
-      lines.push(isCode ? part : "'" + part);
+      // Tekst die op dezelfde regel achter een rekendeel staat, is de
+      // toelichting daarbij (`x = a*b', uitleg'`). Die krijgt een merkteken,
+      // zodat hij naast de formule komt en niet als losse alinea eronder.
+      lines.push(isCode ? part : "'" + (naCode ? INLINE_MARK : '') + part);
+      naCode = isCode;
     }
   }
 
@@ -645,8 +711,10 @@ function parseLines(
     // May contain embedded `'expr'` value interpolation (e.g. SVG macros).
     const proseMatch = trimmed.match(PROSE_RE);
     if (proseMatch) {
-      const text = proseMatch[1];
+      const inline = proseMatch[1].startsWith(INLINE_MARK);
+      const text = inline ? proseMatch[1].slice(INLINE_MARK.length) : proseMatch[1];
       const textTrim = text.trim();
+      const extra = inline ? { inline: true } : {};
       // Skip empty prose AND CalcPAD's persisted input values that latch
       // onto a trailing `'` (e.g. `'2	1` at EOF).
       if (textTrim !== '' && !TRAILING_DATA_RE.test(textTrim)) {
@@ -670,9 +738,9 @@ function parseLines(
               if (expr !== '') parts.push({ kind: 'expr', value: expr });
             }
           }
-          nodes.push(markHidden({ type: 'text', text: textTrim, html: true, parts }, state));
+          nodes.push(markHidden({ type: 'text', text: textTrim, html: true, parts, ...extra }, state));
         } else {
-          nodes.push(markHidden({ type: 'text', text: textTrim, html: true }, state));
+          nodes.push(markHidden({ type: 'text', text: textTrim, html: true, ...extra }, state));
         }
       }
       i++;

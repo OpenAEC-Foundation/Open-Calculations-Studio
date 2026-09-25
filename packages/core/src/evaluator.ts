@@ -372,9 +372,9 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
               }
             }
           }
-          result.push({ type: 'text', text: out.join(''), html: true });
+          result.push({ type: 'text', text: out.join(''), html: true, ...(node.inline ? { inline: true } : {}) });
         } else {
-          result.push({ type: 'text', text: node.text, html: node.html });
+          result.push({ type: 'text', text: node.text, html: node.html, ...(node.inline ? { inline: true } : {}) });
         }
         break;
 
@@ -621,11 +621,22 @@ function buildSubstitution(
   let sub = expression;
   for (const varName of variables) {
     const val = scope[varName];
+    // Alleen getallen, grootheden met eenheid en teksten invullen. Een
+    // gebruikersfunctie staat ook in de scope, maar dan kwam de broncode van de
+    // mathjs-functie in de uitdraai; een matrix werd een lege plek, zodat er
+    // `hlookup(, 2, 1, 2)` stond. Die houden hun naam.
+    const invulbaar =
+      typeof val === 'number' || typeof val === 'string' || typeof val === 'boolean' || isUnit(val);
+    if (!invulbaar) continue;
     const formatted = formatInline(val);
     // Wrap in parentheses if value has a unit (contains space) to preserve
     // operator precedence: h^2 → (500 mm)^2, not 500 mm^2
     const wrapped = isUnit(val) ? `(${formatted})` : formatted;
-    sub = sub.replace(new RegExp(`\\b${varName}\\b`, 'g'), wrapped);
+    // Grenzen op letters en cijfers in Unicode-zin. `\b` kent alleen ASCII,
+    // waardoor een naam die met een Griekse letter begint (γ_M, σ_m,d, ψ_0)
+    // nooit werd ingevuld: de ingevulde formule toonde dan nog het symbool.
+    const naam = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    sub = sub.replace(new RegExp(`(?<![\\p{L}\\p{N}_])${naam}(?![\\p{L}\\p{N}_])`, 'gu'), wrapped);
   }
   return sub;
 }

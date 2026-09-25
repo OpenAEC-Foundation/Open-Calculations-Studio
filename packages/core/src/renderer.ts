@@ -80,11 +80,55 @@ function coalesceSvg(nodes: EvaluatedNode[]): EvaluatedNode[] {
   return out;
 }
 
+/**
+ * Houdt bij welke opmaak (`<i>`, `<b>`, `<em>`, `<strong>`) na een prozaregel
+ * nog openstaat. Een alinea staat in de bladen over meerdere bronregels, met de
+ * `<i>` op de eerste en de `</i>` op de laatste. Elke regel wordt een eigen
+ * `<p>`, en daarin sluit de browser de cursief aan het eind van de eerste
+ * regel: alleen die stond cursief, de rest van de alinea niet.
+ */
+function openOpmaakNa(open: string[], html: string): string[] {
+  const stapel = [...open];
+  for (const m of html.matchAll(/<(\/?)(i|b|em|strong)\b[^>]*>/gi)) {
+    const tag = m[2].toLowerCase();
+    if (m[1] === '') {
+      stapel.push(tag);
+    } else {
+      const k = stapel.lastIndexOf(tag);
+      if (k !== -1) stapel.splice(k, 1);
+    }
+  }
+  return stapel;
+}
+
 export function render(nodes: EvaluatedNode[]): string {
   const coalesced = coalesceSvg(nodes);
   const parts: string[] = ['<div class="ifc-calc">'];
+  let open: string[] = [];
 
   for (const node of coalesced) {
+    // Een prozaregel die binnen een doorlopende alinea valt: de nog openstaande
+    // opmaak van de vorige regel ervoor zetten en aan het eind weer sluiten.
+    if (node.type === 'text' && node.html && !node.inline) {
+      const voor = open.map((t) => `<${t}>`).join('');
+      open = openOpmaakNa(open, node.text);
+      const na = [...open].reverse().map((t) => `</${t}>`).join('');
+      parts.push(`<p class="calc-text">${voor}${node.text}${na}</p>`);
+      continue;
+    }
+    if (!(node.type === 'text' && node.inline)) open = [];
+    // Een toelichting van dezelfde bronregel komt naast de formule of het
+    // invoerveld, zoals in CalcPAD: `x = 5 mm, uitleg`. Als losse alinea eronder
+    // kostte elke toelichting een eigen regel, en dat telde in een uitdraai op.
+    const vorige = parts[parts.length - 1];
+    if (
+      node.type === 'text' && node.inline &&
+      /^<div class="calc-(line|input-prompt)\b/.test(vorige) && /<\/div>\s*$/.test(vorige)
+    ) {
+      const inhoud = node.html ? node.text : escapeHtml(node.text);
+      parts[parts.length - 1] = vorige.replace(/<\/div>\s*$/, `<span class="calc-comment">${inhoud}</span></div>`);
+      continue;
+    }
     parts.push(renderNode(node));
   }
 
@@ -306,8 +350,24 @@ export const defaultStyles = `
   /* CalcPAD-stijl: geen achtergrond / linker streep — gewoon de formule. */
   padding: 0.15em 0;
   margin: 0.25em 0;
-  /* Verbergt overflow zonder slider; KaTeX past zich via .calc-line .katex aan. */
-  overflow-x: hidden;
+  /* Verbergt overflow zonder slider; KaTeX past zich via .calc-line .katex aan.
+     'clip' en niet 'hidden': bij 'hidden' wordt de andere richting 'auto', en
+     een formule met een breuk (twee pixels hoger dan de regel) kreeg dan
+     schuifpijltjes. 'clip' laat de verticale richting gewoon zichtbaar. */
+  overflow-x: clip;
+  overflow-y: visible;
+  /* Formule en toelichting op één regel; past het niet, dan loopt de
+     toelichting door op de volgende. Verticaal gecentreerd: uitlijnen op de
+     basislijn schoof een formule met een breuk buiten de regel. */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.1em;
+}
+
+.calc-comment {
+  color: #4b5563;
+  font-size: 0.92em;
 }
 
 .calc-line .katex-display {

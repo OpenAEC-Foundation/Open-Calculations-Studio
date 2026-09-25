@@ -26,6 +26,9 @@ export interface TextNode {
    *    [{lit:'<svg viewbox="'}, {expr:'-xx'}, {lit:' '}, {expr:'-yy'}, {lit:'" ...>'}] */
   parts?: Array<{ kind: 'literal'; value: string } | { kind: 'expr'; value: string }>;
   hidden?: boolean;
+  /** Toelichting die op dezelfde bronregel achter een rekendeel stond; de
+   *  renderer zet hem naast de formule in plaats van eronder. */
+  inline?: boolean;
 }
 
 export interface AssignmentNode {
@@ -186,6 +189,8 @@ export interface EvaluatedText {
   type: 'text';
   text: string;
   html?: boolean;
+  /** Zie TextNode.inline. */
+  inline?: boolean;
 }
 
 export interface EvaluatedAssignment {
