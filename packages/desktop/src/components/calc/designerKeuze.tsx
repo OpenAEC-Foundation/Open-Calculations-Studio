@@ -13,6 +13,7 @@ import KruipfactorDesigner from "./KruipfactorDesigner";
 import LasDesigner from "./LasDesigner";
 import MetselwerkwandDesigner from "./MetselwerkwandDesigner";
 import MomentverbindingDesigner from "./MomentverbindingDesigner";
+import NagelSchroefDesigner from "./NagelSchroefDesigner";
 import OplegMetselwerkDesigner from "./OplegMetselwerkDesigner";
 import PenDesigner from "./PenDesigner";
 import PonsDesigner from "./PonsDesigner";
@@ -39,6 +40,7 @@ const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
   // Vooraan: de uitleg in dit blad noemt wandschijven en ankers, en een latere,
   // ruimere kop mag hem niet wegkapen.
   { marker: "Stabiliteit HSB-wanden", beeld: () => <HsbStabiliteitDesigner /> },
+  { marker: "Nagel- en schroefverbinding", beeld: () => <NagelSchroefDesigner /> },
   { marker: "Voetplaatverbinding", beeld: () => <VoetplaatDesigner /> },
   { marker: "Balklaag", beeld: () => <BalklaagDesigner /> },
   { marker: "Spuwer", beeld: () => <SpuwerDesigner /> },
