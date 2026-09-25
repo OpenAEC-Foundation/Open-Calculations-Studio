@@ -67,7 +67,14 @@ function symbolToLatex(name: string): string {
     // het inlezen `F_v_Rd`. In beeld hoort de notatie van de norm, F_{v,Rd}.
     const sub = name.substring(underscoreIdx + 1).replace(/_/g, ',');
     const baseLatex = GREEK[base] || base;
-    return `{${baseLatex}_{\\text{${escapeText(sub)}}}}`;
+    // Een Griekse letter in het subscript (n_ξ, f_δ) staat in wiskundemodus:
+    // in \text{} heeft KaTeX er geen tekenmaten voor en valt hij terug op een
+    // noodletter, met een waarschuwing in de console.
+    const delen = sub.split(/([Α-ω])/u).filter((d) => d !== '');
+    const subLatex = delen
+      .map((d) => (/^[Α-ω]$/u.test(d) ? d : `\\text{${escapeText(d)}}`))
+      .join('');
+    return `{${baseLatex}_{${subLatex}}}`;
   }
   if (GREEK[name]) return GREEK[name];
   // Multi-letter non-Greek variable: use mathrm
