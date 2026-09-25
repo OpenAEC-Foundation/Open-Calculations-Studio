@@ -28,7 +28,7 @@ const tpl = laadTemplate("balklaag.ts");
  * In die stand hoort élke waarde exact te kloppen; er blijft dus geen enkele
  * `afwijkend`-melding over. De norm-stand wordt onderaan apart gedraaid.
  */
-const PROJECT = { K_FI: 1, rekenwijze: 1 };
+const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 1 };
 
 /**
  * De referentiebladen kennen één permanente vloerlast (1,00), een verdeelde

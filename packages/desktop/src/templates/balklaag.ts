@@ -720,29 +720,27 @@ b_tril = ?', parameter b bij de snelheidseis (Figuur 7.2, ca. 120)'
 # 10. Toetsing UGT
 
 '<h6>10.1 Maatgevende krachten</h6>
+'<i>De gevolgklasse staat in de projectgegevens en geldt voor alle bladen van dit project. De partiële factoren komen uit tabel NB.4 (CC2) of NB.5 (CC1 en CC3) van NEN-EN 1990, combinatie 6.10b.</i>
+γ_G = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))', blijvend, ongunstig'
+γ_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))', veranderlijk'
 'Permanent + veranderlijk (UDL):
-M_yEd_1 = 1.20*M_g,k + 1.50*M_q,k to kN*m
-V_zEd_1 = 1.20*V_g,k + 1.50*V_q,k to kN
+M_yEd_1 = γ_G*M_g,k + γ_Q*M_q,k to kN*m
+V_zEd_1 = γ_G*V_g,k + γ_Q*V_q,k to kN
 'Permanent + geconcentreerde last:
-M_yEd_2 = 1.20*M_g,k + 1.50*M_Q,k to kN*m
-V_zEd_2 = 1.20*V_g,k + 1.50*V_Q,k to kN
+M_yEd_2 = γ_G*M_g,k + γ_Q*M_Q,k to kN*m
+V_zEd_2 = γ_G*V_g,k + γ_Q*V_Q,k to kN
 
-'<i>De gevolgklasse staat in de projectgegevens; K<sub>FI</sub> volgt daaruit
-'(Tabel NB.A1.1) en geldt voor alle bladen van dit project.</i>
-K_FI', gevolgklasse-factor uit de projectgegevens (EN 1990)'
-M_y,Ed = K_FI*max(M_yEd_1; M_yEd_2) to kN*m', incl. K_FI'
-V_z,Ed = K_FI*max(V_zEd_1; V_zEd_2) to kN', incl. K_FI'
-M_y,Ed
-V_z,Ed
+M_y,Ed = max(M_yEd_1; M_yEd_2) to kN*m', maatgevend'
+V_z,Ed = max(V_zEd_1; V_zEd_2) to kN', maatgevend'
 
 '<h6>10.1b Momenten- en dwarskrachtenlijn (UGT)</h6>
 
-'<i>Beide lijnen horen bij de rekenwaarde van de lijnlast, K<sub>FI</sub>·(1,2·P<sub>g,k</sub> + 1,5·q<sub>q,k</sub>), en volgen het gekozen statische schema. Het moment staat aan de trekzijde: een veldmoment onder de as, een steunmoment erboven. Is de puntlast maatgevend, dan gelden de waarden M<sub>y,Ed</sub> en V<sub>z,Ed</sub> uit §10.1.</i>
+'<i>Beide lijnen horen bij de rekenwaarde van de lijnlast, γ<sub>G</sub>·P<sub>g,k</sub> + γ<sub>Q</sub>·q<sub>q,k</sub>, en volgen het gekozen statische schema. Het moment staat aan de trekzijde: een veldmoment onder de as, een steunmoment erboven. Is de puntlast maatgevend, dan gelden de waarden M<sub>y,Ed</sub> en V<sub>z,Ed</sub> uit §10.1.</i>
 
 #hide
 mx1 = 60
 mx2 = 420
-q_Ed,l = K_FI*(1.2*P_g,k + 1.5*q_q,k)
+q_Ed,l = γ_G*P_g,k + γ_Q*q_q,k
 'Kenmerkende plaatsen: de veldmomenten, het steunmoment en de dwarskracht vlak naast de opleggingen.
 x_m1 = max(0; min(d_RA; d_L))
 x_m2 = if(d_L2 > 0; d_tot - max(0; d_RC); d_L)

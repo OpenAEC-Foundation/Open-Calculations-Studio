@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo } from "react";
 import { useProjectStore, type Exemplaar } from "./projectStore";
-import { kFiVoor, projectScope } from "./projectGegevens";
+import { belastingFactoren, kFiVoor, projectScope } from "./projectGegevens";
 
 /**
  * Kleine haakjes rond het actieve rekenblad.
@@ -66,6 +66,11 @@ export function useProjectCC(): number {
 /** K_FI bij de gevolgklasse van het project (0,90 / 1,00 / 1,10). */
 export function useProjectKFI(): number {
   return kFiVoor(useProjectCC());
+}
+
+/** γ_G, γ_Q (6.10b) en γ_G voor 6.10a bij de gevolgklasse van het project. */
+export function useBelastingFactoren(): { gG: number; gQ: number; gGa: number } {
+  return belastingFactoren(useProjectCC());
 }
 
 /**

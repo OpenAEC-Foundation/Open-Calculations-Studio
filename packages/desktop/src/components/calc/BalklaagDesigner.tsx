@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
-import { useProjectKFI, useProjectGetal, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useBelastingFactoren, useProjectGetal, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
 import { JaNee } from "./designerKit";
 import {
   KLEUR_M, KLEUR_V, KLEUR_U, Label, Oplegging, LijnLast, PuntLast, KrachtenLijn,
@@ -128,7 +128,9 @@ interface Invoer {
   klim: number;
   /** Eigen gewicht volgens de referentie-uitwerking in plaats van EN 338. */
   xc: boolean;
-  kfi: number;
+  /** Partiële belastingsfactoren bij de gevolgklasse (tabel NB.4/NB.5). */
+  gG: number;
+  gQ: number;
   Ld: number;
   aOpl: number;
   hoh: number;
@@ -156,7 +158,7 @@ interface Invoer {
  */
 function toets(inv: Invoer) {
   const {
-    prof, mat, duur, klim, xc, kfi, Ld, aOpl, hoh, tVloer, eBeschot, bVloer,
+    prof, mat, duur, klim, xc, gG, gQ, Ld, aOpl, hoh, tVloer, eBeschot, bVloer,
     gk, qk, Qk, psi2, controleer, grens, tril, zeta, aTril, bTril,
     schema, aOver, LVeld2, bSparing, lStaart,
   } = inv;
@@ -248,8 +250,8 @@ function toets(inv: Invoer) {
   const Mg = Math.max(cM, cMs) * Pg, Mq = Math.max(cM, cMs) * qq; // N·mm
   const MQ = Math.max((FQ * 1000 * Lth) / 4, schema === 2 ? FQ * 1000 * aOver : 0);
   const Vg = cV * Pg, Vq = cV * qq, VQ = FQ * 1000; // N
-  const MyEd = kfi * Math.max(1.2 * Mg + 1.5 * Mq, 1.2 * Mg + 1.5 * MQ);
-  const VzEd = kfi * Math.max(1.2 * Vg + 1.5 * Vq, 1.2 * Vg + 1.5 * VQ);
+  const MyEd = Math.max(gG * Mg + gQ * Mq, gG * Mg + gQ * MQ);
+  const VzEd = Math.max(gG * Vg + gQ * Vq, gG * Vg + gQ * VQ);
   const ucBuig = MyEd / Wy / fmd;
   const ucAfsch = (VzEd * Sy) / (b * Iy) / fvd;
   // ── trillingen §7.3.3 — in SI: N, m, kg ───────────────────────────────────
@@ -475,7 +477,7 @@ export default function BalklaagDesigner() {
   // Projectwaarden: hooks, dus ze moeten vóór de vroege return staan. Anders
   // roept deze component in de ene render meer hooks aan dan in de andere en
   // klapt React eruit zodra het paneel van blad wisselt.
-  const kfi = useProjectKFI();
+  const { gG, gQ } = useBelastingFactoren();
   const xc = Math.round(useProjectGetal("rekenwijze", 1)) === 1;
 
   if (!isBalklaag) return null;
@@ -527,7 +529,7 @@ export default function BalklaagDesigner() {
   const grens = d("grensfactor");
 
   const inv: Invoer = {
-    prof, mat, duur, klim, xc, kfi, Ld, aOpl, hoh, tVloer, eBeschot, bVloer,
+    prof, mat, duur, klim, xc, gG, gQ, Ld, aOpl, hoh, tVloer, eBeschot, bVloer,
     gk, qk, Qk, psi2, controleer, grens, tril, zeta, aTril, bTril,
     schema, aOver, LVeld2, bSparing, lStaart,
   };
@@ -539,7 +541,7 @@ export default function BalklaagDesigner() {
   // Alles waarop de ontwerpzoektocht gebaseerd was, behalve het profiel.
   const ontwerpSig = JSON.stringify([
     Ld, aOpl, hoh, tVloer, eBeschot, bVloer, gk, qk, Qk, matId, duur, klim,
-    cat, psi2, controleer, grens, tril, zeta, aTril, bTril, xc, kfi,
+    cat, psi2, controleer, grens, tril, zeta, aTril, bTril, xc, gG, gQ,
   ]);
   const ontwerpMelding = ontwerp && ontwerp.sig === ontwerpSig ? ontwerp.tekst : null;
   const kiesEerstePassend = () => {
@@ -923,12 +925,12 @@ export default function BalklaagDesigner() {
             const grenzen = schema === 2 || schema === 3 ? [0, Lth, tot] : [0, tot];
             const mx1 = 54, mx2 = Math.max(mx1 + 80, W - 54);
             const X = (x: number) => mx1 + ((mx2 - mx1) * x) / tot;
-            // Rekenwaarden inclusief K_FI (6.10b): de lijnlast, alleen het
+            // Rekenwaarden met γ_G en γ_Q bij de gevolgklasse (6.10b): de lijnlast, alleen het
             // permanente deel, en de puntlast.
-            const qd = kfi * (1.2 * Pg + 1.5 * qq);          // N/mm
-            const gd = kfi * 1.2 * Pg;                        // N/mm
+            const qd = gG * Pg + gQ * qq;                     // N/mm
+            const gd = gG * Pg;                               // N/mm
             const FQ = Qk * kr * 1000;                        // N, karakteristiek
-            const Fd = kfi * 1.5 * FQ;                        // N
+            const Fd = gQ * FQ;                               // N
             // Welke combinatie is maatgevend? Dezelfde vergelijking als in de uitwerking.
             const puntM = Qk > 0 && Math.max((FQ * Lth) / 4, schema === 2 ? FQ * aOver : 0) > Math.max(cM, cMs) * qq;
             const puntV = Qk > 0 && FQ > cV * qq;

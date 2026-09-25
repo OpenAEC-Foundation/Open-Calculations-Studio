@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
-import { useProjectGetal, useProjectKFI, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useProjectGetal, useBelastingFactoren, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
@@ -161,7 +161,7 @@ export default function GordingDesigner() {
   const dubbele = Math.round(d("dubbele"));
   const klim = Math.round(d("klimaatklasse"));
   // Gevolgklasse komt van het project, niet van dit blad.
-  const KFI = useProjectKFI();
+  const factoren = useBelastingFactoren();
   const varType = Math.round(d("varType"));
   const Qk = d("Q_k"), qVar = d("q_var");
   const skManual = Math.round(d("sk_manual"));
@@ -254,8 +254,9 @@ export default function GordingDesigner() {
   const UC_wy = controleer === 1 ? wfy / wlim : 0;
   const UC_wz = controleer === 1 && dubbele === 1 ? wfz / wlim : 0;
 
-  // UGT — 3 combinaties (permanent + één leidende veranderlijke), factoren γ·K_FI
-  const gG_ = 1.2 * KFI, gQ_ = 1.5 * KFI;
+  // UGT — 3 combinaties (permanent + één leidende veranderlijke), γ_G en γ_Q
+  // bij de gevolgklasse (tabel NB.4/NB.5)
+  const gG_ = factoren.gG, gQ_ = factoren.gQ;
   const combo = (vPerp: { M: number; V: number }, vPar: { M: number; V: number }) => ({
     My: gG_ * gPerp.M + gQ_ * vPerp.M, Mz: gG_ * gPar.M + gQ_ * vPar.M,
     Vz: gG_ * gPerp.V + gQ_ * vPerp.V, Vy: gG_ * gPar.V + gQ_ * vPar.V,
