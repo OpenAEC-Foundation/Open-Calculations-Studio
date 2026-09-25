@@ -2,12 +2,13 @@
  * Oplegging op metselwerk — geconcentreerde last op een metselwerkwand volgens
  * NEN-EN 1996-1-1:2006+A1:2013+NB:2018 §6.1.3.
  *
- * Methodiek exact gespiegeld aan de referentieberekening
- * (3BM Bouwtechniek, document1.pdf, de referentie-uitwerking 2027.3.02):
+ * Methodiek gespiegeld aan de referentieberekeningen metselwerk-oplegging-1
+ * en -2 (scripts/check-opleg-metselwerk.mjs):
  *   f_k  = K·f_b^α·f_m^β                                (3.2)
  *   h_c  = h − h_k                                       (effectieve hoogte)
  *   l_efm = a_L + min(a_1; ½·h_c/tan60) + min(L_r; ½·h_c/tan60)
  *   β    = (1 + 0,3·a_1/h_c)·(1,5 − 1,1·A_b/A_ef) ≤ β_max = min(1,25+a_1/2h_c; 1,5)
+ *          alleen voor steengroep 1 en A_b/A_ef ≤ 0,45; anders β = 1,0
  *   N_Rdc = β·A_b·f_d                                    (6.10)
  *   N_Ed  = N_Edc + a_L·q_Edc                            (incl. wandlast over oplegging)
  *   UC    = N_Ed / N_Rdc                                 (6.9)
@@ -17,6 +18,17 @@
  * K, α en β komen uit tabel NB-2 (NEN-EN 1996-1-1 NB:2018). De grens
  * f_m ≤ 2·f_b bij metselmortel past het referentieprogramma niet toe; die geldt
  * alleen in de norm-stand (register punt 14).
+ *
+ * Buiten de referenties, volgens de norm:
+ *   • De vergroting β geldt alleen voor steengroep 1 (§6.1.3(2)); bij groep 2
+ *     is β = 1,0 (§6.1.3(3)). Eerder kreeg groep 2 dezelfde vergroting, tot
+ *     50 % te gunstig. De twee referentiebladen in het controlescript gebruiken
+ *     geen groep 2; of het referentieprogramma β bij groep 2 toepast, is dus
+ *     niet vastgesteld.
+ *   • Boven A_b/A_ef = 0,45, de grens van (6.11), rekent het blad zonder
+ *     vergroting: de veilige kant.
+ *   • Het eindoordeel telt de nevenvoorwaarden mee: e ≤ t/4 (§6.1.3(4)) en een
+ *     oplegging van ten minste 90 mm (§8.1.6(1)). Trek keurt af.
  */
 
 export const oplegMetselwerk = `"Oplegging op metselwerk — geconcentreerde last (EN 1996-1-1 §6.1.3)
@@ -24,7 +36,7 @@ export const oplegMetselwerk = `"Oplegging op metselwerk — geconcentreerde las
 '<i>Toetsing van een geconcentreerde oplegging (liggereinde/latei in een keep) op
 'een ongewapende metselwerkwand. De last spreidt onder 60° over de effectieve
 'hoogte h<sub>c</sub> = h − h<sub>k</sub>; op halve hoogte ontstaat de effectieve
-'lengte l<sub>efm</sub>. Methodiek conform NEN-EN 1996-1-1+NB §6.1.3 (de referentie-uitwerking).</i>
+'lengte l<sub>efm</sub>. Methodiek conform NEN-EN 1996-1-1+NB §6.1.3.</i>
 
 # 1. Metselwerk & materiaal
 
@@ -58,9 +70,10 @@ f_m = ?', mortelsterkte f_m [N/mm²] — M-klasse (metselmortel) of L-klasse (li
 @end
 
 #hide
-'Steenmatrix uit tabel NB-2: [id | K_metsel | K_lijm | α_lijm | β_lijm].
-'Metselmortel heeft altijd α = 0,65 en β = 0,25.
-steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.80; 0.70; 0.80; 0.65; 0.80; 0.65; 0.80 |0.75; 0.70; 0.85; 0.85; 0.85; 0.85; 0.85 |0.10; 0; 0; 0; 0; 0; 0]
+'Steenmatrix uit tabel NB-2: [id | K_metsel | K_lijm | α_lijm | β_lijm | steengroep].
+'Metselmortel heeft altijd α = 0,65 en β = 0,25. Groep 1 bij ten hoogste 25 % holten.
+steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.80; 0.70; 0.80; 0.65; 0.80; 0.65; 0.80 |0.75; 0.70; 0.85; 0.85; 0.85; 0.85; 0.85 |0.10; 0; 0; 0; 0; 0; 0 |1; 2; 1; 2; 1; 2; 1]
+groep = hlookup(steenmat; steensoort; 1; 6)
 K_metsel = hlookup(steenmat; steensoort; 1; 2)
 K_lijm = hlookup(steenmat; steensoort; 1; 3)
 K = if(morteltype ≡ 2; K_lijm; K_metsel)
@@ -97,6 +110,9 @@ exc = ?', excentriciteit van de last t.o.v. het wandhart [mm]'
 
 h_c = h - h_k', effectieve hoogte tot het lastniveau (onderkant keep)'
 h_c
+#if h_c ≤ 0
+    '<span style="color: red">De keep is even hoog als of hoger dan de wand: h<sub>c</sub> ≤ 0.</span>
+#end if
 
 # 3. Belasting
 
@@ -124,37 +140,46 @@ A_b = a_L*a_t', belaste (opleg)vlak [mm²]'
 A_ef = l_efm*t', effectief vlak [mm²]'
 A_b
 A_ef
+ratio_Ab = A_b/A_ef', verhouding belast en effectief vlak'
 
 #hide
-ratio_Ab = A_b/A_ef
 β_calc = (1 + 0.3*a_1/h_c)*(1.5 - 1.1*ratio_Ab)
 β_max = min(1.25 + a_1/(2*h_c); 1.5)
 #show
-β = max(1.0; min(β_calc; β_max))', verhogingsfactor geconcentreerde last (6.11)'
+#if groep ≡ 2
+    '<i>Groep 2-stenen: geen vergroting voor een geconcentreerde last (§6.1.3(3)).</i>
+    β = 1.0', verhogingsfactor'
+#else if ratio_Ab > 0.45
+    '<i>A<sub>b</sub>/A<sub>ef</sub> is groter dan 0,45, de grens van (6.11): dit blad rekent
+    'zonder vergroting.</i>
+    β = 1.0', verhogingsfactor'
+#else
+    β = max(1.0; min(β_calc; β_max))', verhogingsfactor geconcentreerde last (6.11)'
+#end if
 β
 N_Rdc = β*A_b*f_d/1000', opnamecapaciteit lokale oplegging [kN] (6.10)'
 N_Rdc
 N_Ed = N_Edc + a_L/1000*q_Edc', rekenlast incl. wandlast over de oplegging [kN]'
 N_Ed
 
-UC = N_Ed/N_Rdc
-#if UC ≤ 1.0
-    'UC = N<sub>Ed</sub>/N<sub>Rdc</sub> = 'UC'<span style="color: green"> ≤ 1,0 → <b>voldoet</b></span> (6.9)
+#if N_Ed < 0
+    '<span style="color: red"><b>Trek</b>: de last trekt aan de oplegging, en deze toets geldt alleen
+    'voor druk → <b>voldoet niet</b></span>
+    #hide
+    UC = 1/0
+    #show
 #else
-    'UC = N<sub>Ed</sub>/N<sub>Rdc</sub> = 'UC'<span style="color: red"> > 1,0 → <b>voldoet niet</b></span> (6.9)
+    UC = N_Ed/N_Rdc
+    #if UC ≤ 1.0
+        'UC = N<sub>Ed</sub>/N<sub>Rdc</sub> = 'UC'<span style="color: green"> ≤ 1,0 → <b>voldoet</b></span> (6.9)
+    #else
+        'UC = N<sub>Ed</sub>/N<sub>Rdc</sub> = 'UC'<span style="color: red"> > 1,0 → <b>voldoet niet</b></span> (6.9)
+    #end if
 #end if
 
 # 6. Nevenvoorwaarden
 
-'<b>Geldigheid methode 6.1.3 — verhouding vlakken:</b>
-ratio_Ab = A_b/A_ef
-#if ratio_Ab ≤ 0.45
-    'A<sub>b</sub>/A<sub>ef</sub> = 'ratio_Ab'<span style="color: green"> ≤ 0,45 → <b>voldoet</b></span>
-#else
-    'A<sub>b</sub>/A<sub>ef</sub> = 'ratio_Ab'<span style="color: red"> > 0,45 → methode niet geldig</span>
-#end if
-
-'<b>Detaillering — art. 8.1.6(1): minimale oplegmaat ≥ 90 mm:</b>
+'<b>Detaillering — §8.1.6(1): oplegging ten minste 90 mm:</b>
 opleg_min = min(a_L; a_t)
 #if opleg_min ≥ 90
     'min(a<sub>L</sub>; a<sub>t</sub>) = 'opleg_min' mm<span style="color: green"> ≥ 90 mm → <b>voldoet</b></span>
@@ -162,19 +187,31 @@ opleg_min = min(a_L; a_t)
     'min(a<sub>L</sub>; a<sub>t</sub>) = 'opleg_min' mm<span style="color: red"> < 90 mm → <b>voldoet niet</b></span>
 #end if
 
-'<b>Excentriciteit — voorwaarde e ≤ t/4:</b>
+'<b>Excentriciteit — §6.1.3(4): e ≤ t/4:</b>
 #if abs(exc) ≤ t/4
     'e = 'abs(exc)' mm<span style="color: green"> ≤ t/4 = 't/4' mm → <b>voldoet</b></span>
 #else
-    'e = 'abs(exc)' mm<span style="color: red"> > t/4 = 't/4' mm → buiten toepassingsgebied</span>
+    'e = 'abs(exc)' mm<span style="color: red"> > t/4 = 't/4' mm → <b>voldoet niet</b></span>
 #end if
+
+#if groep ≡ 2
+    '<b>§6.1.3(6):</b> de last hoort op groep 1-stenen of ander massief materiaal te liggen, met
+    'een spreiding van 60° tot de onderkant daarvan. Bij groep 2-stenen dus een massief oplegblok
+    'of een massieve laag onder de oplegging.
+#end if
+
+'<i>§6.1.3(5): toets de wand daarnaast op halve hoogte volgens §6.1.2, met de andere verticale
+'lasten erbij — zeker als de effectieve lengten van naburige opleggingen elkaar overlappen.</i>
 
 # 7. Samenvatting
 
-#if UC ≤ 1.0
-    '<b>UC = 'UC'</b><span style="color: green"> ≤ 1,0 → <b>Oplegging voldoet</b></span>
+UC_max = UC', maatgevende unity check (6.9)'
+#if UC_max ≤ 1.0 and opleg_min ≥ 90 and abs(exc) ≤ t/4 and h_c > 0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>Oplegging voldoet</b></span>
+#else if UC_max ≤ 1.0
+    '<b>Maatgevende UC = 'UC_max'</b> ≤ 1,0, maar een nevenvoorwaarde is niet vervuld<span style="color: red"> → <b>Oplegging voldoet niet</b></span>
 #else
-    '<b>UC = 'UC'</b><span style="color: red"> > 1,0 → <b>Oplegging voldoet niet</b></span>
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>Oplegging voldoet niet</b></span>
 #end if
 
 '<hr/>
@@ -190,7 +227,14 @@ opleg_min = min(a_L; a_t)
 '<li><b>N<sub>Ed</sub>:</b> de wandlast draagt mee via N<sub>Ed</sub> = N<sub>Edc</sub> + a<sub>L</sub>·q<sub>Edc</sub>.</li>
 '<li><b>l<sub>efm</sub>:</b> spreiding 60° over ½·h<sub>c</sub> met h<sub>c</sub> = h − h<sub>k</sub>,
 'begrensd door wandeinde (a<sub>1</sub>, mag 0 zijn) en beschikbare wandlengte.</li>
-'<li><b>art. 8.1.6:</b> de referentie-uitwerking toont één oplegmaat (oriëntatie-afhankelijk); hier de
+'<li><b>§8.1.6:</b> de referentie-uitwerking toont één oplegmaat (oriëntatie-afhankelijk); hier de
 'kleinste maat min(a<sub>L</sub>; a<sub>t</sub>) ≥ 90 mm getoetst (zelfde conclusie).</li>
+'<li><b>β</b> alleen voor steengroep 1 (§6.1.3(2)). Bij groep 2 is β = 1,0 (§6.1.3(3)) en hoort de
+'last op een massief oplegblok te liggen (§6.1.3(6)). <b>Nog niet geverifieerd:</b> de
+'referentiebladen in het controlescript gebruiken geen groep 2.</li>
+'<li>Boven A<sub>b</sub>/A<sub>ef</sub> = 0,45 rekent het blad zonder vergroting, β = 1,0.</li>
+'<li>Het eindoordeel telt de nevenvoorwaarden mee: e ≤ t/4 en een oplegging van ten minste 90 mm.
+'Trek keurt af: deze toets geldt alleen voor druk.</li>
+'<li>De toets op halve hoogte volgens §6.1.2, die §6.1.3(5) ook eist, staat niet in dit blad.</li>
 '</ul></i>
 `;
