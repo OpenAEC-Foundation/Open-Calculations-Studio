@@ -28,7 +28,7 @@ const tpl = laadTemplate("gording.ts");
 // windgebied en terreincategorie hebben in de app altijd een waarde (standaard
 // II/II), ook als het blad q_p niet zelf berekent — het paneel levert ze uit de
 // projectgegevens. Zonder die twee loopt de q_p-keten op Infinity.
-const PROJECT = { K_FI: 1, rekenwijze: 1, windgebied: 2, terreincategorie: 2 };
+const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 1, windgebied: 2, terreincategorie: 2 };
 
 const BASIS = {
   profiel: "5", sterkteklasse: "2", klimaatklasse: "1", dakType: "2",

@@ -145,6 +145,20 @@ export function kFiVoor(cc: number): number {
 }
 
 /**
+ * Partiële belastingsfactoren bij een gevolgklasse — NEN-EN 1990 NB, tabel
+ * NB.4 (CC2) en NB.5 (CC1 en CC3), STR/GEO groep B.
+ *
+ * Bewust de tabelwaarden en niet K_FI × de factoren van CC2: de tabel rondt
+ * af (1,1 in plaats van 0,9 × 1,2 = 1,08) en geeft bij CC3 voor 6.10a 1,5 in
+ * plaats van 1,1 × 1,35 = 1,485.
+ */
+export function belastingFactoren(cc: number): { gG: number; gQ: number; gGa: number } {
+  if (cc <= 1) return { gG: 1.1, gQ: 1.35, gGa: 1.2 };
+  if (cc >= 3) return { gG: 1.3, gQ: 1.65, gGa: 1.5 };
+  return { gG: 1.2, gQ: 1.5, gGa: 1.35 };
+}
+
+/**
  * Zet de projectgegevens om in variabelen voor de evaluator.
  *
  * Keuzevelden worden getallen (zodat `#if CC ≡ 2` werkt), tekstvelden blijven

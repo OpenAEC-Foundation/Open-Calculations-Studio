@@ -220,7 +220,6 @@ q_wind = if(windbron ≡ 1; q_p; q_wind_hand)', gehanteerde q_p'
 q_wind
 C_pe = if(dakType ≡ 1; -0.70; 0.70)', externe drukcoëfficiënt (zone F-G-H; plat dak = zuiging)'
 C_pi = -0.30', interne drukcoëfficiënt'
-K_FI', gevolgklasse-factor uit de projectgegevens (EN 1990)'
 
 # 5. Belastingsgeval 1 — Permanent
 
@@ -362,10 +361,11 @@ u_wy
 
 # 10. Toetsing UGT
 
-'<h6>10.1 Belastingscombinaties (γ·K_FI)</h6>
-γ_G = 1.2*K_FI', 6.10b'
-γ_Q = 1.5*K_FI
-γ_G_a = 1.35*K_FI', 6.10a'
+'<h6>10.1 Belastingscombinaties</h6>
+'<i>De partiële factoren bij de gevolgklasse uit de projectgegevens: tabel NB.4 (CC2) of NB.5 (CC1 en CC3) van NEN-EN 1990.</i>
+γ_G = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))', 6.10b'
+γ_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))
+γ_G_a = if(CC ≡ 1; 1.2; if(CC ≡ 3; 1.5; 1.35))', 6.10a'
 '<i>De nationale bijlage geeft ψ<sub>0</sub> = 0 voor wind, sneeuw én de
 'dakbelasting zelf (categorie H). Daardoor valt in <b>6.10a</b> de begeleidende
 'term weg en blijft 1,35·G over — een combinatie zónder veranderlijke belasting,
