@@ -595,3 +595,9 @@ html.afdrukmodus .print-loopvoet {
 .print-opmaak .print-beeld .vd-panel[data-afdrukhoogte="150"] {
   height: 150mm !important;
 }
+
+/* Twee lage aanzichten naast elkaar (het windverband: het vak en de
+   aansluiting) hebben aan 110 mm genoeg. */
+.print-opmaak .print-beeld .vd-panel[data-afdrukhoogte="110"] {
+  height: 110mm !important;
+}

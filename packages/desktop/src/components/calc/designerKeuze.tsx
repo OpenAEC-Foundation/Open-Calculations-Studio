@@ -26,6 +26,7 @@ import StalenKolomDesigner from "./StalenKolomDesigner";
 import TweepaalsPoerDesigner from "./TweepaalsPoerDesigner";
 import VerankeringslengteDesigner from "./VerankeringslengteDesigner";
 import VoetplaatDesigner from "./VoetplaatDesigner";
+import WindverbandDesigner from "./WindverbandDesigner";
 
 /**
  * Welk parametrisch beeld hoort bij een rekenblad.
@@ -44,6 +45,8 @@ const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
   { marker: "Stabiliteit HSB-wanden", beeld: () => <HsbStabiliteitDesigner /> },
   { marker: "Nagel- en schroefverbinding", beeld: () => <NagelSchroefDesigner /> },
   { marker: "Paaldraagvermogen — NEN 9997-1 art. 7.6.2.3", beeld: () => <PaalDesigner /> },
+  { marker: "Stalen gevelkolom", beeld: () => <GevelkolomDesigner /> },
+  { marker: "Verticaal windverband", beeld: () => <WindverbandDesigner /> },
   { marker: "Voetplaatverbinding", beeld: () => <VoetplaatDesigner /> },
   { marker: "Balklaag", beeld: () => <BalklaagDesigner /> },
   { marker: "Spuwer", beeld: () => <SpuwerDesigner /> },
@@ -57,7 +60,6 @@ const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
   { marker: "Lasberekening", beeld: () => <LasDesigner /> },
   { marker: "Schoorverbinding", beeld: () => <SchoorDesigner /> },
   { marker: "Penverbinding", beeld: () => <PenDesigner /> },
-  { marker: "Stalen gevelkolom", beeld: () => <GevelkolomDesigner /> },
   { marker: "Stalen kolom", beeld: () => <StalenKolomDesigner /> },
   { marker: "Brandwerendheid", beeld: () => <BrandwerendheidDesigner /> },
   { marker: "Momentverbinding", beeld: () => <MomentverbindingDesigner /> },
