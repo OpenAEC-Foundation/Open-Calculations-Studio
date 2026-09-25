@@ -40,7 +40,7 @@ fouten += toets("handberekening — 100 m², zeven materialen", got,
   { Q_totaal: "40330", q_f_k: "403.3", UC_max: "0.81" });
 {
   const zin = slotzin(got);
-  const ok = /niet groter dan 500/.test(zin);
+  const ok = /voldoet\s*: de permanente vuurbelasting is niet groter dan 500/.test(zin);
   if (!ok) fouten++;
   console.log(`  ${ok ? "OK    " : "FOUT  "} slotzin   ${zin.slice(0, 90)}`);
 }
@@ -50,7 +50,7 @@ const zwaar = reken(tpl, { ...BASIS, m_bitumen: "1400" }, PROJECT);
 fouten += toets("boven de grens — 1400 kg bitumen", zwaar, { q_f_k: "823.3", UC_max: "1.65" });
 {
   const zin = slotzin(zwaar);
-  const ok = /groter dan 500 MJ\/m², voldoet niet/.test(zin);
+  const ok = /voldoet niet\s*: de permanente vuurbelasting is groter dan 500/.test(zin);
   if (!ok) fouten++;
   console.log(`  ${ok ? "OK    " : "FOUT  "} slotzin   ${zin.slice(0, 90)}`);
 }
