@@ -1,12 +1,12 @@
 import { useMemo, type ReactNode } from "react";
 import { parse, evaluate, render, defaultStyles } from "@ifc-calc/core";
-import type { EvaluatedNode } from "@ifc-calc/core";
 import { useProjectStore, type Exemplaar } from "../../store/projectStore";
 import { projectScope } from "../../store/projectGegevens";
 import { ExemplaarContext } from "../../store/actiefBlad";
 import { usePrintStore } from "../../store/printStore";
 import { designerVoor } from "./designerKeuze";
 import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
+import { leesResultaat, ucTekst, type Resultaat } from "./bladResultaat";
 import "./PrintDocument.css";
 
 let stijlenGeplaatst = false;
@@ -19,70 +19,6 @@ function zorgVoorKernstijlen() {
   document.head.appendChild(el);
   stijlenGeplaatst = true;
 }
-
-/** Wat de uitdraai per blad over de uitkomst weet. */
-export interface Resultaat {
-  /** De kop van het rekenblad, zonder normverwijzing. */
-  titel: string;
-  /** Het deel van de kop na het gedachtestreepje: de norm of het hoofdstuk. */
-  norm: string;
-  /** De maatgevende unity check (UC_max), als het blad die noemt. */
-  uc: number | null;
-  /** Het eindoordeel van het blad; null als het blad er geen geeft. */
-  voldoet: boolean | null;
-}
-
-/** Loopt de uitgerekende knopen door, ook die binnen een voorwaardelijk blok. */
-function* knopen(lijst: EvaluatedNode[]): Generator<EvaluatedNode> {
-  for (const n of lijst) {
-    yield n;
-    if (n.type === "conditional-branch") yield* knopen(n.children);
-  }
-}
-
-/**
- * Leest de uitkomst uit een doorgerekend blad.
- *
- * De maatgevende UC is de laatste zichtbare `UC_max`. Het oordeel komt uit de
- * slotzin ("Maatgevende UC = … → voldoet"), want een blad kan ondanks een UC
- * onder 1,0 afkeuren, bijvoorbeeld op de detaillering. Zonder slotzin beslist
- * de UC.
- */
-function leesResultaat(nodes: EvaluatedNode[], html: string, naam: string): Resultaat {
-  let titel = naam;
-  let norm = "";
-  let uc: number | null = null;
-  for (const n of knopen(nodes)) {
-    if (n.type === "heading" && n.level === 1 && titel === naam) {
-      const [voor, na] = n.text.split(/\s+—\s+/, 2);
-      titel = voor || naam;
-      norm = na ?? "";
-    }
-    if ((n.type === "assignment" || n.type === "var-display") && n.name === "UC_max") {
-      const w = parseFloat(String(n.result).replace(",", "."));
-      if (Number.isFinite(w)) uc = w;
-    }
-  }
-  const tekst = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-  const slot = tekst.lastIndexOf("Maatgevende UC");
-  let voldoet: boolean | null = null;
-  if (slot >= 0) {
-    const zin = tekst.slice(slot, slot + 240);
-    voldoet = !/voldoe[nt] niet/.test(zin) && /voldoe[nt]/.test(zin);
-    // Staat UC_max niet zichtbaar in het blad, dan het getal uit de slotzin.
-    if (uc === null) {
-      const m = zin.match(/Maatgevende UC\s*=\s*([\d.,]+)/);
-      const w = m ? parseFloat(m[1].replace(",", ".")) : NaN;
-      if (Number.isFinite(w)) uc = w;
-    }
-  } else if (uc !== null) {
-    voldoet = uc <= 1;
-  }
-  return { titel, norm, uc, voldoet };
-}
-
-/** Nederlandse getalnotatie met twee decimalen. */
-export const ucTekst = (uc: number) => uc.toFixed(2).replace(".", ",");
 
 /** Het oordeel als klein label: groen, rood of neutraal. */
 export function Oordeel({ r }: { r: Resultaat }) {
@@ -169,7 +105,7 @@ export function useUitdraai(): Uitdraai {
         const opties = { includes: calcpadIncludes, imageUrls: calcpadImageUrls };
         const nodes = evaluate(parse(ex.source, opties), ex.waarden, scope);
         html = render(nodes);
-        resultaat = leesResultaat(nodes, html, ex.naam);
+        resultaat = leesResultaat(nodes, ex.naam);
       } catch (err) {
         html = `<p class="calc-text" style="color:#b91c1c">Dit blad kon niet worden doorgerekend: ${
           (err as Error).message

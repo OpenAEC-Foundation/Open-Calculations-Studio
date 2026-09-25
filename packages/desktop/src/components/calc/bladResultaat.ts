@@ -1,0 +1,127 @@
+import { useMemo } from "react";
+import { parse, evaluate } from "@ifc-calc/core";
+import type { EvaluatedNode } from "@ifc-calc/core";
+import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
+import { useActiefExemplaar, useProjectScope } from "../../store/actiefBlad";
+
+/**
+ * De uitkomst van een doorgerekend blad: titel, norm, maatgevende UC en het
+ * eindoordeel. De afdruk zet die in de kop van elk blad; een parametrisch beeld
+ * kan hem in zijn eigen kop tonen. Zo staat er overal hetzelfde getal, en
+ * hoeft een beeld de toetsing niet na te bouwen.
+ */
+export interface Resultaat {
+  /** De kop van het rekenblad, zonder normverwijzing. */
+  titel: string;
+  /** Het deel van de kop na het gedachtestreepje: de norm of het hoofdstuk. */
+  norm: string;
+  /** De maatgevende unity check (UC_max), als het blad die noemt. */
+  uc: number | null;
+  /** Het eindoordeel van het blad; null als het blad er geen geeft. */
+  voldoet: boolean | null;
+}
+
+/** Nederlandse notatie met twee decimalen; een oneindige UC als ∞. */
+export const ucTekst = (uc: number) => (Number.isFinite(uc) ? uc.toFixed(2).replace(".", ",") : "∞");
+
+/** Een uitkomst van het blad als getal. ∞ is een geldige UC: weerstand nul. */
+function getal(tekst: string): number {
+  const t = tekst.trim();
+  return t.startsWith("∞") ? Infinity : parseFloat(t.replace(",", "."));
+}
+
+/** Loopt de uitgerekende knopen door, ook die binnen een voorwaardelijk blok. */
+function* knopen(lijst: EvaluatedNode[]): Generator<EvaluatedNode> {
+  for (const n of lijst) {
+    yield n;
+    if (n.type === "conditional-branch") yield* knopen(n.children);
+  }
+}
+
+/**
+ * Leest de uitkomst uit een doorgerekend blad.
+ *
+ * De maatgevende UC is de laatste zichtbare `UC_max`. Het oordeel komt uit de
+ * slotzin ("Maatgevende UC = … → voldoet"), want een blad kan ondanks een UC
+ * onder 1,0 afkeuren, bijvoorbeeld op de detaillering. Zonder slotzin beslist
+ * de UC.
+ */
+export function leesResultaat(nodes: EvaluatedNode[], naam: string): Resultaat {
+  let titel = naam;
+  let norm = "";
+  let uc: number | null = null;
+  const tekstdelen: string[] = [];
+  for (const n of knopen(nodes)) {
+    if (n.type === "heading" && n.level === 1 && titel === naam) {
+      const [voor, na] = n.text.split(/\s+—\s+/, 2);
+      titel = voor || naam;
+      norm = na ?? "";
+    }
+    if ((n.type === "assignment" || n.type === "var-display") && n.name === "UC_max") {
+      const w = getal(String(n.result));
+      if (!Number.isNaN(w)) uc = w;
+    }
+    if (n.type === "text") tekstdelen.push(n.text);
+  }
+  const tekst = tekstdelen.join(" ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  const slot = tekst.lastIndexOf("Maatgevende UC");
+  let voldoet: boolean | null = null;
+  if (slot >= 0) {
+    const zin = tekst.slice(slot, slot + 240);
+    voldoet = !/voldoe[nt] niet/.test(zin) && /voldoe[nt]/.test(zin);
+    // Staat UC_max niet zichtbaar in het blad, dan het getal uit de slotzin.
+    if (uc === null) {
+      const m = zin.match(/Maatgevende UC\s*=\s*([\d.,]+|∞)/);
+      const w = m ? getal(m[1]) : NaN;
+      if (!Number.isNaN(w)) uc = w;
+    }
+  } else if (uc !== null) {
+    voldoet = uc <= 1;
+  }
+  return { titel, norm, uc, voldoet };
+}
+
+/**
+ * Elke zichtbare uitkomst van het blad op naam, zonder eenheid: `h_ef` → 2100.
+ * De eenheid is die van het blad (`to mm`, `to kN`). Staat een naam er twee
+ * keer, dan telt de laatste — net als in de uitwerking zelf.
+ */
+export function leesGetallen(nodes: EvaluatedNode[]): Record<string, number> {
+  const uit: Record<string, number> = {};
+  for (const n of knopen(nodes)) {
+    if (n.type === "assignment" || n.type === "var-display") {
+      const w = getal(String(n.result));
+      if (!Number.isNaN(w)) uit[n.name] = w;
+    }
+  }
+  return uit;
+}
+
+/** Wat een beeld van zijn blad laat zien: het oordeel en de getallen van de uitwerking. */
+export interface BladUitkomst {
+  resultaat: Resultaat;
+  getallen: Record<string, number>;
+}
+
+/**
+ * Rekent het blad dat het beeld tekent door: normaal het actieve blad, in de
+ * afdruk het blad van de afdrukcontext. Met dezelfde invoer en
+ * projectgegevens als de uitwerking ernaast, dus met dezelfde uitkomst.
+ */
+export function useBladUitkomst(): BladUitkomst | null {
+  const exemplaar = useActiefExemplaar();
+  const scope = useProjectScope();
+  const source = exemplaar?.source;
+  const waarden = exemplaar?.waarden;
+  const naam = exemplaar?.naam ?? "";
+  return useMemo(() => {
+    if (!source) return null;
+    try {
+      const opties = { includes: calcpadIncludes, imageUrls: calcpadImageUrls };
+      const nodes = evaluate(parse(source, opties), waarden ?? {}, scope);
+      return { resultaat: leesResultaat(nodes, naam), getallen: leesGetallen(nodes) };
+    } catch {
+      return null;
+    }
+  }, [source, waarden, scope, naam]);
+}
