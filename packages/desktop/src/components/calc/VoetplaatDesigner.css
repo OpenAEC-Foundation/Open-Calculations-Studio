@@ -557,3 +557,22 @@
   border-bottom: 1px dotted var(--theme-text-muted, #9ca3af);
   cursor: help;
 }
+
+/* Korte toelichting onder een tekening, bv. waarom de getekende piek afwijkt
+   van de rekenwaarde in de uitwerking. */
+.vd-noot {
+  box-sizing: border-box;
+  padding: 2px 8px 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-muted, #6b7280);
+  text-align: center;
+}
+
+/* Een waarde in een onderschrift: niet in kapitalen, anders wordt kNm "KNM". */
+.vd-caption-waarde {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  color: var(--text, #374151);
+}
