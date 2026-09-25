@@ -224,7 +224,9 @@ export default function SchijfwerkingDesigner() {
   // ── layout: vult het gemeten tekengebied, gecentreerd, uniforme schaal ─────
   const capH = 26;
   const W = box.w, H = box.h - capH;
-  const mL = 66, mR = 84, mT = 46, mB = 40;
+  // Links ruimte voor de kracht F_i,v,Ed onderaan; met 66 viel die chip half
+  // buiten het tekenvlak.
+  const mL = 104, mR = 84, mT = 46, mB = 40;
   const gapMid = 46;                                   // ruimte tussen aanzicht en doorsnede
   const secDepth = bStijl + 2 * tBepl;                 // doorsnede-dikte (wanddiepte)
   const availW = W - mL - mR;
@@ -251,6 +253,12 @@ export default function SchijfwerkingDesigner() {
   const nBoard = Math.max(1, Math.round(b / bi));
   const boardXs = Array.from({ length: nBoard - 1 }, (_, i) => ((i + 1) * b) / nBoard);
   const px = (mm: number) => xW0 + mm * s;
+  // Linkerkant van een stijl. De tussenstijlen staan op hun hartlijn; de
+  // kopstijlen liggen met hun buitenkant gelijk met de wandrand. Op de rand
+  // gecentreerd stonden ze half buiten de wand.
+  const laatsteStijl = studXs.length - 1;
+  const stijlX = (mm: number, i: number) =>
+    i === 0 ? xW0 : i === laatsteStijl ? xW1 - stijlPx : px(mm) - stijlPx / 2;
 
   return (
     <div className="vd-panel">
@@ -328,7 +336,7 @@ export default function SchijfwerkingDesigner() {
                     KOPSTIJLEN door. De beplating komt er daarna overheen. */}
                 {(() => {
                   const stud = (mm: number, i: number, full: boolean) => (
-                    <rect key={i} x={px(mm) - stijlPx / 2} y={full ? yE0 : yE0 + regelPx}
+                    <rect key={i} x={stijlX(mm, i)} y={full ? yE0 : yE0 + regelPx}
                       width={stijlPx} height={full ? Hpx : Math.max(0, Hpx - 2 * regelPx)}
                       fill="#E3C08A" stroke="#8B6F47" strokeWidth={0.8} />
                   );
@@ -397,7 +405,7 @@ export default function SchijfwerkingDesigner() {
                 )}
                 {/* stijlen in doorsnede (oranje) */}
                 {studXs.map((mm, i) => (
-                  <rect key={i} x={px(mm) - stijlPx / 2} y={ySec0 + beplPx} width={stijlPx} height={bStijl * s} fill="#E3C08A" stroke="#8B6F47" strokeWidth={0.8} />
+                  <rect key={i} x={stijlX(mm, i)} y={ySec0 + beplPx} width={stijlPx} height={bStijl * s} fill="#E3C08A" stroke="#8B6F47" strokeWidth={0.8} />
                 ))}
                 <text x={xW1} y={ySec0 - 6} textAnchor="end" style={{ fontSize: 10, fontWeight: 600, fill: "#6b7280" }}>doorsnede ({nZij}-zijdig)</text>
               </svg>
