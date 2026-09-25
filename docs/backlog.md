@@ -83,7 +83,7 @@ bladen in staan.
 **Waarom later:** de keuze zelf is niet vrij — zie punt 8 van
 [afwijkingen-referentie.md](afwijkingen-referentie.md), waar vastligt dat de
 norm voorgaat. Wat wél werk is: gording dezelfde keuzelijst geven, de
-controlescripts op de de referentie-uitwerking-stand zetten, en nagaan of de andere
+controlescripts op de referentiestand zetten, en nagaan of de andere
 houtmodules (kolom, schijfwerking) hetzelfde probleem hebben.
 
 ---

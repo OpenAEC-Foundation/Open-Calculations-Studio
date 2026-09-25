@@ -2,7 +2,7 @@
  * Dragende (ongewapende) metselwerkwand op druk volgens
  * NEN-EN 1996-1-1:2006+A1:2013+NB:2018 §5.5.1 + §6.1.2 + bijlage G.
  *
- * Gecalibreerd op 14 de referentie-uitwerking-referenties, alle exact gereproduceerd. Basis:
+ * Gecalibreerd op 14 referentieberekeningen, alle exact gereproduceerd. Basis:
  * ℓ = 1000, h = 2800, t = 120 mm, N_Ed = N_Ed,max = 200 kN, kalkzandsteen <25%
  * CS12 + M15, categorie I, CC2, n = 2.
  *   1  alle M = 0                    → Φ_i = 0,900  Φ_m = 0,605  UC = 0,79
@@ -22,7 +22,7 @@
  *                                      identiek aan set 10 (de e_t-overschrijving
  *                                      wint, dus ρ_2 = 1,00 ongeacht de optie)
  *
- * Uit de referentiebladen afgeleide de referentie-uitwerking-keuzes:
+ * Uit de referentiebladen afgeleide keuzes van de referentie-uitwerking:
  *   • E = 700·f_k (NB bij 3.7.2(2)) — bevestigd op f_k = 5,94 / 9,00 / 4,51.
  *   • e_k = 0 zolang λ ≤ λ_c = 27 (NB bij 6.1.2.2(2)); φ_∞ (tabel NB-3) telt
  *     pas daarboven, waar de wand al niet aan §5.5.1.4 voldoet.
@@ -326,7 +326,7 @@ UC_max = max(UC_lam; UC_lam2m; UC_1; UC_2)
 '<hr/>
 '<i>Aandachtspunten:
 '<ul>
-'<li>Gecalibreerd op 14 de referentie-uitwerking-referenties (kalkzandsteen CS12/M15 en baksteen fb18/L12,5,
+'<li>Gecalibreerd op 14 referentieberekeningen (kalkzandsteen CS12/M15 en baksteen fb18/L12,5,
 'categorie I, CC2 en CC3, n = 2/3/4, N<sub>Ed</sub> = 30 tot 300 kN, M = 0 tot 10 kNm): alle exact
 'gereproduceerd.</li>
 '<li>ρ<sub>2</sub> = 0,75 geldt alléén zolang e<sub>t</sub> = |M<sub>1Ed</sub>|/|N<sub>Ed</sub>| ≤ 0,25·t;

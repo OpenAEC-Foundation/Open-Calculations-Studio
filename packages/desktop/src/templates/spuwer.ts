@@ -2,7 +2,7 @@
  * Spuwer (noodoverlaat) in een dakrand-opstand volgens
  * NEN-EN 1991-1-3+C1/NB(nl) art. 7.2 / 7.3.
  *
- * Gecalibreerd op 8 de referentie-uitwerking-referenties (A = 600 m²), alle exact gereproduceerd.
+ * Gecalibreerd op 8 referentieberekeningen (A = 600 m²), alle exact gereproduceerd.
  * Sets 1S-5S bij t = 50 jaar (i_r = 0,00005):
  *   1S  n=3  b=600  h=80   h_nd=50 → d_nd = 45,7  d_hw = 96   h_min = 76   UC = 0,95  ✓
  *   2S  n=2  b=600  h=80   h_nd=50 → d_nd = 59,8  d_hw = 110  h_min = 90   UC = 1,12  ✗
@@ -15,7 +15,7 @@
  *   7S  t=15 jaar   i_r = 0,000041 → d_nd = 40,0  d_hw = 70  UC = 0,87  ✓
  *   8S  t=100 jaar  i_r = 0,000056 → d_nd = 49,3  d_hw = 79  UC = 0,99  ✓
  *
- * Uit de referentiebladen afgeleide de referentie-uitwerking-keuzes:
+ * Uit de referentiebladen afgeleide keuzes van de referentie-uitwerking:
  *   • d_nd rekent met de breedte van één spuwer maal het aantal (b·n), dus met
  *     de totale spuwerbreedte in meters.
  *   • De regenwaterbelasting gebruikt 10 kN/m³ (96 mm → 0,96 kN/m²), niet 9,81.
@@ -56,7 +56,7 @@ h_nd = ?*(mm)', bovenzijde dakbedekking tot onderzijde spuwer h_nd'
 
 #hide
 'Tabel NB.1 — regenintensiteit i_r [m³/s]/m² per referentieperiode. Alle vier de
-'waarden zijn tegen een de referentie-uitwerking-referentie geverifieerd.
+'waarden zijn tegen een referentieberekening geverifieerd.
 irtab = [5; 15; 50; 100 |0.000027; 0.000041; 0.00005; 0.000056]
 i_r = hlookup(irtab; t_ref; 1; 2)
 #show
@@ -133,7 +133,7 @@ d_min
 '<hr/>
 '<i>Aandachtspunten:
 '<ul>
-'<li>Gecalibreerd op 8 de referentie-uitwerking-referenties (A = 600 m², n = 2/3, b = 300/600 mm,
+'<li>Gecalibreerd op 8 referentieberekeningen (A = 600 m², n = 2/3, b = 300/600 mm,
 'h = 80/100 mm, h<sub>nd</sub> = 30/50 mm, t = 5/15/50/100 jaar): d<sub>nd</sub>, d<sub>hw</sub>, q,
 'h<sub>min</sub>, de u.c. én de ronde-spuwerdiameter alle exact gereproduceerd.</li>
 '<li>De regenwaterbelasting rekent met 10 kN/m³ (d<sub>hw</sub> = 96 mm → 0,96 kN/m²).</li>

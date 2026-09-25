@@ -1,7 +1,7 @@
 /**
  * Controlescript voor de module Gording (houten dakgording).
  *
- * Acht de referentie-uitwerking-referenties, alle afgeleid van één basisgeval: 85×250 C24,
+ * Acht referentieberekeningen, alle afgeleid van één basisgeval: 85×250 C24,
  * klimaatklasse 1, dak 4500 × 3000 (33,7°), 3 gordingen, dagmaat 5000,
  * opleglengte 75, dakbeschot I = 486000 · E = 5000, pannen 0,80 kN/m²,
  * muurplaat/nokgording 1,0 kN/m, Q_k = 2 kN, s_k = 0,70, q_p = 0,822, CC2:
@@ -208,7 +208,7 @@ for (const [basis, sets] of [[BASIS, REFERENTIES], [WIND_BASIS, WIND]]) {
 }
 
 console.log(`
-De de referentie-uitwerking-stand is op alle vijftien bladen exact — inclusief document7,
+De referentiestand is op alle vijftien bladen exact — inclusief document7,
 wind4 en wind7, waar 6.10a en de combinatiekeuze eerder als bekende afwijking
 stonden. Die zijn nu gewone toetsen. De norm-stand heeft geen referentieblad en
 is alleen op eindigheid en op de richting van het verschil gecontroleerd.`)

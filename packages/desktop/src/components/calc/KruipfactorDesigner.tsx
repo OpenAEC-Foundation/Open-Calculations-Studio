@@ -6,7 +6,7 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 /**
  * Parametrisch beeld van de kruipcoëfficiënt (NEN-EN 1992-1-1 bijlage B).
  *
- * De de referentie-uitwerking-module heeft geen tekening — alleen invoer en één uitkomst. In
+ * De module in de referentie-uitwerking heeft geen tekening — alleen invoer en één uitkomst. In
  * plaats van een doorsnede toont dit paneel waar dat getal vandaan komt:
  *   • links het invoerscherm, één op één met de referentie-uitwerking;
  *   • rechtsboven de opbouw φ₀ = φ_RH · β(f_cm) · β(t₀) als staafjes, zodat je
@@ -15,7 +15,7 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
  *     asymptoot en een klikbare marker op het gekozen t.
  *
  * De rekenregels zijn dezelfde als in templates/kruipfactor.ts, gecalibreerd op
- * de de referentie-uitwerking-referentie C45/55 · N · RH 50 % · t₀ 28 d · h₀ 300 mm. Het
+ * de referentieberekening C45/55 · N · RH 50 % · t₀ 28 d · h₀ 300 mm. Het
  * gerapporteerde getal is φ(t;t₀) bij t = 100000 dagen — 1,614 → 1,61 — en niet
  * φ₀ = 1,617, dat op 1,62 zou uitkomen.
  */
@@ -36,7 +36,7 @@ const CEMENT: { v: number; label: string; alpha: number }[] = [
 ];
 
 /** Eén bron van waarheid voor de invoer — voedt de controls én de gedeelde store. */
-// Defaults spiegelen de de referentie-uitwerking-referentie, zodat elk getoond getal tegen een
+// Defaults spiegelen de referentieberekening, zodat elk getoond getal tegen een
 // referentieblad te leggen is (φ = 1,614 → geprint als 1,61).
 const DEFAULTS: Record<string, number> = {
   betonkwaliteit: 45,   // C45/55

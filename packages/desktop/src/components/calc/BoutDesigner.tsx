@@ -15,7 +15,7 @@ import "./VoetplaatDesigner.css";
  *     of met A_s of met A gerekend wordt, en is te zien aan de draadaanduiding.
  *
  * De weerstanden in de kop en de voet zijn dezelfde toetsing als in het
- * rekenblad — zie templates/boutberekening.ts, dat op zes de referentie-uitwerking-bladen is
+ * rekenblad — zie templates/boutberekening.ts, dat op zes referentiebladen is
  * gecalibreerd. Wijkt hier iets af, dan lopen de twee uit de pas.
  */
 const MARKER = "Boutberekening";

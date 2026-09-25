@@ -154,7 +154,7 @@ const STATISCH: { v: number; label: string }[] = [
 ];
 
 /** Eén bron van waarheid voor de invoer — voedt de controls én de gedeelde store. */
-// Defaults spiegelen het de referentie-uitwerking-invoerscherm: HEB300 S235, hoeklas 6,
+// Defaults spiegelen het invoerscherm van de referentie-uitwerking: HEB300 S235, hoeklas 6,
 // 4× M24-8.8, plaat 460 × 380 × 25, ondersabeling 30, fundatie 300, h_ef 200,
 // C25/30, N_Ed = 300 kN.
 const DEFAULTS: Record<string, number> = {

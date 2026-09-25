@@ -1,7 +1,7 @@
 /**
  * Kruipcoëfficiënt φ(t;t₀) volgens NEN-EN 1992-1-1 bijlage B.
  *
- * Gecalibreerd op zes de referentie-uitwerking-referenties (t₀ = 28 d, h₀ = 300 mm):
+ * Gecalibreerd op zes referentieberekeningen (t₀ = 28 d, h₀ = 300 mm):
  *   document1A  C45/55 · N · RH 50 → φ_RH 1,434 · β(f_cm) 2,308 · β(t₀) 0,488 ·
  *                                    φ₀ 1,617 · β_H 653 · β_c 0,998 · φ 1,614 → 1,61
  *   document3A  C20/25 · N · RH 50 → φ_RH 1,747 (B.3a) · β(f_cm) 3,175 ·
@@ -27,7 +27,7 @@
  * eindresultaat niet (1,382 in beide gevallen); bij korte belastingduur wel.
  * Dit blad rekent de term mee.
  *
- * De invoer spiegelt het de referentie-uitwerking-scherm: betonkwaliteit, cementklasse, RH,
+ * De invoer spiegelt het invoerscherm van de referentie-uitwerking: betonkwaliteit, cementklasse, RH,
  * t₀ en h₀ als directe invoer (h₀ = 2·A_c/u wordt niet zelf uitgerekend).
  *
  * Variabelenamen komen exact overeen met KruipfactorDesigner.tsx.
@@ -248,7 +248,7 @@ afw = if(Δφ > 0.005; 1; if(Δβ_H > 0.5; 1; 0))
 '<hr/>
 '<i>Aandachtspunten:
 '<ul>
-'<li>Gecalibreerd op zes de referentie-uitwerking-referenties (t<sub>0</sub> = 28 d, h<sub>0</sub> = 300 mm):
+'<li>Gecalibreerd op zes referentieberekeningen (t<sub>0</sub> = 28 d, h<sub>0</sub> = 300 mm):
 '<b>C45/55 · N · RH 50</b> → φ 1,614 · <b>C20/25 · N · RH 50</b> → φ 2,703 (tak (B<span>.</span>3a) + (B<span>.</span>8a)) ·
 '<b>C45/55 · N · RH 30</b> → φ<sub>RH</sub> 1,640 · φ 1,845 ·
 '<b>C45/55 · N · RH 70</b> → φ<sub>RH</sub> 1,229 · φ 1,382 ·

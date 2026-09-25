@@ -1,6 +1,6 @@
 # Splitspunten tussen de referentie-uitwerking en de norm
 
-Bij het calibreren van de modules op de referentie-uitwerking-referentiebladen komen soms
+Bij het calibreren van de modules op de referentiebladen komen soms
 verschillen naar boven waarbij het referentieprogramma aantoonbaar iets anders
 doet dan de Eurocode. Dit register houdt bij wáár dat gebeurt, wat het verschil
 bij een concrete invoer betekent, en welke van de twee lezingen het blad volgt.
@@ -33,9 +33,9 @@ Drie controles bewaken dit:
 |---|---|
 | `check-rekenwijze.mjs` | elke `_XC`- of `_nb`-tak bereikt een schakelaar, direct of via een tussenstap. Een tak die wordt uitgerekend, netjes wordt afgedrukt en nergens meetelt, valt hier door. |
 | `check-projectvariabelen.mjs` | geen blad zet `rekenwijze` als eigen invoerveld neer |
-| de module-controlescripts | draaien elke referentieset twee keer: in de de referentie-uitwerking-stand moet **élke** waarde exact kloppen, in de norm-stand wordt op eindigheid en op de richting van het verschil getoetst |
+| de module-controlescripts | draaien elke referentieset twee keer: in de referentiestand moet **élke** waarde exact kloppen, in de norm-stand wordt op eindigheid en op de richting van het verschil getoetst |
 
-Sinds de invoering van de schakelaar staat er in de de referentie-uitwerking-stand **geen
+Sinds de invoering van de schakelaar staat er in de referentiestand **geen
 enkele afwijking meer open** in de controlescripts. Wat vroeger als
 `afwijkend` werd gemeld en niet meetelde, is nu een gewone toets — dat zijn er
 zo'n dertig.
@@ -559,7 +559,7 @@ in de norm-stand met min(f_m; 20; 2·f_b).
 
 ## Weergavefouten (geen rekengevolg)
 
-Deze zijn puur cosmetisch aan de referentie-uitwerking-zijde, maar goed om te kennen bij het
+Deze zijn puur cosmetisch aan de kant van de referentie-uitwerking, maar goed om te kennen bij het
 lezen van een referentieblad:
 
 - **Kruipfactor** — het veld *Relatieve vochtigheid* print de betonklasse
@@ -657,7 +657,7 @@ Je hebt ze allebei nodig.
 Bij een nieuwe afwijking:
 
 1. Reproduceer beide varianten in het controlescript (`check-<module>.mjs`) en
-   markeer de de referentie-uitwerking-waarde als `afwijkend`, niet als fout.
+   markeer de waarde van de referentie-uitwerking als `afwijkend`, niet als fout.
 2. Voeg een `#if`-blok toe aan het rekenblad dat het verschil print zodra het
    bij die invoer optreedt.
 3. Noteer hem hier, met module, normartikel, referentiebladen en het
