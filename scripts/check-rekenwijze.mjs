@@ -12,7 +12,7 @@
  * tussenformule. Zo blijft de rekengang leesbaar en zie je in één oogopslag
  * waar de twee lezingen uiteenlopen.
  *
- * Wat hier misgaat als niemand kijkt: iemand voegt een de referentie-uitwerking-tak toe en
+ * Wat hier misgaat als niemand kijkt: iemand voegt een referentietak toe en
  * vergeet de schakelaar, waarna die tak wordt uitgerekend, netjes wordt
  * afgedrukt en nergens meetelt. Of andersom: de schakelaar staat er wel maar de
  * norm-tak ontbreekt, en dan levert de norm-stand een lege variabele op.
@@ -67,13 +67,13 @@ for (const bestand of readdirSync(TPL_DIR).filter((f) => f.endsWith(".ts") && !O
 
   // 1. Een tak zonder schakelaar wordt uitgerekend en nergens gebruikt.
   if ((xc.size > 0 || nb.size > 0) && !schakelt) {
-    problemen.push("heeft een de referentie-uitwerking- of norm-tak maar schakelt nergens op `rekenwijze`");
+    problemen.push("heeft een referentie- of normtak maar schakelt nergens op `rekenwijze`");
   }
   // 2. Een schakelaar zonder takken kan geen twee lezingen bedienen.
   if (schakelt && xc.size === 0 && nb.size === 0) {
     problemen.push("schakelt op `rekenwijze` maar heeft geen `_XC`- of `_nb`-tak");
   }
-  // 3. Elke de referentie-uitwerking-tak moet de schakelaar bereiken — direct of via een
+  // 3. Elke referentietak moet de schakelaar bereiken — direct of via een
   //    andere tak. Veel takken zijn tussenstappen (β_t0,XC → φ_0,XC → φ_t,XC);
   //    alleen de laatste staat in de `if`. We volgen de keten dus terug: begin
   //    bij wat in een schakelaar staat en trek daar alles naartoe wat in de

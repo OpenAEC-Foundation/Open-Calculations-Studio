@@ -6,7 +6,7 @@
  * hangen daaraan; de formules staan daarom bewust op zichzelf, zonder aannames
  * over de verbinding waarin de bout zit.
  *
- * Gecalibreerd op zes de referentie-uitwerking-referenties (document1C t/m 6C), basis
+ * Gecalibreerd op zes referentieberekeningen (document1C t/m 6C), basis
  * S235 · 8.8 · M16 · draad in het afschuifvlak · eindbout · t 20 · e₁ 30 ·
  * p₁ 80 · e₂ 25 · p₂ 60 → F_t,Rd 90,4 · F_v,Rd 60,3 · F_b,Rd 112,1 kN.
  * Varianten: schacht in het afschuifvlak (F_v,Rd 77,2 — met A i.p.v. A_s) ·
@@ -333,7 +333,7 @@ belast = (F_v,Ed + F_t,Ed)/(1*kN)
 #hide
 'Beide takken staan al bij §6 en §8; hier alleen het verschil, eenheidloos.
 'Let op: vergelijken met de NORM-tak, niet met de gehanteerde waarde — anders
-'meldt dit blok "geen afwijking" zodra de de referentie-uitwerking-stand is gekozen.
+'meldt dit blok "geen afwijking" zodra de rekenwijze de referentie-uitwerking volgt.
 Δk = abs(F_b,Rd,nb - F_b,Rd,XC)/(1*kN)
 #show
 
@@ -372,7 +372,7 @@ belast = (F_v,Ed + F_t,Ed)/(1*kN)
 '<hr/>
 '<i>Aandachtspunten:
 '<ul>
-'<li>Gecalibreerd op <b>zes</b> de referentie-uitwerking-referenties (document1C t/m 6C).
+'<li>Gecalibreerd op <b>zes</b> referentieberekeningen (document1C t/m 6C).
 'Basis S235 · 8.8 · M16 · draad · eindbout · t 20 · e<sub>1</sub> 30 ·
 'p<sub>1</sub> 80 · e<sub>2</sub> 25 · p<sub>2</sub> 60 → F<sub>t,Rd</sub> 90,4 ·
 'F<sub>v,Rd</sub> 60,3 · F<sub>b,Rd</sub> 112,1 kN. Varianten: <b>schacht in het

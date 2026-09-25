@@ -1,7 +1,7 @@
 /**
  * Controlescript voor de module Spuwer (noodoverlaat).
  *
- * Acht de referentie-uitwerking-referenties, alle met afvoergebied A = 600 m².
+ * Acht referentieberekeningen, alle met afvoergebied A = 600 m².
  * Sets 1S t/m 5S bij t = 50 jaar variëren het aantal spuwers en de afmetingen;
  * 6S t/m 8S variëren de ontwerplevensduur en daarmee de regenintensiteit i_r.
  *

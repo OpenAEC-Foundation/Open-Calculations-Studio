@@ -4,7 +4,7 @@ import "./VoetplaatDesigner.css";
 /**
  * Parametrisch beeld van de verankeringslengte (NEN-EN 1992-1-1 §8.4).
  *
- * De de referentie-uitwerking-module heeft geen tekening; in plaats daarvan toont dit paneel
+ * De module in de referentie-uitwerking heeft geen tekening; in plaats daarvan toont dit paneel
  * twee dingen die het getal verklaren:
  *   • Boven — de staaf in het beton op ware verhouding: de dekking c, de
  *     staafdiameter en de lengte l_bd naast de ondergrens l_b,min. Bij een

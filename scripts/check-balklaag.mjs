@@ -1,7 +1,7 @@
 /**
  * Controlescript voor de module Balklaag (houten vloerbalken).
  *
- * Negen de referentie-uitwerking-referenties (document1 t/m document9), alle afgeleid van één
+ * Negen referentieberekeningen (document1 t/m document9), alle afgeleid van één
  * basisgeval: 71×221 C24, klimaatklasse 1, dagmaat 5000, hoh 600, vloerhout 18,
  * g_k 1,00 kN/m², q_k 1,75 kN/m², Q_k 2 kN, CC2. Elk blad wijzigt precies één
  * ding, zodat een verschil altijd aan één oorzaak toe te wijzen is:
@@ -140,7 +140,7 @@ for (const ref of REFERENTIES) {
 }
 
 console.log(`
-De de referentie-uitwerking-stand is op alle negen bladen exact — er blijft geen enkele
+De referentiestand is op alle negen bladen exact — er blijft geen enkele
 afwijking over, ook niet op het eigen gewicht. De norm-stand heeft geen
 referentieblad en is daarom alleen getoetst op eindigheid en op de richting van
 het verschil; zie punt 8 en 9 in docs/afwijkingen-referentie.md.`);

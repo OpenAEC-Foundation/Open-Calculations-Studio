@@ -5,13 +5,13 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
  * Parametrisch beeld van een dragende (ongewapende) metselwerkwand op druk,
- * volgens NEN-EN 1996-1-1 §6.1.2. Reproduceert het de referentie-uitwerking-invoerbeeld:
+ * volgens NEN-EN 1996-1-1 §6.1.2. Reproduceert het invoerbeeld van de referentie-uitwerking:
  * een vooraanzicht van de wand (ℓ × h) met N_Ed / N_Ed,max op de wandkop, en
  * een dwarsdoorsnede (t × h) met de momenten M_1Ed (kop), M_mEd (midden) en
  * M_2Ed (voet). Beide aanzichten staan op één uniforme schaal.
  *
  * De UC's in de kop en de voet zijn dezelfde toetsingen als in het rekenblad
- * (templates/metselwerkwand.ts, gecalibreerd op 9 de referentie-uitwerking-referenties):
+ * (templates/metselwerkwand.ts, gecalibreerd op 9 referentieberekeningen):
  * slankheid §5.5.1.4, de reductiefactoren Φ aan kop/voet (6.4) — inclusief de
  * lage-belastingstak met begrensde e_i en restmoment ΔM — en op halve hoogte
  * via bijlage G, N_Rd = Φ·ℓ·t·f_d (6.2), plus de extra toets bij constante
@@ -72,7 +72,7 @@ const CATEGORIE: { v: number; label: string; base: number }[] = [
 ];
 
 /** Eén bron van waarheid voor de invoer — voedt de controls én de gedeelde store. */
-// Defaults spiegelen het de referentie-uitwerking-invoerscherm: kalkzandsteen CS12, M15,
+// Defaults spiegelen het invoerscherm van de referentie-uitwerking: kalkzandsteen CS12, M15,
 // categorie I, ℓ = 1000, h = 2800, t = 120, N_Ed = N_Ed,max = 200 kN.
 const DEFAULTS: Record<string, number> = {
   ondersteuning: 1, n_rand: 2,

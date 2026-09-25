@@ -10,7 +10,7 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
  * designers.
  *
  * De UC's in de kop en de voet zijn dezelfde toetsingen als in het rekenblad
- * (templates/kolom.ts, gecalibreerd op 3 de referentie-uitwerking-referenties): druk §6.1.4,
+ * (templates/kolom.ts, gecalibreerd op 3 referentieberekeningen): druk §6.1.4,
  * druk + buiging §6.2.4, afschuiving §6.1.7, knik §6.3.2, kip + knik §6.3.3.
  */
 const MARKER = "Houten kolom";

@@ -5,20 +5,20 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
  * Parametrisch beeld van een spuwer (noodoverlaat) in een dakrand-opstand.
- * Reproduceert het de referentie-uitwerking-invoerbeeld: links een doorsnede door de opstand
+ * Reproduceert het invoerbeeld van de referentie-uitwerking: links een doorsnede door de opstand
  * met het dakvlak op afschot, de drempelhoogte h_nd, de spuweropening h en de
  * waterstanden, rechts het vooraanzicht van de opening b × h in de opstand.
  * Beide aanzichten staan op één uniforme schaal.
  *
  * De UC in de kop en de voet is dezelfde toetsing als in het rekenblad
- * (templates/spuwer.ts, gecalibreerd op 5 de referentie-uitwerking-referenties):
+ * (templates/spuwer.ts, gecalibreerd op 5 referentieberekeningen):
  * Q_h = A·i_r (7.2), d_nd = 0,7·(Q_h/(b·n))^(2/3) (7.4), d_hw = d_nd + h_nd
  * (7.8), en h_min = 30 + d_hw − h_nd uit §7.3(3) getoetst op de spuwerhoogte h.
  */
 const MARKER = "Spuwer";
 
 /** Eén bron van waarheid voor de invoer — voedt de controls én de gedeelde store. */
-// Defaults spiegelen de referentie-uitwerking-referentie 1S, zodat elk getoond getal tegen een
+// Defaults spiegelen referentieberekening 1S, zodat elk getoond getal tegen een
 // referentieblad te leggen is (u.c. = 0,95 voldoet).
 const DEFAULTS: Record<string, number> = {
   A_afv: 600,   // m²  — afvoergebied

@@ -1,7 +1,7 @@
 /**
  * Verankeringslengte van betonstaal volgens NEN-EN 1992-1-1 §8.4.
  *
- * Gecalibreerd op zeven de referentie-uitwerking-referenties (document1B t/m 7B), basis
+ * Gecalibreerd op zeven referentieberekeningen (document1B t/m 7B), basis
  * C45/55 · B500B · Ø16 · c 30 · goed · recht → l_bd 379 mm. Varianten: slechte
  * aanhechting (542) · anders dan recht (436) · A_req/A_prov 300/500 (227) ·
  * C20/25 (651) · Ø6 met c 60 (ondergrens) · en de lijst per diameter. Alle
@@ -227,7 +227,7 @@ l_bd
 '<hr/>
 '<i>Aandachtspunten:
 '<ul>
-'<li>Gecalibreerd op <b>zeven</b> de referentie-uitwerking-referenties, basis C45/55 · B500B ·
+'<li>Gecalibreerd op <b>zeven</b> referentieberekeningen, basis C45/55 · B500B ·
 'Ø16 · c 30 · goed · recht → l<sub>bd</sub> = 379 mm. Elk blad varieert één
 'ding: <b>slechte aanhechting</b> (η<sub>1</sub> 0,70 → f<sub>bd</sub> 2,79 ·
 'l<sub>bd</sub> 542) · <b>anders dan recht</b> (α<sub>2</sub> 1,00 →

@@ -6,7 +6,7 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 /**
  * Losstaand parametrisch beeld van een geconcentreerde oplegging op een
  * metselwerkwand (bijv. een liggereinde dat op de wand rust). Reproduceert het
- * de referentie-uitwerking-beeld: vooraanzicht van de wand met de opleg­plaat, de last­spreiding
+ * beeld van de referentie-uitwerking: vooraanzicht van de wand met de opleg­plaat, de last­spreiding
  * onder 60° en de effectieve lengte l_efm, plus een dwarsdoorsnede.
  *
  * Toetsing volgens NEN-EN 1996-1-1 §6.1.3 (geconcentreerde belastingen):
@@ -64,7 +64,7 @@ const OVERSPANNING: { v: number; label: string }[] = [
  * tonen én om de gedeelde store te seeden, zodat de evaluator (rekensheet) en
  * de designer nooit op verschillende defaults uitkomen.
  */
-// Defaults spiegelen de de referentie-uitwerking-referentie (document1.pdf): cellenbeton G2,
+// Defaults spiegelen de referentieberekening (document1.pdf): cellenbeton G2,
 // M15, t=150, a_t=100 → UC ≈ 12,66.
 const DEFAULTS: Record<string, number> = {
   overspanning: 1, steensoort: 7, steencategorie: 1, 

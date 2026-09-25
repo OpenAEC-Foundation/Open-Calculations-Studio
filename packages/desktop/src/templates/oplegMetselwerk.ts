@@ -2,7 +2,7 @@
  * Oplegging op metselwerk — geconcentreerde last op een metselwerkwand volgens
  * NEN-EN 1996-1-1:2006+A1:2013+NB:2018 §6.1.3.
  *
- * Methodiek exact gespiegeld aan de de referentie-uitwerking-referentieberekening
+ * Methodiek exact gespiegeld aan de referentieberekening
  * (3BM Bouwtechniek, document1.pdf, de referentie-uitwerking 2027.3.02):
  *   f_k  = K·f_b^α·f_m^β                                (3.2)
  *   h_c  = h − h_k                                       (effectieve hoogte)
@@ -178,7 +178,7 @@ opleg_min = min(a_L; a_t)
 #end if
 
 '<hr/>
-'<i>Aandachtspunten / open punten (status t.o.v. de referentie-uitwerking-referenties):
+'<i>Aandachtspunten / open punten (status ten opzichte van de referentieberekeningen):
 '<ul>
 '<li><b>K, α en β</b> uit tabel NB-2: metselmortel altijd α = 0,65 en β = 0,25 met K = 0,6
 '(groep 1) of 0,5 (groep 2); lijmmortel per steensoort. Tegen een referentie getoetst:

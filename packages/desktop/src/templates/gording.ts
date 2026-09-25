@@ -6,11 +6,11 @@
  * 4 belastingsgevallen (permanent, geconcentreerd, sneeuw, wind), BGT-doorbuiging
  * per richting en UGT met dubbele buiging §6.1.6 + afschuiving §6.1.7.
  *
- * Gecalibreerd op 8 de referentie-uitwerking-referenties (document1 t/m document8) plus zeven
+ * Gecalibreerd op 8 referentieberekeningen (document1 t/m document8) plus zeven
  * windvarianten — zie scripts/check-gording.mjs. Het blad rekent q_p sinds
  * 26-08-2026 zelf uit windgebied, terreincategorie en z_e (backlogpunt 1). Het blad toetst daarnaast 6.10a (1,35·G, duurklasse
  * blijvend), die de referentie-uitwerking overslaat en die op een steil dak maatgevend kan zijn.
- * Eigengewicht = A·5,5 kN/m³ (550 kg/m³ · g=10), de referentie-uitwerking-quirk. Dakbeschot (I,E)
+ * Eigengewicht = A·5,5 kN/m³ (550 kg/m³ · g=10), een eigenaardigheid van de referentie-uitwerking. Dakbeschot (I,E)
  * beïnvloedt alléén de concentratiefactor k_r (kapt op 1,0).
  */
 
@@ -471,7 +471,7 @@ UC_max = max(UC_611; UC_612; UC_afsch; UC_wy; UC_wz)
 '<hr/>
 '<i>Aandachtspunten:
 '<ul>
-'<li>Gecalibreerd op 3 de referentie-uitwerking-referenties (Set 1/2/3), alle exact gereproduceerd.</li>
+'<li>Gecalibreerd op 3 referentieberekeningen (Set 1/2/3), alle exact gereproduceerd.</li>
 '<li>Eigengewicht = A·5,5 kN/m³ (550 kg/m³ · g=10), conform de referentie-uitwerking.</li>
 '<li>Dakbeschot (E·I) beïnvloedt alléén de concentratiefactor k<sub>r</sub> (kapt op 1,0);
 'de ∥-last wordt gelijk over de gordingen verdeeld.</li>

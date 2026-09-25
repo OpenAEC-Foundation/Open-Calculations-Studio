@@ -1,7 +1,7 @@
 /**
  * Controlescript voor de module Kruipfactor φ(t;t₀).
  *
- * Zes de referentie-uitwerking-referenties, alle bij t₀ = 28 d en h₀ = 300 mm. Het blad
+ * Zes referentieberekeningen, alle bij t₀ = 28 d en h₀ = 300 mm. Het blad
  * rapporteert φ(t;t₀) bij t = 100000 dagen — niet φ₀; dat scheelt 1,62 tegen
  * 1,61 en was in een eerdere sessie de grootste valkuil.
  *

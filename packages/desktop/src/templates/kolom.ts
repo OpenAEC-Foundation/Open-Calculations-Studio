@@ -6,9 +6,9 @@
  * kip + knik §6.3.3. Variabelenamen komen exact overeen met KolomDesigner.tsx.
  * Belastingen zijn rekenwaarden, dus dit blad kent geen belastingcombinaties.
  *
- * Gecalibreerd op zes de referentie-uitwerking-referenties — zie scripts/check-kolom.mjs.
+ * Gecalibreerd op zes referentieberekeningen — zie scripts/check-kolom.mjs.
  *
- * Uit de referentiebladen afgeleide de referentie-uitwerking-keuzes:
+ * Uit de referentiebladen afgeleide keuzes van de referentie-uitwerking:
  *   • M_y,Ed is het **werkelijke maximum** van het momentenverloop, niet
  *     max|M_A;M_B| + q_z·L²/8. Met M_A = 5, M_B = 3, q_z = 2 en L = 3200 ligt het
  *     maximum op x = 1287,5 mm en is M = 6,658 kNm; de superpositie zou 7,56
@@ -290,7 +290,7 @@ UC_max = max(UC_62; UC_619; UC_620; UC_613; UC_623; UC_624; UC_635)
 '<hr/>
 '<i>Aandachtspunten:
 '<ul>
-'<li>Gecalibreerd op 4 de referentie-uitwerking-referenties, alle exact gereproduceerd: 75×175 C24 KK1
+'<li>Gecalibreerd op 4 referentieberekeningen, alle exact gereproduceerd: 75×175 C24 KK1
 '(L = L<sub>cr</sub> = 3200 mm, N<sub>Ed</sub> = 10 kN, M<sub>yA</sub> = 0/3 kNm,
 'q<sub>z</sub> = 0/1,5 kN/m) en 44×144 C24 KK1 (L = 1000, L<sub>cr,y</sub> = 1500,
 'L<sub>cr,z</sub> = 2000 mm, N<sub>Ed</sub> = 15 kN, M<sub>yA</sub> = 5, M<sub>yB</sub> = 3 kNm,

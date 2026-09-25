@@ -1,7 +1,7 @@
 /**
  * Controlescript voor de module Kolom (houten kolom op druk + buiging).
  *
- * Zes de referentie-uitwerking-referenties. Basisgeval: 75×175 C24, klimaatklasse 1,
+ * Zes referentieberekeningen. Basisgeval: 75×175 C24, klimaatklasse 1,
  * belastingsduurklasse blijvend, L = L_cr,y = L_cr,z = L_cr = 3200 mm,
  * N_Ed = 10 kN, CC2. Belastingen zijn rekenwaarden, dus er is geen
  * combinatielogica en geen 6.10a-vraag zoals bij gording.

@@ -2,14 +2,14 @@
  * Controlescript voor de module Boutberekening.
  *
  * Rekent templates/boutberekening.ts door met de invoer van de zes
- * de referentie-uitwerking-referentiebladen (document1C t/m 6C) en vergelijkt elke
+ * referentiebladen (document1C t/m 6C) en vergelijkt elke
  * tussenstap met het afgedrukte getal.
  *
  * Basis: S235 · 8.8 · M16 · afschuifvlak door de draad · eindbout · t 20 ·
  * e₁ 30 · p₁ 80 · e₂ 25 · p₂ 60. Elk blad varieert één ding.
  *
  * B_p,Rd is een splitspunt — de referentie-uitwerking vult voor d_m de sleutelwijdte in in
- * plaats van het gemiddelde uit §3.6.1(3). In de de referentie-uitwerking-stand hoort hij
+ * plaats van het gemiddelde uit §3.6.1(3). In de referentiestand hoort hij
  * daarom exact te kloppen; de norm-tak staat op het blad als `B_p,Rd,nb`.
  * gemarkeerd en telt niet als fout. Zie docs/afwijkingen-referentie.md §6.
  *

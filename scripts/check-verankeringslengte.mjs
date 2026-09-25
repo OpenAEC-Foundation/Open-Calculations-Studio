@@ -1,7 +1,7 @@
 /**
  * Controlescript voor de module Verankeringslengte (NEN-EN 1992-1-1 §8.4).
  *
- * Zeven de referentie-uitwerking-referenties (document1B t/m 7B). Basis C45/55 · B500B · Ø16 ·
+ * Zeven referentieberekeningen (document1B t/m 7B). Basis C45/55 · B500B · Ø16 ·
  * c 30 · goede aanhechting · rechte staaf → l_bd 379 mm. Elk volgend blad
  * varieert precies één ding.
  *
@@ -53,7 +53,7 @@ const REFERENTIES = [
     // Hier bijt het splitspunt: c_d = 60 > 3Ø = 18, dus de referentie-uitwerking zet α₁ op 0,70
     // en zakt door tot de ondergrens van 100 mm. Tabel 8.2 geeft voor een rechte
     // staaf α₁ = 1,00 en dan is 115 mm nodig — dat is `l_bd,nb`. In de
-    // de referentie-uitwerking-stand is `l_bd` dus 100 en niet 115.
+    // referentiestand is `l_bd` dus 100 en niet 115.
     verwacht: { "α_1": "1", l_bd_nb: "115", l_bd: "100" } },
 ];
 

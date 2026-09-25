@@ -118,7 +118,7 @@ export default function SchijfwerkingDesigner() {
   const F1 = d("F1"), F2 = d("F2"), F_ivEd = d("F_ivEd");
 
   // ── toetsing — Methode A (EN 1995-1-1 §9.2.4.2) + stijl-knik (§6.3.2) ────────
-  // Gecalibreerd op de de referentie-uitwerking-referentie (document1, Set 1). Wind → duurklasse
+  // Gecalibreerd op de referentieberekening (document1, Set 1). Wind → duurklasse
   // Kort (kmod = 0,90; klimaat 3 lager). γ_M = 1,30 (gezaagd hout).
   const mat = MAT[sterkte] ?? MAT[2];
   const gammaM = 1.30;
