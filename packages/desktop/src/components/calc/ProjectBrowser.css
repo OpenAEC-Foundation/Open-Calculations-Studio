@@ -407,3 +407,15 @@
 .tree-item-onuitgegeven .tree-item-label {
   opacity: 0.6;
 }
+
+/* Knop naar het scherm "Module toevoegen", onder de projectbladen. */
+.tree-item-toevoegen {
+  margin-top: 6px;
+  color: var(--theme-accent);
+  font-weight: 500;
+}
+
+.tree-item-toevoegen .tree-item-icon {
+  color: var(--theme-accent);
+  font-weight: 700;
+}

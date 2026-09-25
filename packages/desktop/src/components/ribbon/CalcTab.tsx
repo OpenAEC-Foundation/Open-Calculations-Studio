@@ -11,6 +11,7 @@ import {
   redoIcon,
   imageIcon,
   pdfIcon,
+  moduleIcon,
 } from "./calcIcons";
 import {
   parse,
@@ -26,6 +27,7 @@ import { usePrintStore } from "../../store/printStore";
 import { openCalculationFile, saveCalculationFile } from "../../tauri/fileOps";
 import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
 import { useRecentFiles } from "../../hooks/useRecentFiles";
+import { useModuleKiezer } from "../../store/moduleKiezer";
 
 interface CalcTabProps {
   onSettingsClick?: () => void;
@@ -46,6 +48,7 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
   const toonVoorbeeld = usePrintStore((s) => s.toonVoorbeeld);
   const activeId = useProjectStore((s) => s.activeId);
   const { addRecentFile } = useRecentFiles();
+  const openModuleKiezer = useModuleKiezer((s) => s.openen);
 
   const handleOpen = useCallback(async () => {
     try {
@@ -189,7 +192,8 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
           </RibbonButtonStack>
         </RibbonGroup>
 
-        <RibbonGroup label={t("insert.media", "Media")}>
+        <RibbonGroup label={t("calc.insert", "Invoegen")}>
+          <RibbonButton icon={moduleIcon} label={t("calc.module", "Module")} size="large" onClick={openModuleKiezer} />
           <RibbonButton icon={imageIcon} label={t("insert.image", "Afbeelding")} size="large" onClick={() => {}} />
         </RibbonGroup>
 
