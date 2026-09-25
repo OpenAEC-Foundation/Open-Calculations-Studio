@@ -15,6 +15,7 @@ import MetselwerkwandDesigner from "./MetselwerkwandDesigner";
 import MomentverbindingDesigner from "./MomentverbindingDesigner";
 import NagelSchroefDesigner from "./NagelSchroefDesigner";
 import OplegMetselwerkDesigner from "./OplegMetselwerkDesigner";
+import PaalDesigner from "./PaalDesigner";
 import PenDesigner from "./PenDesigner";
 import PonsDesigner from "./PonsDesigner";
 import SchijfwerkingDesigner from "./SchijfwerkingDesigner";
@@ -41,6 +42,7 @@ const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
   // ruimere kop mag hem niet wegkapen.
   { marker: "Stabiliteit HSB-wanden", beeld: () => <HsbStabiliteitDesigner /> },
   { marker: "Nagel- en schroefverbinding", beeld: () => <NagelSchroefDesigner /> },
+  { marker: "Paaldraagvermogen — NEN 9997-1 art. 7.6.2.3", beeld: () => <PaalDesigner /> },
   { marker: "Voetplaatverbinding", beeld: () => <VoetplaatDesigner /> },
   { marker: "Balklaag", beeld: () => <BalklaagDesigner /> },
   { marker: "Spuwer", beeld: () => <SpuwerDesigner /> },
