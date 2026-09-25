@@ -9,6 +9,7 @@ import { oplegMetselwerk } from "./oplegMetselwerk";
 import { schijfwerking } from "./schijfwerking";
 import { hsbStabiliteit } from "./hsbStabiliteit";
 import { nagelSchroefverbinding } from "./nagelSchroefverbinding";
+import { paaldraagvermogen } from "./paaldraagvermogen";
 import { gording } from "./gording";
 import { kolom } from "./kolom";
 import { metselwerkwand } from "./metselwerkwand";
@@ -89,7 +90,7 @@ export const templates: Record<string, string> = {
   "verankeringslengte": verankeringslengte,
   "calcpad-demo": calcpadDemo,
   ...calcpadSamples,
-  "paaldraagvermogen": paalExample,
+  "paaldraagvermogen": paaldraagvermogen,
   "stalen-ligger": exampleDoc,
   "ec5-buiging": ec5Buiging,
   "ec5-afschuiving": ec5Afschuiving,
