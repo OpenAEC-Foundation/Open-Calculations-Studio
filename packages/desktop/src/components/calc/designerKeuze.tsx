@@ -17,7 +17,6 @@ import MomentverbindingDesigner from "./MomentverbindingDesigner";
 import NagelSchroefDesigner from "./NagelSchroefDesigner";
 import OplegMetselwerkDesigner from "./OplegMetselwerkDesigner";
 import PaalDesigner from "./PaalDesigner";
-import PenDesigner from "./PenDesigner";
 import PonsDesigner from "./PonsDesigner";
 import SchijfwerkingDesigner from "./SchijfwerkingDesigner";
 import SchoorDesigner from "./SchoorDesigner";
@@ -59,7 +58,6 @@ const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
   { marker: "Boutberekening", beeld: () => <BoutDesigner /> },
   { marker: "Lasberekening", beeld: () => <LasDesigner /> },
   { marker: "Schoorverbinding", beeld: () => <SchoorDesigner /> },
-  { marker: "Penverbinding", beeld: () => <PenDesigner /> },
   { marker: "Stalen kolom", beeld: () => <StalenKolomDesigner /> },
   { marker: "Brandwerendheid", beeld: () => <BrandwerendheidDesigner /> },
   { marker: "Momentverbinding", beeld: () => <MomentverbindingDesigner /> },

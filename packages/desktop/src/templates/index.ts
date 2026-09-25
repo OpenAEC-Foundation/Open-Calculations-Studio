@@ -20,7 +20,6 @@ import { permanenteVuurlast } from "./permanenteVuurlast";
 // Visuele modules — invoer en parametrisch beeld, toetsing volgt nog.
 import { lasberekening } from "./lasberekening";
 import { schoorverbinding } from "./schoorverbinding";
-import { penverbinding } from "./penverbinding";
 import { stalenKolom } from "./stalenKolom";
 import { brandwerendheid } from "./brandwerendheid";
 import { momentverbinding } from "./momentverbinding";
@@ -78,7 +77,6 @@ export const templates: Record<string, string> = {
   "permanente-vuurlast": permanenteVuurlast,
   "lasberekening": lasberekening,
   "schoorverbinding": schoorverbinding,
-  "penverbinding": penverbinding,
   "stalen-kolom": stalenKolom,
   "brandwerendheid": brandwerendheid,
   "momentverbinding": momentverbinding,
