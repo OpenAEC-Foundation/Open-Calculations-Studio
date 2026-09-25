@@ -40,5 +40,36 @@ for (const bestand of readdirSync(TPL_DIR).filter((f) => f.endsWith(".ts") && !O
   }
 }
 console.log(`  ${fouten ? "FOUT  " : "OK    "} ${gekoppeld} bladen met een beeld, elk op een herkenningstekst uit de eigen titel`);
-console.log(fouten ? `\nDesignerkeuze: ${fouten} blad(en) krijgen het beeld van een ander blad.` : "\nDesignerkeuze: elk blad krijgt zijn eigen beeld.");
+
+// ── Elke startwaarde van een beeld is invoer van het blad ────────────────────
+// Het beeld schrijft zijn waarden in het blad onder de naam uit DEFAULTS. Heet
+// de invoer in het blad anders, dan verandert het beeld niets aan de
+// berekening — zonder foutmelding. Namen met een komma in het blad (`F_v,Ed`)
+// staan in het beeld met een liggend streepje (`F_v_Ed`).
+const bladen = readdirSync(TPL_DIR)
+  .filter((f) => f.endsWith(".ts") && !OVERSLAAN.has(f))
+  .map((f) => readFileSync(join(TPL_DIR, f), "utf8").match(/export const \w+ = `([\s\S]*)`;\s*$/)?.[1])
+  .filter(Boolean);
+let losse = 0, beelden = 0;
+for (const [, marker, comp] of keuze.matchAll(/marker: "([^"]+)", beeld: \(\) => <(\w+) \/>/g)) {
+  const bron = readFileSync(join(SRC, "components/calc", `${comp}.tsx`), "utf8");
+  const blok = bron.match(/const DEFAULTS[^=]*=\s*\{([\s\S]*?)\n\};/);
+  if (!blok) continue;
+  beelden++;
+  const sleutels = [...blok[1].matchAll(/(?:^|[\s,{])"?([\p{L}_][\p{L}\p{N}_]*)"?\s*:/gu)].map((m) => m[1]);
+  const invoer = new Set();
+  for (const tekst of bladen.filter((t) => t.split("\n")[0].includes(marker))) {
+    for (const m of tekst.matchAll(/^\s*([\p{L}_][\p{L}\p{N}_,]*)\s*=\s*\?/gmu)) invoer.add(m[1].replace(/,/g, "_"));
+    for (const m of tekst.matchAll(/^\s*@select\s+(\w+)/gm)) invoer.add(m[1]);
+  }
+  const zonder = sleutels.filter((k) => !invoer.has(k));
+  if (zonder.length) {
+    losse += zonder.length;
+    console.log(`  FOUT   ${comp}: ${zonder.join(", ")} — geen invoer in het blad "${marker}"`);
+  }
+}
+console.log(`  ${losse ? "FOUT  " : "OK    "} ${beelden} beelden: elke startwaarde is invoer van het eigen blad`);
+fouten += losse ? 1 : 0;
+
+console.log(fouten ? `\nDesignerkeuze: ${fouten} probleem/problemen tussen beeld en blad.` : "\nDesignerkeuze: elk blad krijgt zijn eigen beeld, en elk beeld schrijft in zijn blad.");
 process.exit(fouten ? 1 : 0);
