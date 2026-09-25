@@ -266,7 +266,7 @@ export default function SpuwerDesigner() {
             d<sub>nd</sub> = {fmt(d_nd, 1)} mm · d<sub>hw</sub> = {fmt(d_hw, 1)} mm · q = {fmt(q_rw, 2)} kN/m²</span>
         </div>
 
-        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, flexDirection: stacked ? "column" : "row", alignItems: "center", justifyContent: "center", gap, flexWrap: "nowrap", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
+        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, flexDirection: stacked ? "column" : "row", alignItems: "center", justifyContent: "safe center", gap, flexWrap: "nowrap", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
           <div className="vd-canvas">
             <div className="vd-caption">Doorsnede — detail dakrand</div>
             <div className="vd-stage" style={{ width: SW, height: SH, background: "transparent", border: "none", borderRadius: 0 }}>
