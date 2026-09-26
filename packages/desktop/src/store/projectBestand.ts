@@ -1,6 +1,9 @@
 import type { IfcxDocument } from "@ifc-calc/core";
 import { legeGegevens, type ProjectGegevens } from "./projectGegevens";
 import type { Exemplaar } from "./projectStore";
+import { normaliseerRapport, type Rapport } from "../rapport/model";
+import { datumTekst } from "../rapport/revisies";
+import { standaardTeksten } from "../rapport/standaardteksten";
 
 /**
  * Het projectbestand: één `.ifc-calculation` met de héle berekening erin.
@@ -14,7 +17,13 @@ import type { Exemplaar } from "./projectStore";
  *               blad verwachten; wij gebruiken hem niet bij het openen zodra
  *               `project` aanwezig is.
  *   `project` — de eigenlijke inhoud: projectgegevens plus alle exemplaren,
- *               elk met eigen tekst en eigen invoerwaarden.
+ *               elk met eigen tekst en eigen invoerwaarden, en het
+ *               constructierapport (`project.rapport`).
+ *
+ * `project.rapport` is optioneel: een bestand van vóór het constructierapport
+ * krijgt bij openen een nieuw rapport met de standaardwaarden. De
+ * formaatversie blijft daarom 1 (lezen controleert hem ook niet). Een oudere
+ * versie van de app kent het veld niet en laat het bij opnieuw opslaan weg.
  *
  * Een bestand zonder `project` is een los rekenblad uit een oudere versie (of
  * een `.cpd`). Dat wordt geopend als een project met één exemplaar erin, zodat
@@ -28,12 +37,16 @@ export interface ProjectPayload {
   naam: string;
   gegevens: ProjectGegevens;
   exemplaren: Exemplaar[];
+  /** Ontbreekt in bestanden van vóór het constructierapport. */
+  rapport?: Rapport;
 }
 
 export interface GelezenProject {
   projectNaam: string;
   gegevens: ProjectGegevens;
   exemplaren: Exemplaar[];
+  /** Afwezig bij een oud bestand of een los blad; laadProject maakt dan een nieuw rapport. */
+  rapport?: Rapport;
 }
 
 /** Bouwt de tekst die naar schijf gaat. */
@@ -89,6 +102,12 @@ export function leesProjectBestand(raw: string, bestandsnaam: string): GelezenPr
             // Ontbreekt in bestanden van vóór de elementkoppeling; leeg = losstaand.
             elementen: e.elementen ?? [],
           })),
+          // Per veld gecontroleerd: het bestand kan van een andere versie van
+          // de app komen of met de hand zijn aangepast. Onbekende velden
+          // vallen weg, ontbrekende krijgen hun standaardwaarde.
+          rapport: p.rapport
+            ? normaliseerRapport(p.rapport, datumTekst(new Date()), standaardTeksten())
+            : undefined,
         };
       }
 
