@@ -46,6 +46,13 @@
   cursor: help;
 }
 
+/* "eigen aanpassing": de rekentekst wijkt af van de module waaruit het blad kwam. */
+.bv-eigen {
+  flex-shrink: 0;
+  color: var(--theme-accent);
+  cursor: help;
+}
+
 .bv-kop code,
 .bv-tabel code,
 .bv-lijst code {
@@ -56,14 +63,23 @@
 
 /* ─── Melding onder de tabbalk ─────────────────────────────────── */
 
-.bv-melding {
+/* Een balk over de volle breedte, vast aan de tabbalk. De tint is die van
+   rapport-melding-blok, maar over de achtergrond van de tabbalk en niet over
+   het werkvlak: dat is in een donker thema soms licht (--theme-content-bg),
+   terwijl de tekst er licht bij hoort. Dubbele klasse: deze regels moeten die
+   van rapport-melding-blok winnen, ongeacht de volgorde van de stijlbladen. */
+.bv-melding.rapport-melding-blok {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   gap: 12px;
-  margin: 8px 10px 0;
-  padding: 6px 8px 6px 12px;
+  margin: 0;
+  padding: 6px 10px 6px 14px;
   color: var(--theme-text);
+  background: linear-gradient(var(--theme-accent-soft), var(--theme-accent-soft)), var(--theme-bg);
+  border-width: 0 0 1px;
+  border-color: var(--theme-border);
+  border-radius: 0;
 }
 
 .bv-melding-tekst {
@@ -246,6 +262,20 @@
 
 .bv-label.bij {
   color: var(--theme-accent);
+}
+
+/* Onder de naam van een blad met een eigen aanpassing. */
+.bv-label.eigen {
+  display: block;
+  margin-top: 2px;
+  color: var(--theme-accent);
+  cursor: help;
+}
+
+/* Bovenaan de uitgeklapte rij: bijwerken vaagt de eigen aanpassing weg. */
+.bv-details .bv-eigen-waarschuwing {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
 }
 
 .bv-letop {

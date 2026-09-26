@@ -12,7 +12,12 @@ import type { AstNode } from "@ifc-calc/core";
  *   rekenversie      een korte vingerafdruk van de bladtekst; staat in de kop
  *                    van het blad en op de afdruk, zodat later na te gaan is
  *                    met welke versie er gerekend is.
- *   isVerouderd      de bladtekst wijkt af van de huidige module.
+ *   bronVersie       de rekenversie van de module waaruit het blad is
+ *                    ingevoegd of waarnaar het voor het laatst is bijgewerkt;
+ *                    het blad onthoudt hem (Exemplaar.bronVersie).
+ *   isVerouderd      de module heeft intussen een andere rekenversie.
+ *   heeftEigenCode   de gebruiker heeft de rekentekst van het blad zelf
+ *                    aangepast; bijwerken zou die aanpassing wegvagen.
  *   invoervelden,    welke invoer blijft, vervalt of nieuw is, en welke
  *   vergelijkInvoer  waarden het blad na bijwerken heeft.
  *   vergelijkUitkomst  maatgevende UC, oordeel en de UC-waarden oud → nieuw.
@@ -94,10 +99,28 @@ export function zelfdeRekentekst(a: string, b: string): boolean {
   return a === b || normaal(a) === normaal(b);
 }
 
+/**
+ * Een rekenversie uit een bestand of uit de opgeslagen staat van de app: zeven
+ * hextekens, in kleine letters. Iets anders (een ander type, een verkeerde
+ * lengte, een met de hand verminkte waarde) geeft undefined; het blad valt dan
+ * terug op het vergelijken van teksten, zoals een blad van vóór dit veld.
+ */
+export function leesRekenversie(x: unknown): string | undefined {
+  if (typeof x !== "string") return undefined;
+  const v = x.trim().toLowerCase();
+  return new RegExp(`^[0-9a-f]{${VERSIE_LENGTE}}$`).test(v) ? v : undefined;
+}
+
 /** Wat van een blad nodig is om zijn herkomst op te zoeken. */
 export interface BladHerkomst {
   templateId?: string;
   source: string;
+  /**
+   * De rekenversie van de moduletekst bij het invoegen of het laatste
+   * bijwerken. Ontbreekt bij bladen van vóór dit veld; die vergelijken hun
+   * tekst rechtstreeks met de module.
+   */
+  bronVersie?: string;
 }
 
 /**
@@ -113,16 +136,30 @@ export function huidigeModuletekst(ex: BladHerkomst, sjablonen: Record<string, s
 }
 
 /**
- * Rekent dit blad met een andere tekst dan de huidige module? Een blad zonder
- * bekende module is nooit verouderd: er is niets om naar bij te werken.
+ * Heeft de module van dit blad een nieuwere rekenversie? Een blad zonder
+ * bekende module is nooit verouderd: er is niets om naar bij te werken. Staat
+ * de tekst van het blad al gelijk aan de module, dan evenmin.
  *
- * Let op: ook een blad waarvan de gebruiker zelf de rekentekst heeft aangepast
- * wijkt af. Bijwerken zet die aanpassingen terug; het vergelijkingsscherm zegt
- * dat erbij en telt de regels die verschillen (regelverschil).
+ * Een blad dat zijn bronversie kent, vergelijkt die met de module: een eigen
+ * aanpassing van de rekentekst maakt het blad dan niet verouderd (zie
+ * heeftEigenCode). Een ouder blad zonder bronversie vergelijkt zijn tekst met
+ * de module; daar telt een eigen aanpassing wél als verschil, en bijwerken zet
+ * hem terug. Het vergelijkingsscherm zegt dat erbij.
  */
 export function isVerouderd(ex: BladHerkomst, sjablonen: Record<string, string>): boolean {
   const nieuw = huidigeModuletekst(ex, sjablonen);
-  return nieuw !== null && !zelfdeRekentekst(ex.source, nieuw);
+  if (nieuw === null || zelfdeRekentekst(ex.source, nieuw)) return false;
+  return ex.bronVersie ? rekenversie(nieuw) !== ex.bronVersie : true;
+}
+
+/**
+ * Heeft de gebruiker de rekentekst van dit blad zelf aangepast: wijkt hij af
+ * van de moduletekst waaruit het blad kwam? Alleen te zeggen bij een blad dat
+ * zijn bronversie kent; een ouder blad geeft false (onbekend), net als vóór
+ * dit veld.
+ */
+export function heeftEigenCode(ex: BladHerkomst): boolean {
+  return !!ex.bronVersie && rekenversie(ex.source) !== ex.bronVersie;
 }
 
 /** Aantal regels dat alleen in de oude (`weg`) of alleen in de nieuwe tekst (`bij`) staat. */

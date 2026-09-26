@@ -9,6 +9,7 @@ import { useBladBijwerken } from "../../store/bladBijwerken";
 import { leesBlad, rekenBladDoor, ucTekst } from "./bladResultaat";
 import { heeftDesigner } from "./designerKeuze";
 import {
+  heeftEigenCode,
   huidigeModuletekst,
   invoervelden,
   isVerouderd,
@@ -39,12 +40,21 @@ import "./BladVersie.css";
  * de projectboom komen alle verouderde bladen in één tabel, elk met een
  * vinkje dat standaard aan staat. Een blad waarvan ingevulde invoer bij
  * bijwerken wegvalt, staat ook daar meteen uitgeklapt.
+ *
+ * Een blad met een eigen aanpassing van de rekentekst (heeftEigenCode) is
+ * anders: bijwerken vervangt de hele tekst en vaagt die aanpassing weg. Zo'n
+ * blad staat standaard uit, is gemarkeerd en staat uitgeklapt met een
+ * waarschuwing. Bijwerken blijft mogelijk, als bewuste keuze.
  */
 
 /** De vergelijking van één blad. */
 interface Vergelijking {
   /** De bladtekst waarmee vergeleken is; bijwerken slaat een blad over dat intussen veranderde. */
   bron: string;
+  /** De gebruiker paste de rekentekst zelf aan; bijwerken vaagt dat weg. */
+  eigenCode: boolean;
+  /** De rekenversie van de module waaruit het blad kwam, als het blad die kent. */
+  bronVersie?: string;
   nieuweTekst: string;
   versieOud: string;
   versieNieuw: string;
@@ -75,6 +85,8 @@ function vergelijkBlad(ex: Exemplaar, nieuweTekst: string, scope: Record<string,
   const nieuw = astNieuw ? rekenBladDoor(astNieuw, invoer.waarden, scope, ex.naam) : null;
   return {
     bron: ex.source,
+    eigenCode: heeftEigenCode(ex),
+    bronVersie: ex.bronVersie,
     nieuweTekst,
     versieOud: rekenversie(ex.source),
     versieNieuw: rekenversie(nieuweTekst),
@@ -118,6 +130,11 @@ function Details({ v }: { v: Vergelijking }) {
   const leegNieuw = nieuw.some((n) => n.waarde === undefined);
   return (
     <div className="bv-details">
+      {v.eigenCode && (
+        <p className="rapport-melding-blok bv-eigen-waarschuwing">
+          {t("bladVersie.eigenWaarschuwing", { bron: v.bronVersie })}
+        </p>
+      )}
       <section>
         <h4>{t("bladVersie.ucKop")}</h4>
         {ucVariabelen.length === 0 ? (
@@ -167,7 +184,12 @@ function Details({ v }: { v: Vergelijking }) {
         )}
         {leegNieuw && v.metBeeld && <p className="rapport-hint">{t("bladVersie.beeldVult")}</p>}
       </section>
-      <p className="rapport-hint bv-regels">{t("bladVersie.regels", v.regels)}</p>
+      <p className="rapport-hint bv-regels">
+        {t("bladVersie.regels", {
+          weg: t("bladVersie.regelsWeg", { count: v.regels.weg }),
+          bij: t("bladVersie.regelsBij", { count: v.regels.bij }),
+        })}
+      </p>
     </div>
   );
 }
@@ -186,9 +208,16 @@ function Scherm({ ids, onSluit }: { ids: string[]; onSluit: () => void }) {
   });
   const [scope] = useState(() => projectScope(useProjectStore.getState().gegevens));
   const [uitkomsten, setUitkomsten] = useState<Record<string, Vergelijking>>({});
-  const [gevinkt, setGevinkt] = useState(() => new Set(bladen.map((b) => b.id)));
+  // Een eigen aanpassing gaat bij bijwerken verloren: in de tabel van alle
+  // bladen staat zo'n blad standaard uit en meteen uitgeklapt, met de
+  // waarschuwing in beeld. Het scherm van één blad heeft geen vinkje: daar is
+  // het openen zelf de keuze, en staat de waarschuwing boven de knop.
   const enkel = ids.length === 1;
-  const [open, setOpen] = useState(() => new Set(enkel ? bladen.map((b) => b.id) : []));
+  const eigen = bladen.filter((b) => heeftEigenCode(b)).map((b) => b.id);
+  const [gevinkt, setGevinkt] = useState(
+    () => new Set(bladen.map((b) => b.id).filter((id) => enkel || !eigen.includes(id))),
+  );
+  const [open, setOpen] = useState(() => new Set(enkel ? bladen.map((b) => b.id) : eigen));
 
   // Een balklaag doorrekenen kost een paar honderd milliseconden. Eén blad
   // per tik, zodat het scherm meteen verschijnt en de rijen één voor één
@@ -271,7 +300,10 @@ function Scherm({ ids, onSluit }: { ids: string[]; onSluit: () => void }) {
           <p className="rapport-hint">{t("bladVersie.geenVerouderd")}</p>
         ) : (
           <>
-            <p className="bv-intro">{enkel ? t("bladVersie.introEen") : t("bladVersie.introAlle")}</p>
+            <p className="bv-intro">
+              {enkel ? t("bladVersie.introEen") : t("bladVersie.introAlle")}
+              {!enkel && eigen.length > 0 && ` ${t("bladVersie.eigenUit")}`}
+            </p>
             <table className="bv-tabel">
               <thead>
                 <tr>
@@ -301,7 +333,14 @@ function Scherm({ ids, onSluit }: { ids: string[]; onSluit: () => void }) {
                             />
                           </td>
                         )}
-                        <td className="bv-naam">{ex.naam}</td>
+                        <td className="bv-naam">
+                          {ex.naam}
+                          {eigen.includes(ex.id) && (
+                            <span className="bv-label eigen" title={t("bladVersie.eigenUitleg", { bron: ex.bronVersie })}>
+                              {t("bladVersie.eigenAanpassing")}
+                            </span>
+                          )}
+                        </td>
                         <td className="bv-versie">
                           <Overgang
                             oud={<code>{rekenversie(ex.source)}</code>}
