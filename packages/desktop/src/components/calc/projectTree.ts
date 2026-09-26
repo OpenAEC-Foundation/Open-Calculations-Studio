@@ -119,6 +119,7 @@ export const moduleCatalogus: TreeNode[] = [
       { kind: "item", id: "sheet-betondoorsnede", label: "Betondoorsnede", templateId: "betondoorsnede", status: "controleren" },
       { kind: "item", id: "sheet-ponsberekening", label: "Pons", templateId: "ponsberekening", status: "controleren" },
       { kind: "item", id: "sheet-verankeringslengte", label: "Verankeringslengte", templateId: "verankeringslengte", status: "gereed" },
+      { kind: "item", id: "sheet-beton-detaillering", label: "Beton detaillering (dekking, wapening, wand)", templateId: "beton-detaillering", status: "controleren" },
       { kind: "item", id: "sheet-kruipfactor", label: "Kruipfactor", templateId: "kruipfactor", status: "gereed" },
     ],
   },
