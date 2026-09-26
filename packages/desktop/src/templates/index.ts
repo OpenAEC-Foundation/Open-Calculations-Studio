@@ -38,6 +38,7 @@ import { houtenKap } from "./houtenKap";
 import { ligger } from "./ligger";
 import { portaalSpant } from "./portaalSpant";
 import { hekwerk } from "./hekwerk";
+import { mechanica } from "./mechanica";
 import {
   ec5Buiging, ec5Afschuiving, ec5Druk, ec5DrukLoodrecht,
   ec5Knik, ec5Doorbuiging, ec5HoutenBalk,
@@ -105,6 +106,7 @@ export const templates: Record<string, string> = {
   "ligger": ligger,
   "portaal-spant": portaalSpant,
   "hekwerk": hekwerk,
+  "mechanica": mechanica,
   "calcpad-demo": calcpadDemo,
   ...calcpadSamples,
   "paaldraagvermogen": paaldraagvermogen,

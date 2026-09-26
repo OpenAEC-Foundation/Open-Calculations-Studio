@@ -15,6 +15,10 @@ export {
   RAAMWERK_LAST, RAAMWERK_RICHTING, RAAMWERK_STATUS, RAAMWERK_GEEN_KNIK,
 } from './raamwerk.js';
 export {
+  doorsnedeGrootheden, doorsnedeDeel, doorsnedePlastisch, doorsnedeStatisch, doorsnedeSvgPunten,
+  DOORSNEDE_DEEL,
+} from './doorsnede.js';
+export {
   generateIfcx,
   generateIfc4x3Step,
   generateProjectIfcx,

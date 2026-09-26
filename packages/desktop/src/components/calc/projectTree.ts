@@ -73,7 +73,7 @@ export const moduleCatalogus: TreeNode[] = [
     id: "cat-algemeen",
     label: "Algemeen",
     defaultExpanded: true,
-    count: 6,
+    count: 7,
     children: [
       { kind: "item", id: "sheet-spuwer", label: "Spuwer (noodoverlaat)", templateId: "spuwer", status: "gereed", gepubliceerd: true },
       { kind: "item", id: "sheet-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen", status: "controleren" },
@@ -81,6 +81,7 @@ export const moduleCatalogus: TreeNode[] = [
       { kind: "item", id: "sheet-opdrijven", label: "Opdrijven en drijvend lichaam", templateId: "opdrijven", status: "controleren" },
       { kind: "item", id: "sheet-ligger", label: "Ligger (hout of staal)", templateId: "ligger", status: "controleren" },
       { kind: "item", id: "sheet-portaal-spant", label: "Portaal en spant (hout of staal)", templateId: "portaal-spant", status: "controleren" },
+      { kind: "item", id: "sheet-mechanica", label: "Mechanica (doorsnede, vakwerk, vergeetmenietjes)", templateId: "mechanica", status: "controleren" },
       { kind: "item", id: "sheet-hekwerk", label: "Hekwerk en balustrade (hout of staal)", templateId: "hekwerk", status: "controleren" },
     ],
   },
