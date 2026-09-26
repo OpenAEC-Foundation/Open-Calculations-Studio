@@ -173,6 +173,20 @@
 
 /* ─── Koppen ──────────────────────────────────────────────────── */
 
+/* De app geeft h1–h4 haar eigen koplettertype en een krappere letterafstand
+   (App.css). In het rapport gelden het lettertype van de huisstijl en de
+   gewone letterafstand, net als voor de rest van de tekst. */
+.rpa-wortel .rpa-h1,
+.rpa-wortel .rpa-h2,
+.rpa-wortel .rpa-h3,
+.rpa-wortel .rpa-h4,
+.rpa-wortel .rpa-hb,
+.rpa-wortel .rpa-io-kop,
+.rpa-wortel .rpa-vb-titel {
+  font-family: var(--rpa-font);
+  letter-spacing: normal;
+}
+
 /* Hoofdstuk: een blok van drie regels, de tekst onderaan (basislijn 8,6 pt
    boven de onderkant), dan een lege regel. */
 .rpa-wortel .rpa-h1 {
