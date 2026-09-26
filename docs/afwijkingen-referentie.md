@@ -439,7 +439,9 @@ onder 6.10b. Alleen op document7 rapporteren wij 1,54 / **1,88** waar de referen
 
 Voor balklaag speelt dit niet: een vloer is categorie A met ψ₀ = 0,4, dus 6.10a
 houdt daar een veranderlijke term en blijft in dezelfde duurklasse. Hij wordt
-pas maatgevend bij G > 6·Q.
+pas maatgevend bij G > 6·Q, bijvoorbeeld bij een onderslag met wanden erop.
+Het balklaagblad toetst daarom ook 6.10a naast 6.10b; de combinatietabel toont
+beide en de maatgevende telt.
 
 ---
 
