@@ -368,6 +368,7 @@ for (const { titel, geo, r, lasten, sets } of uitkomsten.filter((u) => u.geo.sch
   console.log("\n3. Norm-stand — u_var is de maatgevende van verdeelde last en puntlast");
   const r = reken({ schema: "3", L_d: "3110", L_veld2: "2610", F_k: "3", Q_k: "1.0" }, { ...PROJECT, rekenwijze: 0 });
   const a = r.alle;
+  waar("de puntlast is maatgevend in veld 1", a.u_Q_k > a.u_q_k, `u_Q,k ${toon(a.u_Q_k)} tegen u_q,k ${toon(a.u_q_k)}`);
   gelijk("u_var = max(u_q,k; u_Q,k)", a.u_var, Math.max(a.u_q_k, a.u_Q_k), { rel: 1.5e-3, abs: 1e-3 });
   gelijk("u_var,2 = max(u_q,k,2; u_Q,k,2)", a.u_var_2, Math.max(a.u_q_k_2, a.u_Q_k_2), { rel: 1.5e-3, abs: 1e-3 });
   gelijk("w_qp = 1,0·u_g,k + ψ_2·u_var", a.w_qp, a.u_g_k + a["ψ_2"] * a.u_var, { rel: 1.5e-3, abs: 1e-3 });
