@@ -9,7 +9,10 @@
  * een eind- of tussenoplegging (6.1.5), k_crit volgens (6.34) met l_ef + 2h,
  * in de houten balk de combinatie met alleen blijvende belasting (3.1.3(2)) en
  * in de doorbuiging ψ_2 per belastingcategorie en de grenzen uit de NB bij
- * NEN-EN 1990 (A1.4.3(3) en (4), via NB 7.2(2)). Per blad leest één set ook het
+ * NEN-EN 1990 (A1.4.3(3) en (4), via NB 7.2(2)). Verder wringing met α en k_shape
+ * bij een rechthoekige en een ronde doorsnede (6.14, 6.15), de tapse ligger met
+ * k_m,α bij trek en druk langs de tapse rand (6.37 t/m 6.40) en de uitkeping bij
+ * de oplegging met k_v en k_n (6.60 t/m 6.63). Per blad leest één set ook het
  * oordeel zoals de afdruk dat doet, uit de slotzin "Maatgevende UC = …".
  *
  * De bladen dragen hun invoer als voorbeeldwaarden in de tekst; dit script
@@ -28,11 +31,14 @@ const code = readFileSync(join(hier, "../packages/desktop/src/templates/eurocode
 const bladen = await import("data:text/javascript;base64," + Buffer.from(code, "utf8").toString("base64"));
 const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 1 };
 
-/** Zet voorbeeldwaarden in de bladtekst: `{ L_opl: "450 mm" }`. */
+/**
+ * Zet voorbeeldwaarden in de bladtekst: `{ L_opl: "450 mm" }`. Een invoerregel
+ * mag ingesprongen binnen een #if staan (de maten van één doorsnedevorm).
+ */
 function met(tpl, waarden) {
   let uit = tpl;
   for (const [naam, waarde] of Object.entries(waarden)) {
-    const regel = new RegExp(`^(${naam} = )[^'\\n]+`, "m");
+    const regel = new RegExp(`^([ \\t]*${naam} = )[^'\\n]+`, "m");
     if (!regel.test(uit)) throw new Error(`geen invoerregel ${naam} in het blad`);
     uit = uit.replace(regel, `$1${waarde}`);
   }
@@ -311,6 +317,114 @@ let fouten = 0;
   fouten += toets("houten balk — balkeinde voorbij de oplegging",
     reken(tpl, { zijden: "2" }, PROJECT),
     { L_ef: "160" });
+}
+
+// ── Wringing ─────────────────────────────────────────────────────────────
+// τ_tor,d = T_Ed/W_tor ≤ k_shape·f_v,d (6.14). Rechthoek: W_tor = α·h·b² met h de grootste en
+// b de kleinste maat (Saint-Venant: α = 0,208 bij een vierkant, 0,246 bij h/b = 2, 0,299 bij
+// h/b = 6) en k_shape = min(1 + 0,15·h/b; 2,0); rond: W_tor = π·d³/16 en k_shape = 1,2 (6.15).
+{
+  const tpl = bladen.ec5Wringing;
+  // 100×200 C24, middellang, T = 1,0 kNm: W_tor = 0,2459·200·100² = 491 800 mm³; τ = 2,033;
+  // k_shape = 1 + 0,15·2 = 1,3; f_v,d = 0,8·4,0/1,3 = 2,462; UC = 2,033/(1,3·2,462) = 0,6355.
+  fouten += toetsMetOordeel("wringing — 100×200 C24, middellang",
+    reken(tpl, { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { h_1: "200", b_1: "100", alpha_tor: "0.2459", W_tor: "491800", k_shape: "1.3", f_vd: "2.462",
+      tau_tord: "2.033", UC_wringing: "0.6355", UC_slot: "0.6355", voldoet: "1" });
+  // Rond, d = 150, C18 blijvend: W_tor = π·150³/16 = 662 680 mm³; τ = 1,509; f_v,d = 0,6·3,4/1,3 = 1,569;
+  // UC = 1,509/(1,2·1,569) = 0,8014.
+  fouten += toets("wringing — rond d 150, C18, blijvend",
+    reken(tpl, { vorm: "2" }, PROJECT),
+    { W_tor: "662700", k_shape: "1.2", tau_tord: "1.509", UC_wringing: "0.8014" });
+  // Vierkant 150×150 GL24h, kort, T = 3,0 kNm: α = 0,2082; W_tor = 0,2082·150·150² = 702 600 mm³;
+  // τ = 4,270; k_shape = 1,15; f_v,d = 0,9·3,5/1,25 = 2,52; UC = 4,270/(1,15·2,52) = 1,473: voldoet niet.
+  fouten += toetsMetOordeel("wringing — 150×150 GL24h, kort: voldoet niet",
+    reken(met(tpl, { b: "150 mm", h: "150 mm", T_Ed: "3.0 kN*m" }), { sterkteklasse: GL24h, belastingduurklasse: KORT }, PROJECT),
+    { alpha_tor: "0.2082", k_shape: "1.15", f_vd: "2.52", tau_tord: "4.270", UC_wringing: "1.473",
+      UC_slot: "1.473", voldoet: "0" });
+  // Plat 240×40 (b > h: de grootste maat telt als h), C24 middellang, T = 0,5 kNm:
+  // α = 0,2984; W_tor = 0,2984·240·40² = 114 600 mm³; τ = 4,364; k_shape = 1 + 0,15·6 = 1,9;
+  // UC = 4,364/(1,9·2,462) = 0,9331.
+  fouten += toets("wringing — plat 240×40, C24, middellang",
+    reken(met(tpl, { b: "240 mm", h: "40 mm", T_Ed: "0.5 kN*m" }), { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { h_1: "240", b_1: "40", alpha_tor: "0.2984", k_shape: "1.9", tau_tord: "4.364", UC_wringing: "0.9331" });
+}
+
+// ── Tapse ligger ─────────────────────────────────────────────────────────
+// Eenzijdig taps, op twee steunpunten, gelijkmatige q_d. De grootste spanning ligt op
+// x = L·h_0/(h_0 + h_1) vanaf het lage einde; σ_m,α,d = σ_m,0,d = 6·M/(b·h_x²) (6.37) en
+// σ_m,α,d ≤ k_m,α·f_m,d (6.38), met k_m,α volgens (6.39) bij trek en (6.40) bij druk langs de
+// tapse rand. f_t,90,k = 0,4 (EN 338) en 0,5 N/mm² (EN 14080).
+{
+  const tpl = bladen.ec5TapseLigger;
+  // GL24h 140 × 300/600 over 8 m, q_d = 6 kN/m, middellang: tan α = 300/8000 = 0,0375 (2,148°);
+  // x = 8000·300/900 = 2667; h_x = 400; M = 6·2,667·5,333/2 = 42,67 kNm; σ = 6·42,67·10⁶/(140·400²) = 11,43.
+  // f_m,d = 15,36; f_v,d = 2,24; f_c,90,d = 1,60; f_t,90,d = 0,8·0,5/1,25 = 0,32.
+  // Druk (6.40): k = 1/√(1 + (15,36/(1,5·2,24)·0,0375)² + (15,36/1,60·0,0375²)²) = 1/√(1 + 0,02939 + 0,00018)
+  // = 0,9855; UC = 11,43/(0,9855·15,36) = 0,7550; rechte rand 11,43/15,36 = 0,7440.
+  fouten += toetsMetOordeel("tapse ligger — GL24h, druk langs de tapse rand",
+    reken(tpl, { sterkteklasse: GL24h, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { f_t90k: "0.5", f_md: "15.36", f_vd: "2.24", f_c90d: "1.60", f_t90d: "0.32", tan_alpha: "0.0375",
+      alpha: "2.148", x_m: "2667", h_x: "400", M_Ed: "42.67", sigma_mad: "11.43", k_malpha: "0.9855",
+      UC_taps: "0.7550", UC_recht: "0.7440", UC_max: "0.7550", UC_slot: "0.7550", voldoet: "1" });
+  // Trek (6.39): k = 1/√(1 + (15,36/(0,75·2,24)·0,0375)² + (15,36/0,32·0,0375²)²)
+  // = 1/√(1 + 0,11755 + 0,00456) = 0,9440; UC = 11,43/(0,9440·15,36) = 0,7882.
+  fouten += toets("tapse ligger — GL24h, trek langs de tapse rand",
+    reken(tpl, { sterkteklasse: GL24h, belastingduurklasse: MIDDELLANG, tapserand: "2" }, PROJECT),
+    { k_malpha: "0.9440", UC_taps: "0.7882", UC_max: "0.7882" });
+  // C24 100 × 200/500 over 4 m, q_d = 5 kN/m, middellang: tan α = 0,075; x = 4000·200/700 = 1143;
+  // h_x = 285,7; M = 5·1,143·2,857/2 = 8,163 kNm; σ = 6·8,163·10⁶/(100·285,7²) = 6,000.
+  // f_m,d/(0,75·f_v,d) = 24/3 = 8 en f_m,d/f_t,90,d = 24/0,4 = 60, beide los van k_mod en γ_M:
+  // trek: k = 1/√(1 + 0,6² + (60·0,005625)²) = 1/√1,4739 = 0,8237; UC = 6,000/(0,8237·14,77) = 0,4932.
+  const steil = met(tpl, { b: "100 mm", h_0: "200 mm", h_1: "500 mm", L: "4000 mm", q_d: "5.0 kN/m" });
+  fouten += toets("tapse ligger — C24, steiler, trek",
+    reken(steil, { sterkteklasse: C24, belastingduurklasse: MIDDELLANG, tapserand: "2" }, PROJECT),
+    { f_t90k: "0.4", tan_alpha: "0.075", x_m: "1143", h_x: "285.7", M_Ed: "8.163", sigma_mad: "6.000",
+      k_malpha: "0.8237", UC_taps: "0.4932" });
+  // Druk: k = 1/√(1 + (4·0,075)² + (9,6·0,005625)²) = 1/√1,0929 = 0,9565; UC = 6,000/(0,9565·14,77) = 0,4247.
+  fouten += toets("tapse ligger — C24, steiler, druk",
+    reken(steil, { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { k_malpha: "0.9565", UC_taps: "0.4247" });
+}
+
+// ── Uitkeping bij de oplegging ───────────────────────────────────────────
+// τ_d = 1,5·V/(b_ef·h_ef) ≤ k_v·f_v,d (6.60), b_ef = b met k_cr = 1,0 (NB art. 6.1.7(2)).
+// Uitkeping aan de kant van de oplegging (6.62):
+// k_v = min(1; k_n·(1 + 1,1·i^1,5/√h)/(√h·(√(α(1−α)) + 0,8·x/h·√(1/α − α²)))), k_n = 5 massief,
+// 6,5 gelamineerd (6.63); aan de andere kant k_v = 1 (6.61).
+{
+  const tpl = bladen.ec5Uitkeping;
+  // 100×250, h_ef = 175 (α = 0,7), x = 60, haaks (i = 0), V = 12 kN, C24 middellang:
+  // √(0,7·0,3) = 0,4583; 0,8·0,24·√(1/0,7 − 0,49) = 0,1860; k_v = 5/(15,81·0,6443) = 0,4908;
+  // τ = 1,5·12 000/(100·175) = 1,029; f_v,d = 2,462; UC = 1,029/(0,4908·2,462) = 0,8513.
+  fouten += toetsMetOordeel("uitkeping — C24 100×250, h_ef 175, x 60",
+    reken(tpl, { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { alpha: "0.7", k_n: "5", k_v: "0.4908", b_ef: "100", tau_d: "1.029", UC_uitkeping: "0.8513",
+      UC_slot: "0.8513", voldoet: "1" });
+  // GL24h: k_n = 6,5 → k_v = 6,5/10,187 = 0,6381; f_v,d = 2,24; UC = 1,029/(0,6381·2,24) = 0,7196.
+  fouten += toets("uitkeping — GL24h, k_n 6,5",
+    reken(tpl, { sterkteklasse: GL24h, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { k_n: "6.5", k_v: "0.6381", UC_uitkeping: "0.7196" });
+  // Afgeschuind met i = 2: factor 1 + 1,1·2^1,5/√250 = 1,1968; k_v = 0,4908·1,1968 = 0,5874; UC = 1,029/(0,5874·2,462) = 0,7113.
+  fouten += toets("uitkeping — C24, afgeschuind i = 2",
+    reken(met(tpl, { i_uk: "2" }), { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { k_v: "0.5874", UC_uitkeping: "0.7113" });
+  // x = 120: 0,8·0,48·0,9688 = 0,3720; k_v = 5/(15,81·0,8303) = 0,3809.
+  fouten += toets("uitkeping — C24, x 120 mm",
+    reken(met(tpl, { x: "120 mm" }), { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { k_v: "0.3809" });
+  // Ondiepe uitkeping h_ef = 245 (α = 0,98), x = 10: de formule geeft 2,14, dus k_v = 1 (ten hoogste 1).
+  fouten += toets("uitkeping — ondiep: k_v begrensd op 1",
+    reken(met(tpl, { h_ef: "245 mm", x: "10 mm" }), { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { k_v: "1.0" });
+  // Uitkeping aan de andere kant (6.61): k_v = 1; UC = 1,029/2,462 = 0,4179.
+  fouten += toets("uitkeping — tegenover de oplegging",
+    reken(tpl, { sterkteklasse: C24, belastingduurklasse: MIDDELLANG, zijde: "2" }, PROJECT),
+    { k_v: "1.0", UC_uitkeping: "0.4179" });
+  // V = 16 kN, C18 blijvend: τ = 1,371; f_v,d = 1,569; UC = 1,371/(0,4908·1,569) = 1,781: voldoet niet.
+  fouten += toetsMetOordeel("uitkeping — C18, blijvend, V 16 kN: voldoet niet",
+    reken(met(tpl, { V_Ed: "16 kN" }), {}, PROJECT),
+    { f_vd: "1.569", tau_d: "1.371", UC_uitkeping: "1.781", UC_slot: "1.781", voldoet: "0" });
 }
 
 afronden(fouten, "Normbladen EN 1995-1-1");

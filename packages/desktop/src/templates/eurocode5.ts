@@ -1089,3 +1089,376 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
 </svg>
 @end
 `;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. Wringing (Torsion) — EN 1995-1-1 §6.1.8
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** EN 1995-1-1 §6.1.8 — Wringing */
+export const ec5Wringing = `# Toetsing Wringing — EN 1995-1-1 §6.1.8
+
+## Materiaal
+
+@select sterkteklasse "Sterkteklasse (EN 338 / EN 14080)"
+C18 = 1
+C24 = 2
+C30 = 3
+GL24h = 4
+GL28h = 5
+GL32h = 6
+@end
+
+@select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
+Klasse 1 — droog, binnenklimaat = 1
+Klasse 2 — beschut buitenklimaat = 2
+Klasse 3 — buiten, onbeschermd = 3
+@end
+
+@select belastingduurklasse "Belastingduurklasse (tabel 2.1)"
+Blijvend (> 10 jaar) = 1
+Lang (6 mnd - 10 jaar) = 2
+Middellang (1 week - 6 mnd) = 3
+Kort (< 1 week) = 4
+Zeer kort = 5
+@end
+
+#hide
+'Materiaalmatrix: [id | f_m,k | f_v,k | f_c,0,k | f_c,90,k | E_0,mean | E_0,05 | γ_M | gelamineerd]
+materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |18; 21; 23; 24; 28; 32 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |1.3; 1.3; 1.3; 1.25; 1.25; 1.25 |0; 0; 0; 1; 1; 1]
+'k_mod (tabel 3.1): [duurklasse | klimaatklasse 1 en 2 | klimaatklasse 3]
+kmod_tabel = [1; 2; 3; 4; 5 |0.60; 0.70; 0.80; 0.90; 1.10 |0.50; 0.55; 0.65; 0.70; 0.90]
+f_vk = hlookup(materialen; sterkteklasse; 1; 3)*N/mm^2
+gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
+k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
+#show
+
+Karakteristieke afschuifsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+
+f_vk
+gamma_M
+k_mod
+
+Rekenwaarde afschuifsterkte (formule 2.14):
+
+f_vd = k_mod * f_vk / gamma_M to N/mm^2
+
+## Doorsnede
+
+@select vorm "Vorm van de doorsnede (art. 6.1.8)"
+Rechthoekig = 1
+Rond = 2
+@end
+
+#if vorm ≡ 2
+  Diameter:
+  d = 150 mm
+  Wringweerstandsmoment van een massieve ronde doorsnede:
+  W_tor = pi * d^3 / 16 to mm^3
+  Vormfactor voor een ronde doorsnede (formule 6.15):
+  k_shape = 1.2
+#else
+  b = 100 mm
+  h = 200 mm
+  Grootste en kleinste afmeting van de doorsnede:
+  h_1 = max(b; h) to mm
+  b_1 = min(b; h) to mm
+  #hide
+  'Saint-Venant: τ_max = T/(α·h·b²), met de reeksoplossing over n = 1, 3 en 5.
+  r_tor = h_1 / b_1
+  k_It = (1 - 192/(pi^5*r_tor) * (tanh(pi*r_tor/2) + tanh(3*pi*r_tor/2)/3^5 + tanh(5*pi*r_tor/2)/5^5)) / 3
+  k_tau = 1 - 8/pi^2 * (1/cosh(pi*r_tor/2) + 1/(3^2*cosh(3*pi*r_tor/2)) + 1/(5^2*cosh(5*pi*r_tor/2)))
+  #show
+  'Factor α voor de grootste schuifspanning bij wringing van een rechthoek (Saint-Venant, τ<sub>tor</sub> = T/(α·h·b²)); 0,208 bij een vierkant, 0,246 bij h/b = 2 en 1/3 bij een dunne strook:
+  alpha_tor = k_It / k_tau
+  W_tor = alpha_tor * h_1 * b_1^2 to mm^3
+  Vormfactor voor een rechthoekige doorsnede (formule 6.15):
+  k_shape = min(1 + 0.15 * h_1 / b_1; 2.0)
+#end if
+
+## Belasting
+
+Rekenwaarde van het wringend moment:
+
+T_Ed = 1.0 kN*m
+
+## Toetsing wringing (art. 6.1.8, formule 6.14)
+
+Schuifspanning door wringing:
+
+tau_tord = T_Ed / W_tor to N/mm^2
+
+Unity check:
+
+UC_wringing = tau_tord / (k_shape * f_vd)
+
+'<i>Wringing en dwarskracht samen: EN 1995-1-1 geeft daarvoor geen interactieregel; toets de afschuiving (§6.1.7) apart.</i><span class="alleen-scherm"></span>
+
+#if UC_wringing ≤ 1
+  '<b>Maatgevende UC = 'UC_wringing'</b><span style="color: green"> ≤ 1,0 → <b>wringing voldoet</b></span>
+#else
+  '<b>Maatgevende UC = 'UC_wringing'</b><span style="color: red"> > 1,0 → <b>wringing voldoet niet</b></span>
+#end if
+`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. Ligger met een eenzijdig taps verlopende hoogte — EN 1995-1-1 §6.4.2
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** EN 1995-1-1 §6.4.2 — Tapse ligger (eenzijdig taps verlopende hoogte) */
+export const ec5TapseLigger = `# Toetsing Tapse Ligger — EN 1995-1-1 §6.4.2
+
+## Materiaal
+
+@select sterkteklasse "Sterkteklasse (EN 338 / EN 14080)"
+C18 = 1
+C24 = 2
+C30 = 3
+GL24h = 4
+GL28h = 5
+GL32h = 6
+@end
+
+@select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
+Klasse 1 — droog, binnenklimaat = 1
+Klasse 2 — beschut buitenklimaat = 2
+Klasse 3 — buiten, onbeschermd = 3
+@end
+
+@select belastingduurklasse "Belastingduurklasse (tabel 2.1)"
+Blijvend (> 10 jaar) = 1
+Lang (6 mnd - 10 jaar) = 2
+Middellang (1 week - 6 mnd) = 3
+Kort (< 1 week) = 4
+Zeer kort = 5
+@end
+
+#hide
+'Materiaalmatrix: [id | f_m,k | f_v,k | f_c,0,k | f_c,90,k | E_0,mean | E_0,05 | γ_M | gelamineerd | f_t,90,k]
+materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |18; 21; 23; 24; 28; 32 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |1.3; 1.3; 1.3; 1.25; 1.25; 1.25 |0; 0; 0; 1; 1; 1 |0.4; 0.4; 0.4; 0.5; 0.5; 0.5]
+'k_mod (tabel 3.1): [duurklasse | klimaatklasse 1 en 2 | klimaatklasse 3]
+'De lagere k_mod van tabel NB.1 geldt voor 6.1.3, 6.4.3(6) en (7), 6.4.4 en 6.4.5, niet voor 6.4.2.
+kmod_tabel = [1; 2; 3; 4; 5 |0.60; 0.70; 0.80; 0.90; 1.10 |0.50; 0.55; 0.65; 0.70; 0.90]
+f_mk = hlookup(materialen; sterkteklasse; 1; 2)*N/mm^2
+f_vk = hlookup(materialen; sterkteklasse; 1; 3)*N/mm^2
+f_c90k = hlookup(materialen; sterkteklasse; 1; 5)*N/mm^2
+f_t90k = hlookup(materialen; sterkteklasse; 1; 10)*N/mm^2
+gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
+k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
+#show
+
+Karakteristieke sterkten (EN 338 / EN 14080), partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+
+f_mk
+f_vk
+f_c90k
+f_t90k
+gamma_M
+k_mod
+
+Rekenwaarden (art. 2.4.1, formule 2.14):
+
+f_md = k_mod * f_mk / gamma_M to N/mm^2
+
+f_vd = k_mod * f_vk / gamma_M to N/mm^2
+
+f_c90d = k_mod * f_c90k / gamma_M to N/mm^2
+
+f_t90d = k_mod * f_t90k / gamma_M to N/mm^2
+
+## Geometrie
+
+Ligger op twee steunpunten met een rechte en een tapse rand (figuur 6.8). Breedte, hoogte bij het lage einde en hoogte bij het hoge einde:
+
+b = 140 mm
+h_0 = 300 mm
+h_1 = 600 mm
+
+Overspanning:
+
+L = 8000 mm
+
+Helling van de tapse rand ten opzichte van de vezelrichting:
+
+tan_alpha = (h_1 - h_0) / L
+
+alpha = atan(tan_alpha)*180/pi*deg
+
+@select tapserand "Spanning langs de tapse rand"
+Druk — tapse rand aan de gedrukte zijde (formule 6.40) = 1
+Trek — tapse rand aan de getrokken zijde (formule 6.39) = 2
+@end
+
+'<i>Bij een ligger op twee steunpunten onder neerwaartse belasting is de bovenrand gedrukt: ligt de tapse rand boven, kies dan druk.</i><span class="alleen-scherm"></span>
+
+## Belasting
+
+q_d = 6.0 kN/m
+
+## Plaats van de grootste buigspanning
+
+'Bij een gelijkmatig verdeelde belasting ligt de grootste spanning niet in het midden maar op x = L·h<sub>0</sub>/(h<sub>0</sub> + h<sub>1</sub>), gemeten vanaf het lage einde:
+
+x_m = L * h_0 / (h_0 + h_1) to mm
+
+h_x = h_0 + x_m * tan_alpha to mm
+
+M_Ed = q_d * x_m * (L - x_m) / 2 to kN*m
+
+## Toetsing buigspanning (art. 6.4.2, formule 6.37 en 6.38)
+
+Buigspanning aan de rechte en aan de tapse rand (formule 6.37):
+
+sigma_m0d = 6 * M_Ed / (b * h_x^2) to N/mm^2
+
+sigma_mad = sigma_m0d to N/mm^2
+
+#if tapserand ≡ 1
+  Factor k_m,α bij druk langs de tapse rand (formule 6.40):
+  k_malpha = 1 / sqrt(1 + (f_md / (1.5 * f_vd) * tan_alpha)^2 + (f_md / f_c90d * tan_alpha^2)^2)
+#else
+  Factor k_m,α bij trek langs de tapse rand (formule 6.39):
+  k_malpha = 1 / sqrt(1 + (f_md / (0.75 * f_vd) * tan_alpha)^2 + (f_md / f_t90d * tan_alpha^2)^2)
+#end if
+
+Unity check aan de tapse rand (formule 6.38):
+
+UC_taps = sigma_mad / (k_malpha * f_md)
+
+Unity check aan de rechte rand (formule 6.11):
+
+UC_recht = sigma_m0d / f_md
+
+UC_max = max(UC_taps; UC_recht)
+
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>tapse ligger voldoet</b></span>
+#else
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>tapse ligger voldoet niet</b></span>
+#end if
+`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. Ligger met een uitkeping bij het steunpunt — EN 1995-1-1 §6.5.2
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** EN 1995-1-1 §6.5.2 — Uitkeping bij de oplegging */
+export const ec5Uitkeping = `# Toetsing Uitkeping bij de Oplegging — EN 1995-1-1 §6.5.2
+
+## Materiaal
+
+@select sterkteklasse "Sterkteklasse (EN 338 / EN 14080)"
+C18 = 1
+C24 = 2
+C30 = 3
+GL24h = 4
+GL28h = 5
+GL32h = 6
+@end
+
+@select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
+Klasse 1 — droog, binnenklimaat = 1
+Klasse 2 — beschut buitenklimaat = 2
+Klasse 3 — buiten, onbeschermd = 3
+@end
+
+@select belastingduurklasse "Belastingduurklasse (tabel 2.1)"
+Blijvend (> 10 jaar) = 1
+Lang (6 mnd - 10 jaar) = 2
+Middellang (1 week - 6 mnd) = 3
+Kort (< 1 week) = 4
+Zeer kort = 5
+@end
+
+#hide
+'Materiaalmatrix: [id | f_m,k | f_v,k | f_c,0,k | f_c,90,k | E_0,mean | E_0,05 | γ_M | gelamineerd]
+materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |18; 21; 23; 24; 28; 32 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |1.3; 1.3; 1.3; 1.25; 1.25; 1.25 |0; 0; 0; 1; 1; 1]
+'k_mod (tabel 3.1): [duurklasse | klimaatklasse 1 en 2 | klimaatklasse 3]
+kmod_tabel = [1; 2; 3; 4; 5 |0.60; 0.70; 0.80; 0.90; 1.10 |0.50; 0.55; 0.65; 0.70; 0.90]
+f_vk = hlookup(materialen; sterkteklasse; 1; 3)*N/mm^2
+gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
+gelamineerd = hlookup(materialen; sterkteklasse; 1; 9)
+k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
+#show
+
+Karakteristieke afschuifsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+
+f_vk
+gamma_M
+k_mod
+
+Rekenwaarde afschuifsterkte (formule 2.14):
+
+f_vd = k_mod * f_vk / gamma_M to N/mm^2
+
+## Doorsnede en uitkeping (figuur 6.11)
+
+Breedte en volle hoogte van de ligger:
+
+b = 100 mm
+h = 250 mm
+
+Resterende hoogte ter plaatse van de uitkeping:
+
+h_ef = 175 mm
+
+@select zijde "Ligging van de uitkeping (figuur 6.11)"
+Aan dezelfde zijde als de oplegging (figuur 6.11a) = 1
+Aan de zijde tegenover de oplegging (figuur 6.11b) = 2
+@end
+
+#if zijde ≡ 1
+  Afstand van de werklijn van de oplegreactie tot de hoek van de uitkeping:
+  x = 60 mm
+  Helling i van een afgeschuinde uitkeping (figuur 6.11a); 0 bij een haakse uitkeping:
+  i_uk = 0
+#end if
+
+Scheurfactor k_cr voor een ligger met een prismatische doorsnede (NB art. 6.1.7(2)):
+
+k_cr = 1.0
+
+Effectieve breedte (formule 6.13a):
+
+b_ef = k_cr * b to mm
+
+Verhouding van de resterende en de volle hoogte:
+
+alpha = h_ef / h
+
+## Reductiefactor k_v (art. 6.5.2(2))
+
+#if zijde ≡ 1
+  #hide
+  k_n = if(gelamineerd ≡ 1; 6.5; 5.0)
+  #show
+  Factor k_n (formule 6.63): 5 voor massief hout, 6,5 voor gelijmd gelamineerd hout:
+  k_n
+  Reductiefactor (formule 6.62), met h in mm en ten hoogste 1:
+  k_v = min(1; k_n * (1 + 1.1 * i_uk^1.5 / sqrt(h/mm)) / (sqrt(h/mm) * (sqrt(alpha * (1 - alpha)) + 0.8 * x / h * sqrt(1/alpha - alpha^2))))
+#else
+  Uitkeping aan de zijde tegenover de oplegging (formule 6.61):
+  k_v = 1.0
+#end if
+
+## Belasting
+
+Dwarskracht bij de oplegging (rekenwaarde):
+
+V_Ed = 12 kN
+
+## Toetsing afschuiving bij de uitkeping (art. 6.5.2, formule 6.60)
+
+Schuifspanning over de resterende hoogte:
+
+tau_d = 1.5 * V_Ed / (b_ef * h_ef) to N/mm^2
+
+Unity check:
+
+UC_uitkeping = tau_d / (k_v * f_vd)
+
+#if UC_uitkeping ≤ 1
+  '<b>Maatgevende UC = 'UC_uitkeping'</b><span style="color: green"> ≤ 1,0 → <b>uitkeping voldoet</b></span>
+#else
+  '<b>Maatgevende UC = 'UC_uitkeping'</b><span style="color: red"> > 1,0 → <b>uitkeping voldoet niet</b></span>
+#end if
+`;
