@@ -11,11 +11,13 @@
  *      beide kanten gedrukt geprobeerd), zonder de gesloten vormen S0 en S1 en
  *      zonder de regel waarmee het blad bij trek de trekzijde kiest. Het blad
  *      moet daar op vier significante cijfers mee overeenkomen.
- *   2. Voor het standaardgeval en zes andere gevallen de getallen van een
+ *   2. Voor het standaardgeval en acht andere gevallen de getallen van een
  *      handberekening, hieronder en bij de sets uitgeschreven: V_Ed precies op
  *      V_Rd,c en net erboven, wringing met een negatief moment, grote druk met
- *      de minimale excentriciteit, centrische trek in de BGT en wringing
- *      zonder dwarskracht bij V_Rd,c = 0.
+ *      de minimale excentriciteit, centrische trek in de BGT, wringing
+ *      zonder dwarskracht bij V_Rd,c = 0, druk zonder moment bij ongelijke
+ *      wapening (e_0 naar beide kanten) en wringing die alle buigwapening
+ *      opeist.
  *
  * Verder: het oordeel in de slotzin, de lege-doorsnedetak (ook zonder staven),
  * de spiegeling van het moment en de beginwaarden van het beeld.
@@ -224,6 +226,7 @@ function uitwerking(v) {
   r.Me0 = NEd > 0 ? NEd * r.e0 : 0;
   r.Mrek = Math.max(Math.abs(MEd), r.Me0);
   if (r.UCN >= 1) r.UCM = r.UCN;
+  else if (Ared <= 0 && NEd <= 0 && MEd !== 0) r.UCM = Infinity; // wringing laat niets over voor de buiging
   else {
     const x1 = zoekX(sU), x2 = zoekX(-sU);
     const MRd = NM(x1, sU).M, Mt = NM(x2, -sU).M;
@@ -239,7 +242,12 @@ function uitwerking(v) {
       Fs2: red[lagen[2]] * sig(rek(x1, dd(lagen[2]))),
     });
     const m = r.Mrek;
-    r.UCM = MRd <= 0 ? Infinity : Mmin > m ? Mmin / m : m / MRd;
+    r.Mt = Mt;
+    // Bij M_Ed = 0 en druk werkt e_0 naar beide kanten: de zwakste kant telt.
+    r.beideKanten = NEd > 0 && MEd === 0;
+    r.UCM = MRd <= 0 ? Infinity
+      : r.beideKanten ? (Mt <= 0 ? Infinity : m / Math.min(MRd, Mt))
+      : Mmin > m ? Mmin / m : m / MRd;
   }
 
   // Wapeningsregels (§9.2)
@@ -333,7 +341,7 @@ function verwachtingen(r, v) {
   }
   if (v.N_Ed > 0) Object.assign(uit, { N_Rd_max: ruim(r.NRdmax / 1e3), UC_N: ruim(r.UCN), e_0: ruim(r.e0), M_e0: ruim(r.Me0 / 1e6) });
   if (v.N_Ed < 0) Object.assign(uit, { N_Rd_min: ruim(r.NRdmin / 1e3), UC_N: ruim(r.UCN) });
-  if (r.UCN < 1) {
+  if (r.UCN < 1 && r.xu !== undefined) {
     Object.assign(uit, {
       x_u: ruim(r.xu), y_c: ruim(r.yc), ε_s1: ruim(r.es1), F_c: ruim(r.Fc / 1e3), M_Rd: ruim(r.MRd / 1e6),
     });
@@ -341,7 +349,8 @@ function verwachtingen(r, v) {
     for (const [naam, F] of [["F_s1", r.Fs1], ["F_sm", r.Fsm], ["F_s2", r.Fs2]]) {
       uit[naam] = { waarde: s4(F / 1e3), tol: Math.max(Math.abs(F / 1e3) * 0.001, 1e-3) };
     }
-    if (r.Mmin > r.Mrek) uit.M_Rd_min = ruim(r.Mmin / 1e6);
+    if (r.beideKanten && r.Mt > 0 && r.MRd > 0) uit.M_Rd_t = ruim(r.Mt / 1e6);
+    else if (!r.beideKanten && r.Mmin > r.Mrek) uit.M_Rd_min = ruim(r.Mmin / 1e6);
   }
   if (r.UCN < 1 && Number.isFinite(r.UCM)) uit.UC_M = ruim(r.UCM);
   if (r.sigs > 0) {
@@ -457,6 +466,27 @@ const SETS = [
     // Met de hand: σ_cp = −5 N/mm² → 0,6440 − 0,75 < 0 → V_Rd,c = 0. t_ef = 82, A_k = 25 724 mm²,
     // T_Rd,c = 5,702 kNm (zie 4) → (6.31): 2/5,702 + 0 = 0,3507 ≤ 1, alleen minimumwapening.
     handwerk: { V_Rd_c: "0", T_Rd_c: "5.702", UC_631: "0.3507", UC_V: "0.3507" },
+  },
+  {
+    naam: "19 — druk zonder moment, zware wapening boven: e_0 naar beide kanten, de zwakke kant telt",
+    invoer: { d_onder: 12, d_boven: 16, N_Ed: 1100, M_Ed: 0, V_Ed: 20, M_qp: 5 },
+    // Met de hand: a_o = 300 − 25 − 8 − 6 = 261, a_b = 41, a_m = 151; M_e0 = 1100·0,020 = 22 kNm.
+    // Gedrukt boven (2Ø16 gedrukt): x = 276,4 → F_c = 3200·276,4 = 884,4 kN; onder ε = 3,5·15,4/276,4
+    // = 0,195 ‰ → 8,8 kN; midden 1,588 ‰ → 31,9 kN; boven vloeit → 174,8 kN; samen 1100 kN.
+    // M_Rd = 884,4·(300 − 221,1)/2 − 8,8·111 − 31,9·1 + 174,8·109 = 52,93 kNm.
+    // Gedrukt onder (2Ø12 gedrukt) is dezelfde doorsnede als het standaardgeval gespiegeld: x = 292,2 →
+    // F_c = 935,1 kN; laag op 259 vanaf de gedrukte rand 0,398 ‰ → 32,0 kN; midden 1,715 ‰ → 34,5 kN;
+    // 2Ø12 vloeit → 98,4 kN. M_Rd,t = 935,1·33,11 − 32,0·109 + 34,5·1 + 98,4·111 = 38,42 kNm.
+    // UC_M = 22/min(52,93; 38,42) = 0,5726; met alleen de kant van M_qp was het 22/52,93 = 0,4156.
+    handwerk: { M_e0: "22", x_u: "276.4", M_Rd: "52.93", M_Rd_t: "38.42", UC_M: "0.5726" },
+  },
+  {
+    naam: "20 — zware wringing: de langswapening voor wringing laat niets over voor de buiging",
+    invoer: { T_Ed: 40 },
+    // Met de hand: cot θ = 1 (drukdiagonalen), ΣA_sl = 40·10⁶·672·1/(2·25 724·434,8) = 1202 mm²;
+    // onder en boven elk 1202·227/672 = 406 mm² > 402,1 en 226,2, midden 390 mm² > 100,5 → niets over,
+    // M_Ed = 35 kNm heeft geen weerstand: UC_M = ∞.
+    handwerk: { A_sl_T: "1202" },
   },
 ];
 

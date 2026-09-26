@@ -208,7 +208,7 @@ export default function LasDesigner() {
               {STAAL.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
             </select>
           </label>
-          <label title="f_u volgens tabel 3.1 van EN 1993-1-1 hangt af van de dikte van het dikste verbonden deel">Dikste deel
+          <label title="f_u (hoeklas) en f_y (stompe las) volgens tabel 3.1 van EN 1993-1-1 hangen af van de dikte van het dikste verbonden deel">Dikste deel
             <select value={dikte} onChange={(e) => set("dikte", parseInt(e.target.value))}>
               <option value={40}>t ≤ 40 mm</option>
               <option value={80}>40–80 mm</option>

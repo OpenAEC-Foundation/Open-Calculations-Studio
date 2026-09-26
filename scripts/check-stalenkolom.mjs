@@ -14,8 +14,9 @@
  *   2. Voor het standaardgeval en voor een grensgeval de getallen van een
  *      handberekening, in de commentaarregels bij die sets uitgeschreven.
  *
- * Daarnaast: het oordeel in de slotzin, de meldingen bij verplaatsbare knopen
- * en trek, en de beginwaarden van het beeld tegen de standaardinvoer.
+ * Daarnaast: het oordeel in de slotzin, de meldingen bij verplaatsbare knopen,
+ * bij trek en bij L_cr/h < 5 (bijlage NB.NB geldt dan niet), en de
+ * beginwaarden van het beeld tegen de standaardinvoer.
  *
  * De profielgegevens staan hieronder los overgenomen uit de profieltabel,
  * zodat ook de matrix in het blad wordt gecontroleerd.
@@ -408,6 +409,11 @@ const SETS = [
     // het geval zonder q_z.
     handwerk: { C_1: "1", C_2: "0", M_cr: "212.7" },
   },
+  {
+    naam: "20 — IPE 400, korte kolom: L_cr/h = 1800/400 = 4,5 < 5, bijlage NB.NB geldt niet (NB.NB.1(2))",
+    invoer: { profiel: 27, L_kolom: 1800, L_cry: 1800, L_crz: 1800, L_cr: 1800, N_Ed: 400, M_yA: 40, M_yB: 0 },
+    tekst: /L cr \/h &lt; 5: de rekenregels van bijlage NB\.NB gelden hier niet \(NB\.NB\.1\(2\)\)/,
+  },
 ];
 
 let fouten = 0;
@@ -423,6 +429,11 @@ for (const set of SETS) {
     if (!ok) fouten++;
     console.log(`  ${ok ? "OK    " : "FOUT  "} melding    ${set.tekst}`);
   }
+  // De melding bij L_cr/h < 5 staat er precies dan, en anders niet.
+  const kort = v.L_cr < 5 * PROFIEL[v.profiel].h;
+  const gemeld = /bijlage NB\.NB gelden hier niet/.test(got.text);
+  if (gemeld !== kort) fouten++;
+  console.log(`  ${gemeld === kort ? "OK    " : "FOUT  "} L_cr/h     ${kort ? "< 5, gemeld" : "≥ 5, geen melding"}`);
   const voldoet = /de kolom voldoet(?! niet)/.test(got.text);
   const ok = voldoet === r.UCmax <= 1 && /Maatgevende UC = [\d.]+/.test(got.text);
   if (!ok) fouten++;

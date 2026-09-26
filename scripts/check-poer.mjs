@@ -7,10 +7,12 @@
  *
  *   1. Een onafhankelijke uitwerking in JavaScript: paalreacties met eigen
  *      gewicht en paalafwijking, het staafwerk met een hydrostatische knoop
- *      onder de kolom, de knopen (6.60) en (6.61), de verankering langs de
- *      staafas met α_5 uit de drukspreiding (9.8.1(5)) en de ombuiging (8.1),
- *      beide met de paal e_paal naar de kop van de poer (9.8.1(1)),
- *      dwarskracht met β (6.2.2(6)) of beugels (6.19) en de bovengrens,
+ *      onder de kolom, de knopen (6.60) met een plastisch drukblok onder de
+ *      kolom en (6.61), de verankering langs de staafas met α_5 uit de
+ *      drukspreiding (9.8.1(5)) en de ombuiging (8.1), beide met de paal
+ *      e_paal naar de kop van de poer (9.8.1(1)), het opgebogen einde van ten
+ *      minste 5φ, dwarskracht met β (6.2.2(6)) of de beugels in 0,75 van de
+ *      werkelijke a_v (6.19) en de bovengrens,
  *      scheurwijdte (7.3.4) onder de frequente combinatie, de detaillering en
  *      het oordeel van de slotregel.
  *   2. Voor de standaardinvoer een volledige handberekening, en een grensgeval
@@ -35,7 +37,7 @@ const STANDAARD = {
   kolomvorm: 1, paalvorm: 1, d_kolom: 500, b_kolom: 500, b_paal: 450, l_paal: 450,
   b_poer: 600, h_poer: 1250, l_hoh: 1600, oversteek: 400, e_paal: 100,
   betonklasse: 35, betonstaal: 2, betonoppervlak: 1, c_dek: 55,
-  n_langs: 6, d_langs: 32, n_sneden: 3, d_beugel: 12, s_beugel: 100,
+  n_langs: 6, d_langs: 32, n_sneden: 4, d_beugel: 12, s_beugel: 75,
   F_Ed: 3600, M_Ed: 0, F_fr: 2500, R_cd: 2400,
 };
 
@@ -75,9 +77,13 @@ function uitwerking(v, CC = 2) {
   const sh = (v.b_poer - 2 * c1 - phi) / Math.max(n - 1, 1);
 
   // knopen
-  const Rk = v.F_Ed / 2 + M / l;
+  // Plastisch drukblok: de resultante van de kolomlast ligt op e = M/F; de
+  // gedrukte lengte is a_k − 2e over de volle breedte (rond: vierkant a_k).
   const Ak = rond ? (Math.PI * v.d_kolom ** 2) / 4 : v.d_kolom * v.b_kolom;
-  const UCkn1 = (2 * Rk * 1e3) / Ak / (nuK * fcd);
+  const ek = (M * 1000) / Math.max(v.F_Ed, 1);
+  const kolomDruk = 2 * ek < ak;
+  const sEd1 = kolomDruk ? (v.F_Ed * 1e3) / (Ak * (1 - (2 * ek) / ak)) : 0;
+  const UCkn1 = sEd1 / (nuK * fcd);
   const Ap = prond ? (Math.PI * v.b_paal ** 2) / 4 : v.b_paal * v.l_paal;
   const ap = prond ? Math.sqrt(Ap) : v.b_paal, bp = prond ? Math.sqrt(Ap) : v.l_paal;
   const L = Math.hypot(z, a);
@@ -107,11 +113,12 @@ function uitwerking(v, CC = 2) {
   const lv = v.h_poer - v.c_dek - ys - rb;
   const lbesch = l1 + (Math.PI * rb) / 2 + lv;
   const UCank = lbd / lbesch;
-  const lvNodig = Math.max(lbd - l1 - (Math.PI * rb) / 2, 0);
+  const lvNodig = Math.max(lbd - l1 - (Math.PI * rb) / 2, 5 * phi);
 
   // dwarskracht
-  const av = Math.max(v.l_hoh / 2 - v.d_kolom / 2 - v.b_paal / 2, 0.5 * d);
-  const beta = Math.min(1, av / (2 * d));
+  // β met a_v ≥ 0,5·d; de beugels alleen in 0,75 van de werkelijke a_v.
+  const av = Math.max(v.l_hoh / 2 - v.d_kolom / 2 - v.b_paal / 2, 0);
+  const beta = Math.min(1, Math.max(av, 0.5 * d) / (2 * d));
   const k = Math.min(2, 1 + Math.sqrt(200 / d));
   const rho = Math.min(0.02, As / (v.b_poer * d));
   const vRdc = Math.max(0.12 * k * (100 * rho * fck) ** (1 / 3), 0.035 * k ** 1.5 * Math.sqrt(fck));
@@ -136,14 +143,14 @@ function uitwerking(v, CC = 2) {
   const Asmin = Math.max((0.26 * fctm) / 500, 0.0013) * v.b_poer * d;
   const st = (v.b_poer - 2 * v.c_dek - v.d_beugel) / Math.max(v.n_sneden - 1, 1);
   const stMax = R > 0.5 * VRdmax ? Math.min(0.75 * d, 500) : 500;
-  const det = phi >= 8 && !(n > 1 && sh - phi < Math.max(phi, 37)) && As >= Asmin &&
+  const det = phi >= 8 && !(n > 1 && sh - phi < Math.max(phi, 37)) && As >= Asmin && lv >= 5 * phi &&
     v.b_poer - 2 * c1 <= bp + 2 * ys && v.s_beugel <= Math.min(0.75 * d, 300) && st <= stMax;
 
   const UCmax = Math.max(UCpaal, UCtrek, UCkn1, UCkn2, UCank, UCrol, UCV, UCVmax, UCw);
-  const voldoet = knoopPast && det && UCmax <= 1 && Rmin >= 0;
+  const voldoet = knoopPast && det && UCmax <= 1 && Rmin >= 0 && kolomDruk;
   return {
-    geldig, R, Rmin, UCpaal, z, theta, Ftd, UCtrek, UCkn1, UCkn2, lbrqd, a5, lbd, phim, UCrol, lbesch, lvNodig, UCank,
-    beta, VRdc, VRds, UCV, VRdmax, UCVmax, ss, srmax, wk, UCw, Asmin, UCmax, knoopPast, det, voldoet,
+    geldig, R, Rmin, UCpaal, z, theta, Ftd, UCtrek, ek, kolomDruk, sEd1, UCkn1, UCkn2, lbrqd, a5, lbd, phim, UCrol, lbesch, lvNodig, UCank,
+    av, beta, VRdc, VRds, UCV, VRdmax, UCVmax, ss, srmax, wk, UCw, Asmin, UCmax, knoopPast, det, voldoet,
   };
 }
 
@@ -157,14 +164,16 @@ const ruim = (x) => ({ waarde: s4(x), tol: Math.max(Math.abs(x) * 0.002, 1e-6) }
 function verwachtingen(r, v) {
   const uit = {
     R_Ed: ruim(r.R), R_Ed_min: ruim(r.Rmin), z: ruim(r.z), θ: ruim(r.theta), F_td: ruim(r.Ftd),
-    UC_trek: ruim(r.UCtrek), UC_kn_1: ruim(r.UCkn1), UC_kn_2: ruim(r.UCkn2), l_b_rqd: ruim(r.lbrqd), α_5: ruim(r.a5),
+    UC_trek: ruim(r.UCtrek), e_k: ruim(r.ek), UC_kn_2: ruim(r.UCkn2), l_b_rqd: ruim(r.lbrqd), α_5: ruim(r.a5),
     l_bd: ruim(r.lbd), φ_m: ruim(r.phim), UC_rol: ruim(r.UCrol), l_b_besch: ruim(r.lbesch), l_v_nodig: ruim(r.lvNodig),
-    UC_ank: ruim(r.UCank), β: ruim(r.beta), V_Rd_c: ruim(r.VRdc), V_Rd_s: ruim(r.VRds), UC_V: ruim(r.UCV),
+    UC_ank: ruim(r.UCank), a_v: ruim(r.av), β: ruim(r.beta), V_Rd_c: ruim(r.VRdc), V_Rd_s: ruim(r.VRds), UC_V: ruim(r.UCV),
     V_Rd_max: ruim(r.VRdmax), UC_Vmax: ruim(r.UCVmax), σ_s: ruim(r.ss), s_r_max: ruim(r.srmax), w_k: ruim(r.wk),
     UC_w: ruim(r.UCw), A_s_min: ruim(r.Asmin), UC_max: ruim(r.UCmax),
   };
-  // Zonder draagvermogen staat UC_paal niet als getal in het blad.
+  // Zonder draagvermogen staat UC_paal niet als getal in het blad; bij trek in
+  // de kolomvoet de knoop onder de kolom niet.
   if (v.R_cd > 0) uit.UC_paal = ruim(r.UCpaal);
+  if (r.kolomDruk) Object.assign(uit, { σ_Ed_1: ruim(r.sEd1), UC_kn_1: ruim(r.UCkn1) });
   return uit;
 }
 
@@ -195,9 +204,11 @@ const SETS = [
     // e = 100 mm naar de kop (9.8.1(1)): o_min = 400 − 100 = 300; UC_rol = (179,9 + 32)/245 = 0,865.
     // r_b = 195,9; l_1 = 300 + 225 − 55 − 179,9 − 32 = 258,1; l_v = 1250 − 55 − 83 − 195,9 = 916,1;
     // l_b,besch = 258,1 + π·195,9/2 + 916,1 = 1481,9 → UC_ank = 501,6/1481,9 = 0,338.
-    // Dwarskracht: a_v = max(800 − 250 − 225; 0,5·1167) = 583,5 → β = 0,25; k = 1,414;
+    // Het opgebogen einde: l_bd − l_1 − π·r_b/2 < 0, dus ten minste 5φ = 160 mm (figuur 8.1).
+    // Dwarskracht: a_v = 800 − 250 − 225 = 325 < 0,5·1167 → β = 583,5/2334 = 0,25; k = 1,414;
     // ρ_l = 0,006892; v_Rd,c = 0,12·1,414·(24,12)^(1/3) = 0,4903 → V_Rd,c = 343,3 kN;
-    // 4 beugels in 0,75·a_v: V_Rd,s = 4·3·113,1·434,8 = 590,1 kN; UC_V = 0,25·2059,2/590,1 = 0,872;
+    // beugels alleen in 0,75·325 = 243,8 mm: 3 stuks Ø12-75 met 4 sneden →
+    // V_Rd,s = 3·4·113,1·434,8 = 590,1 kN; UC_V = 0,25·2059,2/590,1 = 0,872;
     // V_Rd,max = 0,5·0,6·0,86·23,33·600·0,9·1167 = 3794 kN → UC 0,543.
     // Scheurwijdte: R_fr = 2545/2 + 254,5/1,6 = 1431,6 kN; σ_s = 1431,6e3·693,9/(1096,9·4825)
     // = 187,7; h_c,ef = 2,5·83 = 207,5; ρ_p,eff = 0,03876; s_r,max = 3,4·67 + 0,17·32/0,03876
@@ -209,7 +220,8 @@ const SETS = [
       d: "1167", a_k: "443.1", x_k: "106.1", a: "693.9", z: "1097", θ: "57.68", F_td: "1303", A_s_nodig: "2996",
       UC_trek: "0.621", σ_Ed_1: "18.33", σ_Rd_1: "20.07", UC_kn_1: "0.914", σ_p: "10.17", w_2: "469.0", σ_d: "11.54",
       UC_kn_2: "0.677", f_bd: "3.370", l_b_rqd: "640.7", α_5: "0.783", l_bd: "501.6", φ_m_bet: "359.8", o_min: "300", UC_rol: "0.865",
-      l_b_besch: "1482", UC_ank: "0.338", β: "0.25", V_Rd_c: "343.3", V_Rd_s: "590.1", UC_V: "0.872", V_Rd_max: "3794",
+      l_b_besch: "1482", UC_ank: "0.338", l_v_nodig: "160", a_v: "325", β: "0.25", n_bg: "3", V_Rd_c: "343.3",
+      V_Rd_s: "590.1", UC_V: "0.872", V_Rd_max: "3794", s_t: "159.3",
       σ_s: "187.7", s_r_max: "368.2", w_k: "0.271", UC_w: "0.902", UC_max: "0.914",
     },
   },
@@ -230,10 +242,13 @@ const SETS = [
   {
     naam: "4 — rechthoekige kolom 500×400 op ronde palen Ø450, M_Ed = 400 kNm",
     invoer: { kolomvorm: 2, b_kolom: 400, paalvorm: 2, M_Ed: 400 },
-    // x_k = 500/4 = 125, a = 675; R_k = 1800 + 400/1,6 = 2050 kN;
-    // σ_Ed,1 = 2·2050e3/(500·400) = 20,50 > 20,07 → UC 1,022: voldoet niet.
+    // x_k = 500/4 = 125, a = 675; e_k = 400/3600 = 111,1 mm < 250;
+    // drukblok 400·(500 − 222,2) = 111 111 mm² → σ_Ed,1 = 3600e3/111 111 = 32,40 N/mm²
+    // tegen 20,07 → UC 1,615: voldoet niet. (Met twee gelijk belaste kolomhelften
+    // zou dat 2·(1800 + 250)e3/200 000 = 20,50 zijn: te gunstig, het moment komt
+    // dan maar voor 2·x_k/l = 16 % in de kolomvoet terecht.)
     // Paal: A_p = π/4·450² = 159 043 mm², a_p = √A_p = 398,8 mm.
-    handwerk: { x_k: "125.0", a: "675.0", R_k: "2050", σ_Ed_1: "20.50", UC_kn_1: "1.022", A_p: "159000", a_p: "398.8" },
+    handwerk: { x_k: "125.0", a: "675.0", e_k: "111.1", σ_Ed_1: "32.40", UC_kn_1: "1.615", A_p: "159000", a_p: "398.8" },
   },
   {
     naam: "5 — geen draagvermogen ingevuld (R_cd = 0): de paal is niet getoetst",
@@ -310,6 +325,48 @@ const SETS = [
     naam: "17 — negatieve paalafwijking: invoer past niet",
     invoer: { e_paal: -100 },
     melding: /invoer onvolledig/,
+  },
+  {
+    naam: "18 — rechthoekige kolom 450×350 op ronde palen Ø380, korte a_v, C30/37, 4Ø25, M_Ed = 60 kNm",
+    invoer: {
+      kolomvorm: 2, d_kolom: 450, b_kolom: 350, paalvorm: 2, b_paal: 380, l_hoh: 1300, b_poer: 550, h_poer: 950,
+      oversteek: 380, e_paal: 50, betonklasse: 30, c_dek: 50, n_langs: 4, d_langs: 25, n_sneden: 2, d_beugel: 10,
+      s_beugel: 100, F_Ed: 2100, M_Ed: 60, F_fr: 1500, R_cd: 1300,
+    },
+    // Met de hand: f_cd = 20,00; ν′ = 0,88; f_ctm = 2,897; f_ctd = 1,352; E_cm = 32 837.
+    // G_k = 25·2,06·0,55·0,95 = 26,91 kN; N = 2100 + 1,35·26,91 = 2136,3 kN;
+    // M_tot = 60 + 2136,3·0,05 = 166,8 kNm; R_Ed = 1068,2 + 128,3 = 1196,5 kN → UC_paal 0,920.
+    // y_s = 50 + 10 + 12,5 = 72,5; d = 877,5; a_k = 450, x_k = 112,5, a = 537,5;
+    // z = (877,5 + √(770 006 − 241 875))/2 = 802,1; θ = 56,17°; F_td = 1196,5·537,5/802,1 = 801,8 kN;
+    // A_s,nodig = 1844 tegen 1963 mm² → UC_trek 0,939.
+    // Kolom: e_k = 60/2100 = 28,57 mm; 350·(450 − 57,1) = 137 500 mm² → σ = 15,27 tegen 17,60: UC 0,868.
+    // Paal: A_p = 113 411, a_p = 336,8; w_2 = 360,5; σ_d = 11,86 tegen 0,85·17,6 = 14,96: UC 0,793.
+    // Verankering: σ_sd = 408,3; l_b,rqd = 25/4·408,3/3,041 = 839,2; p = 5,155 → α_5 = 0,794;
+    // l_bd = 666,1. φ_m = 200,4e3·(1/67,5 + 1/50)/20 = 348,9 (> 5φ = 125); o_min = 330;
+    // UC_rol = (174,5 + 25)/280 = 0,712; l_1 = 248,9, r_b = 187,0, l_v = 640,5, l_b,besch = 1183 → UC_ank 0,563.
+    // Dwarskracht: a_v = 650 − 225 − 190 = 235 mm < 0,5·d → β = 0,25; V_Rd,c = 0,4082·550·877,5 = 197,0 kN;
+    // in 0,75·235 = 176 mm past één beugel: V_Rd,s = 1·2·78,54·434,8 = 68,3 kN → UC_V = 0,25·1196,5/197,0 = 1,518.
+    // Scheurwijdte: R_fr = 763,5 + 104,8 = 868,3; σ_s = 296,3; s_r,max = 3,4·60 + 0,17·25/0,01970 = 419,8;
+    // ε = 1,152e-3 → w_k = 0,484 mm → UC_w 1,612 (maatgevend): voldoet niet.
+    handwerk: {
+      G_k: "26.91", R_Ed: "1196", UC_paal: "0.920", z: "802.1", θ: "56.17", F_td: "801.8", UC_trek: "0.939",
+      e_k: "28.57", σ_Ed_1: "15.27", UC_kn_1: "0.868", w_2: "360.5", σ_d: "11.86", UC_kn_2: "0.793",
+      l_b_rqd: "839.2", α_5: "0.794", l_bd: "666.1", φ_m: "348.9", UC_rol: "0.712", l_b_besch: "1183", UC_ank: "0.563",
+      a_v: "235", β: "0.25", V_Rd_c: "197.0", n_bg: "1", V_Rd_s: "68.3", UC_V: "1.518",
+      σ_s: "296.3", s_r_max: "419.8", w_k: "0.484", UC_w: "1.612", UC_max: "1.612",
+    },
+  },
+  {
+    naam: "19 — groot kolommoment zonder trekpaal: de kolomvoet krijgt trek, de knoop is niet getoetst",
+    invoer: { M_Ed: 900, R_cd: 0 },
+    // e_k = 900/3600 = 250 mm ≥ a_k/2 = 221,6 mm. R_Ed,min = 1830,4 − (900 + 366,1)/1,6 = 1039 kN > 0.
+    handwerk: { e_k: "250.0", R_Ed_min: "1039" },
+    melding: /kolomwapening krijgt trek/,
+  },
+  {
+    naam: "20 — lage poer met Ø40: het opgebogen einde past niet in de hoogte (l_v < 5φ)",
+    invoer: { h_poer: 600, l_hoh: 1000, oversteek: 600, n_langs: 3, d_langs: 40, R_cd: 0 },
+    melding: /past niet in de hoogte/,
   },
 ];
 

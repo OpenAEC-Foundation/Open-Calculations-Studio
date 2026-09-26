@@ -10,7 +10,9 @@
  *   zwaartepunt van de betondoorsnede. Ook gespiegeld, zodat een grote trek- of
  *   drukkracht die een minimummoment vraagt (M_Rd,min) niet onopgemerkt blijft.
  *   Bij druk is het moment ten minste N_Ed·e_0 met e_0 = max(h/30; 20 mm)
- *   (6.1(4)), in de richting van M_Ed. Verdrongen beton is verwaarloosd;
+ *   (6.1(4)), in de richting van M_Ed; bij M_Ed = 0 naar beide kanten, want
+ *   bij ongelijke wapening is de ene kant zwakker. Verdrongen beton is
+ *   verwaarloosd;
  * - dwarskracht (§6.2): V_Rd,c (6.2a/b), V_Rd,s (6.8) en V_Rd,max (6.9) met
  *   cot θ zo groot als (6.7N) en de drukdiagonalen toelaten;
  * - wringing (§6.3.2), alleen bij T_Ed ≠ 0: (6.31) of anders (6.29), de
@@ -304,6 +306,12 @@ M_qp = ?*(kN*m)'<span class="kolom-4"></span>'
         #hide
         UC_M = UC_N
         #show
+    #else if A_s1 + A_sm + A_s2 ≤ 0 mm^2 and N_Ed ≤ 0 kN and abs(M_Ed) > 0 kN*m
+        '<b style="color:#b91c1c">Na aftrek van de langswapening voor wringing blijft er voor de buiging geen wapening over.</b>
+        #hide
+        UC_M = 1/0
+        #show
+        UC_M
     #else
         #hide
         x_u = x_*mm
@@ -333,6 +341,18 @@ M_qp = ?*(kN*m)'<span class="kolom-4"></span>'
             UC_M = 1/0
             #show
             UC_M
+        #else if N_Ed > 0 kN and M_Ed ≡ 0 kN*m
+            'M<sub>Ed</sub> = 0: N<sub>Ed</sub>·e<sub>0</sub> naar beide kanten (6.1(4)).
+            #if M_Rd,t ≤ 0 kN*m
+                '<b style="color:#b91c1c">Naar de andere kant neemt de doorsnede bij deze normaalkracht geen moment op.</b>
+                #hide
+                UC_M = 1/0
+                #show
+                UC_M
+            #else
+                M_Rd,t', de andere kant op, gedrukt aan de zijde van laag 1<span class="kolom-2"></span>'
+                UC_M = M_e0/min(M_Rd; M_Rd,t)', de zwakste kant'
+            #end if
         #else if M_Rd,min > max(abs(M_Ed); M_e0)
             M_Rd,min', <b style="color:#b91c1c">het kleinste moment in de richting van M<sub>Ed</sub> dat bij deze normaalkracht evenwicht geeft</b>'
             UC_M = M_Rd,min/max(abs(M_Ed); M_e0)

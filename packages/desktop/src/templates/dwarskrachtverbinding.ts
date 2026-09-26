@@ -8,7 +8,8 @@
  * bouten per rij in de kolomflens. Getoetst:
  *   • de bouten op afschuiving en stuik (tabel 3.4), in de kopplaat én in de
  *     kolomflens, als groep volgens §3.7(1), met §3.8 bij een lange
- *     verbinding; afstanden volgens tabel 3.3;
+ *     verbinding en (3.2) van §3.6.1(10) bij één boutrij (enkelsnedig);
+ *     afstanden volgens tabel 3.3;
  *   • de kopplaat op afschuiving, bruto en netto (EN 1993-1-1 6.2.6), en op
  *     blokschuif: de twee buitenstroken (3.10) en het deel tussen de
  *     boutlijnen (3.9);
@@ -28,9 +29,11 @@
  *     l_w = min(h_p; h − 2t_f − 2r);
  *   • de rotatie van het liggereinde is de bovengrens bij een symmetrische
  *     belasting, V·L²/(8EI); het draaipunt ligt aan de onderrand van de plaat,
- *     die midden op de liggerhoogte zit (zoals in het beeld);
- *   • S355: f_u = 490 N/mm², zoals en1993.ts en de boutberekening; tabel 3.1
- *     geeft voor EN 10025-2 (t ≤ 40 mm) 510, dus 490 ligt aan de veilige kant.
+ *     die midden op de liggerhoogte zit (zoals in het beeld).
+ *
+ * Materiaal: tabel 3.1 van NEN-EN 1993-1-1 met A1 (EN 10025-2, t ≤ 40 mm),
+ * S355 f_u = 490 N/mm², zoals en1993.ts en de boutberekening. Kopplaat, ligger
+ * en kolom hebben dezelfde staalsoort.
  *
  * De keuze "hartlijn" (versprongen of in lijn) is alleen voor de tekening: de
  * netto doorsnede en de blokschuif tellen per boutlijn alle n gaten.
@@ -265,8 +268,9 @@ k_1,c', kolomflens<span class="alleen-afdruk"></span><span class="kolom-2"></spa
 #else
     α_b,e', eindbout kopplaat<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     α_b,c', eindbout kolomflens<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
-    F_b,kp,e = k_1*α_b,e*f_u*d*t_p/γ_M2 to kN', kopplaat<span class="alleen-scherm"></span>'
-    F_b,c,e = k_1,c*α_b,c*f_u*d*t_fc/γ_M2 to kN', kolomflens<span class="alleen-scherm"></span>'
+    'Eén boutrij, enkelsnedig (§3.6.1(10)): F<sub>b,Rd</sub> ≤ 1,5·f<sub>u</sub>·d·t/γ<sub>M2</sub> (3.2); sluitringen onder kop en moer.
+    F_b,kp,e = min(k_1*α_b,e; 1.5)*f_u*d*t_p/γ_M2 to kN', kopplaat, (3.2)<span class="alleen-scherm"></span>'
+    F_b,c,e = min(k_1,c*α_b,c; 1.5)*f_u*d*t_fc/γ_M2 to kN', kolomflens, (3.2)<span class="alleen-scherm"></span>'
     F_b,kp,e'<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     F_b,c,e'<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     #hide

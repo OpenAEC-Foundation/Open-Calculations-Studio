@@ -48,6 +48,7 @@ const PROFIEL = {
   5: { naam: "HEA 180", h: 171, b: 180, tw: 6, tf: 9.5, r: 15, A: 45.25, Iy: 2510, Iz: 924.6, Wel: 293.6, Wpl: 324.9, It: 14.80, Iw: 60.21 },
   9: { naam: "HEA 260", h: 250, b: 260, tw: 7.5, tf: 12.5, r: 24, A: 86.82, Iy: 10450, Iz: 3668, Wel: 836.4, Wpl: 919.8, It: 52.37, Iw: 516.4 },
   16: { naam: "HEB 200", h: 200, b: 200, tw: 9, tf: 15, r: 18, A: 78.08, Iy: 5696, Iz: 2003, Wel: 569.6, Wpl: 642.5, It: 59.28, Iw: 171.1 },
+  22: { naam: "IPE 240", h: 240, b: 120, tw: 6.2, tf: 9.8, r: 15, A: 39.12, Iy: 3892, Iz: 283.6, Wel: 324.3, Wpl: 366.6, It: 12.88, Iw: 37.39 },
   24: { naam: "IPE 300", h: 300, b: 150, tw: 7.1, tf: 10.7, r: 15, A: 53.81, Iy: 8356, Iz: 603.8, Wel: 557.1, Wpl: 628.4, It: 20.12, Iw: 125.9 },
   27: { naam: "IPE 400", h: 400, b: 180, tw: 8.6, tf: 13.5, r: 21, A: 84.46, Iy: 23130, Iz: 1318, Wel: 1156, Wpl: 1307, It: 51.08, Iw: 490.0 },
 };
@@ -364,6 +365,34 @@ const SETS = [
     // 0,2721 → θ_a,cr ≈ 554,4 °C.
     handwerk: { E_fi_d: "780.0", R_fi_d_0: "1494", μ_0: "0.5221", θ_a_cr: "554.4" },
   },
+  {
+    naam: "14 — kolom HEB 200 S235 onbekleed, l_fi = 3 m, N_fi,d = 300 kN zelf ingevuld, R30",
+    invoer: { profiel: 16, werking: 3, bron_fi: 2, N_fi: 300, L_fi: 3, bekleed: 0, eis_min: 30 },
+    // Met de hand: N_cr,z = π²·210000·2003·10⁴/3000² = 4613 kN; N_pl = 7808·235 =
+    // 1835 kN → λ̄_z = 0,6307; Φ = 0,5·(1 + 0,65·0,6307 + 0,3978) = 0,9039,
+    // χ_fi = 0,6446 → R_fi,d,0 = 1183 kN, μ_0 = 0,2536. χ_fi·k_y,θ = 300/1835 =
+    // 0,1635 → θ_a,cr = 671,7 °C. A_m = 2·200 + 4·200 − 18 = 1182 mm → A_m/V =
+    // 151,4 1/m; kast 800/7808 = 102,5 1/m → k_sh = 0,9·800/1182 = 0,6091.
+    // θ_a(30) = 756,3 °C (met 1 s 756,2 °C); daar k_y,θ = 0,1624, k_E,θ = 0,1075,
+    // λ̄_θ = 0,7752, Φ = 1,052, χ_fi = 0,5668 → N_b,fi,t,Rd = 0,5668·0,1624·1835 =
+    // 168,9 kN → UC_R = 1,776: voldoet niet; θ_a,cr is na 20,58 min bereikt.
+    handwerk: { λ_z: "0.6307", μ_0: "0.2536", θ_a_cr: "671.7", A_m_V: "151.4", k_sh: "0.6091", θ_a_t: "756.3", UC_R: "1.776" },
+    oordeel: "voldoet niet",
+    tkr: 20.58,
+  },
+  {
+    naam: "15 — trekstaaf IPE 240 S275 onbekleed, driezijdig verhit, N_Ed = 200 kN, R30",
+    invoer: { profiel: 22, staalsoort: 275, werking: 4, N_Ed: 200, bekleed: 0, verhitting: 3, eis_min: 30 },
+    // Met de hand: E_fi,d = 0,7·200 = 140 kN; R_fi,d,0 = 3912·275 = 1076 kN →
+    // μ_0 = 0,1301; 0,1301^3,833 = 4,02·10⁻⁴; ·0,9674 = 3,89·10⁻⁴; 1/… − 1 = 2570;
+    // ln = 7,852 → θ_a,cr = 39,19·7,852 + 482 = 789,6 °C. A_m = 2·240 + 3·120 −
+    // 2·6,2 = 827,6 mm → A_m/V = 211,6 1/m; kast (2·240 + 120)/3912 = 153,4 1/m →
+    // k_sh = 0,9·600/827,6 = 0,6525. θ_a(30) = 807,8 °C → UC = 807,8/789,6 = 1,023:
+    // voldoet niet, θ_a,cr is na 28,5 min bereikt.
+    handwerk: { μ_0: "0.1301", θ_a_cr: "789.6", A_m_V: "211.6", A_b_V: "153.4", k_sh: "0.6525", θ_a_t: "807.8", UC_θ: "1.023" },
+    oordeel: "voldoet niet",
+    tkr: 28.5,
+  },
 ];
 
 let fouten = 0;
@@ -389,6 +418,14 @@ for (const set of SETS) {
     const ok = verschil <= 2;
     if (!ok) fouten++;
     console.log(`  ${ok ? "OK    " : "FOUT  "} stap       θ_a met de stap van het blad ${s4(r.θa)} °C, met 1 s ${s4(r.θa1)} °C (verschil ${verschil.toFixed(2)} °C)`);
+  }
+
+  // Het tijdstip waarop θ_a,cr wordt bereikt, als dat vóór de eis ligt.
+  if (set.tkr !== undefined) {
+    const m = got.text.match(/bereikt na ([\d.]+) minuten/);
+    const ok = m !== null && Math.abs(Number(m[1]) - set.tkr) <= 0.01;
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} t_kr       ons ${m ? m[1] : "—"} min   handberekening ${set.tkr} min`);
   }
 
   // Maatgevende UC en oordeel uit de slotzin.

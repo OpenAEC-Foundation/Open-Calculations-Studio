@@ -14,7 +14,11 @@
  *     rond (6.42), in twee richtingen (6.43); randkolom (6.44)/(6.45) en
  *     hoekkolom (6.46) met de verkleinde omtrek u_1* van figuur 6.20.
  *     v_Ed rekent altijd met u_1 van figuur 6.13/6.15; u_1* zit alleen in
- *     β = u_1/u_1*. Zo lopen omtrek en β nooit door elkaar;
+ *     β = u_1/u_1*. Zo lopen omtrek en β nooit door elkaar. In (6.44) laat
+ *     "c_1/c_2 vervangen door c_1/2c_2" twee lezingen toe: met c_1 en c_2 van
+ *     figuur 6.20 (c_1 loodrecht op de rand) of van tabel 6.1 (c_1 evenwijdig
+ *     aan e_par, dan c_2/(2c_1) in de maten van figuur 6.20). k volgt uit de
+ *     grootste van beide: de veilige kant;
  *   - v_Ed (6.38) tegen v_Rd,c (6.47) met k ≤ 2 en v_min (6.3N);
  *   - v_Ed,0 langs de kolom (6.53) tegen v_Rd,max = 0,4·ν·f_cd (6.4.5(3),
  *     aanbevolen waarde: de veilige kant);
@@ -23,7 +27,10 @@
  *     (6.4.5(4)), en de detaillering van §9.4.3: ten minste twee omtrekken,
  *     s_r ≤ 0,75d, eerste omtrek ≤ 0,5d van de kolom, s_t ≤ 1,5d binnen u_1
  *     en ≤ 2d daarbuiten, en A_sw,min (9.11) met de grootste tangentiële
- *     afstand: op u_1, of op de buitenste omtrek als die buiten 2d ligt.
+ *     afstand: op u_1, of op de buitenste omtrek als die buiten 2d ligt. Een
+ *     plaat met ponswapening is ten minste 200 mm dik (9.3.2(1)). De hoek α
+ *     ligt tussen 45° en 90°: 30° mag alleen bij één rij opgebogen staven
+ *     (9.4.3(4)), en dit blad vraagt ten minste twee omtrekken.
  *
  * Aannamen: rand- en hoekkolom liggen gelijk met de plaatrand; c_1 staat
  * loodrecht op de rand. Een ronde rand- of hoekkolom rekent als een vierkante
@@ -214,7 +221,8 @@ k_tab(r) = if(r ≤ 0.5; 0.45; if(r ≤ 1; 0.45 + 0.3*(r - 0.5); if(r ≤ 2; 0.6
     a_r = min(0.5*c_1; 1.5*d_eff)', figuur 6.20a'
     u_1,red = c_2 + 2*a_r + 2*pi*d_eff', u<sub>1</sub>* van figuur 6.20a'
     #if abs(e_z) > 0 mm
-        k_β = k_tab(c_1/(2*c_2))', tabel 6.1 met c<sub>1</sub>/(2c<sub>2</sub>)'
+        k_β = k_tab(max(c_1/(2*c_2); c_2/(2*c_1)))', tabel 6.1: de grootste van beide lezingen, veilige kant<span class="alleen-scherm"></span>'
+        k_β', tabel 6.1 met de grootste van c<sub>1</sub>/(2c<sub>2</sub>) en c<sub>2</sub>/(2c<sub>1</sub>): veilige kant<span class="alleen-afdruk"></span>'
         W_1 = c_2^2/4 + c_1*c_2 + 4*c_1*d_eff + 8*d_eff^2 + pi*d_eff*c_2', (6.45), om de as loodrecht op de rand<span class="alleen-scherm"></span>'
         W_1', (6.45), om de as loodrecht op de rand<span class="alleen-afdruk"></span>'
         β = u_1/u_1,red + k_β*abs(e_z)*u_1/W_1', (6.44)'
@@ -237,6 +245,9 @@ k_tab(r) = if(r ≤ 0.5; 0.45; if(r ≤ 1; 0.45 + 0.3*(r - 0.5); if(r ≤ 2; 0.6
 #hide
 f_ck = betonklasse
 #show
+#if V_Ed < 0 kN
+    V_Ed = abs(V_Ed)', het teken van de invoer telt niet'
+#end if
 v_Ed = β*V_Ed/(u_1*d_eff) to N/mm^2', (6.38)'
 k = min(1 + sqrt(200 mm/d_eff); 2)', 6.4.4(1)'
 v_min = 0.035*k^(3/2)*sqrt(f_ck)*1 N/mm^2', (6.3N)'
@@ -266,11 +277,11 @@ UC_w = UC_pons
     f_ywd,ef = min(250 + 0.25*d_eff/(1 mm); 500/1.15)*1 N/mm^2', (6.52), ≤ f<sub>ywd</sub> van B500'
     #if ponswap ≡ 0
         A_sw,nodig = (v_Ed - 0.75*v_Rd,c)*u_1*0.75*d_eff/(1.5*f_ywd,ef) to mm^2', per omtrek, loodrechte staven op s<sub>r</sub> = 0,75d (6.52)'
-    #else if n_sw < 1 or n_om < 1 or s_r ≤ 0 mm or d_sw ≤ 0 mm or a_sw ≤ 0 mm or hoek_pons < 30 or hoek_pons > 90
+    #else if n_sw < 1 or n_om < 1 or s_r ≤ 0 mm or d_sw ≤ 0 mm or a_sw ≤ 0 mm or hoek_pons < 45 or hoek_pons > 90
         #hide
         ok_sw = 0
         #show
-        '<b style="color:#b91c1c">Vul de ponswapening volledig in: ten minste één staaf per omtrek, één omtrek, s<sub>r</sub> en a > 0 en 30° ≤ α ≤ 90°.</b>
+        '<b style="color:#b91c1c">Vul de ponswapening volledig in: ten minste één staaf per omtrek, één omtrek, s<sub>r</sub> en a > 0 en 45° ≤ α ≤ 90°.</b>
     #else
         #hide
         α = hoek_pons*1 deg
@@ -310,6 +321,7 @@ UC_w = UC_pons
         UC_n = 2/n_om', 9.4.3(1): ten minste twee omtrekken'
         UC_sr = s_r/(0.75*d_eff)', 9.4.3(1)'
         UC_a = a_sw/(0.5*d_eff)', 9.4.3(4)'
+        UC_h = 200 mm/h_plaat', 9.3.2(1)<span class="alleen-scherm">: een plaat met dwarskrachtwapening is ten minste 200 mm dik</span>'
         s_t = u_1/n_sw', tangentieel, op u<sub>1</sub>'
         UC_st = s_t/(1.5*d_eff)', 9.4.3(1)'
         #hide
@@ -329,7 +341,7 @@ UC_w = UC_pons
         A_sw,min = 0.08*sqrt(f_ck)/500*s_r*s_t,max/(1.5*sin(α) + cos(α)) to mm^2', (9.11), per staaf<span class="alleen-scherm">, met de grootste s<sub>t</sub> van de omtrekken</span>'
         UC_min = A_sw,min/(pi*d_sw^2/4)
         #hide
-        UC_w = max(UC_cs; UC_uit; UC_n; UC_sr; UC_a; UC_st; UC_st,uit; UC_min)
+        UC_w = max(UC_cs; UC_uit; UC_n; UC_sr; UC_a; UC_h; UC_st; UC_st,uit; UC_min)
         #show
     #end if
 #end if

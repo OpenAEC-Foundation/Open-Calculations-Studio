@@ -21,7 +21,7 @@
  *     3,5 ‰ en bij volledige druk het draaipunt op ε_c3 = 1,75 ‰ (figuur 6.1);
  *     de staven in de drukzone verdringen beton;
  *   - scheve buiging: de scheiding volgens (5.38a/b), anders (5.39), met de
- *     imperfectie alleen in de ongunstigste richting (5.8.9(3)), dus in twee
+ *     imperfectie alleen in de ongunstigste richting (5.8.9(2)), dus in twee
  *     gevallen;
  *   - de detaillering: A_s,min (9.12N), A_s,max en Ø ≥ 8 mm (§9.5.2), de
  *     beugels (§9.5.3, met de kleinere afstand bij de einden van 9.5.3(4) als
@@ -110,23 +110,23 @@ f_cd = α_cc*f_ck/γ_C to N/mm^2', α<sub>cc</sub> = 1,0 (NB)<span class="alleen
 f_yd = f_yk/γ_S to N/mm^2'<span class="alleen-scherm"></span>'
 ε_yd = f_yd/E_s'<span class="alleen-scherm"></span>'
 a_s = c_dek + d_beugel + d_staaf/2', hart staaf tot rand<span class="alleen-scherm"></span>'
-f_cd', α<sub>cc</sub> = 1,0 (NB)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+f_cd', α<sub>cc</sub> = 1,0 (NB)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
 f_yd'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
 ε_yd'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
-a_s', hart staaf<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+a_s', hart staaf<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
 #if insitu ≡ 1
     '<i class="alleen-scherm">In-situ gestorte paal zonder blijvende mantel: rekenen met een kleinere maat, 20 mm minder onder 400 mm, 5 % minder tot 1000 mm en 50 mm minder daarboven (§2.3.4.2(2)). De staven blijven op hun plaats.</i><span class="alleen-scherm"></span>
     #hide
     Δ_h = h_kol - d_red(h_kol)
     #show
     h = h_kol - Δ_h', rekenmaat, §2.3.4.2(2)<span class="alleen-scherm"></span>'
-    h', rekenmaat, §2.3.4.2(2)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    h', rekenmaat, §2.3.4.2(2)<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     #if vorm ≡ 1
         #hide
         Δ_b = b_kol - d_red(b_kol)
         #show
         b = b_kol - Δ_b', rekenmaat<span class="alleen-scherm"></span>'
-        b', rekenmaat<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        b', rekenmaat<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     #end if
 #else
     #hide
@@ -181,7 +181,7 @@ n_s', aantal staven<span class="kolom-4"></span>'
 A_s = n_s*pi*d_staaf^2/4 to mm^2'<span class="alleen-scherm"></span>'
 ω = A_s*f_yd/(A_c*f_cd)', mechanische wapeningsverhouding<span class="alleen-scherm"></span>'
 A_s'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
-ω', A<sub>s</sub>·f<sub>yd</sub>/(A<sub>c</sub>·f<sub>cd</sub>)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+ω', A<sub>s</sub>·f<sub>yd</sub>/(A<sub>c</sub>·f<sub>cd</sub>)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
 
 # 2. Kolom en belasting
 
@@ -228,8 +228,10 @@ M_1z = if(abs(M_zEd) ≥ abs(M_zEd,1); M_zEd,1*sign(M_zEd); M_zEd*sign(M_zEd,1))
     α_h', 5.2(5)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     θ_i', (5.1), α<sub>m</sub> = 1<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     n', N<sub>Ed</sub>/(A<sub>c</sub>·f<sub>cd</sub>)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
-    e_i,y = θ_i*L_cry/2 to mm', (5.2)<span class="kolom-2"></span>'
-    e_i,z = θ_i*L_crz/2 to mm'<span class="kolom-2"></span>'
+    e_i,y = θ_i*L_cry/2 to mm', (5.2)<span class="alleen-scherm"></span>'
+    e_i,z = θ_i*L_crz/2 to mm', (5.2)<span class="alleen-scherm"></span>'
+    e_i,y', (5.2)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+    e_i,z', (5.2)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     M_02,y = max(abs(M_yEd); abs(M_yEd,1)) + N_Ed*e_i,y to kN*m'<span class="alleen-scherm"></span>'
     M_02,z = max(abs(M_zEd); abs(M_zEd,1)) + N_Ed*e_i,z to kN*m'<span class="alleen-scherm"></span>'
     M_02,y', grootste eindmoment + N<sub>Ed</sub>·e<sub>i,y</sub><span class="alleen-afdruk"></span><span class="kolom-2"></span>'
@@ -238,12 +240,12 @@ M_1z = if(abs(M_zEd) ≥ abs(M_zEd,1); M_zEd,1*sign(M_zEd); M_zEd*sign(M_zEd,1))
     M_01,y = M_1y + N_Ed*e_i,y to kN*m
     M_01,z = M_1z + N_Ed*e_i,z to kN*m
     #show
-    M_01,y', ander eindmoment, met teken, + N<sub>Ed</sub>·e<sub>i,y</sub><span class="kolom-2"></span>'
+    M_01,y', ander eindmoment<span class="alleen-scherm">, met teken,</span> + N<sub>Ed</sub>·e<sub>i,y</sub><span class="kolom-2"></span>'
     M_01,z'<span class="kolom-2"></span>'
     A_φ = 1/(1 + 0.2*φ_ef)'<span class="kolom-2"></span>'
     B_ω = sqrt(1 + 2*ω)'<span class="kolom-2"></span>'
     #if geschoord_y ≡ 1
-        C_y = 1.7 - M_01,y/M_02,y', r<sub>m</sub> = M<sub>01</sub>/M<sub>02</sub><span class="kolom-2"></span>'
+        C_y = 1.7 - M_01,y/M_02,y'<span class="alleen-scherm">, r<sub>m</sub> = M<sub>01</sub>/M<sub>02</sub></span><span class="kolom-2"></span>'
     #else
         C_y = 0.7', ongeschoord<span class="kolom-2"></span>'
     #end if
@@ -289,7 +291,7 @@ M_2,z = 0 kN*m
         #show
         c_y = 10 - 2*max(0; r_0y)', 5.8.8.2(4), r<sub>0y</sub> = M<sub>01</sub>/M<sub>02</sub> zonder imperfectie<span class="alleen-scherm"></span>'
         d_y', (5.35)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
-        c_y', 5.8.8.2(4): 10 − 2·M<sub>01</sub>/M<sub>02</sub><span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        c_y', 5.8.8.2(4)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
         e_2,y = K_r*K_φ,y*ε_yd/(0.45*d_y)*L_cry^2/c_y to mm', (5.33) en (5.34)'
         M_2,y = N_Ed*e_2,y to kN*m'<span class="alleen-scherm"></span>'
         M_2,y', N<sub>Ed</sub>·e<sub>2,y</sub><span class="alleen-afdruk"></span><span class="kolom-2"></span>'
@@ -305,7 +307,7 @@ M_2,z = 0 kN*m
         #show
         c_z = 10 - 2*max(0; r_0z)', 5.8.8.2(4), r<sub>0z</sub> = M<sub>01</sub>/M<sub>02</sub> zonder imperfectie<span class="alleen-scherm"></span>'
         d_z', (5.35)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
-        c_z', 5.8.8.2(4): 10 − 2·M<sub>01</sub>/M<sub>02</sub><span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        c_z', 5.8.8.2(4)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
         e_2,z = K_r*K_φ,z*ε_yd/(0.45*d_z)*L_crz^2/c_z to mm', (5.33) en (5.34)'
         M_2,z = N_Ed*e_2,z to kN*m'<span class="alleen-scherm"></span>'
         M_2,z', N<sub>Ed</sub>·e<sub>2,z</sub><span class="alleen-afdruk"></span><span class="kolom-2"></span>'
@@ -324,20 +326,20 @@ M_2,z = 0 kN*m
     #if geschoord_y ≡ 1
         M_0e,y = max(0.6*M_02,y + 0.4*M_01,y; 0.4*M_02,y)', (5.32)<span class="alleen-scherm"></span>'
         M_Ed,y = max(M_0e,y + M_2,y; M_02,y; N_Ed*e_0,y) to kN*m', (5.31), aan het einde M<sub>02</sub><span class="alleen-scherm"></span>'
-        M_0e,y', (5.32)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        M_0e,y', (5.32)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
         M_Ed,y', max(M<sub>0e</sub> + M<sub>2</sub>; M<sub>02</sub>; N·e<sub>0</sub>), (5.31)<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     #else
         M_Ed,y = max(M_02,y + M_2,y; N_Ed*e_0,y) to kN*m', (5.31), ongeschoord: aan het einde<span class="alleen-scherm"></span>'
-        M_Ed,y', max(M<sub>02</sub> + M<sub>2</sub>; N·e<sub>0</sub>), ongeschoord<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
+        M_Ed,y', max(M<sub>02</sub> + M<sub>2</sub>; N·e<sub>0</sub>)<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     #end if
     #if geschoord_z ≡ 1
         M_0e,z = max(0.6*M_02,z + 0.4*M_01,z; 0.4*M_02,z)', (5.32)<span class="alleen-scherm"></span>'
         M_Ed,z = max(M_0e,z + M_2,z; M_02,z; N_Ed*e_0,z) to kN*m', (5.31), aan het einde M<sub>02</sub><span class="alleen-scherm"></span>'
-        M_0e,z', (5.32)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        M_0e,z', (5.32)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
         M_Ed,z', max(M<sub>0e</sub> + M<sub>2</sub>; M<sub>02</sub>; N·e<sub>0</sub>), (5.31)<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     #else
         M_Ed,z = max(M_02,z + M_2,z; N_Ed*e_0,z) to kN*m', (5.31), ongeschoord: aan het einde<span class="alleen-scherm"></span>'
-        M_Ed,z', max(M<sub>02</sub> + M<sub>2</sub>; N·e<sub>0</sub>), ongeschoord<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
+        M_Ed,z', max(M<sub>02</sub> + M<sub>2</sub>; N·e<sub>0</sub>)<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     #end if
 #else
     M_Ed,y = max(abs(M_yEd); abs(M_yEd,1)) to kN*m'<span class="alleen-scherm"></span>'
@@ -430,14 +432,14 @@ N_Rd,min', volledige trek<span class="alleen-scherm"></span>'
     #show
 #else
     #if vorm ≡ 1
-        x_y', drukzone<span class="alleen-scherm">hoogte bij N<sub>Ed</sub>, buiging om y</span><span class="kolom-4"></span>'
+        x_y'<span class="alleen-scherm">, drukzonehoogte bij N<sub>Ed</sub>, buiging om y</span><span class="kolom-4"></span>'
         M_Rd,y'<span class="kolom-4"></span>'
         UC_y = M_Ed,y/M_Rd,y'<span class="kolom-2"></span>'
-        x_z', drukzone<span class="alleen-scherm">hoogte bij N<sub>Ed</sub>, buiging om z</span><span class="kolom-4"></span>'
+        x_z'<span class="alleen-scherm">, drukzonehoogte bij N<sub>Ed</sub>, buiging om z</span><span class="kolom-4"></span>'
         M_Rd,z'<span class="kolom-4"></span>'
         UC_z = M_Ed,z/M_Rd,z'<span class="kolom-2"></span>'
     #else
-        x_y', drukzone<span class="alleen-scherm">hoogte bij N<sub>Ed</sub></span>, ongunstigste stand van de staven<span class="kolom-2"></span>'
+        x_y'<span class="alleen-scherm">, drukzonehoogte bij N<sub>Ed</sub></span>, ongunstigste stand van de staven<span class="kolom-2"></span>'
         M_Rd,y', om elke as<span class="kolom-2"></span>'
         UC_y = M_Ed,y/M_Rd,y'<span class="kolom-2"></span>'
         UC_z = M_Ed,z/M_Rd,z'<span class="kolom-2"></span>'
@@ -447,7 +449,7 @@ N_Rd,min', volledige trek<span class="alleen-scherm"></span>'
 # 6. Scheve buiging (§5.8.9)
 
 #hide
-'Momenten zonder imperfectie en zonder e_0: voor de richting waarin de imperfectie niet werkt (5.8.9(3)).
+'Momenten zonder imperfectie en zonder e_0: voor de richting waarin de imperfectie niet werkt (5.8.9(2)).
 M_y,0 = if(N_Ed > 0 kN; if(geschoord_y ≡ 1; max(max(0.6*M_0y + 0.4*M_1y; 0.4*M_0y) + M_2,y; M_0y); M_0y + M_2,y); M_Ed,y)
 M_z,0 = if(N_Ed > 0 kN; if(geschoord_z ≡ 1; max(max(0.6*M_0z + 0.4*M_1z; 0.4*M_0z) + M_2,z; M_0z); M_0z + M_2,z); M_Ed,z)
 'Relatieve excentriciteiten (5.38b): e_z/h = M_Edy/(N·h) en e_y/b = M_Edz/(N·b); N valt weg in de verhouding.
@@ -467,17 +469,17 @@ UC_biax = 0
 #else if M_Ed,y ≡ 0 kN*m or M_Ed,z ≡ 0 kN*m
     '<i>Buiging om één as: geen scheve buiging.</i>
 #else
-    '<i class="alleen-scherm">De imperfectie werkt alleen in de ongunstigste richting (5.8.9(3)): geval A met de imperfectie om de y-as, geval B om de z-as; de andere as zonder imperfectie en zonder e<sub>0</sub>. Scheiding van de assen mag als λ<sub>y</sub>/λ<sub>z</sub> en λ<sub>z</sub>/λ<sub>y</sub> ≤ 2 (5.38a) en de verhouding van de relatieve excentriciteiten ≤ 0,2 of ≥ 5 is (5.38b); anders (5.39).</i><span class="alleen-scherm"></span>
+    '<i class="alleen-scherm">De imperfectie werkt alleen in de ongunstigste richting (5.8.9(2)): geval A met de imperfectie om de y-as, geval B om de z-as; de andere as zonder imperfectie en zonder e<sub>0</sub>. Scheiding van de assen mag als λ<sub>y</sub>/λ<sub>z</sub> en λ<sub>z</sub>/λ<sub>y</sub> ≤ 2 (5.38a) en de verhouding van de relatieve excentriciteiten ≤ 0,2 of ≥ 5 is (5.38b); anders (5.39).</i><span class="alleen-scherm"></span>
     'λ<sub>y</sub>/λ<sub>z</sub> = 'λ_y/λ_z' (5.38a: 'if(ok_λ ≡ 1; "tussen 0,5 en 2"; "buiten 0,5 tot 2")'); geval A: M<sub>z,0</sub> = 'M_z,0/(1 kN*m)' kNm zonder imperfectie, verhouding (5.38b) 'q_A'; geval B: M<sub>y,0</sub> = 'M_y,0/(1 kN*m)' kNm, verhouding 'q_B'.
     #if nodig_A + nodig_B ≡ 0
         '<i>(5.38) voldaan in beide gevallen: de toetsen per as volstaan.</i>
     #else
         N_Rd = A_c*f_cd + A_s*f_yd to kN', 5.8.9(4)<span class="alleen-scherm"></span>'
-        N_Rd', 5.8.9(4)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        N_Rd'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
         #if vorm ≡ 2
-            a_N', ronde doorsnede<span class="kolom-4"></span>'
+            a_N', ronde doorsnede, 5.8.9(4)<span class="kolom-2"></span>'
         #else
-            r_N = N_Ed/N_Rd'<span class="kolom-2"></span>'
+            r_N = N_Ed/N_Rd', 5.8.9(4)<span class="kolom-2"></span>'
             a_N'<span class="alleen-scherm">, lineair tussen 1,0 bij 0,1, 1,5 bij 0,7 en 2,0 bij 1,0</span><span class="kolom-4"></span>'
         #end if
         #if nodig_A ≡ 1
@@ -520,21 +522,16 @@ kl(ok) = if(ok ≡ 1; "#047857"; "#b91c1c")
     n_min = 6
     #show
     A_s,min = max(0.10*N_Ed/f_yd; 0.002*A_c,nom; A_s,paal) to mm^2', (9.12N) en tabel 9.6N, met A<sub>c</sub> van de nominale maat (veilige kant)<span class="alleen-scherm"></span>'
-    A_s,min', (9.12N), tabel 9.6N, nominale A<sub>c</sub><span class="alleen-afdruk"></span><span class="kolom-2"></span>'
 #else
     #hide
     Ø_min = 8 mm
     n_min = 4
     #show
     A_s,min = max(0.10*N_Ed/f_yd; 0.002*A_c) to mm^2', (9.12N)<span class="alleen-scherm"></span>'
-    A_s,min', (9.12N)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
 #end if
 A_s,max = 0.04*A_c to mm^2', 9.5.2(3)<span class="alleen-scherm"></span>'
 Ø_b,min = max(6 mm; d_staaf/4)', 9.5.3(1)<span class="alleen-scherm"></span>'
 s_cl,max = min(20*d_staaf; min(b; h); 400 mm)', 9.5.3(3)<span class="alleen-scherm"></span>'
-A_s,max', 9.5.2(3)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
-Ø_b,min', 9.5.3(1)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
-s_cl,max', 9.5.3(3)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
 #hide
 s_cl,eind = 0.6*s_cl,max
 #if vorm ≡ 1
@@ -556,9 +553,9 @@ ok_s = if(s_beugel ≤ s_cl,max; 1; 0)
 ok_vrij = if(insitu ≡ 0 or s_vrij ≤ 200 mm; 1; 0)
 ok_det = min(ok_As; ok_Ø; ok_s; ok_n; ok_vrij)
 #show
-'A<sub>s,min</sub> ≤ A<sub>s</sub> ≤ A<sub>s,max</sub>: 'A_s,min/(1 mm^2)' ≤ 'A_s/(1 mm^2)' ≤ 'A_s,max/(1 mm^2)' mm² → <b style="color:'kl(ok_As)'">'ja(ok_As)'</b>
-'Staaf Ø'd_staaf/(1 mm)' ≥ Ø'Ø_min/(1 mm)' (9.5.2(1)'if(insitu ≡ 1; ", paal 9.8.5(3)"; "")'), beugel Ø'd_beugel/(1 mm)' ≥ Ø<sub>b,min</sub> → <b style="color:'kl(ok_Ø)'">'ja(ok_Ø)'</b>
-'Beugelafstand 's_beugel/(1 mm)' ≤ s<sub>cl,max</sub> = 's_cl,max/(1 mm)' mm → <b style="color:'kl(ok_s)'">'ja(ok_s)'</b>; bij een balk of vloer en bij overlappingen met Ø > 14 mm ten hoogste 0,6·s<sub>cl,max</sub> = 's_cl,eind/(1 mm)' mm (9.5.3(4))
+'A<sub>s,min</sub> ≤ A<sub>s</sub> ≤ A<sub>s,max</sub> ((9.12N)'if(insitu ≡ 1; ", tabel 9.6N met de nominale doorsnede"; "")', 9.5.2(3)): 'A_s,min/(1 mm^2)' ≤ 'A_s/(1 mm^2)' ≤ 'A_s,max/(1 mm^2)' mm² → <b style="color:'kl(ok_As)'">'ja(ok_As)'</b>
+'Staaf Ø'd_staaf/(1 mm)' ≥ Ø'Ø_min/(1 mm)' (9.5.2(1)'if(insitu ≡ 1; ", paal 9.8.5(3)"; "")'), beugel Ø'd_beugel/(1 mm)' ≥ Ø'Ø_b,min/(1 mm)' (9.5.3(1)) → <b style="color:'kl(ok_Ø)'">'ja(ok_Ø)'</b>
+'Beugelafstand 's_beugel/(1 mm)' ≤ s<sub>cl,max</sub> = 's_cl,max/(1 mm)' mm (9.5.3(3)) → <b style="color:'kl(ok_s)'">'ja(ok_s)'</b>; bij een balk of vloer en bij overlappingen (Ø > 14 mm) ≤ 's_cl,eind/(1 mm)' mm (9.5.3(4))
 'Aantal staven 'n_tot', ten minste 'n_min' staven'if(vorm ≡ 1; ", met een staaf in elke hoek"; "")' (9.5.2(4)) → <b style="color:'kl(ok_n)'">'ja(ok_n)'</b>
 #if insitu ≡ 1
     'Vrij tussen de staven 's_vrij/(1 mm)' mm ≤ 200 mm (9.8.5(3)) → <b style="color:'kl(ok_vrij)'">'ja(ok_vrij)'</b>

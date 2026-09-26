@@ -22,7 +22,8 @@
  *     met k_1 zonder p_2-tak (één boutrij). §3.6.1(10) begrenst de stuik bij
  *     een enkel hoekstaal met één bout altijd, met meer bouten als keuze (de
  *     begrenzing geldt strikt voor één bout in de krachtsrichting en ligt
- *     daarbuiten aan de veilige kant). De boutgroep volgens §3.7(1);
+ *     daarbuiten aan de veilige kant). Bij een lange verbinding (L_j > 15·d)
+ *     de reductie β_Lf van §3.8 op F_v,Rd. De boutgroep volgens §3.7(1);
  *   • de schetsplaat op trek over de effectieve breedte (spreiding onder 30°
  *     over de boutrij, begrensd door de vrije randen), met (6.6) en (6.7);
  *   • blokschuif in de schetsplaat: twee afschuifvlakken langs de boutrij
@@ -40,7 +41,8 @@
  *     buitenste bout tot een vrije rand, loodrecht op die rand (e_rand), aan
  *     de veilige kant;
  *   • het eind van het hoekstaal mag niet voorbij een gelaste rand steken
- *     (l_0 ≥ l_0,min); een gewiste l_0 valt daar ook onder.
+ *     (l_0 ≥ l_0,min); een gewiste l_0 valt daar ook onder. Het gat moet
+ *     binnen het vlakke deel van het been liggen: e_2 + d_0/2 ≤ h − t.
  *
  * Niet in dit blad: knik van de schoor zelf (dat hoort bij het blad van het
  * windverband), het profiel of de plaat waaraan de schetsplaat is gelast, en
@@ -188,6 +190,10 @@ e_rand = min(h_schets - y_n; b_schets - x_n)
 'Het eind van het hoekstaal mag niet voorbij een gelaste rand steken: de vrije rand van het been ligt e_2 onder de as, de hiel h_L − e_2 erboven.
 l_0,min = max(e_2/tan(θ); (h_L - e_2)*tan(θ))
 ok_L = if(l_0 + 0.001*mm ≥ l_0,min; 1; 0)
+'Het gat moet binnen het vlakke deel van het been liggen en mag het uitstaande been niet raken.
+e_gat = e_2 + 0.5*d_0
+h_vlak = h_L - t_L
+ok_gat = if(e_gat ≤ h_vlak + 0.001*mm; 1; 0)
 #show
 #if hoek > 0
     #if hoek < 90
@@ -195,6 +201,9 @@ ok_L = if(l_0 + 0.001*mm ≥ l_0,min; 1; 0)
             '<b style="color:#b91c1c">Het eind van het hoekstaal steekt voorbij een gelaste rand van de schetsplaat: l<sub>0</sub> ≥ 'l_0,min' mm nodig.</b>
         #end if
     #end if
+#end if
+#if ok_gat ≡ 0
+    '<b style="color:#b91c1c">Het gat valt buiten het vlakke deel van het been: e<sub>2</sub> + d<sub>0</sub>/2 = 'e_gat' mm > h − t = 'h_vlak' mm.</b>
 #end if
 
 # 2. Hoekstaal op trek — §3.10.3
@@ -221,8 +230,14 @@ UC_bs = F_Ed/V_eff,2,Rd', blokschuif in het been'
 
 #hide
 cap = if(n_L ≡ 2; 0; if(n_b ≡ 1; 1; stuikgrens))
+L_j = (n_b - 1)*p_1
 #show
-F_v,Rd = n_L*α_v*f_ub*A_s/γ_M2 to kN', per bout, afschuifvlak door de draad'
+#if L_j > 15*d
+    β_Lf = max(0.75; min(1; 1 - (L_j - 15*d)/(200*d)))', §3.8, lange verbinding: L<sub>j</sub> = (n − 1)·p<sub>1</sub> > 15·d'
+    F_v,Rd = n_L*β_Lf*α_v*f_ub*A_s/γ_M2 to kN', per bout, afschuifvlak door de draad'
+#else
+    F_v,Rd = n_L*α_v*f_ub*A_s/γ_M2 to kN', per bout, afschuifvlak door de draad'
+#end if
 e_1,p = min(b_schets/cos(θ); h_schets/sin(θ)) - (l_0 + e_1 + (n_b - 1)*p_1) to mm', buitenste bout tot de rand van de plaat, langs de as'
 #if vrij ≡ 1
     e_2,p', tot de vrije rand van de plaat, loodrecht op de as<span class="kolom-2"></span>'
@@ -395,8 +410,8 @@ UC_v,p = max(F_Ed*cos(θ)/b_schets; F_Ed*sin(θ)/h_schets)/(t_schets*f_y/(sqrt(3
 # 6. Oordeel
 
 #hide
-'De boutrij moet binnen de plaat en het been liggen, en de hoek tussen 0° en 90°.
-ok_geo = if(hoek > 0; if(hoek < 90; if(e_1,p > 0 mm; if(e_2 < h_L; 1; 0); 0); 0); 0)
+'De boutrij moet binnen de plaat liggen, het gat binnen het vlakke deel van het been, en de hoek tussen 0° en 90°.
+ok_geo = if(hoek > 0; if(hoek < 90; if(e_1,p > 0 mm; ok_gat; 0); 0); 0)
 UC_max = max(UC_t; UC_bs; UC_b; UC_p; UC_bs,p; UC_c; UC_w; UC_v,p)
 #show
 '<table class="alleen-scherm" style="width:100%; border-collapse:collapse; font-size:0.95em;">
@@ -422,7 +437,7 @@ UC_max = max(UC_t; UC_bs; UC_b; UC_p; UC_bs,p; UC_c; UC_w; UC_v,p)
 #if ok_invoer ≡ 0
     '<b>Maatgevende UC</b><span style="color:#b91c1c"> niet te bepalen: vul de schoorkracht, alle maten en het aantal bouten in → <b>de verbinding voldoet niet</b></span>
 #else if ok_geo ≡ 0
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar de boutrij valt buiten de schetsplaat of het been, of de hoek ligt niet tussen 0° en 90° → <b>de verbinding voldoet niet</b></span>
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar de boutrij valt buiten de schetsplaat, het gat valt buiten het vlakke deel van het been, of de hoek ligt niet tussen 0° en 90° → <b>de verbinding voldoet niet</b></span>
 #else if ok_L ≡ 0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar het eind van het hoekstaal steekt voorbij een gelaste rand van de schetsplaat (hoofdstuk 1) → <b>de verbinding voldoet niet</b></span>
 #else if tekort > 0

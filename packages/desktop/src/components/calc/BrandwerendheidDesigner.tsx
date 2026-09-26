@@ -100,7 +100,7 @@ function staalkromme(
  */
 const MATERIAAL: { v: number; label: string; lam: number; rho: number; c: number }[] = [
   { v: 1, label: "Gipskartonplaat", lam: 0.2, rho: 800, c: 1700 },
-  { v: 2, label: "Vermiculiet-/perlietplaat", lam: 0.15, rho: 550, c: 1200 },
+  { v: 2, label: "Vermiculiet-/perlietplaat", lam: 0.2, rho: 800, c: 1200 },
   { v: 3, label: "Spuitmortel", lam: 0.12, rho: 350, c: 1200 },
   { v: 4, label: "Steenwol", lam: 0.2, rho: 150, c: 1200 },
 ];

@@ -36,15 +36,19 @@
  * reductie geldt voor beide voorwaarden van (4.1) en voor (4.3).
  *
  * Stompe las, volledig doorgelast: de weerstand is die van het zwakste
- * verbonden deel (§4.7.1). Getoetst wordt de plaat L × t_p ter plaatse van de
- * las met (6.1) van NEN-EN 1993-1-1, elastisch: de grootste normaalspanning en
- * de grootste schuifspanning (1,5·V/A en wringing volgens de dunne rechthoek)
- * opgeteld, ook al vallen ze niet in hetzelfde punt — aan de veilige kant.
+ * verbonden deel (§4.7.1). Getoetst wordt de doorsnede L × t_p ter plaatse van
+ * de las met (6.1) van NEN-EN 1993-1-1, met f_y van het zwakste deel: bij één
+ * staalsoort die van het dikste verbonden deel, want het deel waarop de plaat
+ * aansluit wordt ter plaatse van de las over dezelfde doorsnede belast (bij
+ * een stuiknaad tussen twee platen ligt dat aan de veilige kant). Elastisch:
+ * de grootste normaalspanning en de grootste schuifspanning (1,5·V/A en
+ * wringing volgens de dunne rechthoek) opgeteld, ook al vallen ze niet in
+ * hetzelfde punt — aan de veilige kant.
  *
  * Materiaal: f_u en f_y volgens tabel 3.1 van NEN-EN 1993-1-1 (S355 t ≤ 40 mm:
- * f_u = 490 N/mm²), f_u naar het dikste verbonden deel (de keuze, en voor de
- * plaat t_p zelf); f_y van de plaat naar t_p. β_w volgens tabel 4.1, γ_M2 =
- * 1,25 en γ_M0 = 1,0 volgens de NB.
+ * f_u = 490 N/mm²), f_u en f_y naar het dikste verbonden deel (de keuze, en
+ * voor de plaat t_p zelf). β_w volgens tabel 4.1, γ_M2 = 1,25 en γ_M0 = 1,0
+ * volgens de NB.
  *
  * Invoernamen komen exact overeen met LasDesigner.tsx; dat beeld leest de UC's
  * en het oordeel uit dit blad. Geen referentieberekening beschikbaar;
@@ -110,7 +114,7 @@ M_zEd = ?*(kN*m)', buiging om de lasas'
 fu_40 = if(staalsoort ≡ 235; 360; if(staalsoort ≡ 275; 430; 490))
 fu_80 = if(staalsoort ≡ 235; 360; if(staalsoort ≡ 275; 410; 470))
 bw_ = if(staalsoort ≡ 235; 0.8; if(staalsoort ≡ 275; 0.85; 0.9))
-'Tabel 3.1 naar het dikste deel: de keuze, en bij een plaat ook t_p zelf.
+'Tabel 3.1 naar het dikste deel: de keuze, en bij een plaat ook t_p zelf; f_u voor de hoeklas, f_y voor de stompe las.
 t_k = dikte
 'fout: 0 = geen, 1 = a < 3 mm, 2 = las te kort, 3 = plaat of maat buiten bereik, 4 = β_Lw ≤ 0.
 fout = 0
@@ -131,9 +135,9 @@ f_u = if(t_k ≡ 40; fu_40; fu_80)*N/mm^2
 #show
 #if typelas ≡ 2
     #hide
-    f_y = if(t_plaat > 40 mm; staalsoort - 20; staalsoort)*N/mm^2
+    f_y = if(t_k ≡ 80; staalsoort - 20; staalsoort)*N/mm^2
     #show
-    'S'staalsoort', plaat L × t<sub>p</sub> volledig doorgelast (§4.7.1): f<sub>y</sub> = 'f_y' N/mm² (tabel 3.1 van NEN-EN 1993-1-1), γ<sub>M0</sub> = 'γ_M0' (NB).
+    'S'staalsoort', plaat L × t<sub>p</sub> volledig doorgelast (§4.7.1): f<sub>y</sub> = 'f_y' N/mm² (tabel 3.1 van NEN-EN 1993-1-1, t ≤ 't_k' mm), γ<sub>M0</sub> = 'γ_M0' (NB).
 #else
     'S'staalsoort': f<sub>u</sub> = 'f_u' N/mm² (tabel 3.1 van NEN-EN 1993-1-1, t ≤ 't_k' mm), β<sub>w</sub> = 'β_w' (tabel 4.1), γ<sub>M2</sub> = 'γ_M2' (NB).
 #end if
@@ -186,7 +190,7 @@ f_u = if(t_k ≡ 40; fu_40; fu_80)*N/mm^2
             '<b style="color:#b45309">b &lt; l<sub>min</sub>: de lassen over b dragen niet mee (§4.5.1(2)); alleen de twee lassen over L.</b>
         #end if
     #end if
-    #if langeverb ≡ 1
+    #if langeverb ≡ 1 and a_las > 0 mm
         β_Lw = min(1; 1.2 - 0.2*L_las/(150*a_las))', (4.9), L<sub>j</sub> = L<span class="alleen-scherm"></span>'
         β_Lw', (4.9)<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
     #else if langeverb ≡ 2
@@ -285,10 +289,6 @@ f_u = if(t_k ≡ 40; fu_40; fu_80)*N/mm^2
         τ_par = τ_z'<span class="alleen-scherm"></span>'
         τ_par'<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
         UC_41 = sqrt(σ_perp^2 + 3*(τ_perp^2 + τ_par^2))/(β_Lw*f_u/(β_w*γ_M2))', (4.1)'
-        #hide
-        UC_max = UC_41
-        τ_dw = τ_y
-        #show
         #if typelas ≡ 3 and n_b ≡ 1
             '<i>Lassen over b: dwars is z, langs is y.</i><span class="alleen-scherm"></span>
             σ_perp,b = abs(σ_x - τ_z)/sqrt(2)'<span class="alleen-scherm"></span>'
@@ -298,15 +298,16 @@ f_u = if(t_k ≡ 40; fu_40; fu_80)*N/mm^2
             τ_par,b = τ_y'<span class="alleen-scherm"></span>'
             τ_par,b'<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
             UC_41,b = sqrt(σ_perp,b^2 + 3*(τ_perp,b^2 + τ_par,b^2))/(β_Lw*f_u/(β_w*γ_M2))', (4.1)<span class="alleen-scherm">, lassen over b</span>'
+            UC_σ = (σ_x + max(τ_y; τ_z))/sqrt(2)/(β_Lw*0.9*f_u/γ_M2)', (4.1), grootste σ<sub>⊥</sub> ≤ 0,9·f<sub>u</sub>/γ<sub>M2</sub>'
             #hide
-            UC_max = max(UC_41; UC_41,b)
-            τ_dw = max(τ_y; τ_z)
+            UC_max = max(UC_41; UC_41,b; UC_σ)
+            #show
+        #else
+            UC_σ = (σ_x + τ_y)/sqrt(2)/(β_Lw*0.9*f_u/γ_M2)', (4.1), grootste σ<sub>⊥</sub> ≤ 0,9·f<sub>u</sub>/γ<sub>M2</sub>'
+            #hide
+            UC_max = max(UC_41; UC_σ)
             #show
         #end if
-        UC_σ = (σ_x + τ_dw)/sqrt(2)/(β_Lw*0.9*f_u/γ_M2)', (4.1), grootste σ<sub>⊥</sub> ≤ 0,9·f<sub>u</sub>/γ<sub>M2</sub>'
-        #hide
-        UC_max = max(UC_max; UC_σ)
-        #show
     #else
         '<h6>Vereenvoudigde methode — §4.5.3.3<span class="alleen-scherm"></span></h6>
         f_vw,d = f_u/(sqrt(3)*β_w*γ_M2) to N/mm^2', (4.4)<span class="alleen-scherm"></span>'

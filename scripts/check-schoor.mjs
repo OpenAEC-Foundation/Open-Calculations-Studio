@@ -8,14 +8,14 @@
  *
  *   1. Een onafhankelijke uitwerking in JavaScript van elke toets: trek in het
  *      hoekstaal (6.6) en (3.11) tot (3.13) met tabel 3.8, blokschuif in het
- *      been (3.10), de bouten volgens tabel 3.4 met §3.6.1(10) en de
+ *      been (3.10), de bouten volgens tabel 3.4 met §3.6.1(10), §3.8 en de
  *      boutgroep van §3.7(1), de schetsplaat op trek over de spreiding onder
  *      30° ((6.6) en (6.7)), blokschuif in de plaat ((3.9) of (3.10)), knik
  *      van de plaat bij druk (§6.3.1, kromme c), de hoeklassen (4.3), (4.4),
  *      (4.9) en de schuif in de plaat langs de las (6.18), met de afstanden
  *      van tabel 3.3 (ook de kortste afstand tot een schuine vrije rand) en
  *      de eis dat het eind van het hoekstaal niet voorbij een gelaste rand
- *      steekt.
+ *      steekt en dat het gat binnen het vlakke deel van het been ligt.
  *   2. Voor enkele sets de getallen van een handberekening, met de
  *      tussenstappen in het commentaar. Set 1 is het voorbeeld dat ook de
  *      startwaarden van het beeld zijn.
@@ -118,8 +118,13 @@ function uitwerking(invoer) {
   const l0min = Math.max(v.e_2 / Math.tan(th), (h - v.e_2) * Math.tan(th));
   const okL = v.l_0 + 0.001 >= l0min;
 
-  // Bouten: tabel 3.4, §3.6.1(10), §3.7(1).
-  const Fv = (nL * av * fub * As) / gM2;
+  // Het gat in het vlakke deel van het been: niet in het uitstaande been.
+  const gatOk = v.e_2 + d0 / 2 <= h - t + 0.001;
+
+  // Bouten: tabel 3.4, §3.6.1(10), §3.7(1); §3.8 bij L_j > 15·d.
+  const Lj = (n - 1) * v.p_1;
+  const bLf = Lj > 15 * d ? Math.max(0.75, Math.min(1, 1 - (Lj - 15 * d) / (200 * d))) : null;
+  const Fv = ((bLf ?? 1) * nL * av * fub * As) / gM2;
   const k1L = Math.min((2.8 * v.e_2) / d0 - 1.7, 2.5);
   const k1p = vrij ? Math.min((2.8 * e2p) / d0 - 1.7, 2.5) : 2.5;
   const ab1 = Math.min(v.e_1 / (3 * d0), fub / fu, 1);
@@ -194,10 +199,10 @@ function uitwerking(invoer) {
   const invoerOk =
     [v.e_1, n >= 2 ? v.p_1 : 1, v.e_2, tp, v.b_schets, v.h_schets, v.a_las].every((x) => x > 0) &&
     v.l_0 >= 0 && v.n_bouten >= 1 && v.F_Ed > 0;
-  const geoOk = v.hoek > 0 && v.hoek < 90 && e1p > 0 && v.e_2 < h;
+  const geoOk = v.hoek > 0 && v.hoek < 90 && e1p > 0 && gatOk;
   const UCmax = Math.max(UCt, UCbs, UCb, UCp, UCbsp, UCc, UCw, UCvp);
   return {
-    n, nL, cap, vrij, erand, l0min, okL, Npl, Anet, beta, Nu, UCt, Ant, Anv, Veff2, UCbs, e1p, e2p, Fv, k1L, k1p, ab1, abi, abp,
+    n, nL, cap, vrij, erand, l0min, okL, gatOk, bLf, Npl, Anet, beta, Nu, UCt, Ant, Anv, Veff2, UCbs, e1p, e2p, Fv, k1L, k1p, ab1, abi, abp,
     FbL1, FbLi, Fbpn, Fbpi, Fcap, Fb1, Fbn, Fbm, Fgroep, UCb, bw, beff, Np, UCp, Anvp, Antp, Veffp, UCbsp,
     drukOk, lam, chi, Nb, UCc, fvwd, bLw, FwRd, FwEdb, FwEdh, UCw, UCvp, lasOk, tekort, invoerOk, geoOk, UCmax,
   };
@@ -235,6 +240,7 @@ function verwachtingen(r, v) {
   if (r.cap) uit.F_b_cap = kN(r.Fcap);
   if (r.Nb !== null) Object.assign(uit, { λ_p: ruim(r.lam), χ_p: ruim(r.chi), N_b_p_Rd: kN(r.Nb), UC_c: ruim(r.UCc) });
   if (r.bLw < 1) uit.β_Lw = ruim(r.bLw);
+  if (r.bLf !== null) uit.β_Lf = ruim(r.bLf);
   return uit;
 }
 
@@ -411,6 +417,33 @@ const SETS = [
     // = 31,44 mm; loodrecht op de bovenrand 92,6 − 74,565 = 18,04 mm < 21,6 mm: tabel 3.3.
     handwerk: { e_2_p: "22.02", e_1_p: "31.44", e_rand: "18.04" },
   },
+  {
+    naam: "18 — lange verbinding (§3.8): L 60×60×6, zes bouten M12 – 4.6, p_1 50, afschuiving maatgevend",
+    invoer: {
+      hoekprofiel: 4, boutkwaliteit: 46, boutmaat: 12, n_bouten: 6, e_1: 25, p_1: 50, e_2: 25, l_0: 40,
+      b_schets: 450, h_schets: 320, F_Ed: 60, stuikgrens: 0,
+    },
+    // L_j = 5·50 = 250 > 15·12 = 180 mm → β_Lf = 1 − 70/2400 = 0,9708.
+    // F_v,Rd = 0,9708·0,6·400·84,3/1,25 = 15,71 kN (zonder reductie 16,19 kN).
+    // Been: k_1 = min(3,685; 2,5) = 2,5; α_b = 25/39 = 0,6410 → 2,5·0,6410·25 920/1,25 = 33,23 kN;
+    // binnenste α_b = min(0,0282 + 1; 1) = 1 → 51,84 kN. Plaat: α_b = 1 → 69,12 kN.
+    // F_v,Rd < de stuik → groep 6·15,71 = 94,28 kN → UC 0,6364 (zonder §3.8: 97,11 kN, UC 0,6179).
+    // Trek: β_3 = 0,5 + 0,2·(3,846 − 2,5)/2,5 = 0,6077; A_net = 691 − 78 = 613 mm² → 107,28 kN → UC 0,5593.
+    handwerk: {
+      β_Lf: "0.9708", F_v_Rd: "15.71", F_b_L_1: "33.23", F_b_L_i: "51.84", F_b_p_n: "69.12",
+      F_Rd_groep: "94.28", UC_b: "0.6364", β_3: "0.6077", N_u_Rd: "107.3", UC_t: "0.5593", UC_max: "0.6364",
+    },
+  },
+  // Het gat moet binnen het vlakke deel van het been liggen: e_2 + d_0/2 ≤ h − t. L 50×50×5 met M20:
+  // h − t = 45 mm, d_0/2 = 11 mm → e_2 ≤ 34 mm.
+  {
+    naam: "19a — grensgeval: L 50×50×5 met M20, e_2 34 mm: het gat raakt het uitstaande been net niet",
+    invoer: { boutmaat: 20, e_1: 30, p_1: 60, e_2: 34, l_0: 60 },
+    // A_net = 480 − 22·5 = 370 mm²; β_2 = 0,4 + 0,3·(2,727 − 2,5)/2,5 = 0,4273 → N_u,Rd = 45,53 kN → UC 0,8785.
+    handwerk: { A_net: "370", β_2: "0.4273", N_u_Rd: "45.53", UC_t: "0.8785", UC_max: "0.8785" },
+  },
+  { naam: "19b — L 50×50×5 met M20, e_2 34,5 mm: het gat snijdt het uitstaande been", invoer: { boutmaat: 20, e_1: 30, p_1: 60, e_2: 34.5, l_0: 60 } },
+  { naam: "19c — L 40×40×4 met M24, e_2 32 mm: het gat steekt buiten de hiel", invoer: { hoekprofiel: 1, boutmaat: 24, e_1: 35, p_1: 70, e_2: 32, l_0: 60, b_schets: 300, h_schets: 250, F_Ed: 20 } },
   // Gewiste velden ('') leest de kern als 0; een negatieve kracht is geen grootte. Het oordeel
   // moet dan "niet te bepalen … voldoet niet" zijn, nooit "voldoet".
   { naam: "15a — e_2 gewist", invoer: { e_2: "" }, alleenOordeel: true },
@@ -441,7 +474,7 @@ for (const set of SETS) {
     console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ${wat}, gemeld als voldoet niet`);
   };
   if (!r.invoerOk) gemeld(/niet te bepalen/, "invoer ontbreekt");
-  else if (!r.geoOk) gemeld(/valt buiten de schetsplaat/, "boutrij buiten de plaat");
+  else if (!r.geoOk) gemeld(/valt buiten de schetsplaat/, "boutrij buiten de plaat of gat buiten het been");
   else if (!r.okL) gemeld(/steekt voorbij een gelaste rand/, "hoekstaal steekt voorbij een gelaste rand");
   else if (r.tekort) gemeld(/buiten tabel 3\.3/, `${r.tekort} afstand(en) buiten tabel 3.3`);
   else if (!r.lasOk) gemeld(/de las voldoet niet aan §4\.5\.1\(2\) of §4\.5\.2\(2\)/, "las te klein of te kort");
