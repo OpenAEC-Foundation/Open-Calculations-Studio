@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDesigner, Dim, Force, Ro, Defs, HDim, VDim, loadMark, fmt, clamp } from "./designerKit";
-import { useAlleenLezen } from "../../store/actiefBlad";
+import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
 import "./VoetplaatDesigner.css";
 
 /**
@@ -8,8 +8,8 @@ import "./VoetplaatDesigner.css";
  *
  * Twee aanzichten:
  *   • Plattegrond — de wanden in de beschouwde richting op hun positie x, in de
- *     lastrichting getekend met hun lengte, met de gevel en de werklijn van de
- *     horizontale belasting (midden van de gevel plus de excentriciteit).
+ *     lastrichting getekend met hun lengte, met de gevel en de werklijnen van
+ *     de horizontale belasting op B/2 ± e_F, zoals het blad ze toetst.
  *   • Aanzicht — één wand met zijn panelen, de stijlen op hart-op-hartafstand
  *     en de ankers aan beide einden.
  *
@@ -49,7 +49,12 @@ export default function HsbStabiliteitDesigner() {
   const [toon, setToon] = useState(1);
   // In de afdruk valt er niets te klikken; dan ook geen aanwijzing daarvoor.
   const afdruk = useAlleenLezen();
+  // Een exemplaar houdt zijn eigen kopie van de rekentekst. Een blad uit een
+  // oudere versie toetst de last alleen op B/2 + e_F, met het teken van e_F;
+  // het beeld tekent dan ook alleen die werklijn.
+  const bron = useActiefExemplaar()?.source ?? "";
   if (!ctx.actief) return null;
+  const beideKanten = bron.includes("abs(e_F)");
   const { d, set, box, wrapRef } = ctx;
 
   const n = clamp(Math.round(d("n_wanden")), 1, 6);
@@ -62,8 +67,13 @@ export default function HsbStabiliteitDesigner() {
   const actief = wanden[Math.min(toon, n) - 1];
 
   const B = Math.max(0.1, d("B_gevel"));
-  const eF = d("e_F");
+  // Het blad toetst de last op B/2 + |e_F| én op B/2 − |e_F| (asymmetrische
+  // wind, beide kanten). De eerste is de doorgetrokken pijl, de tweede de
+  // gestippelde; bij e_F = 0 vallen ze samen.
+  const eF = beideKanten ? Math.abs(d("e_F")) : d("e_F");
   const xF = B / 2 + eF;
+  const xF2 = beideKanten ? B / 2 - eF : xF;
+  const tweeKanten = beideKanten && eF > 0.001;
   const lastWind = Math.round(d("lastinvoer")) === 1;
   const F = lastWind ? d("F_w_k") : d("F_v_Ed");
   const hw = Math.max(1, d("h_w"));
@@ -79,7 +89,7 @@ export default function HsbStabiliteitDesigner() {
   const mL = clamp(W * 0.08, 36, 64), mR = clamp(W * 0.08, 36, 64);
 
   // plattegrond: x langs de gevel (m), wandlengte in de lastrichting (mm)
-  const xLo = Math.min(0, ...wanden.map((w) => w.x));
+  const xLo = Math.min(0, xF2, ...wanden.map((w) => w.x));
   const xHi = Math.max(B, xF, ...wanden.map((w) => w.x));
   const sx = (W - mL - mR) / Math.max(0.001, xHi - xLo);
   const X = (x: number) => mL + (x - xLo) * sx;
@@ -88,9 +98,10 @@ export default function HsbStabiliteitDesigner() {
   const sy = (yGevel - 64) / Lmax;
   const yMid = (yGevel + 14) / 2 + 6;
   // De lengtechip staat op de wand zelf: ernaast botst hij met de chip van een
-  // buurwand zodra het tekenvlak smal is. De maat van de gevel staat op een
-  // kwart, zodat hij niet onder de werklijn van de last valt.
-  const xMaatB = X(0) + (X(B) - X(0)) * (xF > B / 2 ? 0.25 : 0.75);
+  // buurwand zodra het tekenvlak smal is. De maat van de gevel staat in het
+  // midden als de twee werklijnen daar ruim uit elkaar staan, anders op een
+  // kwart, zodat hij niet onder een werklijn valt.
+  const xMaatB = tweeKanten && eF * sx > 44 ? X(B / 2) : X(0) + (X(B) - X(0)) * (xF > B / 2 ? 0.25 : 0.75);
 
   // aanzicht van één wand, op schaal
   const se = clamp(Math.min((W - mL - mR - 60) / Math.max(1, actief.L), (AH - 90) / hw), 0.005, 2);
@@ -154,7 +165,11 @@ export default function HsbStabiliteitDesigner() {
                     </g>
                   );
                 })}
-                {/* werklijn van de belasting */}
+                {/* werklijnen van de belasting: B/2 + |e| doorgetrokken, B/2 − |e| gestippeld */}
+                {tweeKanten && (
+                  <line x1={X(xF2)} y1={PH - 4} x2={X(xF2)} y2={yGevel + 4} className="vd-load" strokeWidth={1.6}
+                    strokeDasharray="5 4" markerEnd={loadMark("hp")} />
+                )}
                 <line x1={X(xF)} y1={PH - 4} x2={X(xF)} y2={yGevel + 4} className="vd-load" strokeWidth={2.6} markerEnd={loadMark("hp")} />
                 <line x1={X(B / 2)} y1={16} x2={X(B / 2)} y2={yGevel - 4} stroke="#9CA3AF" strokeWidth={0.9} strokeDasharray="6 4" />
               </svg>
@@ -163,8 +178,10 @@ export default function HsbStabiliteitDesigner() {
                 <Dim key={w.j} ctx={ctx} name={`L_${w.j}`} value={w.L} x={X(w.x)} y={yMid} step={100} label={`L${w.j}`} />
               ))}
               <Dim ctx={ctx} name="B_gevel" value={B} x={xMaatB} y={yGevel + 16} step={0.5} dec={1} label="B" />
-              <Force ctx={ctx} name={lastWind ? "F_w_k" : "F_v_Ed"} value={F} x={X(xF) - 56} y={PH - 16} unit="kN" label={lastWind ? "F_w,k" : "F_v,Ed"} />
-              <Dim ctx={ctx} name="e_F" value={eF} x={X(xF) + 40} y={PH - 16} step={0.1} dec={2} label="e" />
+              {/* de last links van de gestippelde werklijn, ±e rechts van de doorgetrokken */}
+              <Force ctx={ctx} name={lastWind ? "F_w_k" : "F_v_Ed"} value={F} x={Math.max(40, X(xF2) - 56)} y={PH - 16} unit="kN" label={lastWind ? "F_w,k" : "F_v,Ed"} />
+              <Dim ctx={ctx} name="e_F" value={eF} x={X(xF) + 40} y={PH - 16} step={0.1} dec={2} label={beideKanten ? "±e" : "e"}
+                title={beideKanten ? "excentriciteit ± ten opzichte van het midden; het blad toetst beide kanten — klik om te wijzigen" : undefined} />
               <Ro text="midden" x={X(B / 2)} y={8} />
             </div>
           </div>

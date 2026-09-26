@@ -11,7 +11,9 @@ import "./VoetplaatDesigner.css";
  *     geprofileerde nagel of schroef is het deel met profiel of draad getekend.
  *   • Aanzicht van het element aan de puntzijde — het patroon van n₁ × n₂
  *     verbindingsmiddelen met de afstanden a₁ tot a₄, de vezelrichting en de
- *     kracht onder de hoek α.
+ *     kracht onder de hoek α. Is bij een kracht onder een hoek de hoogte h
+ *     ingevuld, dan toont het aanzicht het element dat op splijten wordt
+ *     getoetst, op die hoogte.
  *
  * Het beeld rekent zelf niets; sterkte, groep en afstandseisen staan in het
  * rekenblad. Alleen de indringdiepte, een zuiver meetkundige maat, staat erbij.
@@ -25,11 +27,12 @@ const OPBOUW = [
   { v: 4, label: "Staalplaat – hout" },
   { v: 5, label: "Hout – staal – hout" },
 ];
+// Dezelfde keuzes als in het rekenblad; `kort` voor de kop en de voetregel.
 const MIDDEL = [
-  { v: 1, label: "Gladde nagel" },
-  { v: 2, label: "Vierkante of gegroefde nagel" },
-  { v: 3, label: "Ring- of schroefnagel" },
-  { v: 4, label: "Schroef" },
+  { v: 1, label: "Gladde nagel", kort: "gladde nagel" },
+  { v: 2, label: "Vierkante of gegroefde nagel, niet geprofileerd", kort: "vierkante of gegroefde nagel" },
+  { v: 3, label: "Ring-, schroef- of andere geprofileerde nagel (EN 14592)", kort: "geprofileerde nagel" },
+  { v: 4, label: "Schroef", kort: "schroef" },
 ];
 
 // Twee planken C24 van 38 en 71 mm, verbonden met tien gladde nagels 3,4 × 90
@@ -67,11 +70,23 @@ export default function NagelSchroefDesigner() {
   const t1 = Math.max(0.5, d("t_1")), t2 = Math.max(0.5, d("t_2")), ts = Math.max(0.5, d("t_s"));
   const dv = Math.max(0.5, d("d_v")), lv = Math.max(1, d("l_v")), dh = Math.max(dv, d("d_h"));
   const d1 = Math.min(dv, Math.max(0.3, d("d_1")));
-  const lg = Math.max(0, Math.min(lv, middel === 1 ? 0 : d("l_g")));
+  // Een gladde of een niet-geprofileerde vierkante nagel heeft geen deel met
+  // profiel; het blad vraagt l_g dan ook niet.
+  const lg = Math.max(0, Math.min(lv, middel <= 2 ? 0 : d("l_g")));
   const n1 = clamp(Math.round(d("n_1")), 1, 40), n2 = clamp(Math.round(d("n_2")), 1, 12);
   const a1 = Math.max(1, d("a_1")), a2 = Math.max(1, d("a_2")), a3 = Math.max(1, d("a_3")), a4 = Math.max(1, d("a_4"));
-  const alfa = clamp(d("α"), 0, 90);
+  // De scherpe hoek tussen kracht en vezel, zoals het blad ermee rekent: 150° is 30°.
+  const aMod = Math.abs(d("α")) % 180;
+  const alfa = Math.min(aMod, 180 - aMod);
+  // Bij een kracht onder een hoek vraagt het blad de hoogte h van het element
+  // (splijten); is die bekend, dan krijgt het aanzicht die hoogte.
+  const h90 = d("h_90");
+  const groepH = a4 + (n2 - 1) * a2;
+  const metH = alfa > 0 && h90 > groepH;
   const eindBelast = Math.round(d("eind")) === 1, randBelast = Math.round(d("rand")) === 1;
+  // Is de rand bij a4 onbelast terwijl de kracht een hoek maakt, dan is de
+  // rand aan de overkant belast; daar toetst het blad splijten.
+  const overkantBelast = !randBelast && alfa > 0;
   const versprongen = Math.round(d("versprongen")) === 1;
   const Fv = d("F_v_Ed"), Fax = d("F_ax_Ed");
 
@@ -116,7 +131,7 @@ export default function NagelSchroefDesigner() {
   // rechts, de kracht in een eigen inzet erboven, zodat niets over de
   // verbindingsmiddelen valt.
   const lengte = a3 + (n1 - 1) * a1 + Math.max(a1, a3) * 1.2;
-  const hoogte = 2 * a4 + (n2 - 1) * a2;
+  const hoogte = metH ? h90 : 2 * a4 + (n2 - 1) * a2;
   const inzetH = 92, onderH = 58, rechtsB = 92;
   const sa = clamp(Math.min((W - mL - rechtsB) / lengte, (AH - inzetH - onderH) / hoogte), 0.05, 8);
   const ax0 = mL;
@@ -145,14 +160,14 @@ export default function NagelSchroefDesigner() {
   const boog = `M ${cxF + sx * rBoog} ${cyF} A ${rBoog} ${rBoog} 0 0 ${dth > 0 ? 1 : 0} ${cxF + fx * rBoog} ${cyF + fy * rBoog}`;
   const thMid = th0 + dth / 2;
 
-  const middelLabel = MIDDEL.find((m) => m.v === middel)?.label ?? "";
+  const middelKort = MIDDEL.find((m) => m.v === middel)?.kort ?? "";
   const opbouwLabel = OPBOUW.find((o) => o.v === opbouw)?.label ?? "";
 
   return (
     <div className="vd-panel" data-afdrukhoogte="150">
       <div className="vd-head">
         <strong>Parametrisch beeld — nagel- en schroefverbinding</strong>
-        <span className="vd-uc info">{n1 * n2}× {middelLabel.toLowerCase()} {fmt(dv, 1)} × {fmt(lv)} · {opbouwLabel.toLowerCase()}</span>
+        <span className="vd-uc info">{n1 * n2}× {middelKort} {fmt(dv, 1)} × {fmt(lv)} · {opbouwLabel.toLowerCase()}</span>
       </div>
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
@@ -243,7 +258,9 @@ export default function NagelSchroefDesigner() {
           </div>
 
           <div className="vd-canvas">
-            <div className="vd-caption">Aanzicht van het element aan de puntzijde</div>
+            {/* Met h is het getekende element het element dat op splijten wordt getoetst
+                (el_90); dat hoeft niet het element aan de puntzijde te zijn. */}
+            <div className="vd-caption">{metH ? "Aanzicht van het element dat op splijten wordt getoetst" : "Aanzicht van het element aan de puntzijde"}</div>
             <div className="vd-stage" style={{ width: W, height: AH, background: "transparent", border: "none", borderRadius: 0 }}>
               <svg width={W} height={AH} className="vd-svg">
                 <Defs k="np" />
@@ -259,6 +276,7 @@ export default function NagelSchroefDesigner() {
                 {/* eind en rand; belast in rood */}
                 <line x1={ax0} y1={ay0} x2={ax0} y2={ay1} stroke={eindBelast ? "#b91c1c" : "#8B6F47"} strokeWidth={eindBelast ? 3 : 1.4} />
                 <line x1={ax0} y1={ay1} x2={ax1} y2={ay1} stroke={randBelast ? "#b91c1c" : "#8B6F47"} strokeWidth={randBelast ? 3 : 1.4} />
+                {overkantBelast && <line x1={ax0} y1={ay0} x2={ax1} y2={ay0} stroke="#b91c1c" strokeWidth={3} />}
                 {Array.from({ length: n1 }, (_, i) => Array.from({ length: n2 }, (_, j) => (
                   <g key={`${i}-${j}`}>
                     <circle cx={px(i)} cy={py(i, j)} r={rDot} fill="#e5e7eb" stroke="#374151" strokeWidth={1.1} />
@@ -277,7 +295,7 @@ export default function NagelSchroefDesigner() {
                 <line x1={cxF} y1={cyF} x2={fxEnd} y2={fyEnd} className="vd-load" strokeWidth={2.8} markerEnd={loadMark("np")} />
                 <circle cx={cxF} cy={cyF} r={2.6} fill="#b91c1c" />
                 <text x={ax0 + 2} y={ay1 + 54} fill="#6b7280" fontSize={10}>
-                  rood: {[eindBelast && "belast eind", randBelast && "belaste rand"].filter(Boolean).join(" en ") || "geen belast eind of rand"}
+                  rood: {[eindBelast && "belast eind", randBelast && "belaste rand", overkantBelast && "belaste rand aan de overkant"].filter(Boolean).join(" en ") || "geen belast eind of rand"}
                 </text>
               </svg>
 
@@ -299,9 +317,9 @@ export default function NagelSchroefDesigner() {
           De sterkte, de groep en de eisen aan de afstanden staan in het rekenblad.
         </span>
         <span className="vd-live">
-          {opbouwLabel} · {middelLabel.toLowerCase()} d = {fmt(dv, 1)} mm, l = {fmt(lv)} mm
+          {opbouwLabel} · {middelKort} d = {fmt(dv, 1)} mm, l = {fmt(lv)} mm
           {middel === 4 ? `, kern ${fmt(d1, 1)} mm` : ""}{voorboren ? " · voorgeboord" : ""} ·
-          {" "}{n2} × {n1} stuks · a1 = {fmt(a1)} · {n2 > 1 ? `a2 = ${fmt(a2)} · ` : ""}a3 = {fmt(a3)} · a4 = {fmt(a4)} ·
+          {" "}{n2} × {n1} stuks · a1 = {fmt(a1)} · {n2 > 1 ? `a2 = ${fmt(a2)} · ` : ""}a3 = {fmt(a3)} · a4 = {fmt(a4)} ·{metH ? ` h = ${fmt(h90)} ·` : ""}
           {" "}α = {fmt(alfa)}° · F<sub>v,Ed</sub> = {fmt(Fv, 1)} kN{Fax > 0 ? ` · F_ax,Ed = ${fmt(Fax, 1)} kN` : ""}
         </span>
       </div>

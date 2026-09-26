@@ -53,7 +53,7 @@ const RING: Record<number, [number, number]> = {
 };
 /** Treksterkte van het boutmateriaal f_ub [N/mm²] — tabel 3.1. */
 const FUB: Record<number, number> = { 46: 400, 48: 400, 56: 500, 58: 500, 68: 600, 88: 800, 109: 1000 };
-/** Treksterkte plaatmateriaal f_u [N/mm²] — NB bij NEN-EN 1993-1-1, t ≤ 40 mm. */
+/** Treksterkte plaatmateriaal f_u [N/mm²] — tabel 3.1 van NEN-EN 1993-1-1, t ≤ 40 mm. */
 const FU: Record<number, number> = { 235: 360, 275: 430, 355: 490 };
 
 const DEFAULTS: Record<string, number> = {
@@ -110,9 +110,14 @@ export default function BoutDesigner() {
   const pos = Math.round(d("boutpositie"));        // 1 = eindbout (krachtsrichting)
   const randpos = Math.round(d("randpositie"));    // 1 = randbout (loodrecht)
   const t = Math.max(1, d("t_plaat"));
+  // De tekening klemt de maten op iets tekenbaars; invoervelden en maatchips tonen de waarden uit het blad.
   const e1 = Math.max(1, d("e_1")), p1 = Math.max(1, d("p_1"));
-  // p₂ = 0 bij een randbout: geen tweede bout loodrecht op de kracht, zoals in het blad.
-  const eenKolom = randpos === 1 && !(d("p_2") > 0);
+  // Randbout zonder tweede bout loodrecht op de kracht: dat beslist het blad.
+  // Het blad rekent dan zonder p₂-tak en toont k₁,bin niet. Een leeg of
+  // onleesbaar veld geeft in het beeld de startwaarde van p₂, dus het beeld
+  // leidt het niet uit zijn eigen veldwaarde af.
+  const g = uitkomst?.getallen ?? {};
+  const eenKolom = randpos === 1 && (uitkomst ? g.k_1_bin === undefined : !(d("p_2") > 0));
   const e2 = Math.max(1, d("e_2")), p2 = eenKolom ? 0 : Math.max(1, d("p_2"));
   const nv = Math.max(1, Math.round(d("n_v")));
   const FvEd = Math.max(0, d("F_v_Ed")), FtEd = Math.max(0, d("F_t_Ed"));
@@ -126,7 +131,6 @@ export default function BoutDesigner() {
   const f_u = FU[fy] ?? 360;
 
   // ── weerstanden en oordeel: uit het doorgerekende blad ─────────────────────
-  const g = uitkomst?.getallen ?? {};
   const w = (naam: string, dec: number) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));
   // k₁,XC staat alleen in het blad als de rekenwijze de stuikweerstand verandert.
   const k1 = g.k_1_XC !== undefined ? "k_1_XC" : "k_1";
@@ -263,24 +267,25 @@ export default function BoutDesigner() {
             </select>
           </label>
           <label>Plaatdikte t (mm)
-            <input type="number" step={1} min={1} value={t} onChange={(e) => set("t_plaat", parseFloat(e.target.value))} />
+            <input type="number" step={1} min={1} value={d("t_plaat")} onChange={(e) => set("t_plaat", parseFloat(e.target.value))} />
           </label>
           <label title="Aantal afschuifvlakken van deze bout">Afschuifvlakken n<sub>v</sub>
-            <input type="number" step={1} min={1} value={nv} onChange={(e) => set("n_v", parseFloat(e.target.value))} />
+            <input type="number" step={1} min={1} value={d("n_v")} onChange={(e) => set("n_v", parseFloat(e.target.value))} />
           </label>
 
           <span className="vd-ctrl-h">Afstanden (mm)</span>
           <label title="Eindafstand in de krachtsrichting">e<sub>1</sub>
-            <input type="number" step={5} value={e1} onChange={(e) => set("e_1", parseFloat(e.target.value))} />
+            <input type="number" step={5} value={d("e_1")} onChange={(e) => set("e_1", parseFloat(e.target.value))} />
           </label>
           <label title="Steek in de krachtsrichting — telt alleen bij een binnenste bout">p<sub>1</sub>
-            <input type="number" step={5} value={p1} onChange={(e) => set("p_1", parseFloat(e.target.value))} />
+            <input type="number" step={5} value={d("p_1")} onChange={(e) => set("p_1", parseFloat(e.target.value))} />
           </label>
-          <label title="Eindafstand loodrecht op de kracht">e<sub>2</sub>
-            <input type="number" step={5} value={e2} onChange={(e) => set("e_2", parseFloat(e.target.value))} />
+          <label title="Randafstand loodrecht op de kracht">e<sub>2</sub>
+            <input type="number" step={5} value={d("e_2")} onChange={(e) => set("e_2", parseFloat(e.target.value))} />
           </label>
           <label title="Steek loodrecht op de kracht — 0 = geen tweede bout loodrecht op de kracht">p<sub>2</sub>
-            <input type="number" step={5} min={0} value={d("p_2")} onChange={(e) => set("p_2", parseFloat(e.target.value))} />
+            <input type="number" step={5} min={0} value={eenKolom ? 0 : d("p_2")}
+              onChange={(e) => { const v = parseFloat(e.target.value); set("p_2", Number.isFinite(v) ? v : 0); }} />
           </label>
           <span className="gd-note">Tabel 3.3: {eisen.map((e) => (
             <span key={e.naam} style={{ color: !e.actief ? "#9ca3af" : !e.ok ? "#b91c1c" : e.boven ? "#b45309" : "#047857" }}>
@@ -357,12 +362,12 @@ export default function BoutDesigner() {
                 <VDim k="bp" y0={py(e2 + p2)} y1={yPl1} x={px(L) + xDim} ext={px(L) + 4} />
               </svg>
 
-              <Dim ctx={ctx} name="e_1" value={e1} x={px(e1 / 2)} y={yPl1 + 26} step={5} label="e1" />
-              <Dim ctx={ctx} name="p_1" value={p1} x={px(e1 + p1 / 2)} y={yPl1 + 26} step={5} label="p1" />
-              <Ro text={fmt(e1)} x={px(e1 + p1 + e1 / 2)} y={yPl1 + 26} title="gelijk aan e₁ aan de andere zijde" />
-              <Dim ctx={ctx} name="e_2" value={e2} x={px(L) + xDim} y={py(e2 / 2)} step={5} label="e2" />
+              <Dim ctx={ctx} name="e_1" value={d("e_1")} x={px(e1 / 2)} y={yPl1 + 26} step={5} label="e1" />
+              <Dim ctx={ctx} name="p_1" value={d("p_1")} x={px(e1 + p1 / 2)} y={yPl1 + 26} step={5} label="p1" />
+              <Ro text={fmt(d("e_1"))} x={px(e1 + p1 + e1 / 2)} y={yPl1 + 26} title="gelijk aan e₁ aan de andere zijde" />
+              <Dim ctx={ctx} name="e_2" value={d("e_2")} x={px(L) + xDim} y={py(e2 / 2)} step={5} label="e2" />
               {!eenKolom && <Dim ctx={ctx} name="p_2" value={p2} x={px(L) + xDim} y={py(e2 + p2 / 2)} step={5} label="p2" />}
-              <Ro text={fmt(e2)} x={px(L) + xDim} y={py(e2 + p2 + e2 / 2)} title="gelijk aan e₂ aan de andere zijde" />
+              <Ro text={fmt(d("e_2"))} x={px(L) + xDim} y={py(e2 + p2 + e2 / 2)} title="gelijk aan e₂ aan de andere zijde" />
               <Ro text="F" x={xA0 - 8 - pijl / 2} y={py(B / 2) - 15} kleur="#dc2626" title="kracht op plaat A" />
               <Ro text="F" x={xB1 + 8 + pijl / 2} y={py(B / 2) - 15} kleur="#dc2626" title="kracht op plaat B" />
               <Ro text="A" x={xA0 + 12} y={yPl0 + 11} title="plaat A, boven" />
@@ -436,7 +441,7 @@ export default function BoutDesigner() {
                 <VDim k="bs" y0={ySn} y1={yB1} x={px(0) - 20} ext={px(0) - 4} />
               </svg>
 
-              <Dim ctx={ctx} name="t_plaat" value={t} x={px(0) - 20} y={(ySn + yB1) / 2} step={1} label="t" />
+              <Dim ctx={ctx} name="t_plaat" value={d("t_plaat")} x={px(0) - 20} y={(ySn + yB1) / 2} step={1} label="t" />
               <Ro text={vlak === 1 ? "afschuifvlak door de draad" : "afschuifvlak door de schacht"}
                 x={px(L) + extPx / 2 + 44} y={yA0 - 11} kleur="#dc2626"
                 title={vlak === 1 ? "Rekent met A_s" : "Rekent met A"} />

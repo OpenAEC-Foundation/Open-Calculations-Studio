@@ -274,7 +274,7 @@ export default function MetselwerkwandDesigner() {
               {ONDERSTEUNING.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
             </select>
           </label>
-          <label>n (ingeklemde randen)
+          <label>n (gesteunde randen)
             <span className="mw-radios">
               {RANDEN.map((o) => (
                 <label key={o.v} title={o.v === 2 ? "boven + onder" : o.v === 3 ? "boven + onder + één verticale rand" : "boven + onder + twee verticale randen"}>
@@ -283,7 +283,7 @@ export default function MetselwerkwandDesigner() {
               ))}
             </span>
           </label>
-          <label>Wandlengte ℓ (mm)
+          <label>Werkelijke lengte ℓ, wand of penant (mm)
             <input type="number" step={100} value={l_w} onChange={(e) => setVal("l_w", parseFloat(e.target.value))} />
           </label>
           <label>Wandhoogte h (mm)
@@ -292,7 +292,7 @@ export default function MetselwerkwandDesigner() {
           <label>Wanddikte t (mm)
             <input type="number" step={10} value={t_w} onChange={(e) => setVal("t_w", parseFloat(e.target.value))} />
           </label>
-          <label title={`Verticale randsteuning vervalt bij L_v ≥ ${nLim} mm → n = ${nEff}`}>Afstand gesteunde rand L<sub>v</sub> (mm)
+          <label title={`Verticale randsteuning vervalt bij L_v ≥ ${nLim} mm → n = ${nEff}`}>Lengte l (mm): vrije rand–steun (n = 3) of tussen de steunen (n = 4)
             <input type="number" step={100} value={L_v} onChange={(e) => setVal("L_v", parseFloat(e.target.value))} />
           </label>
 
@@ -332,7 +332,7 @@ export default function MetselwerkwandDesigner() {
               {(isLijm ? VOEG_LIJM : VOEG_METSEL).map((v) => <option key={v} value={v}>{(isLijm ? "L" : "M") + v}</option>)}
             </select>
           </label>
-          <label title="Eindkruipcoëfficiënt voor e_k (6.7), tabel NB-3 — telt pas mee boven λ_c = 27 (NB bij 6.1.2.2(2))">Eindkruipgetal φ<sub>∞</sub>
+          <label title="Eindkruipcoëfficiënt voor e_k (6.8), tabel NB-3 — telt pas mee boven λ_c = 27 (NB bij 6.1.2.2(2))">Eindkruipgetal φ<sub>∞</sub>
             <input type="number" step={0.1} value={phiInf} onChange={(e) => setVal("phi_inf", parseFloat(e.target.value))} />
           </label>
 
@@ -340,7 +340,7 @@ export default function MetselwerkwandDesigner() {
           <label>N<sub>Ed</sub> (kN)
             <input type="number" step={10} value={N_Ed} onChange={(e) => setVal("N_Ed", parseFloat(e.target.value))} />
           </label>
-          <label>N<sub>Ed,max</sub> (kN)
+          <label title="Grootste normaalkracht uit de fundamentele combinaties, niet kleiner dan N_Ed (NB bij 5.5.1.1(5))">N<sub>Ed,max</sub> (kN)
             <input type="number" step={10} value={N_Ed_max} onChange={(e) => setVal("N_Ed_max", parseFloat(e.target.value))} />
           </label>
           <label>M<sub>1Ed</sub> (kNm)

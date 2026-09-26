@@ -105,7 +105,7 @@ export const boutberekening = `"Boutberekening — weerstanden van één bout vo
 t_plaat = ?*(mm)', dunste plaatdikte t — ook gebruikt als t_p bij het doorponsen'
 e_1 = ?*(mm)', eindafstand in de krachtsrichting e_1'
 p_1 = ?*(mm)', steek in de krachtsrichting p_1 — alleen bij een binnenste bout'
-e_2 = ?*(mm)', eindafstand loodrecht op de kracht e_2'
+e_2 = ?*(mm)', randafstand loodrecht op de kracht e_2'
 p_2 = ?*(mm)', steek loodrecht op de kracht p_2 — 0 = geen tweede bout loodrecht op de kracht'
 
 n_v = ?', aantal afschuifvlakken van deze bout'
@@ -121,7 +121,7 @@ fub_ = if(boutkwaliteit ≡ 46; 400; if(boutkwaliteit ≡ 48; 400; if(boutkwalit
 fyb_ = if(boutkwaliteit ≡ 46; 240; if(boutkwaliteit ≡ 48; 320; if(boutkwaliteit ≡ 56; 300; if(boutkwaliteit ≡ 58; 400; if(boutkwaliteit ≡ 68; 480; if(boutkwaliteit ≡ 88; 640; 900))))))
 'α_v = 0,6 voor 4.6, 5.6 en 8.8; 0,5 voor 4.8, 5.8, 6.8 en 10.9 (tabel 3.4).
 avd_ = if(boutkwaliteit ≡ 46; 0.6; if(boutkwaliteit ≡ 56; 0.6; if(boutkwaliteit ≡ 88; 0.6; 0.5)))
-'Staalsoort: f_u volgens de Nationale Bijlage bij NEN-EN 1993-1-1, t ≤ 40 mm.
+'Staalsoort: f_u uit tabel 3.1 van NEN-EN 1993-1-1, t ≤ 40 mm; de NB laat die tabel toe (3.2.1(1)).
 fu_ = if(staalsoort ≡ 235; 360; if(staalsoort ≡ 275; 430; 490))
 'Gatdiameter bij normale gatspeling (EN 1090-2): +1 mm t/m M14, +2 mm t/m M24, +3 mm daarboven.
 d0_ = if(boutdiameter ≡ 12; 13; if(boutdiameter ≡ 16; 18; if(boutdiameter ≡ 20; 22; if(boutdiameter ≡ 24; 26; if(boutdiameter ≡ 27; 30; if(boutdiameter ≡ 30; 33; 39))))))

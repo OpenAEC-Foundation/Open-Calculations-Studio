@@ -15,8 +15,13 @@
  *
  * Partiële factoren uit tabel A.4a, voor funderingen op staal onafhankelijk
  * van de gevolgklasse: γ_φ' op tan φ', γ_c' en γ_γ op het volumiek gewicht in
- * de q- en de γ-term (6.5.2.2). Invoer met eenheden; de rekenkern rekent om.
- * scripts/check-en1997.mjs rekent het na.
+ * de q- en de γ-term (6.5.2.2). De inclinatiefactoren gebruiken dezelfde V_Ed
+ * als de toets. De i-factoren en B_eff zijn ten minste nul: bij H_d ≥ V_Ed of
+ * e_B ≥ B/2 wordt R_d nul en het oordeel "voldoet niet", niet een UC die door
+ * een even macht of een negatief teken weer gunstig uitvalt. Invoer met
+ * eenheden; de rekenkern rekent om. De slotzin
+ * "Maatgevende UC = …" is wat de rapportkop leest. scripts/check-en1997.mjs
+ * rekent het na.
  */
 export const en1997Funderingsstrook = `# Draagvermogen Funderingsstrook — NEN 9997-1 §6 / Bijlage D
 
@@ -73,7 +78,7 @@ e_B = 0 mm
 
 Effectieve breedte:
 
-B_eff = B - 2 * e_B to mm
+B_eff = max(B - 2 * e_B; 0 mm) to mm
 
 Effectieve oppervlak per m':
 
@@ -105,6 +110,12 @@ s_c = 1.0
 s_q = 1.0
 s_gamma = 1.0
 
+## Belasting
+
+Verticale belasting per m' strook (rekenwaarde):
+
+V_Ed = 80 kN/m
+
 ## Inclinatiefactoren
 
 @select inclinatie "Horizontale belasting"
@@ -121,18 +132,14 @@ Horizontale kracht H_d:
 
 H_d = 5 kN/m
 
-Verticale kracht V_d voor inclinatie:
-
-V_d_incl = 80 kN/m
-
-Inclinatiefactor (Bijlage D, formule D.10):
+Inclinatiefactoren (bijlage D), met dezelfde V_Ed als de toets:
 
 m_exp = 2.0
-i_q = (1 - H_d / V_d_incl)^m_exp
-i_gamma = (1 - H_d / V_d_incl)^(m_exp + 1)
+i_q = max(1 - H_d / V_Ed; 0)^m_exp
+i_gamma = max(1 - H_d / V_Ed; 0)^(m_exp + 1)
 
 #if c_d > 0 kPa
-i_c = i_q - (1 - i_q) / (N_c * tan(phi_d_deg * pi / 180))
+i_c = max(i_q - (1 - i_q) / (N_c * tan(phi_d_deg * pi / 180)); 0)
 #else
 i_c = 1.0
 #end if
@@ -165,22 +172,14 @@ Draagvermogen per m' strook:
 
 R_d = R_over_A * B_eff / gamma_Rv to kN/m
 
-## Belasting
-
-Verticale belasting per m' strook (rekenwaarde):
-
-V_Ed = 80 kN/m
-
 ## Toetsing (art. 6.5.2, formule 6.1)
 
-Unity check:
+UC_max = V_Ed / R_d
 
-UC = V_Ed / R_d
-
-#if UC < 1
-  Draagvermogen funderingsstrook voldoet (UC = {{UC}}).
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>draagvermogen voldoet</b></span>
 #else
-  Draagvermogen funderingsstrook voldoet NIET (UC = {{UC}})!
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>draagvermogen voldoet niet</b></span>
 #end if
 
 ## Overzicht
@@ -228,7 +227,7 @@ UC = V_Ed / R_d
   <text x="135" y="125" text-anchor="middle" font-size="10" fill="#6b7280" transform="rotate(-90,135,125)">D = {{D}} mm</text>
   <!-- Resultaten -->
   <text x="420" y="240" text-anchor="middle" font-size="11" fill="#374151">R_d = {{R_d}} kN/m</text>
-  <text x="420" y="260" text-anchor="middle" font-size="13" fill="#059669" font-weight="bold">UC = {{UC}}</text>
+  <text x="420" y="260" text-anchor="middle" font-size="13" fill="#374151" font-weight="bold">UC = {{UC_max}}</text>
 </svg>
 @end
 `;
@@ -280,12 +279,11 @@ D = 800 mm
 ## Grondopbouw en parameters
 
 @select grondtype "Type grond onder fundering"
-Zand, los (E_s = 10 MPa) = 10
+Zand, los, of klei, vast (E_s = 10 MPa) = 10
 Zand, matig dicht (E_s = 20 MPa) = 20
 Zand, vast (E_s = 40 MPa) = 40
 Klei, slap (E_s = 2 MPa) = 2
 Klei, matig vast (E_s = 5 MPa) = 5
-Klei, vast (E_s = 10 MPa) = 10
 @end
 
 Samendrukbaarheidsmodulus E_s (samendrukkingsmodulus):
@@ -330,12 +328,7 @@ Boussinesq (invloedsfactor) = 2
 #if zettingsmethode == 1
 ## Vereenvoudigde 1:2 methode
 
-De spanning neemt af met de diepte. Bij de 1:2 methode wordt
-de extra spanning op diepte z geschat als:
-
-  delta_sigma(z) = F_k / ((B + z) * (L_f + z))
-
-Gemiddelde spanning over de samendrukbare laag:
+Gemiddelde spanning over de samendrukbare laag (spreiding 1:2, op H_laag/2):
 
 sigma_gem = F_k / ((B + H_laag / 2) * (L_f + H_laag / 2)) to kPa
 
@@ -364,14 +357,12 @@ Fundering scheidingswand (15 mm) = 15
 
 s_max = grenswaarde * 1 mm
 
-Unity check:
+UC_max = s / s_max
 
-UC = s / s_max
-
-#if UC < 1
-  Zetting voldoet ({{s}} mm < {{s_max}} mm, UC = {{UC}}).
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>indicatieve zakking voldoet</b></span>; rotatie (2.4.9) niet getoetst
 #else
-  Zetting voldoet NIET ({{s}} mm > {{s_max}} mm, UC = {{UC}})!
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>indicatieve zakking voldoet niet</b></span>
 #end if
 `;
 
@@ -453,16 +444,19 @@ c_uk = 50 kPa
 gamma_cu = 1.35', op c_u'
 R_hu = min(B * c_uk / gamma_cu; 0.4 * V_Ed) to kN/m', (6.4a), ten hoogste 0,4·V_d (6.5)'
 UC_ud = H_Ed / R_hu
-UC = max(UC_dr; UC_ud)
-#else
-UC = UC_dr
 #end if
 
 ## Toetsing (art. 6.5.3)
 
-#if UC < 1
-  Glijding voldoet (UC = {{UC}}).
+#if ondergrond == 2
+UC_max = max(UC_dr; UC_ud)
 #else
-  Glijding voldoet NIET (UC = {{UC}})!
+UC_max = UC_dr
+#end if
+
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>glijding voldoet</b></span>
+#else
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>glijding voldoet niet</b></span>
 #end if
 `;

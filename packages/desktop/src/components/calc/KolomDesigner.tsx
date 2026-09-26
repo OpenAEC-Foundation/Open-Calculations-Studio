@@ -218,7 +218,7 @@ export default function KolomDesigner() {
           <label>Kniklengte L<sub>cr,z</sub>
             <input type="number" step={100} value={Lcr_z} onChange={(e) => setVal("Lcr_z", parseFloat(e.target.value))} />
           </label>
-          <label>Ongesteunde lengte L<sub>cr</sub>
+          <label title="Ongesteunde lengte voor kip (§6.3.3). In de referentiestand rekent de kiplengte met de kolomlengte L en telt L_cr niet mee; in de norm-stand telt max(L; L_cr).">Ongesteunde lengte L<sub>cr</sub>
             <input type="number" step={100} value={Lcr} onChange={(e) => setVal("Lcr", parseFloat(e.target.value))} />
           </label>
 
@@ -244,10 +244,13 @@ export default function KolomDesigner() {
               <svg width={EW} height={EH} className="vd-svg">
                 {defs}
 
-                {/* q_z verdeelde last (indien ≠ 0) — horizontale pijltjes op de kolom */}
+                {/* q_z verdeelde last (indien ≠ 0) — horizontale pijltjes op de kolom.
+                    Positief duwt naar rechts, negatief (zuiging) van rechts naar links. */}
                 {q_z !== 0 && Array.from({ length: 6 }, (_, i) => {
                   const qy = yTop + 20 + i * ((colH - 40) / 5);
-                  return <line key={i} x1={xc - colW / 2 - 26} y1={qy} x2={xc - colW / 2 - 2} y2={qy} className="vd-load" strokeWidth={2} markerEnd="url(#klLoad)" />;
+                  return q_z > 0
+                    ? <line key={i} x1={xc - colW / 2 - 26} y1={qy} x2={xc - colW / 2 - 2} y2={qy} className="vd-load" strokeWidth={2} markerEnd="url(#klLoad)" />
+                    : <line key={i} x1={xc + colW / 2 + 26} y1={qy} x2={xc + colW / 2 + 2} y2={qy} className="vd-load" strokeWidth={2} markerEnd="url(#klLoad)" />;
                 })}
 
                 {/* kolom */}
@@ -269,12 +272,21 @@ export default function KolomDesigner() {
                 {/* N_Ed drukkracht bovenop */}
                 <line x1={xc} y1={yTop - 34} x2={xc} y2={yTop - 1} className="vd-load" strokeWidth={3} markerEnd="url(#klLoad)" />
 
-                {/* moment M_y,A (boven) en M_y,B (onder), indien ≠ 0 */}
+                {/* moment M_y,A (boven) en M_y,B (onder), indien ≠ 0. Tekenafspraak
+                    van het blad: M(x) = M_A(1−x/L) + M_B·x/L + q_z·x(L−x)/2, dus een
+                    positief eindmoment buigt de kolom net als een positieve q_z naar
+                    rechts. Het koppel draait dan boven linksom en onder rechtsom. */}
                 {M_yA !== 0 && (
-                  <path d={`M ${xc - 16} ${yTop + 4} A 16 16 0 1 1 ${xc + 16} ${yTop + 4}`} fill="none" stroke="#dc2626" strokeWidth={2} markerEnd="url(#klLoad)" />
+                  <path d={M_yA > 0
+                      ? `M ${xc + 16} ${yTop + 4} A 16 16 0 1 0 ${xc - 16} ${yTop + 4}`
+                      : `M ${xc - 16} ${yTop + 4} A 16 16 0 1 1 ${xc + 16} ${yTop + 4}`}
+                    fill="none" stroke="#dc2626" strokeWidth={2} markerEnd="url(#klLoad)" />
                 )}
                 {M_yB !== 0 && (
-                  <path d={`M ${xc - 16} ${yBot - 4} A 16 16 0 1 1 ${xc + 16} ${yBot - 4}`} fill="none" stroke="#dc2626" strokeWidth={2} markerEnd="url(#klLoad)" />
+                  <path d={M_yB > 0
+                      ? `M ${xc - 16} ${yBot - 4} A 16 16 0 1 1 ${xc + 16} ${yBot - 4}`
+                      : `M ${xc + 16} ${yBot - 4} A 16 16 0 1 0 ${xc - 16} ${yBot - 4}`}
+                    fill="none" stroke="#dc2626" strokeWidth={2} markerEnd="url(#klLoad)" />
                 )}
 
                 {/* L-maat (rechts) */}

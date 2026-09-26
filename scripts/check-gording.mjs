@@ -5,9 +5,11 @@
  * klimaatklasse 1, dak 4500 × 3000 (33,7°), 3 gordingen, dagmaat 5000,
  * opleglengte 75, dakbeschot I = 486000 · E = 5000, pannen 0,80 kN/m²,
  * muurplaat/nokgording 1,0 kN/m, Q_k = 2 kN, s_k = 0,70, q_p = 0,822, CC2.
- * c_pe bij zuiging (−0,7) geldt alleen voor de opwaartse combinatie die ons
- * blad toevoegt; die is op geen van de referenties maatgevend. Die combinatie,
- * kip, oplegdruk en de ondergrens van k_r staan in check-gording-aanvullend.mjs.
+ * c_pe bij zuiging (−0,7) geldt alleen voor de opwaartse combinaties die ons
+ * blad toevoegt; die zijn op geen van de referenties maatgevend, net als de
+ * winddruk in zone I op een plat dak. Die combinaties, de opwaartse
+ * doorbuiging, kip, oplegdruk en de ondergrens van k_r staan in
+ * check-gording-aanvullend.mjs.
  *
  *   1  basisgeval
  *   2  dikte dakbeschot 25 mm — verandert in de referentie-uitwerking níets: `Dikte` en

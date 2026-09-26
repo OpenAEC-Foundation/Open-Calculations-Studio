@@ -18,6 +18,12 @@
  * stuiksterkten van §8.3.1, inclusief de Nederlandse regels voor gipskarton- en
  * gipsvezelplaat (NB.8.1, NB.8.2 en Tabel NB.2).
  *
+ * De verplaatsing is een ingenieursmodel per paneel (slip, afschuiving van de
+ * plaat), het grootste van het volle en het restpaneel, plus ankerslip en rek
+ * van de eindstijlen. Zonder G of K_ser is ze niet bepaald; de slotzin zegt dan
+ * "niet bepaald" en niet "voldoen", zodat de kop van het rapport geen
+ * "voldoet" meldt voor een blad dat niet volledig is getoetst.
+ *
  * De uitdraai toont per wand de krachten en de unity checks in tabellen; de
  * rekenregels staan één keer in §8.2. Voor deze module bestaat geen
  * referentieberekening; scripts/check-hsb-stabiliteit.mjs rekent de uitkomsten
@@ -787,7 +793,7 @@ k_c,90 = 1.25', naaldhout op een doorgaande ondersteuning (§6.1.5(3))'
 u_max = h_w/300', verplaatsing per bouwlaag (NB bij NEN-EN 1990, A1.4.3)'
 
 '<h6>8.2 Rekenregels</h6>
-'<ul style="margin:2px 0 0 0; padding-left:1.3em;"><li>Hefboom (9.23): L<sub>ef</sub> = Σ b<sub>i</sub>·c<sub>i</sub> van de meetellende panelen, gedeeld door c<sub>i</sub> van het volle paneel; bij platen aan twee zijden de kleinste. F<sub>t</sub> = F·h/L<sub>ef</sub>.</li><li>Anker: N<sub>t</sub> = F<sub>t</sub> − γ<sub>G,inf</sub>·G<sub>k</sub>·a<sub>eind</sub> ≥ 0. Alleen de last op de eindstijl zelf ontlast het anker; de last op de tussenstijlen gaat rechtstreeks naar de onderregel (methode A, §9.2.4.2(1) en (8)).</li><li>Eindstijl: N<sub>c</sub> = F<sub>t</sub> + (γ<sub>G</sub>·G<sub>k</sub> + γ<sub>Q</sub>·ψ<sub>0</sub>·Q<sub>k</sub>)·(a<sub>eind</sub> + a<sub>op</sub>) en M<sub>w</sub> = γ<sub>Q</sub>·w<sub>k</sub>·(a<sub>eind</sub> + a<sub>op</sub>)·h²/8, getoetst met (6.23)/(6.24); onderregel N<sub>c</sub>/(A<sub>ef</sub>·k<sub>c,90</sub>·f<sub>c,90,d</sub>) (6.3).</li><li>Glijden: F<sub>v,Ed</sub>/(v<sub>Rd</sub>·L). Plaat: τ = F·a<sub>zijde</sub>/(L<sub>ef</sub>·t) ≤ f<sub>v,d</sub> (NB bij 9.2.4.2(15)), met a<sub>zijde</sub> het aandeel van een zijde naar rato van de meegetelde sterkte.</li><li>Verplaatsing bij F/γ<sub>Q</sub> (6.14b), een ingenieursmodel: slip 2·F<sub>p</sub>·s·(b + h)/(K<sub>ser</sub>·b²) van het volle paneel, afschuiving F<sub>p</sub>·h/(G·t·b), ankerslip u<sub>a</sub>·h/L<sub>ef</sub> en de rek van de eindstijlen.</li></ul>
+'<ul style="margin:2px 0 0 0; padding-left:1.3em;"><li>Hefboom (9.23): L<sub>ef</sub> = Σ b<sub>i</sub>·c<sub>i</sub> van de meetellende panelen, gedeeld door c<sub>i</sub> van het volle paneel; bij platen aan twee zijden de kleinste. F<sub>t</sub> = F·h/L<sub>ef</sub>.</li><li>Anker: N<sub>t</sub> = F<sub>t</sub> − γ<sub>G,inf</sub>·G<sub>k</sub>·a<sub>eind</sub> ≥ 0. Alleen de last op de eindstijl zelf ontlast het anker; de last op de tussenstijlen gaat rechtstreeks naar de onderregel (methode A, §9.2.4.2(1) en (8)).</li><li>Eindstijl: N<sub>c</sub> = F<sub>t</sub> + (γ<sub>G</sub>·G<sub>k</sub> + γ<sub>Q</sub>·ψ<sub>0</sub>·Q<sub>k</sub>)·(a<sub>eind</sub> + a<sub>op</sub>) en M<sub>w</sub> = γ<sub>Q</sub>·|w<sub>k</sub>|·(a<sub>eind</sub> + a<sub>op</sub>)·h²/8, getoetst met (6.23)/(6.24); onderregel N<sub>c</sub>/(A<sub>ef</sub>·k<sub>c,90</sub>·f<sub>c,90,d</sub>) (6.3).</li><li>Glijden: F<sub>v,Ed</sub>/(v<sub>Rd</sub>·L). Plaat: τ = F·a<sub>zijde</sub>/(L<sub>ef</sub>·t) ≤ f<sub>v,d</sub> (NB bij 9.2.4.2(15)), met a<sub>zijde</sub> het aandeel van een zijde naar rato van de meegetelde sterkte.</li><li>Verplaatsing bij F/γ<sub>Q</sub> (6.14b), een ingenieursmodel: per paneel slip 2·F<sub>p</sub>·s·(b + h)/(K<sub>ser</sub>·b²) plus afschuiving F<sub>p</sub>·h/(G·t·b), het grootste van het volle en het restpaneel; daarbij ankerslip u<sub>a</sub>·h/L<sub>ef</sub> en de rek van de eindstijlen.</li></ul>
 
 #hide
 UC_st(N; M) = max(N/A_eind/(k_c,y*f_c,0,d) + M/W_eind/f_m,d; N/A_eind/(k_c,z*f_c,0,d) + k_m*M/W_eind/f_m,d)
@@ -804,12 +810,20 @@ a_B(L; z) = if(z ≡ 1; 0; if(z ≡ 2; 1; if(z ≡ 3; C_B(L)/max(C_A(L) + C_B(L)
 τ_B(F; L; z) = if(a_B(L; z) > 0; F*a_B(L; z)/(max(L_eB(L); 1 mm)*t_B)/max(f_v,d,B; 0.001 N/mm^2); 0)
 UC_pl(F; L; z) = max(τ_A(F; L; z); τ_B(F; L; z))
 'Verplaatsing per zijde met het aandeel van die zijde; zonder K_ser of G van
-'een zijde die meedraagt is ze niet bepaald.
+'een zijde die meedraagt is ze niet bepaald. Per paneel met de schuifstroom
+'q = F·a·R_p(b)/(R·b): het volle paneel en het restpaneel, het grootste telt.
+'Bij platen breder dan h/2 kan een smal restpaneel meer verplaatsen.
 bekend_A = bool(K_A > 0 N/mm)*bool(G_pl,A > 0 N/mm^2)
 bekend_B = bool(K_B > 0 N/mm)*bool(G_pl,B > 0 N/mm^2)
 onbekend(L; z) = max(bool(a_A(L; z) > 0)*(1 - bekend_A); bool(a_B(L; z) > 0)*(1 - bekend_B))
-v_A(F; L; z) = if(a_A(L; z) > 0; F*a_A(L; z)*(2*s_A*(b_eA(L) + h_w)/(max(K_A; 0.001 N/mm)*b_eA(L)) + h_w/(max(G_pl,A; 0.001 N/mm^2)*t_A))/max(L_eA(L); 1 mm); 0 mm)
-v_B(F; L; z) = if(a_B(L; z) > 0; F*a_B(L; z)*(2*s_B*(b_eB(L) + h_w)/(max(K_B; 0.001 N/mm)*b_eB(L)) + h_w/(max(G_pl,B; 0.001 N/mm^2)*t_B))/max(L_eB(L); 1 mm); 0 mm)
+b_rA(L) = L - floor(L/b_pl,A)*b_pl,A
+b_rB(L) = L - floor(L/b_pl,B)*b_pl,B
+q_A(F; L; z; b) = F*a_A(L; z)*R_pA(b)/(max(R_A(L); 0.001 kN)*max(b; 1 mm))
+q_B(F; L; z; b) = F*a_B(L; z)*R_pB(b)/(max(R_B(L); 0.001 kN)*max(b; 1 mm))
+u_pA(q; b) = q*(2*s_A*(b + h_w)/(max(K_A; 0.001 N/mm)*max(b; 1 mm)) + h_w/(max(G_pl,A; 0.001 N/mm^2)*t_A))
+u_pB(q; b) = q*(2*s_B*(b + h_w)/(max(K_B; 0.001 N/mm)*max(b; 1 mm)) + h_w/(max(G_pl,B; 0.001 N/mm^2)*t_B))
+v_A(F; L; z) = if(a_A(L; z) > 0; max(u_pA(q_A(F; L; z; b_eA(L)); b_eA(L)); u_pA(q_A(F; L; z; b_rA(L)); b_rA(L))); 0 mm)
+v_B(F; L; z) = if(a_B(L; z) > 0; max(u_pB(q_B(F; L; z; b_eB(L)); b_eB(L)); u_pB(q_B(F; L; z; b_rB(L)); b_rB(L))); 0 mm)
 u_w(F; L; z) = max(v_A(F; L; z); v_B(F; L; z)) + (u_a + 2*F*h_w^2/(max(L_ef(L; z); 1 mm)*E_0,mean*A_eind))*h_w/max(L_ef(L; z); 1 mm)
 N_t,1 = 0 kN
 N_c,1 = 0 kN
@@ -907,7 +921,7 @@ F_t,1 = F_1*h_w/max(L_ef,1; 1 mm) to kN
 N_t,1 = max(0 kN; F_t,1 - γ_G,inf*G_k,1*a_eind) to kN
 UC_a,1 = N_t,1/max(F_a,Rd; 0.001 kN)
 N_c,1 = F_t,1 + (γ_G*G_k,1 + γ_Q*ψ_0*Q_k,1)*(a_eind + a_op,1) to kN
-M_w,1 = γ_Q*w_k,1*(a_eind + a_op,1)*h_w^2/8 to kN*m
+M_w,1 = γ_Q*abs(w_k,1)*(a_eind + a_op,1)*h_w^2/8 to kN*m
 UC_st,1 = UC_st(N_c,1; M_w,1)
 UC_c90,1 = N_c,1/(A_ef*k_c,90*f_c,90,d)
 UC_gl,1 = F_1/(max(v_Rd; 0.001 kN/m)*max(L_1; 1 mm))
@@ -923,7 +937,7 @@ UC_w,1 = max(UC_r,1; UC_a,1; UC_st,1; UC_c90,1; UC_gl,1; UC_pl,1; UC_u,1)
     N_t,2 = max(0 kN; F_t,2 - γ_G,inf*G_k,2*a_eind) to kN
     UC_a,2 = N_t,2/max(F_a,Rd; 0.001 kN)
     N_c,2 = F_t,2 + (γ_G*G_k,2 + γ_Q*ψ_0*Q_k,2)*(a_eind + a_op,2) to kN
-    M_w,2 = γ_Q*w_k,2*(a_eind + a_op,2)*h_w^2/8 to kN*m
+    M_w,2 = γ_Q*abs(w_k,2)*(a_eind + a_op,2)*h_w^2/8 to kN*m
     UC_st,2 = UC_st(N_c,2; M_w,2)
     UC_c90,2 = N_c,2/(A_ef*k_c,90*f_c,90,d)
     UC_gl,2 = F_2/(max(v_Rd; 0.001 kN/m)*max(L_2; 1 mm))
@@ -940,7 +954,7 @@ UC_w,1 = max(UC_r,1; UC_a,1; UC_st,1; UC_c90,1; UC_gl,1; UC_pl,1; UC_u,1)
     N_t,3 = max(0 kN; F_t,3 - γ_G,inf*G_k,3*a_eind) to kN
     UC_a,3 = N_t,3/max(F_a,Rd; 0.001 kN)
     N_c,3 = F_t,3 + (γ_G*G_k,3 + γ_Q*ψ_0*Q_k,3)*(a_eind + a_op,3) to kN
-    M_w,3 = γ_Q*w_k,3*(a_eind + a_op,3)*h_w^2/8 to kN*m
+    M_w,3 = γ_Q*abs(w_k,3)*(a_eind + a_op,3)*h_w^2/8 to kN*m
     UC_st,3 = UC_st(N_c,3; M_w,3)
     UC_c90,3 = N_c,3/(A_ef*k_c,90*f_c,90,d)
     UC_gl,3 = F_3/(max(v_Rd; 0.001 kN/m)*max(L_3; 1 mm))
@@ -957,7 +971,7 @@ UC_w,1 = max(UC_r,1; UC_a,1; UC_st,1; UC_c90,1; UC_gl,1; UC_pl,1; UC_u,1)
     N_t,4 = max(0 kN; F_t,4 - γ_G,inf*G_k,4*a_eind) to kN
     UC_a,4 = N_t,4/max(F_a,Rd; 0.001 kN)
     N_c,4 = F_t,4 + (γ_G*G_k,4 + γ_Q*ψ_0*Q_k,4)*(a_eind + a_op,4) to kN
-    M_w,4 = γ_Q*w_k,4*(a_eind + a_op,4)*h_w^2/8 to kN*m
+    M_w,4 = γ_Q*abs(w_k,4)*(a_eind + a_op,4)*h_w^2/8 to kN*m
     UC_st,4 = UC_st(N_c,4; M_w,4)
     UC_c90,4 = N_c,4/(A_ef*k_c,90*f_c,90,d)
     UC_gl,4 = F_4/(max(v_Rd; 0.001 kN/m)*max(L_4; 1 mm))
@@ -974,7 +988,7 @@ UC_w,1 = max(UC_r,1; UC_a,1; UC_st,1; UC_c90,1; UC_gl,1; UC_pl,1; UC_u,1)
     N_t,5 = max(0 kN; F_t,5 - γ_G,inf*G_k,5*a_eind) to kN
     UC_a,5 = N_t,5/max(F_a,Rd; 0.001 kN)
     N_c,5 = F_t,5 + (γ_G*G_k,5 + γ_Q*ψ_0*Q_k,5)*(a_eind + a_op,5) to kN
-    M_w,5 = γ_Q*w_k,5*(a_eind + a_op,5)*h_w^2/8 to kN*m
+    M_w,5 = γ_Q*abs(w_k,5)*(a_eind + a_op,5)*h_w^2/8 to kN*m
     UC_st,5 = UC_st(N_c,5; M_w,5)
     UC_c90,5 = N_c,5/(A_ef*k_c,90*f_c,90,d)
     UC_gl,5 = F_5/(max(v_Rd; 0.001 kN/m)*max(L_5; 1 mm))
@@ -991,7 +1005,7 @@ UC_w,1 = max(UC_r,1; UC_a,1; UC_st,1; UC_c90,1; UC_gl,1; UC_pl,1; UC_u,1)
     N_t,6 = max(0 kN; F_t,6 - γ_G,inf*G_k,6*a_eind) to kN
     UC_a,6 = N_t,6/max(F_a,Rd; 0.001 kN)
     N_c,6 = F_t,6 + (γ_G*G_k,6 + γ_Q*ψ_0*Q_k,6)*(a_eind + a_op,6) to kN
-    M_w,6 = γ_Q*w_k,6*(a_eind + a_op,6)*h_w^2/8 to kN*m
+    M_w,6 = γ_Q*abs(w_k,6)*(a_eind + a_op,6)*h_w^2/8 to kN*m
     UC_st,6 = UC_st(N_c,6; M_w,6)
     UC_c90,6 = N_c,6/(A_ef*k_c,90*f_c,90,d)
     UC_gl,6 = F_6/(max(v_Rd; 0.001 kN/m)*max(L_6; 1 mm))
@@ -1279,7 +1293,7 @@ UC_totaal', de bouwlaag als geheel: F_v,Ed gedeeld door de som van F_v,Rd'
 
 #if voldoet ≡ 1
     #if onb_tot ≡ 1
-        '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de wanden in deze richting voldoen</b></span>; de verplaatsing is niet bepaald (n.b.) en apart aan te tonen.
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ≤ 1,0, maar <b>de verplaatsing is niet bepaald</b> (n.b.): apart aantonen.</span>
     #else
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de wanden in deze richting voldoen</b></span>
     #end if

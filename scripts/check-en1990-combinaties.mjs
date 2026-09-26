@@ -68,8 +68,13 @@ fouten += toets("compleet, Q_k2 wind — de oude uitkomsten", reken(compleet, { 
   { E_UGT: "19.5", E_kar: "15", E_freq: "12.5", E_qp: "11.5" });
 // Q_k1 tegen G in: E_UGT = max(1,35·10 + 1,5·0,4·2; 1,2·10 + 1,5·2) = max(14,7; 15,0) = 15,0;
 // E_UGT,inf = 0,9·8 − 1,5·5 = −0,3; BGT in de richting van G: 12 / 11 / 10,6.
+// BGT tegen G in, Q_k1 categorie A (ψ1 = 0,5, ψ2 = 0,3): 8 − 5 = 3; 8 − 0,5·5 = 5,5; 8 − 0,3·5 = 6,5.
 fouten += toets("compleet, Q_k1 tegen G in", reken(compleet, { ...BASIS, richting: "2", G_kinf: "8" }, PROJECT),
-  { E_UGT: "15.0", E_UGT_inf: "-0.3", E_kar: "12", E_freq: "11", E_qp: "10.6" });
+  { E_UGT: "15.0", E_UGT_inf: "-0.3", E_kar: "12", E_freq: "11", E_qp: "10.6", E_kar_inf: "3", E_freq_inf: "5.5", E_qp_inf: "6.5" });
+// Windzuiging op een licht dak, wind (ψ1 = 0,2, ψ2 = 0): 0,3 − 0,8 = −0,5 (netto opwaarts); 0,3 − 0,2·0,8 = 0,14; 0,3.
+fouten += toets("compleet, windzuiging op een licht dak", reken(compleet,
+  { richting: "2", G_ksup: "0.3", G_kinf: "0.3", Q_k1: "0.8", Q_k2: "0", belastingcategorie: "10" }, PROJECT),
+  { E_UGT_inf: "-0.93", E_kar_inf: "-0.5", E_freq_inf: "0.14", E_qp_inf: "0.3" });
 
 // ── BGT ──────────────────────────────────────────────────────────────────────
 fouten += toets("BGT, beide categorie A", reken(blad("en1990BGT"), { G_k: "10", Q_k1: "5", Q_k2: "2" }, PROJECT),

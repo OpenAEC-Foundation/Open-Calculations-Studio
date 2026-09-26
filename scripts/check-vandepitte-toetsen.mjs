@@ -5,7 +5,8 @@
  * de set uitgeschreven. Het gaat vooral om de plekken waar een blad een
  * oordeel geeft: knik met χ of k_c in plaats van de Eulerlast, schuifspanning
  * tegen de materiaalsterkte, Mohr met θ_B = PaL/3EI en a_C voor hetzelfde
- * lastgeval, de eigenfrequentie bij de gekozen randvoorwaarde.
+ * lastgeval, de eigenfrequentie bij de gekozen randvoorwaarde, het vakwerk
+ * als Warrenvakwerk met n velden.
  *
  * Draaien:  node scripts/check-vandepitte-toetsen.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -102,9 +103,30 @@ fouten += toets("doorbuiging I-profiel", reken(blad("vandepitteDoorbuiging"),
   { λ: "2.720", v_1: "0.3511" });
 
 // ── Virtuele arbeid ──────────────────────────────────────────────────────────
-// Ongewijzigd model: 2·δ_boven + 2·δ_onder + 2·δ_diag = 15,65 mm bij de oude voorbeeldwaarden.
-fouten += toets("vakwerk", reken(blad("vandepitteVirtueleArbeid"),
-  { L: "12", H: "2", E: "210000", A_boven: "2000", A_onder: "2000", A_diag: "1000", F: "100" }, PROJECT),
-  { δ_totaal: "15.65" });
+// Warrenvakwerk zonder verticalen, L = 12 m, H = 2 m, E = 210000, A_rand = 2000, A_diag = 1000, F = 100 kN.
+// Twee velden (l_v = 6 m): één bovenrandstaaf N = F·L/4H = 150 kN, twee onderrandstaven F·L/8H = 75 kN,
+// vier diagonalen F/2·L_d/H = 90,14 kN met L_d = √(2² + 3²) = 3,606 m. Σ N·n·L/EA met n = N/F:
+//   boven 150000·1,5·6000/(210000·2000) = 3,214;  onder 2·75000·0,75·6000/(210000·2000) = 1,607
+//   diagonalen 4·90139·0,9014·3606/(210000·1000) = 5,580;  totaal 10,40 mm
+// (het oude model gaf 15,65: randen twee tot vier keer, diagonalen half; met een stijfheidsmatrix nagerekend).
+const vakwerk = blad("vandepitteVirtueleArbeid");
+const V = { L: "12", H: "2", E: "210000", A_boven: "2000", A_onder: "2000", A_diag: "1000", F: "100" };
+fouten += toets("vakwerk, twee velden", reken(vakwerk, { ...V, n_v: "2" }, PROJECT),
+  { N_boven: "-150", N_onder: "75", N_diag: "90.14", δ_boven: "3.214", δ_onder: "1.607", δ_diag: "5.580", δ_totaal: "10.40" });
+// Zes velden (l_v = 2 m, L_d = √5 = 2,236 m); F·l_v³/(4H²E) = 100000·2000³/(4·2000²·210000) = 238,1 mm³:
+//   boven Σk² = 1 + 4 + 9 + 4 + 1 = 19 → 238,1·19/2000 = 2,262
+//   onder Σ(k − ½)² = 2·(0,25 + 2,25 + 6,25) = 17,5 → 238,1·17,5/2000 = 2,083
+//   diagonalen 6·100000·2236³/(2·2000²·210000·1000) = 3,993;  totaal 8,338 mm
+fouten += toets("vakwerk, zes velden", reken(vakwerk, { ...V, n_v: "6" }, PROJECT),
+  { N_onder: "125", S_boven: "19", S_onder: "17.5", δ_totaal: "8.338" });
+// Slanke diagonalen, A_diag = 200: 3,214 + 1,607 + 5·5,580 = 32,72 mm (het oude model gaf 26,81: te laag).
+fouten += toets("vakwerk, slanke diagonalen", reken(vakwerk, { ...V, n_v: "2", A_diag: "200" }, PROJECT),
+  { δ_diag: "27.90", δ_totaal: "32.72" });
+{
+  const oneven = reken(vakwerk, { ...V, n_v: "3" }, PROJECT);
+  const ok = /Vul een even aantal velden in/.test(oneven.text) && /Maatgevende UC = ∞/.test(oneven.text);
+  if (!ok) fouten++;
+  console.log(`\nvakwerk, oneven aantal velden\n  ${ok ? "OK    " : "FOUT  "} melding en UC = ∞`);
+}
 
 afronden(fouten, "Vandepitte");

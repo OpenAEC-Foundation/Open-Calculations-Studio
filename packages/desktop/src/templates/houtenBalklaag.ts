@@ -6,7 +6,7 @@
  * door balklaag.ts. Opbouw:
  *   1. Geometrie + materiaal
  *   2. Belastingen (G_k + q_k + Q_k)
- *   3. Belastingscombinaties (UGT 6.10a/b, BGT 6.14b/16b)
+ *   3. Belastingscombinaties (UGT 6.10a/b en alleen blijvend, BGT 6.14b)
  *   4. Krachtsverdeling (M, V, u)
  *   5. UGT-toetsing (buiging §6.1.6, dwarskracht §6.1.7, oplegging §6.1.5)
  *   6. Kip §6.3.3
@@ -71,9 +71,9 @@ h_p = hlookup(profiles_b_h; profile; 1; 3)*mm
 @end
 
 #hide
-'Houtsterkte-eigenschappen — EN 338 (alle in N/mm² behalve ρ_mean in kg/m³)
+'Houtsterkte-eigenschappen — EN 338 (alle in N/mm² behalve ρ_mean in kg/m³); f_v,k hoort bij k_cr = 0,67 (§6.1.7(2))
 '  [id(C-klasse) | f_m,k | f_t,0,k | f_c,0,k | f_v,k | E_0,mean | E_0,05 | ρ_mean | f_c,90,k]
-strength_C = [14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |8; 10; 11; 12; 13; 14; 16; 18; 21; 24 |16; 17; 18; 19; 20; 21; 22; 23; 25; 26 |1.7; 1.8; 2.0; 2.2; 2.4; 2.5; 2.8; 3.0; 3.4; 3.8 |7000; 8000; 9000; 9500; 10000; 11000; 11500; 12000; 13000; 14000 |4700; 5400; 6000; 6400; 6700; 7400; 7700; 8000; 8700; 9400 |350; 370; 380; 400; 410; 420; 450; 460; 480; 500 |2.0; 2.2; 2.2; 2.3; 2.4; 2.5; 2.5; 2.7; 2.7; 2.8]
+strength_C = [14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |8; 10; 11; 12; 13; 14; 16; 18; 21; 24 |16; 17; 18; 19; 20; 21; 22; 23; 25; 26 |3.0; 3.2; 3.4; 3.6; 3.8; 4.0; 4.0; 4.0; 4.0; 4.0 |7000; 8000; 9000; 9500; 10000; 11000; 11500; 12000; 13000; 14000 |4700; 5400; 6000; 6400; 6700; 7400; 7700; 8000; 8700; 9400 |350; 370; 380; 400; 410; 420; 450; 460; 480; 500 |2.0; 2.2; 2.2; 2.3; 2.4; 2.5; 2.5; 2.7; 2.7; 2.8]
 
 f_m,k = hlookup(strength_C; houtkwaliteit; 1; 2)*N/mm^2
 f_t,0,k = hlookup(strength_C; houtkwaliteit; 1; 3)*N/mm^2
@@ -134,8 +134,6 @@ q_k = q_k,vlak*hoh', variabele lijnlast (kN/m)'
 γ_G,6.10b = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))
 γ_Q,6.10b = γ_Q,6.10a
 ψ_0 = 0.40', categorie A — Tabel NB.2 — A1.1'
-ψ_1 = 0.50
-ψ_2 = 0.30
 k_r = 0.7', puntlast-spreiding 0.5×0.5 m (vereenvoudigd)'
 #show
 
@@ -147,13 +145,12 @@ F_d,a = γ_Q,6.10a*ψ_0*Q_k*k_r
 q_d,b = γ_G,6.10b*G_k + γ_Q,6.10b*q_k
 F_d,b = γ_Q,6.10b*Q_k*k_r
 
+'UGT alleen blijvende belasting, met k<sub>mod</sub> blijvend (§3.1.3(2)): q<sub>d,G</sub> = γ<sub>G</sub>·G
+q_d,G = γ_G,6.10a*G_k
+
 'BGT 6.14b (karakteristiek): q<sub>sls</sub> = G + q
 q_sls = G_k + q_k
 F_sls = Q_k*k_r
-
-'BGT 6.16b (quasi-permanent met kruip):
-q_qp = (1 + k_def)*G_k + (ψ_0 + k_def*ψ_2)*q_k
-F_qp = (ψ_0 + k_def*ψ_2)*Q_k*k_r
 
 # 4. Krachtsverdeling
 
@@ -164,32 +161,35 @@ F_qp = (ψ_0 + k_def*ψ_2)*Q_k*k_r
 
 M_Ed,a = 0.125*q_d,a*l_ov^2 + 0.25*F_d,a*l_ov
 M_Ed,b = 0.125*q_d,b*l_ov^2 + 0.25*F_d,b*l_ov
-M_Ed = max(M_Ed,a; M_Ed,b)
+M_Ed,Q = max(M_Ed,a; M_Ed,b)
+M_Ed,G = 0.125*q_d,G*l_ov^2
 
 V_Ed,a = 0.5*q_d,a*l_ov + 0.5*F_d,a
 V_Ed,b = 0.5*q_d,b*l_ov + 0.5*F_d,b
-V_Ed = max(V_Ed,a; V_Ed,b)
-
-R_Ed = V_Ed', oplegreactie (zelfde grootte als V max)'
+V_Ed,Q = max(V_Ed,a; V_Ed,b)
+V_Ed,G = 0.5*q_d,G*l_ov
 
 # 5. UGT — buiging §6.1.6
 
 #hide
 γ_M = 1.3', NB voor gezaagd hout'
-'k_mod — Tabel 3.1: hangt af van klimaatklasse + belasting-duur. Default
-'belasting "middellang" (categorie 3, gebruiksbelasting).
-#if klimaatklasse ≡ 1
-    k_mod = 0.80
-#else if klimaatklasse ≡ 2
-    k_mod = 0.80
-#else
-    k_mod = 0.65
-#end if
+'k_mod — Tabel 3.1: veranderlijke belasting middellang (categorie A), blijvende belasting blijvend
+k_mod,Q = if(klimaatklasse ≡ 3; 0.65; 0.80)
+k_mod,G = if(klimaatklasse ≡ 3; 0.50; 0.60)
 #show
 
-'k<sub>mod</sub> = 'k_mod' (klimaatklasse, belasting-duur middellang)'
+'k<sub>mod</sub> = 'k_mod,Q' (middellang) en 'k_mod,G' (alleen blijvende belasting)'
 
-f_m,d = k_mod*k_h*f_m,k/γ_M
+#if M_Ed,G/k_mod,G > M_Ed,Q/k_mod,Q
+    'Maatgevend voor buiging en kip: alleen blijvende belasting met k<sub>mod</sub> blijvend.
+    M_Ed = M_Ed,G
+    k_mod,M = k_mod,G
+#else
+    M_Ed = M_Ed,Q
+    k_mod,M = k_mod,Q
+#end if
+
+f_m,d = k_mod,M*k_h*f_m,k/γ_M
 σ_m,d = M_Ed/W_y
 UC_M = σ_m,d/f_m,d
 
@@ -205,7 +205,18 @@ UC_M = σ_m,d/f_m,d
 k_cr = 0.67', §6.1.7(2) — scheurfactor voor gezaagd hout'
 #show
 
-f_v,d = k_mod*f_v,k/γ_M
+#if V_Ed,G/k_mod,G > V_Ed,Q/k_mod,Q
+    'Maatgevend voor dwarskracht en oplegging: alleen blijvende belasting met k<sub>mod</sub> blijvend.
+    V_Ed = V_Ed,G
+    k_mod,V = k_mod,G
+#else
+    V_Ed = V_Ed,Q
+    k_mod,V = k_mod,Q
+#end if
+
+R_Ed = V_Ed', oplegreactie (zelfde grootte als V max)'
+
+f_v,d = k_mod,V*f_v,k/γ_M
 τ_d = 1.5*V_Ed/(b_p*h_p*k_cr)
 UC_V = τ_d/f_v,d
 
@@ -220,11 +231,11 @@ UC_V = τ_d/f_v,d
 l_opl = ?*(mm)', opleglengte van de balk (mm)'
 
 #hide
-k_c,90 = 1.50', §6.1.5(3) — balk op steun, korte oplegging'
+k_c,90 = 1.50', §6.1.5(4) — discrete oplegging, massief naaldhout'
 #show
 
 A_opl = b_p*l_opl
-f_c,90,d = k_mod*f_c,90,k/γ_M
+f_c,90,d = k_mod,V*f_c,90,k/γ_M
 σ_c,90,d = R_Ed/A_opl
 UC_C90 = σ_c,90,d/(k_c,90*f_c,90,d)
 
@@ -251,7 +262,7 @@ l_ef = l_ov/(n_kipsteunen + 1)*0.9 + 2*h_p', kiplengte, Tabel 6.1: 0,9·l plus 2
     k_crit = 1/λ_rel,m^2
 #end if
 
-f_m,kip,d = k_crit*k_mod*k_h*f_m,k/γ_M
+f_m,kip,d = k_crit*k_mod,M*k_h*f_m,k/γ_M
 UC_kip = σ_m,d/f_m,kip,d
 
 'λ̄<sub>rel,m</sub> = 'λ_rel,m'    k<sub>crit</sub> = 'k_crit
@@ -300,11 +311,21 @@ UC_u,bij = u_bij/u_bij,lim
     'UC<sub>u,bij</sub> = u<sub>bij</sub>/u<sub>lim</sub> = 'UC_u,bij'<span style="color:red"> > 1.0 → <b>Voldoet NIET</b></span>
 #end if
 
+# 10. Samenvatting
+
+UC_max = max(UC_M; UC_V; UC_C90; UC_kip; UC_u,fin; UC_u,bij)
+
+#if UC_max ≤ 1.0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:green"> ≤ 1.0 → <b>de balk voldoet</b></span>
+#else
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:red"> > 1.0 → <b>de balk voldoet niet</b></span>
+#end if
+
 '<hr/>
 '<i>Vereenvoudigingen:
 '<ul>
-'<li>Belasting-duur "middellang" hardcoded. Bij andere categorieën (kort/zeer kort/permanent)
-'wijkt k<sub>mod</sub> af; pas dan §3.1.3 + Tabel 3.1 toe.</li>
+'<li>k<sub>mod</sub> middellang voor de veranderlijke belasting (categorie A); de combinatie met alleen
+'blijvende belasting rekent met k<sub>mod</sub> blijvend (§3.1.3(2)).</li>
 '<li>Eigen gewicht balk via ρ<sub>mean</sub>·b·h·g (zonder veiligheid). De aansluitende afwerking
 '(plafond, vloer-finish) verdisconteer je in G<sub>k,vlak</sub>.</li>
 '<li>Lastreductie k<sub>r</sub> voor puntlast op 0.5×0.5 m belastingvlak gefixeerd op 0.7.</li>

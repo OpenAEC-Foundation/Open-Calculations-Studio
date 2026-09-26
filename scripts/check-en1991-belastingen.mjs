@@ -10,7 +10,8 @@
  *   v_m = 0,8190·27,0 = 22,11 m/s            I_v = 1/ln(50) = 0,2556
  *   q_p = (1 + 7·0,2556)·0,5·1,25·22,11² = 852,5 N/m² → 0,8525 kN/m²
  *
- * Netto winddruk met c_pi = +0,2 (zuiging) en −0,3 (druk), 7.2.9(6).
+ * Netto winddruk met c_pi = +0,2 (zuiging) en −0,3 (druk), 7.2.9(6), of met
+ * één ingevulde c_pi bij een dominante gevel, 7.2.9(5).
  *
  * Draaien:  node scripts/check-en1991-belastingen.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -57,6 +58,18 @@ fouten += toets("wind zone D, A = 10 m²", W(4, 10), { w_net: "0.9378" });
 fouten += toets("wind zone E, h/d = 3", W(5, 10, { hd: "3" }), { c_pe: "-0.6", w_net: "-0.682" });
 // Zelf ingevulde c_pe = −0,9: (−0,9 − 0,2)·0,8525 = −0,9378.
 fouten += toets("wind c_pe zelf ingevuld", W(0, 10, { c_pe_hand: "-0.9" }), { c_pe: "-0.9", w_net: "-0.9378" });
+// Dominante gevel (7.2.9(5)), c_pi = 0,9·0,8 = +0,72 bij een open loefgevel.
+// Zone F, A = 1 m²: (−2,5 − 0,72)·0,8525 = −2,745 (zonder dominante gevel −2,302).
+fouten += toets("wind zone F, dominante gevel c_pi = +0,72", W(6, 1, { inwendig: "2", c_pi: "0.72" }), { w_net: "-2.745", F_w: "-2.745" });
+// Zone I met c_pi = −0,6: c_pe = +0,2 is dan ongunstig → (0,2 + 0,6)·0,8525 = 0,682; F_w = 0,682·10 = 6,82.
+fouten += toets("wind zone I, dominante gevel c_pi = −0,6", W(9, 10, { inwendig: "2", c_pi: "-0.6" }), { w_net: "0.682", F_w: "6.82" });
+// Zone I met c_pi = +0,72: c_pe = −0,2 → (−0,2 − 0,72)·0,8525 = −0,7843.
+fouten += toets("wind zone I, dominante gevel c_pi = +0,72", W(9, 10, { inwendig: "2", c_pi: "0.72" }), { w_net: "-0.7843" });
+// F_w kiest zelf, want c_s·c_d staat alleen op c_pe (5.5, 5.6). c_pe = −0,06, c_s·c_d = 0,8, A = 10 m²:
+//   w_z = (−0,06 − 0,2)·0,8525 = −0,2217 en w_d = (−0,06 + 0,3)·0,8525 = 0,2046 → w_net zuiging;
+//   F_z = (0,8·−0,06 − 0,2)·0,8525·10 = −2,114 en F_d = (−0,048 + 0,3)·8,525 = 2,148 → F_w druk (gaf eerder −2,114).
+fouten += toets("wind F_w met c_s·c_d < 1", W(0, 10, { c_pe_hand: "-0.06", bouwwerkfactor: "3", cs_cd: "0.8" }),
+  { w_z: "-0.2217", w_d: "0.2046", w_net: "-0.2217", F_w: "2.148" });
 
 // ── Sneeuw ───────────────────────────────────────────────────────────────────
 const sneeuw = blad("en1991Sneeuwbelasting");

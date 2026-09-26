@@ -34,7 +34,7 @@ const tpl = laadTemplate("stalenGevelkolom.ts");
 const STANDAARD = {
   profile: 11, staalkwaliteit: 235, L: 6, b_belast: 5, n_r: 2, regelsteun: 1,
   windbron: 1, z_wind: 7, d_geb: 20, a_hoek: 10, q_wind_hand: 0.8, w_d_hand: 0.9, w_z_hand: 0.7,
-  N_Ed: 30, VerplGrens: 300,
+  N_Ed: 30, N_Ed_max: 0, VerplGrens: 300,
 };
 const PROJECT = { CC: 2, K_FI: 1, windgebied: 2, terreincategorie: 2 };
 
@@ -376,6 +376,18 @@ for (const set of SETS) {
   }
   if (!ok) fouten++;
   console.log(`  ${ok ? "OK    " : "FOUT  "} ${opties.length} profielen in de keuzelijst, ${beeld.size} in het beeld, ${matrix[0].length} in de matrix`);
+}
+
+// ── De beginwaarden van het beeld zijn de standaardinvoer van dit script ─────
+{
+  console.log("\nBeginwaarden van het beeld tegen de standaardinvoer");
+  const tsx = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../packages/desktop/src/components/calc/GevelkolomDesigner.tsx"), "utf8");
+  const blok = tsx.match(/const DEFAULTS[^{]*\{([^}]+)\}/)[1];
+  const beeld = Object.fromEntries([...blok.matchAll(/(\w+): (-?[\d.]+)/g)].map((m) => [m[1], Number(m[2])]));
+  const verschil = [...new Set([...Object.keys(beeld), ...Object.keys(STANDAARD)])].filter((k) => beeld[k] !== STANDAARD[k]);
+  const ok = verschil.length === 0;
+  if (!ok) fouten++;
+  console.log(`  ${ok ? "OK    " : "FOUT  "} ${Object.keys(beeld).length} beginwaarden${ok ? " gelijk" : `, verschil in ${verschil.join(", ")}`}`);
 }
 
 afronden(fouten, "Stalen gevelkolom");

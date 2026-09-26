@@ -30,11 +30,12 @@ const GRENS = [{ v: 300, label: "L/300" }, { v: 250, label: "L/250" }, { v: 200,
 
 // Een IPE 300 S235 van 6 m in een gevel van 7 m hoog, 5 m hart-op-hart, met
 // twee regels die aan een windverband vastzitten. Dezelfde waarden als in
-// scripts/check-gevelkolom.mjs.
+// scripts/check-gevelkolom.mjs. N_Ed,max = 0: dan telt N_Ed ook voor de knik
+// zonder buiging, net als in het blad.
 const DEFAULTS: Record<string, number> = {
   profile: 11, staalkwaliteit: 235, L: 6, b_belast: 5, n_r: 2, regelsteun: 1,
   windbron: 1, z_wind: 7, d_geb: 20, a_hoek: 10, q_wind_hand: 0.8, w_d_hand: 0.9, w_z_hand: 0.7,
-  N_Ed: 30, VerplGrens: 300,
+  N_Ed: 30, N_Ed_max: 0, VerplGrens: 300,
 };
 
 type Zone = "A" | "B" | "C";
@@ -74,6 +75,9 @@ export default function GevelkolomDesigner() {
   const dGeb = Math.max(0.5, d("d_geb"));
   const aHoek = Math.max(0, d("a_hoek"));
   const N = d("N_Ed");
+  const Nmax = d("N_Ed_max");
+  // Een leeg of half ingetypt veld wordt 0, zodat het blad niet met NaN rekent.
+  const zetKracht = (naam: string, v: number) => set(naam, Number.isFinite(v) ? v : 0);
   const grens = Math.round(d("VerplGrens"));
   const Lst = L / (nr + 1);
 
@@ -176,6 +180,19 @@ export default function GevelkolomDesigner() {
               : <>Geen steun van de regels: knik om z en kip over de hele lengte.</>}
           </span>
 
+          <span className="vd-ctrl-h">Drukkracht</span>
+          <label>N<sub>Ed</sub>, met wind (kN)
+            <input type="number" step={10} value={N} onChange={(e) => zetKracht("N_Ed", parseFloat(e.target.value))} />
+          </label>
+          <label>N<sub>Ed,max</sub>, zonder wind (kN)
+            <input type="number" step={10} value={Nmax} onChange={(e) => zetKracht("N_Ed_max", parseFloat(e.target.value))} />
+          </label>
+          <span className="gd-note">
+            {Nmax > N
+              ? <>De knik zonder buiging rekent met N<sub>Ed,max</sub> = {fmt(Nmax)} kN.</>
+              : <>N<sub>Ed,max</sub> niet groter dan N<sub>Ed</sub>: de knik zonder buiging rekent met N<sub>Ed</sub>.</>}
+          </span>
+
           <span className="vd-ctrl-h">Wind</span>
           <label>Bron
             <select value={bron} onChange={(e) => set("windbron", parseInt(e.target.value))}>
@@ -242,7 +259,7 @@ export default function GevelkolomDesigner() {
                 <VDim k="ga" y0={yTop} y1={yBot} x={AW - 30} ext={xi + 4} />
               </svg>
 
-              <Force ctx={ctx} name="N_Ed" value={N} x={cx + 42} y={yTop - 48} unit="kN" label="N" step={10} />
+              <Force ctx={ctx} name="N_Ed" value={N} x={cx + 48} y={yTop - 48} unit="kN" label="N_Ed" step={10} />
               <Dim ctx={ctx} name="L" value={L} x={AW - 30} y={(yTop + yBot) / 2} step={0.25} label="L" dec={L % 1 ? 2 : 0} />
               {nr >= 1 && (
                 <Ro text={`Lst=${fmt(Lst, 2)}`} x={Math.min(xi + 40, AW - 60)} y={yTop + (Lst * sL) / 2 - 9}
@@ -324,7 +341,7 @@ export default function GevelkolomDesigner() {
         <span className="vd-live">
           {p.naam} S{fy} · L = {fmt(L, 2)} m · b = {fmt(bBel, 2)} m · {nr} {nr === 1 ? "regel" : "regels"}
           {nr >= 1 ? (kst ? " die de buitenflens steunen" : " zonder steun") : ""} ·
-          {" "}N<sub>Ed</sub> = {fmt(N)} kN · {bron === 3 ? "netto wind zelf ingevuld" : `gebouw h = ${fmt(hGeb, 1)} m, d = ${fmt(dGeb, 1)} m, zone ${zone}`} · L/{grens}
+          {" "}N<sub>Ed</sub> = {fmt(N)} kN{Nmax > N ? <>, N<sub>Ed,max</sub> = {fmt(Nmax)} kN</> : null} · {bron === 3 ? "netto wind zelf ingevuld" : `gebouw h = ${fmt(hGeb, 1)} m, d = ${fmt(dGeb, 1)} m, zone ${zone}`} · L/{grens}
         </span>
       </div>
     </div>

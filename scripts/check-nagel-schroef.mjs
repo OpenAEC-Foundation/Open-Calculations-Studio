@@ -12,10 +12,11 @@
  *      bij §8.2.2(5); axiaal (8.23)–(8.26) en (8.38)–(8.41), met een
  *      vierkante of gegroefde nagel zonder profilering als gladde nagel; de
  *      groep met tabel 8.1 of (8.34)/(8.35) en de scherpe hoek tussen kracht en
- *      vezel; de combinatie (8.27)/(8.28); splijten (8.2)–(8.4); de afstanden
- *      uit tabel 8.2, 8.4 en 8.6 en de detailleringseisen. Het blad moet daar
- *      op vier significante cijfers mee overeenkomen, en het eindoordeel moet
- *      gelijk zijn.
+ *      vezel; de combinatie (8.27)/(8.28); splijten (8.2)–(8.4) naar de belaste
+ *      rand, bij een onbelaste rand a_4 de rand aan de overkant; de afstanden
+ *      uit tabel 8.2, 8.4 en 8.6, ook tot die overkant, en de
+ *      detailleringseisen. Het blad moet daar op vier significante cijfers mee
+ *      overeenkomen, en het eindoordeel moet gelijk zijn.
  *   2. Voor een aantal gevallen een paar getallen die met de hand zijn
  *      nagerekend, zodat een fout die in beide uitwerkingen zit niet
  *      onopgemerkt blijft.
@@ -206,18 +207,24 @@ function uitwerking(v) {
   }
 
   // ── splijten (8.2)–(8.4), naaldhout, w = 1 ──
-  // Alleen bij een belaste rand en een kracht onder een hoek met de vezel. Het
-  // element aan de puntzijde (1) of het andere (2); zijdelen tellen samen.
-  const splijt = v.rand === 1 && an > 0;
+  // Bij elke kracht onder een hoek met de vezel. Belaste rand a_4: h_e = a_4 +
+  // (n_2 − 1)·a_2; onbelaste rand a_4: de belaste rand ligt aan de overkant en
+  // h_e = h − a_4. Element: het dunste (0, standaard), dat aan de puntzijde (1)
+  // of het andere (2); zijdelen tellen samen.
+  const splijt = an > 0;
+  const groepH = v.a_4 + (v.n_2 - 1) * (v.n_2 > 1 ? v.a_2 : 0);
+  const h90 = v.h_90 ?? 0;
   let UC90 = 0, ok90 = true;
   if (splijt) {
     // De keuze van het element bestaat alleen bij hout – hout; anders splijt het hout.
-    const el = op <= 2 ? (v.el_90 ?? 1) : 1, h = v.h_90 ?? 0, eta = v.η_in ?? 0;
-    const b = el === 1 ? (op === 2 || op === 5 ? 2 * v.t_1 : v.t_2) : (op === 2 ? v.t_2 : v.t_1);
-    const he = v.a_4 + (v.n_2 - 1) * (v.n_2 > 1 ? v.a_2 : 0);
-    ok90 = h > he;
+    const el = op <= 2 ? (v.el_90 ?? 0) : 1, eta = v.η_in ?? 0;
+    const bPunt = op === 2 || op === 5 ? 2 * v.t_1 : v.t_2;
+    const bAnder = op === 2 ? v.t_2 : v.t_1;
+    const b = el === 1 ? bPunt : el === 2 ? bAnder : Math.min(bPunt, bAnder);
+    ok90 = h90 > groepH;
     if (ok90) {
-      const F90Rd = (kh * 14 * b * Math.sqrt(he / (1 - he / h))) / GM;
+      const he = v.rand === 1 ? groepH : h90 - v.a_4;
+      const F90Rd = (kh * 14 * b * Math.sqrt(he / (1 - he / h90))) / GM;
       const deel = eta > 0 ? Math.min(Math.max(eta, 0.5), 1) : 1;
       UC90 = (deel * v.F_v_Ed * 1000 * Math.sin(a)) / F90Rd;
     }
@@ -233,12 +240,15 @@ function uitwerking(v) {
     a2: [5, 7, 3 + s][groep - 1] * d,
     a3: (v.eind ? [10 + 5 * c, 15 + 5 * c, 7 + 5 * c] : [10, 15, 7])[groep - 1] * d,
     a4: (v.rand ? [5 + (klein ? 2 : 5) * s, 7 + (klein ? 2 : 5) * s, 3 + (klein ? 2 : 4) * s] : [5, 7, 3])[groep - 1] * d,
+    // De rand aan de overkant: belast als de rand bij a_4 onbelast is en omgekeerd.
+    a4o: (v.rand ? [5, 7, 3] : [5 + (klein ? 2 : 5) * s, 7 + (klein ? 2 : 5) * s, 3 + (klein ? 2 : 4) * s])[groep - 1] * d,
   };
   const tabel84 = {
     a1: (4 + c) * d,
     a2: 4 * d,
     a3: v.eind ? Math.max(7 * d, 80) : Math.max(4 * d, (1 + 6 * s) * d),
     a4: v.rand ? Math.max((2 + 2 * s) * d, 3 * d) : 3 * d,
+    a4o: v.rand ? 3 * d : Math.max((2 + 2 * s) * d, 3 * d),
   };
   const tus = op === 3 ? 0.85 : op >= 4 ? 0.7 : 1;
   const axSchroef = mid === 4 && v.F_ax_Ed > 0;
@@ -249,6 +259,7 @@ function uitwerking(v) {
     a2: Math.max(basis.a2, axSchroef ? 5 * d : 0),
     a3: Math.max(basis.a3, axSchroef ? 10 * d : 0),
     a4: Math.max(basis.a4, axSchroef ? 4 * d : 0, gips ? (v.rand ? 10 : 7) * d : 0),
+    a4o: Math.max(basis.a4o, axSchroef ? 4 * d : 0, gips ? (v.rand ? 7 : 10) * d : 0),
   };
   const tHout = op <= 2 ? Math.min(v.t_1, v.t_2) : op === 5 ? v.t_1 : v.t_2;
   const tElem = op === 2 || op === 5 ? v.t_1 : v.t_2;
@@ -260,6 +271,10 @@ function uitwerking(v) {
     v.n_2 <= 1 || v.a_2 >= min.a2,
     v.a_3 >= min.a3,
     v.a_4 >= min.a4,
+    // Met de hoogte h is ook de afstand tot de rand aan de overkant bekend; een
+    // verspringende rij (alleen bij de nagelregels) brengt elk tweede
+    // verbindingsmiddel 1d dichter bij die rand.
+    !(splijt && ok90) || h90 - groepH - (!boutregels && v.versprongen ? d : 0) >= min.a4o,
     tPen >= (mid <= 2 ? 8 : 6) * d,
     v.voorboren || boutregels || tHout >= Math.max(7 * d, ((13 * d - 30) * rhoMax) / 400),
     v.voorboren || (mid === 4 ? d <= 6 : rhoMax <= 500 && d <= 6),
@@ -332,7 +347,7 @@ const SETS = [
     invoer: {
       middel: 4, d_v: 10, d_1: 6.4, l_v: 200, l_g: 100, d_h: 18, f_u: 800, f_tens_k: 28, voorboren: 1,
       klasse_1: 9, α: 45, n_1: 3, n_2: 2, a_1: 60, a_2: 50, a_3: 100, a_4: 50, t_1: 80, t_2: 140, F_v_Ed: 10, rand: 1,
-      h_90: 300,
+      h_90: 300, el_90: 1,
     },
     // Met de hand, splijten van element 2 (b = 140): h_e = 50 + 50 = 100;
     // F_90,Rk = 14·140·√(100/(1 − 100/300)) = 1960·12,247 = 24 005 N;
@@ -422,7 +437,7 @@ const SETS = [
     invoer: {
       middel: 4, d_v: 10, d_1: 6.4, l_v: 200, l_g: 100, d_h: 18, f_u: 800, f_tens_k: 28, voorboren: 1,
       klasse_1: 9, α: 120, n_1: 3, n_2: 2, a_1: 60, a_2: 50, a_3: 100, a_4: 50, t_1: 80, t_2: 140, F_v_Ed: 10, rand: 1,
-      h_90: 300,
+      h_90: 300, el_90: 1,
     },
     // Met de hand: n_ef,0 = min(3; 3^0,9·(60/130)^0,25) = 2,2155; (8.35) met 60°:
     // n_ef = 2,2155 + 0,7845·60/90 = 2,738, niet 3,262 zoals met 120° (dat is meer dan n).
@@ -430,8 +445,9 @@ const SETS = [
   },
   {
     naam: "17 — gladde nagels, kracht loodrecht op de vezel naar de belaste rand, h = 200 bij de oplegging: splijten",
-    invoer: { α: 90, rand: 1, eind: 0, F_v_Ed: 6, h_90: 200 },
-    // Met de hand (8.4): h_e = 25 + 25 = 50; F_90,Rk = 14·71·√(50/(1 − 50/200)) = 8116 N;
+    invoer: { α: 90, rand: 1, eind: 0, F_v_Ed: 6, h_90: 200, el_90: 1 },
+    // Met de hand (8.4), element aan de puntzijde gekozen (b = 71): h_e = 25 + 25 = 50;
+    // F_90,Rk = 14·71·√(50/(1 − 50/200)) = 8116 N;
     // F_90,Rd = 0,8·8116/1,3 = 4,994 kN; F_90,Ed = 6 kN (alles aan één zijde); UC = 1,201.
     handwerk: { b_90: "71", h_e: "50", F_90_Rd: "4.994", UC_90: "1.201" },
   },
@@ -455,6 +471,46 @@ const SETS = [
     // Met de hand: de scherpe hoek tussen schroefas en vezel is 180 − 170 = 10° < 30°:
     // de detaillering voldoet niet (§8.7.2(4)); (8.38) blijft gelijk aan 10°, want
     // 1,2·cos² + sin² is symmetrisch.
+  },
+  {
+    naam: "21 — gladde nagels, kracht loodrecht op de vezel van de rand a_4 af, h = 100: splijten naar de overkant",
+    invoer: { α: 90, rand: 0, h_90: 100 },
+    // Met de hand: de belaste rand ligt tegenover a_4; h_e = 100 − 25 = 75. Zonder keuze
+    // het dunste element, b = 38. F_90,Rk = 14·38·√(75/(1 − 75/100)) = 532·17,32 = 9214 N;
+    // F_90,Rd = 0,8·9214/1,3 = 5,670 kN; F_90,Ed = 4 kN; UC = 0,7054. Randafstand aan
+    // de overkant 100 − 25 − 25 = 50 ≥ (5 + 2)·3,4 = 23,8 (belast, d < 5 mm).
+    handwerk: { b_90: "38", h_e: "75", F_90_Rd: "5.670", UC_90: "0.7054" },
+  },
+  {
+    naam: "22 — als 21 met h = 70 en F_v,Ed = 3 kN: de rand aan de overkant ligt te dicht bij",
+    invoer: { α: 90, rand: 0, h_90: 70, F_v_Ed: 3 },
+    // Met de hand: h_e = 70 − 25 = 45; F_90,Rk = 14·38·√(45/(1 − 45/70)) = 532·√126 = 5972 N;
+    // F_90,Rd = 0,8·5972/1,3 = 3,675 kN; UC = 3/3,6749 = 0,8164. Randafstand aan de
+    // overkant 70 − 50 = 20 < 23,8: de detaillering voldoet niet.
+    handwerk: { h_e: "45", F_90_Rd: "3.675", UC_90: "0.8164" },
+  },
+  {
+    naam: "23 — kracht onder 30° van de rand a_4 af zonder hoogte van het element: niet volledig getoetst",
+    invoer: { α: 30, rand: 0 },
+  },
+  {
+    naam: "24 — dubbelsnedig 38 + 44 + 38, kracht loodrecht op de vezel naar de belaste rand, h = 150: het dunste element",
+    invoer: {
+      opbouw: 2, t_1: 38, t_2: 44, l_v: 120, d_v: 3.8, d_h: 9, a_1: 50, a_2: 30, a_3: 70, a_4: 30,
+      α: 90, rand: 1, eind: 0, h_90: 150, F_v_Ed: 3,
+    },
+    // Met de hand: zijdelen samen 2·38 = 76, middendeel 44; het dunste is 44.
+    // h_e = 30 + 30 = 60; F_90,Rk = 14·44·√(60/(1 − 60/150)) = 616·10 = 6160 N;
+    // F_90,Rd = 0,8·6160/1,3 = 3,791 kN; UC = 3/3,791 = 0,7914.
+    handwerk: { b_90: "44", h_e: "60", F_90_Rd: "3.791", UC_90: "0.7914" },
+  },
+  {
+    naam: "25 — als 21 met h = 75, F_v,Ed = 2 kN en een verspringende rij: de verspringing telt mee tot de overkant",
+    invoer: { α: 90, rand: 0, h_90: 75, versprongen: 1, F_v_Ed: 2 },
+    // Met de hand: h_e = 75 − 25 = 50; F_90,Rk = 14·38·√(50/(1 − 50/75)) = 532·√150 = 6516 N;
+    // F_90,Rd = 0,8·6516/1,3 = 4,010 kN; UC = 2/4,010 = 0,4988. Randafstand aan de overkant
+    // 75 − 25 − 25 − 3,4 = 21,6 < 23,8: de detaillering voldoet niet (zonder de 1d: 25).
+    handwerk: { h_e: "50", F_90_Rd: "4.010", UC_90: "0.4988", k_ef: "1" },
   },
 ];
 
@@ -498,6 +554,10 @@ const MELDINGEN = [
   [15, "hoek buiten 0 tot 90°", /gerekend is met de scherpe hoek tussen kracht en vezel, 30°/],
   [19, "hoogte voor splijten ontbreekt", /Splijten §8\.1\.4 — hoogte h ontbreekt .*voldoet niet: splijten is niet getoetst/],
   [20, "schroefhoek boven 90°", /De hoek tussen de schroefas en de vezel is kleiner dan 30°/],
+  [21, "randafstand aan de overkant", /Randafstand aan de overkant, h − a 4 − \(n 2 − 1\)·a 2 50 23\.8 voldoet /],
+  [22, "randafstand aan de overkant te klein", /Randafstand aan de overkant, h − a 4 − \(n 2 − 1\)·a 2 20 23\.8 voldoet niet/],
+  [23, "hoogte voor splijten ontbreekt bij een onbelaste rand", /Splijten §8\.1\.4 — hoogte h ontbreekt .*voldoet niet: splijten is niet getoetst/],
+  [25, "randafstand aan de overkant met een verspringende rij", /Randafstand aan de overkant, h − a 4 − \(n 2 − 1\)·a 2 − d 21\.6 23\.8 voldoet niet/],
 ];
 for (const [nr, naam, patroon] of MELDINGEN) {
   const v = { ...STANDAARD, ...SETS[nr - 1].invoer };

@@ -4,6 +4,13 @@
  *
  * Formules en artikelverwijzingen conform:
  * NEN-EN 1995-1-1:2005+A2:2014+NB:2013
+ *
+ * Materiaalwaarden: EN 338 (massief) en EN 14080 (gelamineerd), per blad in
+ * één verborgen matrix. k_mod volgt klimaatklasse × belastingduurklasse
+ * (tabel 3.1), γ_M het houttype (tabel 2.3 NB).
+ *
+ * Elk toetsblad sluit af met de slotzin "Maatgevende UC = …", die de afdruk
+ * als oordeel leest. Controle: scripts/check-eurocode5.mjs.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -15,36 +22,27 @@ export const ec5Buiging = `# Toetsing Buiging — EN 1995-1-1 §6.1.6
 
 ## Materiaal
 
-@select houttype "Type hout"
-Gezaagd hout = 1
-Gelijmd gelamineerd hout = 2
+@select sterkteklasse "Sterkteklasse (EN 338 / EN 14080)"
+C14 = 1
+C16 = 2
+C18 = 3
+C20 = 4
+C22 = 5
+C24 = 6
+C27 = 7
+C30 = 8
+C35 = 9
+C40 = 10
+D30 = 11
+D35 = 12
+D40 = 13
+D50 = 14
+GL20h = 15
+GL24h = 16
+GL28h = 17
+GL32h = 18
+GL36h = 19
 @end
-
-@select houtsoort "Houtsoort / sterkteklasse"
-C14 = 14
-C16 = 16
-C18 = 18
-C20 = 20
-C22 = 22
-C24 = 24
-C27 = 27
-C30 = 30
-C35 = 35
-C40 = 40
-D30 = 30
-D35 = 35
-D40 = 40
-D50 = 50
-GL20h = 20
-GL24h = 24
-GL28h = 28
-GL32h = 32
-GL36h = 36
-@end
-
-Karakteristieke buigsterkte (EN 338 / EN 14080):
-
-f_mk = houtsoort * 1 N/mm^2
 
 @select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
 Klasse 1 — droog, binnenklimaat = 1
@@ -60,13 +58,21 @@ Kort (< 1 week) = 4
 Zeer kort = 5
 @end
 
-Partiele factor (tabel 2.3 NB):
+#hide
+'Materiaalmatrix: [id | f_m,k | γ_M] — γ_M 1,3 massief en 1,25 gelamineerd (tabel 2.3 NB)
+materialen = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19 |14; 16; 18; 20; 22; 24; 27; 30; 35; 40; 30; 35; 40; 50; 20; 24; 28; 32; 36 |1.3; 1.3; 1.3; 1.3; 1.3; 1.3; 1.3; 1.3; 1.3; 1.3; 1.3; 1.3; 1.3; 1.3; 1.25; 1.25; 1.25; 1.25; 1.25]
+'k_mod (tabel 3.1): [duurklasse | klimaatklasse 1 en 2 | klimaatklasse 3]
+kmod_tabel = [1; 2; 3; 4; 5 |0.60; 0.70; 0.80; 0.90; 1.10 |0.50; 0.55; 0.65; 0.70; 0.90]
+f_mk = hlookup(materialen; sterkteklasse; 1; 2)*N/mm^2
+gamma_M = hlookup(materialen; sterkteklasse; 1; 3)
+k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
+#show
 
-gamma_M = 1.3
+Karakteristieke buigsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
 
-Modificatiefactor k_mod (tabel 3.1):
-
-k_mod = 0.8
+f_mk
+gamma_M
+k_mod
 
 Rekenwaarde buigsterkte (art. 2.4.1, formule 2.14):
 
@@ -104,10 +110,10 @@ Unity check:
 
 UC_buiging = sigma_md / f_md
 
-#if UC_buiging < 1
-  Buiging voldoet (UC = {{UC_buiging}}).
+#if UC_buiging ≤ 1
+  '<b>Maatgevende UC = 'UC_buiging'</b><span style="color: green"> ≤ 1,0 → <b>buiging voldoet</b></span>
 #else
-  Buiging voldoet NIET (UC = {{UC_buiging}})!
+  '<b>Maatgevende UC = 'UC_buiging'</b><span style="color: red"> > 1,0 → <b>buiging voldoet niet</b></span>
 #end if
 `;
 
@@ -120,26 +126,44 @@ export const ec5Afschuiving = `# Toetsing Afschuiving — EN 1995-1-1 §6.1.7
 
 ## Materiaal
 
-@select houttype "Type hout"
-Gezaagd hout = 1
-Gelijmd gelamineerd hout = 2
+@select sterkteklasse "Sterkteklasse (EN 338 / EN 14080)"
+C18 = 1
+C24 = 2
+C30 = 3
+GL24h = 4
+GL28h = 5
+GL32h = 6
 @end
 
-@select houtsoort "Houtsoort / sterkteklasse"
-C18 = 18
-C24 = 24
-C30 = 30
-GL24h = 24
-GL28h = 28
-GL32h = 32
+@select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
+Klasse 1 — droog, binnenklimaat = 1
+Klasse 2 — beschut buitenklimaat = 2
+Klasse 3 — buiten, onbeschermd = 3
 @end
 
-Karakteristieke afschuifsterkte f_v,k (EN 338):
+@select belastingduurklasse "Belastingduurklasse (tabel 2.1)"
+Blijvend (> 10 jaar) = 1
+Lang (6 mnd - 10 jaar) = 2
+Middellang (1 week - 6 mnd) = 3
+Kort (< 1 week) = 4
+Zeer kort = 5
+@end
 
-f_vk = 3.5 N/mm^2
+#hide
+'Materiaalmatrix: [id | f_m,k | f_v,k | f_c,0,k | f_c,90,k | E_0,mean | E_0,05 | γ_M | gelamineerd]
+materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |18; 21; 23; 24; 28; 32 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |1.3; 1.3; 1.3; 1.25; 1.25; 1.25 |0; 0; 0; 1; 1; 1]
+'k_mod (tabel 3.1): [duurklasse | klimaatklasse 1 en 2 | klimaatklasse 3]
+kmod_tabel = [1; 2; 3; 4; 5 |0.60; 0.70; 0.80; 0.90; 1.10 |0.50; 0.55; 0.65; 0.70; 0.90]
+f_vk = hlookup(materialen; sterkteklasse; 1; 3)*N/mm^2
+gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
+k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
+#show
 
-gamma_M = 1.3
-k_mod = 0.8
+Karakteristieke afschuifsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+
+f_vk
+gamma_M
+k_mod
 
 Rekenwaarde afschuifsterkte (formule 2.14):
 
@@ -150,9 +174,9 @@ f_vd = k_mod * f_vk / gamma_M to N/mm^2
 b = 70 mm
 h = 200 mm
 
-Scheurfactor k_cr (NB art. 6.1.7):
+Scheurfactor k_cr voor massief en gelamineerd hout (art. 6.1.7(2)):
 
-k_cr = 1.0
+k_cr = 0.67
 
 Effectieve breedte (formule 6.13a):
 
@@ -177,10 +201,10 @@ Unity check:
 
 UC_afschuiving = tau_d / f_vd
 
-#if UC_afschuiving < 1
-  Afschuiving voldoet (UC = {{UC_afschuiving}}).
+#if UC_afschuiving ≤ 1
+  '<b>Maatgevende UC = 'UC_afschuiving'</b><span style="color: green"> ≤ 1,0 → <b>afschuiving voldoet</b></span>
 #else
-  Afschuiving voldoet NIET (UC = {{UC_afschuiving}})!
+  '<b>Maatgevende UC = 'UC_afschuiving'</b><span style="color: red"> > 1,0 → <b>afschuiving voldoet niet</b></span>
 #end if
 `;
 
@@ -193,21 +217,44 @@ export const ec5Druk = `# Toetsing Druk Evenwijdig — EN 1995-1-1 §6.1.4
 
 ## Materiaal
 
-@select houtsoort "Houtsoort / sterkteklasse"
-C18 = 18
-C24 = 21
-C30 = 23
-GL24h = 24
-GL28h = 26.5
-GL32h = 29
+@select sterkteklasse "Sterkteklasse (EN 338 / EN 14080)"
+C18 = 1
+C24 = 2
+C30 = 3
+GL24h = 4
+GL28h = 5
+GL32h = 6
 @end
 
-Karakteristieke druksterkte evenwijdig f_c,0,k (EN 338):
+@select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
+Klasse 1 — droog, binnenklimaat = 1
+Klasse 2 — beschut buitenklimaat = 2
+Klasse 3 — buiten, onbeschermd = 3
+@end
 
-f_c0k = houtsoort * 1 N/mm^2
+@select belastingduurklasse "Belastingduurklasse (tabel 2.1)"
+Blijvend (> 10 jaar) = 1
+Lang (6 mnd - 10 jaar) = 2
+Middellang (1 week - 6 mnd) = 3
+Kort (< 1 week) = 4
+Zeer kort = 5
+@end
 
-gamma_M = 1.3
-k_mod = 0.8
+#hide
+'Materiaalmatrix: [id | f_m,k | f_v,k | f_c,0,k | f_c,90,k | E_0,mean | E_0,05 | γ_M | gelamineerd]
+materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |18; 21; 23; 24; 28; 32 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |1.3; 1.3; 1.3; 1.25; 1.25; 1.25 |0; 0; 0; 1; 1; 1]
+'k_mod (tabel 3.1): [duurklasse | klimaatklasse 1 en 2 | klimaatklasse 3]
+kmod_tabel = [1; 2; 3; 4; 5 |0.60; 0.70; 0.80; 0.90; 1.10 |0.50; 0.55; 0.65; 0.70; 0.90]
+f_c0k = hlookup(materialen; sterkteklasse; 1; 4)*N/mm^2
+gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
+k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
+#show
+
+Karakteristieke druksterkte evenwijdig, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+
+f_c0k
+gamma_M
+k_mod
 
 Rekenwaarde druksterkte (formule 2.14):
 
@@ -236,10 +283,10 @@ Unity check:
 
 UC_druk = sigma_c0d / f_c0d
 
-#if UC_druk < 1
-  Druk evenwijdig voldoet (UC = {{UC_druk}}).
+#if UC_druk ≤ 1
+  '<b>Maatgevende UC = 'UC_druk'</b><span style="color: green"> ≤ 1,0 → <b>druk evenwijdig voldoet</b></span>
 #else
-  Druk evenwijdig voldoet NIET (UC = {{UC_druk}})!
+  '<b>Maatgevende UC = 'UC_druk'</b><span style="color: red"> > 1,0 → <b>druk evenwijdig voldoet niet</b></span>
 #end if
 `;
 
@@ -252,21 +299,45 @@ export const ec5DrukLoodrecht = `# Toetsing Druk Loodrecht — EN 1995-1-1 §6.1
 
 ## Materiaal
 
-@select houtsoort "Houtsoort / sterkteklasse"
-C18 = 2.2
-C24 = 2.5
-C30 = 2.7
-GL24h = 2.5
-GL28h = 2.5
-GL32h = 3.3
+@select sterkteklasse "Sterkteklasse (EN 338 / EN 14080)"
+C18 = 1
+C24 = 2
+C30 = 3
+GL24h = 4
+GL28h = 5
+GL32h = 6
 @end
 
-Karakteristieke druksterkte loodrecht f_c,90,k (EN 338):
+@select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
+Klasse 1 — droog, binnenklimaat = 1
+Klasse 2 — beschut buitenklimaat = 2
+Klasse 3 — buiten, onbeschermd = 3
+@end
 
-f_c90k = houtsoort * 1 N/mm^2
+@select belastingduurklasse "Belastingduurklasse (tabel 2.1)"
+Blijvend (> 10 jaar) = 1
+Lang (6 mnd - 10 jaar) = 2
+Middellang (1 week - 6 mnd) = 3
+Kort (< 1 week) = 4
+Zeer kort = 5
+@end
 
-gamma_M = 1.3
-k_mod = 0.8
+#hide
+'Materiaalmatrix: [id | f_m,k | f_v,k | f_c,0,k | f_c,90,k | E_0,mean | E_0,05 | γ_M | gelamineerd]
+materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |18; 21; 23; 24; 28; 32 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |1.3; 1.3; 1.3; 1.25; 1.25; 1.25 |0; 0; 0; 1; 1; 1]
+'k_mod (tabel 3.1): [duurklasse | klimaatklasse 1 en 2 | klimaatklasse 3]
+kmod_tabel = [1; 2; 3; 4; 5 |0.60; 0.70; 0.80; 0.90; 1.10 |0.50; 0.55; 0.65; 0.70; 0.90]
+f_c90k = hlookup(materialen; sterkteklasse; 1; 5)*N/mm^2
+gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
+gelamineerd = hlookup(materialen; sterkteklasse; 1; 9)
+k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
+#show
+
+Karakteristieke druksterkte loodrecht, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+
+f_c90k
+gamma_M
+k_mod
 
 Rekenwaarde druksterkte loodrecht (formule 2.14):
 
@@ -282,19 +353,30 @@ Opleggingslengte (werkelijke contactlengte):
 
 L_opl = 100 mm
 
-@select steunpunttype "Type steunpunt (art. 6.1.5)"
-Discreet steunpunt (k_c90 = 1.5) = 1.5
-Continu steunpunt (k_c90 = 1.25) = 1.25
-Standaard (k_c90 = 1.0) = 1.0
+@select zijden "Ligging oplegging (art. 6.1.5(1))"
+Eindoplegging, balkeinde minder dan 30 mm voorbij de oplegging = 1
+Tussenoplegging, of balkeinde minstens 30 mm voorbij de oplegging = 2
 @end
 
-Factor k_c,90:
+@select steunpunttype "Type ondersteuning (art. 6.1.5(3) en (4))"
+Discrete oplegging, afstand tot volgende oplegging minstens 2h = 1
+Doorgaande ondersteuning, afstand tussen lasten minstens 2h = 2
+Overig = 3
+@end
 
-k_c90 = steunpunttype * 1
+#hide
+k_c90_massief = if(steunpunttype ≡ 1; 1.5; if(steunpunttype ≡ 2; 1.25; 1.0))
+k_c90_gelam = if(steunpunttype ≡ 1; if(L_opl ≤ 400 mm; 1.75; 1.0); if(steunpunttype ≡ 2; 1.5; 1.0))
+k_c90 = if(gelamineerd ≡ 1; k_c90_gelam; k_c90_massief)
+#show
 
-Effectieve contactlengte (vergroot met max 30 mm per zijde):
+Factor k_c90 (art. 6.1.5(3) en (4)):
 
-L_ef = L_opl + 2 * 30 mm
+k_c90
+
+Effectieve contactlengte (art. 6.1.5(1)):
+
+L_ef = L_opl + zijden * min(30 mm; L_opl) to mm
 
 Effectief contactoppervlak (formule 6.4):
 
@@ -316,10 +398,10 @@ Unity check:
 
 UC_c90 = sigma_c90d / (k_c90 * f_c90d)
 
-#if UC_c90 < 1
-  Druk loodrecht voldoet (UC = {{UC_c90}}).
+#if UC_c90 ≤ 1
+  '<b>Maatgevende UC = 'UC_c90'</b><span style="color: green"> ≤ 1,0 → <b>druk loodrecht voldoet</b></span>
 #else
-  Druk loodrecht voldoet NIET (UC = {{UC_c90}})!
+  '<b>Maatgevende UC = 'UC_c90'</b><span style="color: red"> > 1,0 → <b>druk loodrecht voldoet niet</b></span>
 #end if
 `;
 
@@ -332,38 +414,55 @@ export const ec5Knik = `# Toetsing Knik — EN 1995-1-1 §6.3.2
 
 ## Materiaal
 
-@select houtsoort "Houtsoort / sterkteklasse"
-C18 = 18
-C24 = 24
-C30 = 30
-GL24h = 24
-GL28h = 28
-GL32h = 32
+@select sterkteklasse "Sterkteklasse (EN 338 / EN 14080)"
+C18 = 1
+C24 = 2
+C30 = 3
+GL24h = 4
+GL28h = 5
+GL32h = 6
 @end
 
-Karakteristieke druksterkte evenwijdig f_c,0,k:
+@select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
+Klasse 1 — droog, binnenklimaat = 1
+Klasse 2 — beschut buitenklimaat = 2
+Klasse 3 — buiten, onbeschermd = 3
+@end
 
-f_c0k = houtsoort * 1 N/mm^2
+@select belastingduurklasse "Belastingduurklasse (tabel 2.1)"
+Blijvend (> 10 jaar) = 1
+Lang (6 mnd - 10 jaar) = 2
+Middellang (1 week - 6 mnd) = 3
+Kort (< 1 week) = 4
+Zeer kort = 5
+@end
 
-Elasticiteitsmodulus 5-percentielwaarde E_0,05 (EN 338):
+#hide
+'Materiaalmatrix: [id | f_m,k | f_v,k | f_c,0,k | f_c,90,k | E_0,mean | E_0,05 | γ_M | gelamineerd]
+materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |18; 21; 23; 24; 28; 32 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |1.3; 1.3; 1.3; 1.25; 1.25; 1.25 |0; 0; 0; 1; 1; 1]
+'k_mod (tabel 3.1): [duurklasse | klimaatklasse 1 en 2 | klimaatklasse 3]
+kmod_tabel = [1; 2; 3; 4; 5 |0.60; 0.70; 0.80; 0.90; 1.10 |0.50; 0.55; 0.65; 0.70; 0.90]
+f_c0k = hlookup(materialen; sterkteklasse; 1; 4)*N/mm^2
+E_005 = hlookup(materialen; sterkteklasse; 1; 7)*N/mm^2
+gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
+k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
+beta_c = if(hlookup(materialen; sterkteklasse; 1; 9) ≡ 1; 0.1; 0.2)
+#show
 
-E_005 = 7400 N/mm^2
+Karakteristieke druksterkte evenwijdig en E_005 (EN 338 / EN 14080), partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
 
-gamma_M = 1.3
-k_mod = 0.8
+f_c0k
+E_005
+gamma_M
+k_mod
 
 Rekenwaarde druksterkte:
 
 f_c0d = k_mod * f_c0k / gamma_M to N/mm^2
 
-@select houttype "Type hout (voor beta_c)"
-Gezaagd hout (beta_c = 0.2) = 0.2
-Gelijmd gelamineerd hout (beta_c = 0.1) = 0.1
-@end
+Factor beta_c (formule 6.29): 0,2 massief, 0,1 gelamineerd:
 
-Factor beta_c (art. 6.3.2, formule 6.29):
-
-beta_c = houttype * 1
+beta_c
 
 ## Doorsnede
 
@@ -371,10 +470,6 @@ b = 100 mm
 h = 100 mm
 
 A = b * h to mm^2
-
-Traagheidsmoment om zwakke as:
-
-I_z = h * b^3 / 12 to mm^4
 
 ## Systeem
 
@@ -384,9 +479,9 @@ L_k = 3000 mm
 
 ## Knikberekening (art. 6.3.2)
 
-Slankheid (zwakke as):
+Slankheid om de zwakke as (kleinste afmeting van de doorsnede):
 
-lambda_z = L_k / (b / sqrt(12))
+lambda_z = L_k / (min(b; h) / sqrt(12))
 
 Relatieve slankheid (formule 6.22):
 
@@ -396,9 +491,9 @@ Factor k_z (formule 6.28):
 
 k_z = 0.5 * (1 + beta_c * (lambda_relz - 0.3) + lambda_relz^2)
 
-Knikfactor k_c,z (formule 6.26):
+Knikfactor k_cz (formule 6.26, ten hoogste 1 volgens art. 6.3.2(2)):
 
-k_cz = 1 / (k_z + sqrt(k_z^2 - lambda_relz^2))
+k_cz = min(1; 1 / (k_z + sqrt(k_z^2 - lambda_relz^2)))
 
 ## Belasting
 
@@ -414,14 +509,14 @@ Unity check knik:
 
 UC_knik = sigma_c0d / (k_cz * f_c0d)
 
-#if UC_knik < 1
-  Knik voldoet (UC = {{UC_knik}}).
-#else
-  Knik voldoet NIET (UC = {{UC_knik}})!
+#if lambda_relz < 0.3
+  Relatieve slankheid < 0,3: k_c = 1 (art. 6.3.2(2)).
 #end if
 
-#if lambda_relz < 0.3
-  Opmerking: relatieve slankheid < 0,3; knik niet maatgevend (art. 6.3.2(2)).
+#if UC_knik ≤ 1
+  '<b>Maatgevende UC = 'UC_knik'</b><span style="color: green"> ≤ 1,0 → <b>knik voldoet</b></span>
+#else
+  '<b>Maatgevende UC = 'UC_knik'</b><span style="color: red"> > 1,0 → <b>knik voldoet niet</b></span>
 #end if
 `;
 
@@ -434,32 +529,49 @@ export const ec5Doorbuiging = `# Toetsing Doorbuiging — EN 1995-1-1 §7.2 / §
 
 ## Materiaal
 
-@select houtsoort "Houtsoort / sterkteklasse"
-C18 = 9000
-C24 = 11000
-C30 = 12000
-GL24h = 11500
-GL28h = 12600
-GL32h = 13700
+@select sterkteklasse "Sterkteklasse (EN 338 / EN 14080)"
+C18 = 1
+C24 = 2
+C30 = 3
+GL24h = 4
+GL28h = 5
+GL32h = 6
 @end
 
-Gemiddelde elasticiteitsmodulus E_mean (EN 338):
-
-E_mean = houtsoort * 1 N/mm^2
-
-@select klimaatklasse "Klimaatklasse"
-Klasse 1 (k_def = 0.60) = 0.60
-Klasse 2 (k_def = 0.80) = 0.80
-Klasse 3 (k_def = 2.00) = 2.00
+@select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
+Klasse 1 — droog, binnenklimaat = 1
+Klasse 2 — beschut buitenklimaat = 2
+Klasse 3 — buiten, onbeschermd = 3
 @end
 
-Vervormingsfactor k_def (tabel 3.2):
+@select belastingcat "Belastingcategorie van de veranderlijke belasting (tabel NB.2 — A1.1)"
+A — woon- en verblijfsruimtes = 1
+B — kantoorruimtes = 2
+C — bijeenkomstruimtes = 3
+D — winkelruimtes = 4
+E — opslagruimtes = 5
+F — verkeersruimte, voertuig ≤ 25 kN = 6
+G — verkeersruimte, 25 < voertuig ≤ 160 kN = 7
+H — daken = 8
+Sneeuwbelasting = 9
+Windbelasting = 10
+@end
 
-k_def = klimaatklasse * 1
+#hide
+'Materiaalmatrix: [id | f_m,k | f_v,k | f_c,0,k | f_c,90,k | E_0,mean | E_0,05 | γ_M | gelamineerd]
+materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |18; 21; 23; 24; 28; 32 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |1.3; 1.3; 1.3; 1.25; 1.25; 1.25 |0; 0; 0; 1; 1; 1]
+'ψ-factoren (NEN-EN 1990 tabel NB.2 — A1.1): [categorie | ψ_0 | ψ_1 | ψ_2]
+psi_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 |0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 |0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 |0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
+E_mean = hlookup(materialen; sterkteklasse; 1; 6)*N/mm^2
+k_def = if(klimaatklasse ≡ 1; 0.60; if(klimaatklasse ≡ 2; 0.80; 2.00))
+psi_2 = hlookup(psi_tabel; belastingcat; 1; 4)
+#show
 
-Quasi-blijvende factor psi_2 (NEN-EN 1990, cat. A woning):
+'Gemiddelde elasticiteitsmodulus (EN 338 / EN 14080), kruipfactor (tabel 3.2) en quasi-blijvende factor (NEN-EN 1990 tabel NB.2 — A1.1):
 
-psi_2 = 0.3
+E_mean
+k_def
+psi_2
 
 ## Doorsnede
 
@@ -538,22 +650,30 @@ UC_netfin = w_netfin / w_netfin_lim
 
 UC_fin = w_fin / w_fin_lim
 
-#if UC_inst < 1
+#if UC_inst ≤ 1
   w_inst voldoet ({{w_inst}} mm < {{w_inst_lim}} mm).
 #else
   w_inst voldoet NIET!
 #end if
 
-#if UC_netfin < 1
+#if UC_netfin ≤ 1
   w_net,fin voldoet ({{w_netfin}} mm < {{w_netfin_lim}} mm).
 #else
   w_net,fin voldoet NIET!
 #end if
 
-#if UC_fin < 1
+#if UC_fin ≤ 1
   w_fin voldoet ({{w_fin}} mm < {{w_fin_lim}} mm).
 #else
   w_fin voldoet NIET!
+#end if
+
+UC_max = max(UC_inst; UC_netfin; UC_fin)
+
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>doorbuiging voldoet</b></span>
+#else
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>doorbuiging voldoet niet</b></span>
 #end if
 `;
 
@@ -564,38 +684,16 @@ UC_fin = w_fin / w_fin_lim
 /** EN 1995-1-1 Complete — Volledige houten balk toetsing */
 export const ec5HoutenBalk = `# Volledige Toetsing Houten Balk — EN 1995-1-1
 
-## Projectgegevens
-
-@select gevolgklasse "Constructiegevolgklasse (CC)"
-CC1 — Lage gevolgen = 1
-CC2 — Middelmatige gevolgen = 2
-CC3 — Grote gevolgen = 3
-@end
-
 ## Materiaal
 
-@select houttype "Type hout"
-Gezaagd hout (gamma_M = 1.3) = 1.3
-Gelijmd gelamineerd hout (gamma_M = 1.25) = 1.25
+@select sterkteklasse "Sterkteklasse (EN 338 / EN 14080)"
+C18 = 1
+C24 = 2
+C30 = 3
+GL24h = 4
+GL28h = 5
+GL32h = 6
 @end
-
-@select sterkteklasse "Sterkteklasse"
-C18 — f_mk=18 f_vk=3.4 f_c0k=18 f_c90k=2.2 E=9000 E005=6000 = 18
-C24 — f_mk=24 f_vk=4.0 f_c0k=21 f_c90k=2.5 E=11000 E005=7400 = 24
-C30 — f_mk=30 f_vk=4.0 f_c0k=23 f_c90k=2.7 E=12000 E005=8000 = 30
-GL24h — f_mk=24 f_vk=3.5 f_c0k=24 f_c90k=2.5 E=11500 E005=9600 = 124
-GL28h — f_mk=28 f_vk=3.5 f_c0k=26.5 f_c90k=2.5 E=12600 E005=10500 = 128
-GL32h — f_mk=32 f_vk=3.5 f_c0k=29 f_c90k=3.3 E=13700 E005=11100 = 132
-@end
-
-Karakteristieke waarden (EN 338 / EN 14080):
-
-f_mk = 24 N/mm^2
-f_vk = 4.0 N/mm^2
-f_c0k = 21 N/mm^2
-f_c90k = 2.5 N/mm^2
-E_mean = 11000 N/mm^2
-E_005 = 7400 N/mm^2
 
 @select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
 Klasse 1 — droog binnenklimaat = 1
@@ -603,46 +701,53 @@ Klasse 2 — beschut buitenklimaat = 2
 Klasse 3 — buiten onbeschermd = 3
 @end
 
-@select belastingduurklasse "Belastingduurklasse (tabel 2.1)"
-Blijvend (> 10 jaar, k_mod=0.60) = 0.60
-Lang (6 mnd-10 jaar, k_mod=0.70) = 0.70
-Middellang (1 wk-6 mnd, k_mod=0.80) = 0.80
-Kort (< 1 week, k_mod=0.90) = 0.90
-Zeer kort (k_mod=1.10) = 1.10
+@select belastingduurklasse "Belastingduurklasse van de veranderlijke belasting (tabel 2.1)"
+Blijvend (> 10 jaar) = 1
+Lang (6 mnd - 10 jaar) = 2
+Middellang (1 week - 6 mnd) = 3
+Kort (< 1 week) = 4
+Zeer kort = 5
 @end
 
-Partiele factor (tabel 2.3):
+#hide
+'Materiaalmatrix: [id | f_m,k | f_v,k | f_c,0,k | f_c,90,k | E_0,mean | E_0,05 | γ_M | gelamineerd]
+materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |18; 21; 23; 24; 28; 32 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |1.3; 1.3; 1.3; 1.25; 1.25; 1.25 |0; 0; 0; 1; 1; 1]
+'k_mod (tabel 3.1): [duurklasse | klimaatklasse 1 en 2 | klimaatklasse 3]
+kmod_tabel = [1; 2; 3; 4; 5 |0.60; 0.70; 0.80; 0.90; 1.10 |0.50; 0.55; 0.65; 0.70; 0.90]
+f_mk = hlookup(materialen; sterkteklasse; 1; 2)*N/mm^2
+f_vk = hlookup(materialen; sterkteklasse; 1; 3)*N/mm^2
+f_c90k = hlookup(materialen; sterkteklasse; 1; 5)*N/mm^2
+E_mean = hlookup(materialen; sterkteklasse; 1; 6)*N/mm^2
+E_005 = hlookup(materialen; sterkteklasse; 1; 7)*N/mm^2
+gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
+gelamineerd = hlookup(materialen; sterkteklasse; 1; 9)
+k_mod_Q = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
+k_mod_G = hlookup(kmod_tabel; 1; 1; if(klimaatklasse ≡ 3; 3; 2))
+k_def = if(klimaatklasse ≡ 1; 0.60; if(klimaatklasse ≡ 2; 0.80; 2.00))
+#show
 
-gamma_M = houttype * 1
+Karakteristieke waarden (EN 338 / EN 14080), partiele factor (tabel 2.3 NB), modificatiefactoren blijvend en veranderlijk (tabel 3.1) en kruipfactor (tabel 3.2):
 
-Modificatiefactor (tabel 3.1):
-
-k_mod = belastingduurklasse * 1
-
-## Rekenwaarden materiaal (art. 2.4.1, formule 2.14)
-
-f_md = k_mod * f_mk / gamma_M to N/mm^2
-
-f_vd = k_mod * f_vk / gamma_M to N/mm^2
-
-f_c0d = k_mod * f_c0k / gamma_M to N/mm^2
-
-f_c90d = k_mod * f_c90k / gamma_M to N/mm^2
+f_mk
+f_vk
+f_c90k
+E_mean
+E_005
+gamma_M
+k_mod_G
+k_mod_Q
+k_def
 
 ## Doorsnede
 
 b = 70 mm
 h = 200 mm
 
-Oppervlakte:
-
-A = b * h to mm^2
-
 Weerstandsmoment:
 
 W_y = b * h^2 / 6 to mm^3
 
-Traagheidsmoment:
+Traagheidsmomenten:
 
 I_y = b * h^3 / 12 to mm^4
 
@@ -658,11 +763,75 @@ Opleggingslengte:
 
 L_opl = 100 mm
 
-## Belasting (rekenwaarden)
+@select zijden "Balkeinde op de oplegging (art. 6.1.5(1))"
+Minder dan 30 mm voorbij de oplegging = 1
+Minstens 30 mm voorbij de oplegging = 2
+@end
 
-Gelijkmatig verdeelde belasting:
+## Belasting
 
-q_d = 5.0 kN/m
+Karakteristieke lijnlasten, blijvend en veranderlijk:
+
+g_k = 1.5 kN/m
+q_k = 2.0 kN/m
+
+@select belastingcat "Belastingcategorie (tabel NB.2 — A1.1)"
+A — woon- en verblijfsruimtes = 1
+B — kantoorruimtes = 2
+C — bijeenkomstruimtes = 3
+D — winkelruimtes = 4
+E — opslagruimtes = 5
+F — verkeersruimte, voertuig ≤ 25 kN = 6
+G — verkeersruimte, 25 < voertuig ≤ 160 kN = 7
+H — daken = 8
+Sneeuwbelasting = 9
+Windbelasting = 10
+@end
+
+#hide
+'ψ-factoren (NEN-EN 1990 tabel NB.2 — A1.1): [categorie | ψ_0 | ψ_1 | ψ_2]
+psi_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 |0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 |0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 |0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
+psi_0 = hlookup(psi_tabel; belastingcat; 1; 2)
+psi_2 = hlookup(psi_tabel; belastingcat; 1; 4)
+gamma_Ga = if(CC ≡ 1; 1.2; if(CC ≡ 3; 1.5; 1.35))
+gamma_Gb = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))
+gamma_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))
+#show
+
+'Belastingfactoren (NEN-EN 1990 tabel NB.4 en NB.5 — A1.2(B), gevolgklasse CC{{CC}}) en combinatiefactoren (tabel NB.2 — A1.1):
+
+gamma_Ga
+gamma_Gb
+gamma_Q
+psi_0
+psi_2
+
+Rekenwaarde lijnlast (formule 6.10a en 6.10b; alleen blijvende belasting met k_mod blijvend, art. 3.1.3(2)):
+
+q_da = gamma_Ga * g_k + gamma_Q * psi_0 * q_k to kN/m
+
+q_db = gamma_Gb * g_k + gamma_Q * q_k to kN/m
+
+q_dG = gamma_Ga * g_k to kN/m
+
+#if q_dG / k_mod_G > max(q_da; q_db) / k_mod_Q
+  Maatgevend is de combinatie met alleen blijvende belasting.
+  q_d = q_dG to kN/m
+  k_mod = k_mod_G
+#else
+  q_d = max(q_da; q_db) to kN/m
+  k_mod = k_mod_Q
+#end if
+
+## Rekenwaarden materiaal (art. 2.4.1, formule 2.14)
+
+f_md = k_mod * f_mk / gamma_M to N/mm^2
+
+f_vd = k_mod * f_vk / gamma_M to N/mm^2
+
+f_c90d = k_mod * f_c90k / gamma_M to N/mm^2
+
+## Snedekrachten
 
 Maatgevend moment:
 
@@ -684,7 +853,7 @@ sigma_md = M_Ed / W_y to N/mm^2
 
 UC_buiging = sigma_md / f_md
 
-#if UC_buiging < 1
+#if UC_buiging ≤ 1
   [OK] Buiging voldoet (UC = {{UC_buiging}}).
 #else
   [NIET OK] Buiging voldoet NIET (UC = {{UC_buiging}})!
@@ -694,9 +863,9 @@ UC_buiging = sigma_md / f_md
 
 ## 2. Afschuiving (art. 6.1.7, formule 6.13)
 
-Scheurfactor (NB):
+Scheurfactor voor massief en gelamineerd hout (art. 6.1.7(2)):
 
-k_cr = 1.0
+k_cr = 0.67
 
 b_ef = k_cr * b to mm
 
@@ -704,7 +873,7 @@ tau_d = 3/2 * V_Ed / (b_ef * h) to N/mm^2
 
 UC_afschuiving = tau_d / f_vd
 
-#if UC_afschuiving < 1
+#if UC_afschuiving ≤ 1
   [OK] Afschuiving voldoet (UC = {{UC_afschuiving}}).
 #else
   [NIET OK] Afschuiving voldoet NIET (UC = {{UC_afschuiving}})!
@@ -714,9 +883,17 @@ UC_afschuiving = tau_d / f_vd
 
 ## 3. Druk loodrecht op oplegging (art. 6.1.5, formule 6.3)
 
-k_c90 = 1.5
+#hide
+k_c90 = if(gelamineerd ≡ 1; if(L_opl ≤ 400 mm; 1.75; 1.0); 1.5)
+#show
 
-L_ef = L_opl + 2 * 30 mm
+Factor k_c90 bij een discrete oplegging (art. 6.1.5(4)):
+
+k_c90
+
+Effectieve contactlengte (art. 6.1.5(1)):
+
+L_ef = L_opl + zijden * min(30 mm; L_opl) to mm
 
 A_ef = b * L_ef to mm^2
 
@@ -724,7 +901,7 @@ sigma_c90d = F_opl / A_ef to N/mm^2
 
 UC_c90 = sigma_c90d / (k_c90 * f_c90d)
 
-#if UC_c90 < 1
+#if UC_c90 ≤ 1
   [OK] Druk loodrecht voldoet (UC = {{UC_c90}}).
 #else
   [NIET OK] Druk loodrecht voldoet NIET (UC = {{UC_c90}})!
@@ -734,13 +911,19 @@ UC_c90 = sigma_c90d / (k_c90 * f_c90d)
 
 ## 4. Kipstabiliteit (art. 6.3.3, formule 6.33)
 
-Meewerkende lengte (tabel 6.1, q-belasting):
+Kiplengte (tabel 6.1), gelijkmatige belasting op de drukrand:
 
-l_ef = 0.9 * L to mm
+l_ef = 0.9 * L + 2 * h to mm
 
-Kritische buigspanning voor gezaagd hout (formule 6.32):
-
-sigma_mcrit = 0.78 * b^2 / (h * l_ef) * E_005 to N/mm^2
+#if gelamineerd ≡ 1
+  Kritische buigspanning (formule 6.31), G_005 volgens EN 14080:
+  G_005 = 540 N/mm^2
+  I_tor = h * b^3 / 3 * (1 - 0.63 * b / h) to mm^4
+  sigma_mcrit = pi * sqrt(E_005 * I_z * G_005 * I_tor) / (l_ef * W_y) to N/mm^2
+#else
+  Kritische buigspanning voor massief naaldhout (formule 6.32):
+  sigma_mcrit = 0.78 * b^2 / (h * l_ef) * E_005 to N/mm^2
+#end if
 
 Relatieve slankheid bij buiging (formule 6.30):
 
@@ -748,21 +931,17 @@ lambda_relm = sqrt(f_mk / sigma_mcrit)
 
 Kipfactor k_crit (formule 6.34):
 
-#if lambda_relm < 0.75
-  k_crit = 1.0 (elastisch bereik, geen kip).
+#if lambda_relm ≤ 0.75
+  k_crit = 1.0
+#else if lambda_relm ≤ 1.4
+  k_crit = 1.56 - 0.75 * lambda_relm
 #else
-  #if lambda_relm < 1.4
-    Inelastisch kipbereik.
-  #else
-    Elastisch kipbereik.
-  #end if
+  k_crit = 1 / lambda_relm^2
 #end if
-
-k_crit = 1.0
 
 UC_kip = sigma_md / (k_crit * f_md)
 
-#if UC_kip < 1
+#if UC_kip ≤ 1
   [OK] Kipstabiliteit voldoet (UC = {{UC_kip}}).
 #else
   [NIET OK] Kipstabiliteit voldoet NIET (UC = {{UC_kip}})!
@@ -772,38 +951,24 @@ UC_kip = sigma_md / (k_crit * f_md)
 
 ## 5. Doorbuiging (art. 7.2 / art. 2.2.3)
 
-Vervormingsfactor k_def (tabel 3.2, klasse 1):
-
-k_def = 0.60
-
-psi_2 = 0.3
-
-Verdeling belasting (aanname 60% blijvend, 40% veranderlijk):
-
-g_k = 0.6 * q_d / 1.35 to kN/m
-q_k = 0.4 * q_d / 1.5 to kN/m
-
-Ogenblikkelijke doorbuiging:
+Ogenblikkelijke doorbuiging onder de karakteristieke lasten:
 
 w_inst_G = 5 * g_k * L^4 / (384 * E_mean * I_y) to mm
 w_inst_Q = 5 * q_k * L^4 / (384 * E_mean * I_y) to mm
-w_inst = w_inst_G + w_inst_Q to mm
 
 Uiteindelijke doorbuiging met kruip (formule 2.3, 2.4):
 
 w_fin_G = w_inst_G * (1 + k_def) to mm
 w_fin_Q = w_inst_Q * (1 + psi_2 * k_def) to mm
-w_fin = w_fin_G + w_fin_Q to mm
-w_netfin = w_fin to mm
+w_netfin = w_fin_G + w_fin_Q to mm
 
-Grenswaarden (tabel 7.2):
+Grenswaarde (tabel 7.2):
 
-w_inst_lim = L / 300 to mm
 w_netfin_lim = L / 250 to mm
 
 UC_doorbuiging = w_netfin / w_netfin_lim
 
-#if UC_doorbuiging < 1
+#if UC_doorbuiging ≤ 1
   [OK] Doorbuiging voldoet ({{w_netfin}} mm < {{w_netfin_lim}} mm).
 #else
   [NIET OK] Doorbuiging voldoet NIET!
@@ -813,13 +978,25 @@ UC_doorbuiging = w_netfin / w_netfin_lim
 
 ## Samenvatting
 
-| Toetsing | UC | Resultaat |
-|---|---|---|
-| Buiging (6.1.6) | {{UC_buiging}} | |
-| Afschuiving (6.1.7) | {{UC_afschuiving}} | |
-| Druk loodrecht (6.1.5) | {{UC_c90}} | |
-| Kip (6.3.3) | {{UC_kip}} | |
-| Doorbuiging (7.2) | {{UC_doorbuiging}} | |
+#hide
+UC_max = max(UC_buiging; UC_afschuiving; UC_c90; UC_kip; UC_doorbuiging)
+kleur(u) = if(u > 1; "#b91c1c"; if(u > 0.9; "#b45309"; "#047857"))
+oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
+#show
+'<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
+'<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:4px 8px;">Toets</th><th style="text-align:left; padding:4px 8px;">Norm</th><th style="text-align:right; padding:4px 8px;">UC</th><th style="text-align:left; padding:4px 8px;">Oordeel</th></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Buiging</td><td style="padding:4px 8px;">§6.1.6</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_buiging)'">'UC_buiging'</td><td style="padding:4px 8px; color:'kleur(UC_buiging)'">'oordeel(UC_buiging)'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Afschuiving</td><td style="padding:4px 8px;">§6.1.7</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_afschuiving)'">'UC_afschuiving'</td><td style="padding:4px 8px; color:'kleur(UC_afschuiving)'">'oordeel(UC_afschuiving)'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Druk loodrecht</td><td style="padding:4px 8px;">§6.1.5</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_c90)'">'UC_c90'</td><td style="padding:4px 8px; color:'kleur(UC_c90)'">'oordeel(UC_c90)'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Kip</td><td style="padding:4px 8px;">§6.3.3</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_kip)'">'UC_kip'</td><td style="padding:4px 8px; color:'kleur(UC_kip)'">'oordeel(UC_kip)'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Doorbuiging w<sub>net,fin</sub></td><td style="padding:4px 8px;">§7.2</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_doorbuiging)'">'UC_doorbuiging'</td><td style="padding:4px 8px; color:'kleur(UC_doorbuiging)'">'oordeel(UC_doorbuiging)'</td></tr>
+'</table>
+
+#if UC_max ≤ 1
+'<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de balk voldoet</b></span>
+#else
+'<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de balk voldoet niet</b></span>
+#end if
 
 ## Overzicht
 

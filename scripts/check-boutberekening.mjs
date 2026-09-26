@@ -14,10 +14,10 @@
  * Zie docs/afwijkingen-referentie.md §6.
  *
  * Daarna volgen sets zonder referentieblad, elk met een handberekening:
- * een randbout zonder tweede bout loodrecht op de kracht, een ongeldige p₂,
- * een randbout waarbij de p₂-tak maatgevend is, een steek boven het maximum
- * van tabel 3.3 (signaal, geen afkeur) en de binnenste bout loodrecht op de
- * kracht in beide rekenwijzen.
+ * een randbout zonder tweede bout loodrecht op de kracht (p₂ = 0, niet
+ * ingevuld of gewist), een ongeldige p₂, een randbout waarbij de p₂-tak
+ * maatgevend is, een steek boven het maximum van tabel 3.3 (signaal, geen
+ * afkeur) en de binnenste bout loodrecht op de kracht in beide rekenwijzen.
  *
  * Draaien:  node scripts/check-boutberekening.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -95,6 +95,15 @@ const HANDWERK = [
     standen: [1, 0],
     invoer: { t_plaat: "10", p_2: undefined, n_v: "2", F_v_Ed: "100" },
     // Zelfde handberekening als hierboven: een niet ingevuld veld telt als 0.
+    verwacht: { k_1: 2.189, F_b_Rd: 56.04, UC_b: 1.785 },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "Idem, p₂-veld gewist (leeg)",
+    standen: [1, 0],
+    invoer: { t_plaat: "10", p_2: "", n_v: "2", F_v_Ed: "100" },
+    // Een gewist veld telt in de kern als 0 in de eenheid van het veld (0 mm),
+    // dus dezelfde handberekening als de set "p₂ = 0" hierboven.
     verwacht: { k_1: 2.189, F_b_Rd: 56.04, UC_b: 1.785 },
     oordeel: "voldoet niet",
   },

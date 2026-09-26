@@ -22,21 +22,26 @@ import "./VoetplaatDesigner.css";
  * getrapt profiel per sondering: III van 8·D_eq boven de punt naar de punt,
  * dan I omlaag tot 4·D_eq en II terug omhoog — de volgorde van Koppejan — en
  * de schachtwaarde q_cs als stippellijn over ΔL.
+ *
+ * Getekend en gemiddeld wordt met de waarden waarmee het blad rekent: ΔL
+ * hoogstens tot de onderkant van de lagen met negatieve kleef (of de
+ * paallengte) en bij een avegaarpaal q_c;III hoogstens 2 MPa.
  */
 const MARKER = "Paaldraagvermogen — NEN 9997-1 art. 7.6.2.3";
 const MAX_S = 6;
 
+// Gelijk aan de keuzelijst "paaltype" in het blad.
 const PAALTYPEN = [
   "Betonpaal, geprefabriceerd, geheid",
   "Betonpaal in de grond gevormd, mantelbuis teruggeheid",
   "Betonpaal in de grond gevormd, mantelbuis getrild",
-  "Betonpaal in de grond gevormd, schroefpunt",
+  "Betonpaal in de grond gevormd, schroefpunt, geschroefd",
   "Avegaarpaal, geschroefd",
   "Boorpaal met steunvloeistof",
   "Stalen buispaal, gesloten punt, geheid",
-  "Stalen profiel of open buis, geheid",
+  "Stalen H-profiel, geheid (omhullende rechthoek)",
   "Stalen paal met schroefpunt, geschroefd",
-  "Groutschil rond buis met schroefpunt",
+  "Groutschil rond buis met schroefpunt, geschroefd",
   "Houten paal, constante doorsnede, geheid",
   "Houten paal, taps, geheid",
 ];
@@ -98,28 +103,40 @@ export default function PaalDesigner() {
   const nk = Math.round(d("nk")) === 1;
   const zMv = nk ? d("z_mv") : zKop;
   const dGw = d("d_gw");
-  const nL = nk ? clamp(Math.round(d("n_l")), 1, 5) : 0;
+  const nL = nk ? clamp(Math.round(d("n_l")), 0, 5) : 0;
   const lagen = Array.from({ length: nL }, (_, i) => ({ j: i + 1, d: Math.max(0.1, d(`d_${i + 1}`)), phi: d(`φ_${i + 1}`) }));
   const zDraag = zMv - lagen.reduce((s, l) => s + l.d, 0);
   const Fcd = d("F_c_d");
+  // Positieve schachtwrijving alleen onder de lagen met negatieve kleef, zoals ΔL_max in het blad.
+  const dlMax = Math.max(Math.min(zKop, zDraag) - zPunt, 0);
 
   const sonderingen = Array.from({ length: MAX_S }, (_, i) => leesSondering(waarden[`sondering_${i + 1}`]));
   const geladen = sonderingen.filter((s): s is Sondering => s !== null);
   const avegaar = paaltype === 5;
-  // Zonder GEF: de gemiddelden die in het blad zijn ingevuld, per sondering.
+  const openBuis = paaltype === 8 && vorm === 1;
+  // Zonder GEF: de gemiddelden die in het blad zijn ingevuld, per sondering, met
+  // de begrenzingen van het blad: q_c;III ≤ 2 MPa bij een avegaarpaal, ΔL ≤ ΔL_max.
   const handmatig = geladen.length === 0;
   const gemiddelden = Array.from({ length: nS }, (_, i) => {
     const j = i + 1;
+    const qcIII = Math.max(0, d(`q_cIII_${j}`)), dl = Math.max(0, d(`ΔL_${j}`));
     return {
-      qcI: Math.max(0, d(`q_cI_${j}`)), qcII: Math.max(0, d(`q_cII_${j}`)), qcIII: Math.max(0, d(`q_cIII_${j}`)),
-      qcs: Math.max(0, d(`q_cs_${j}`)), dl: Math.max(0, d(`ΔL_${j}`)),
+      qcI: Math.max(0, d(`q_cI_${j}`)), qcII: Math.max(0, d(`q_cII_${j}`)),
+      qcIII: avegaar ? Math.min(qcIII, 2) : qcIII,
+      qcs: Math.max(0, d(`q_cs_${j}`)), dl: Math.min(dl, dlMax),
+      begrensd: avegaar && qcIII > 2, ingekort: dl > dlMax,
     };
   });
+  const begrenzingen = [
+    ...(gemiddelden.some((g) => g.begrensd) ? ["III ten hoogste 2 MPa (avegaarpaal)"] : []),
+    ...(gemiddelden.some((g) => g.ingekort) ? [`ΔL ten hoogste ${fmt(dlMax, 1)} m`] : []),
+  ];
   const uitkomsten = sonderingen.map((s, i) => {
     if (!s) return null;
     const kop = koppejan(s, zPunt, Deq, avegaar);
-    const dl = d(`ΔL_${i + 1}`);
-    const qcs = schachtGemiddelde(s, zPunt, dl);
+    // q_cs over de ΔL waarmee het blad rekent, niet over een stuk in de kleeflagen.
+    const dl = Math.min(Math.max(0, d(`ΔL_${i + 1}`)), dlMax);
+    const qcs = dl > 0 ? schachtGemiddelde(s, zPunt, dl) : null;
     return kop ? { ...kop, qcs } : null;
   });
 
@@ -194,7 +211,7 @@ export default function PaalDesigner() {
       <div className="vd-head">
         <strong>Parametrisch beeld — paaldraagvermogen</strong>
         <span className="vd-uc info">
-          {PAALTYPEN[paaltype - 1].toLowerCase()} · D<sub>eq</sub> = {fmt(Deq * 1000)} mm · {nS} sondering{nS === 1 ? "" : "en"}
+          {PAALTYPEN[paaltype - 1].replace(/^./, (c) => c.toLowerCase())} · D<sub>eq</sub> = {fmt(Deq * 1000)} mm · {nS} sondering{nS === 1 ? "" : "en"}
         </span>
       </div>
 
@@ -224,6 +241,11 @@ export default function PaalDesigner() {
             <label>Grootste zijde b (mm)
               <input type="number" step={10} value={b} onChange={(e) => set("b_p", parseFloat(e.target.value))} />
             </label>
+          )}
+          {openBuis && (
+            <span className="gd-note" style={{ color: "#b91c1c" }}>
+              Rond bij een stalen profiel is een open buis: de volle doorsnede veronderstelt een grondprop; het blad geeft dan "niet aangetoond".
+            </span>
           )}
 
           <span className="vd-ctrl-h">Sonderingen</span>
@@ -258,10 +280,13 @@ export default function PaalDesigner() {
               <span className="gd-note">
                 {gemiddelden.map((g, i) => (
                   <span key={i} style={{ display: "block", color: KLEUREN[i] }}>
-                    {i + 1}. I {fmt(g.qcI, 1)} · II {fmt(g.qcII, 1)} · III {fmt(g.qcIII, 1)} · schacht {fmt(g.qcs, 1)} MPa over {fmt(g.dl, 1)} m
+                    {i + 1}. I {fmt(g.qcI, 1)} · II {fmt(g.qcII, 1)} · III {fmt(g.qcIII, 1)}{g.begrensd ? "*" : ""} · schacht {fmt(g.qcs, 1)} MPa over {fmt(g.dl, 1)} m{g.ingekort ? "*" : ""}
                   </span>
                 ))}
               </span>
+              {begrenzingen.length > 0 && (
+                <span className="gd-note">* begrensd zoals in het blad: {begrenzingen.join("; ")}.</span>
+              )}
             </>
           )}
         </div>

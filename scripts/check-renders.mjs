@@ -13,11 +13,17 @@
  * alinea's achter. Het blad "werkt", maar de tekening klopt niet.
  *
  * Twee rondes:
- *   1. met ingevulde waarden — elk @select op zijn eerste keuze, elk
- *      invoerveld op 1. Problemen hier tellen als fout.
+ *   1. met ingevulde waarden, elk invoerveld op 1. Eerst met elk @select op
+ *      zijn eerste keuze (de basis), daarna per @select elke volgende keuze
+ *      apart, met de overige @selects op hun eerste keuze. Zo komt ook een
+ *      tak aan bod die alleen bij een latere keuze rekent. Problemen hier
+ *      tellen als fout; de melding noemt de keuze waarbij het misging.
  *   2. met lege invoer — zoals een blad er de eerste tel na het invoegen
  *      uitziet. NaN in een tekening is dan ruis in de console; dat wordt
  *      gemeld maar telt niet als fout.
+ *
+ * Een fout die in het blad zelf hersteld moet worden en nog openstaat, staat
+ * in BEKEND: die wordt gemeld, maar telt niet als fout.
  *
  * Draaien:  node scripts/check-renders.mjs      (vereist een gebouwde core)
  */
@@ -52,12 +58,33 @@ function projectScope() {
   return scope;
 }
 
-/** Eerste keuze van elk @select-blok. */
-function selectWaarden(tpl) {
-  const uit = {};
+/** Elk @select-blok met zijn keuzes, in de volgorde van het blad. */
+function selectBlokken(tpl) {
+  const uit = [];
   for (const m of tpl.matchAll(/@select\s+([^\s"]+)[^\n]*\n([\s\S]*?)@end/g)) {
-    const eerste = m[2].match(/=\s*(-?[\d.]+)\s*$/m);
-    if (eerste) uit[m[1].replace(/,/g, "_")] = eerste[1];
+    const keuzes = [...m[2].matchAll(/=\s*(-?[\d.]+)\s*$/gm)].map((k) => k[1]);
+    if (keuzes.length) uit.push({ naam: m[1].replace(/,/g, "_"), keuzes });
+  }
+  return uit;
+}
+
+/**
+ * De keuzesets van ronde 1: eerst de basis (elk @select op zijn eerste keuze),
+ * dan per @select elke volgende keuze apart, de overige op hun eerste keuze.
+ */
+function varianten(tpl) {
+  const blokken = selectBlokken(tpl);
+  const basis = {};
+  for (const { naam, keuzes } of blokken) basis[naam] = keuzes[0];
+  const uit = [{ keuze: "", waarden: basis }];
+  const gezien = new Set();
+  for (const { naam, keuzes } of blokken) {
+    for (const k of keuzes.slice(1)) {
+      const keuze = `${naam} = ${k}`;
+      if (k === basis[naam] || gezien.has(keuze)) continue;
+      gezien.add(keuze);
+      uit.push({ keuze, waarden: { ...basis, [naam]: k } });
+    }
   }
   return uit;
 }
@@ -73,16 +100,32 @@ const FOUTSIGNALEN = [
   "Render error", "Undefined symbol", "Unexpected type", "Cannot read",
   "is not defined", "Invalid argument", "Error evaluating condition",
   "Error defining function", "Error:",
+  // Stille fouten: de kern rekent door, maar de tekst klopt niet. Een
+  // tabelverwijzing die als index is gelezen (`NB[…]`), een Markdown-tabel die
+  // als losse tekst is blijven staan, en tekst die als "…"+"…" is afgedrukt
+  // in plaats van samengevoegd.
+  "NB[", "|---|", "&quot;+&quot;",
 ];
+
+/**
+ * Bekende renderfouten die in het blad zelf hersteld moeten worden. Ze worden
+ * per blad gemeld, maar tellen niet als fout, zodat de controle de rest van
+ * dat blad blijft bewaken: alleen dit ene signaal wordt daar overgeslagen.
+ * Haal een regel weg zodra het blad is hersteld; het script meldt dat vanzelf.
+ *
+ * Vorm: "<bestand> :: <blad>": { signaal: "<een van FOUTSIGNALEN>", reden: "…" }
+ */
+const BEKEND = {};
 
 /** Attributen die in een tekening een getal (of een lijst getallen) horen te zijn. */
 const GETALATTRIBUTEN = /\s(x|y|x1|y1|x2|y2|cx|cy|r|rx|ry|width|height|points)="([^"]*)"/g;
 
-function onderzoek(html) {
+function onderzoek(html, overslaan = null) {
   const problemen = [];
   const tekst = html.replace(/<[^>]+>/g, " ");
 
   for (const s of FOUTSIGNALEN) {
+    if (s === overslaan) continue;
     const i = tekst.indexOf(s);
     if (i >= 0) {
       problemen.push(`foutmelding: …${tekst.slice(Math.max(0, i - 50), i + 100).replace(/\s+/g, " ").trim()}…`);
@@ -132,23 +175,47 @@ for (const bestand of readdirSync(TPL_DIR).filter((f) => f.endsWith(".ts") && !G
 }
 
 let fouten = 0;
+let renders = 0;
+let bekendeBladen = 0;
 const ruis = [];
 for (const { bestand, naam, tpl } of bladen) {
-  const waarden = selectWaarden(tpl);
-  for (const v of invoervelden(tpl)) if (!(v in waarden)) waarden[v] = "1";
+  const velden = invoervelden(tpl);
+  const sets = varianten(tpl);
+  const bekend = BEKEND[`${bestand} :: ${naam}`];
+  const mis = [];
+  let bekendGezien = 0;
+  for (const { keuze, waarden: keuzes } of sets) {
+    const waarden = { ...keuzes };
+    for (const v of velden) if (!(v in waarden)) waarden[v] = "1";
 
-  let problemen;
-  try {
-    problemen = onderzoek(rekenblad(tpl, waarden, undefined, scope));
-  } catch (e) {
-    problemen = [`gooit: ${String(e.message).slice(0, 140)}`];
+    let problemen;
+    try {
+      const html = rekenblad(tpl, waarden, undefined, scope);
+      problemen = onderzoek(html, bekend?.signaal);
+      if (bekend && html.replace(/<[^>]+>/g, " ").includes(bekend.signaal)) bekendGezien++;
+    } catch (e) {
+      problemen = [`gooit: ${String(e.message).slice(0, 140)}`];
+    }
+    renders++;
+    if (problemen.length) mis.push({ keuze, problemen });
   }
-  if (problemen.length) {
+  const aantal = sets.length > 1 ? `  (${sets.length} keuzesets)` : "";
+  if (mis.length) {
     fouten++;
-    console.log(`FOUT  ${bestand} :: ${naam}`);
-    for (const p of problemen) console.log(`        ${p}`);
+    console.log(`FOUT  ${bestand} :: ${naam}${aantal}`);
+    for (const { keuze, problemen } of mis) {
+      console.log(`      bij ${keuze || "de eerste keuze van elk @select"}:`);
+      for (const p of problemen) console.log(`        ${p}`);
+    }
+  } else if (bekendGezien) {
+    bekendeBladen++;
+    console.log(`BEKEND ${bestand} :: ${naam}${aantal}`);
+    console.log(`        "${bekend.signaal}" in ${bekendGezien} van ${sets.length} keuzesets: ${bekend.reden}`);
   } else {
-    console.log(`ok    ${bestand} :: ${naam}`);
+    console.log(`ok    ${bestand} :: ${naam}${aantal}`);
+  }
+  if (bekend && !bekendGezien) {
+    console.log(`        (bekend probleem "${bekend.signaal}" niet meer gezien; haal het blad uit BEKEND)`);
   }
 
   // Ronde 2: lege invoer, alleen tekeningen.
@@ -164,7 +231,8 @@ for (const { bestand, naam, tpl } of bladen) {
   }
 }
 
-console.log(`\n${bladen.length} bladen gerenderd, ${fouten} met problemen.`);
+console.log(`\n${bladen.length} bladen gerenderd in ${renders} keuzesets, ${fouten} met problemen.`);
+if (bekendeBladen) console.log(`${bekendeBladen} blad(en) met een bekend probleem (BEKEND), niet als fout geteld.`);
 if (ruis.length) {
   console.log(`\nBij lege invoer (de eerste tel na het invoegen) NaN in de tekening — geen fout, wel consoleruis:`);
   for (const r of ruis) console.log(`  · ${r}`);

@@ -22,6 +22,7 @@
  * Draaien:  node scripts/check-kolom.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
+import { readFileSync } from "node:fs";
 import { laadTemplate, reken, toets, toetsNormStand, afronden } from "./lib/refcheck.mjs";
 
 const tpl = laadTemplate("kolom.ts");
@@ -150,6 +151,22 @@ for (const ref of [...REFERENTIES, ...NEGATIEF]) {
   const nb = reken(tpl, { ...BASIS, ...doc4.invoer }, { ...PROJECT, rekenwijze: 0 });
   fouten += toets("document4 — norm-stand, afschuiving met k_cr = 0,67", nb,
     { "τ_d": "1.352", UC_613: "0.732" }, {}, ucsUitTekst(nb.text));
+}
+
+// ── Het beeld ─────────────────────────────────────────────────────────────
+// KolomDesigner.tsx rekent niet zelf maar leest zijn getallen uit dit blad.
+// Elke naam die het beeld opvraagt, moet het blad in beide standen zichtbaar
+// uitrekenen; anders staat er in het paneel een "—".
+{
+  const beeld = readFileSync(new URL("../packages/desktop/src/components/calc/KolomDesigner.tsx", import.meta.url), "utf8");
+  const namen = [...new Set([...beeld.matchAll(/\bw\("([^"]+)"/g)].map((m) => m[1]))];
+  console.log(`\nKolomDesigner leest ${namen.length} namen uit het blad`);
+  for (const [stand, rekenwijze] of [["referentie", 1], ["norm", 0]]) {
+    const uit = reken(tpl, BASIS, { ...PROJECT, rekenwijze });
+    const mist = namen.filter((n) => !Number.isFinite(uit.values[n]));
+    if (mist.length) fouten++;
+    console.log(`  ${mist.length ? "FOUT  " : "OK    "} ${stand}stand${mist.length ? `: ontbreekt ${mist.join(", ")}` : ": alle namen aanwezig"}`);
+  }
 }
 
 console.log(`
