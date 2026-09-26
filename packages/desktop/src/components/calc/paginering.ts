@@ -35,6 +35,32 @@ export const INHOUD = {
   vulhoogte: A4.hoogte - MARGE.boven - MARGE.onder - SPELING, // 249 mm
 } as const;
 
+/** Marges en bladspiegel van één soort uitdraai, in millimeter. */
+export interface Maten {
+  marge: { boven: number; rechts: number; onder: number; links: number };
+  inhoud: { breedte: number; hoogte: number; vulhoogte: number };
+}
+
+/**
+ * Maten per soort uitdraai, gelijk aan de `@page`-regels.
+ *
+ * - `bladen`: losse rekenbladen en het projectoverzicht (PrintDocument.css).
+ * - `rapport`: het constructierapport (RapportAfdruk.css, `@page rapport`),
+ *   gemeten aan de referentie-PDF. De bladspiegel is precies 41 regels van
+ *   6,6 mm. De verdeling rekent daarom met de volle hoogte: de speling van de
+ *   bladen zou er elke pagina een regel af halen, en dan valt het rapport
+ *   anders over de vellen dan de referentie. Het rapport staat op een vast
+ *   raster zonder samenklappende marges, dus die speling is daar niet nodig.
+ *   Rekenbladen in bijlage A houden hem wel (zie AfdrukVoorbeeld).
+ */
+export const MATEN = {
+  bladen: { marge: MARGE, inhoud: INHOUD },
+  rapport: {
+    marge: { boven: 6.6, rechts: 9.9, onder: 19.8, links: 9.85 },
+    inhoud: { breedte: 190.25, hoogte: 270.6, vulhoogte: 270.6 },
+  },
+} as const satisfies Record<string, Maten>;
+
 export interface Blok {
   el: HTMLElement;
   /** Hoogte inclusief de ruimte tot het volgende blok, in px. */
@@ -72,19 +98,27 @@ export function pxPerMm(doc: Document = document): number {
   return px || 96 / 25.4;
 }
 
-/** Elementen die geen inhoud zijn maar bediening of loopkop. */
-const OVERSLAAN = new Set(["print-loopkop", "print-loopvoet"]);
+/** Elementen die geen inhoud zijn maar bediening, loopkop of voet. */
+const OVERSLAAN = ["print-loopkop", "print-loopvoet", "rpa-voet"];
 
 /**
- * Haalt de `.ifc-calc`-wikkels weg en levert de regels die erin zitten.
+ * Wikkels die alleen groeperen: `.ifc-calc` om de uitwerking van een blad en
+ * `.rpa-vlak` om de regels van het rapport. Wat erin zit, wordt los verdeeld.
+ */
+const WIKKELS = ["ifc-calc", "rpa-vlak"];
+
+/**
+ * Haalt de wikkels weg en levert de regels die erin zitten.
  *
- * Recursief, want er zitten er twee in elkaar: de uitdraai zet er zelf een om
- * de uitwerking heen en de kern levert er ook al een mee. Eén laag afpellen
+ * Recursief, want er zitten er meer in elkaar: de uitdraai zet een `.ifc-calc`
+ * om de uitwerking heen en de kern levert er ook al een mee. Eén laag afpellen
  * houdt dus alleen de binnenste wikkel over — één blok van een halve meter
- * hoog, dat op de eerste de beste pagina blijft steken.
+ * hoog, dat op de eerste de beste pagina blijft steken. In het rapport zit een
+ * tabel in een paragraaf in een hoofdstuk; ook dat mag geen blok van een halve
+ * pagina worden.
  */
 function vlakUit(el: HTMLElement, wikkels: string[] = []): { el: HTMLElement; wikkels: string[] }[] {
-  if (!el.classList.contains("ifc-calc")) return [{ el, wikkels }];
+  if (!WIKKELS.some((k) => el.classList.contains(k))) return [{ el, wikkels }];
   const dieper = [...wikkels, el.className];
   return (Array.from(el.children) as HTMLElement[]).flatMap((k) => vlakUit(k, dieper));
 }
@@ -100,8 +134,14 @@ function vlakUit(el: HTMLElement, wikkels: string[] = []): { el: HTMLElement; wi
 export function meetBlokken(bron: HTMLElement): Blok[] {
   const rijen: { el: HTMLElement; nieuwePagina: boolean; sectie: string; wikkels: string[] }[] = [];
 
-  for (const sectie of Array.from(bron.children) as HTMLElement[]) {
-    if (OVERSLAAN.has(sectie.className)) continue;
+  // Het rapport staat in één wortel die de huisstijl draagt; de secties zijn
+  // de kinderen daarvan. De bladen staan rechtstreeks in de bron.
+  const secties = (Array.from(bron.children) as HTMLElement[]).flatMap((el) =>
+    el.classList.contains("rpa-wortel") ? (Array.from(el.children) as HTMLElement[]) : [el],
+  );
+
+  for (const sectie of secties) {
+    if (OVERSLAAN.some((k) => sectie.classList.contains(k))) continue;
     let eerste = true;
     for (const kind of Array.from(sectie.children) as HTMLElement[]) {
       for (const item of vlakUit(kind)) {
@@ -122,11 +162,46 @@ export function meetBlokken(bron: HTMLElement): Blok[] {
       el: r.el,
       hoogte: Math.max(0, onder - toppen[i]),
       nieuwePagina: r.nieuwePagina,
-      houdBijVolgende: /^H[1-6]$/.test(r.el.tagName),
+      // Een kop, of een regel die zich zo gedraagt: de kopregel van een tabel
+      // in het rapport is geen <h*>, maar hoort evenmin los onderaan een vel.
+      houdBijVolgende: /^H[1-6]$/.test(r.el.tagName) || r.el.classList.contains("rpa-houd"),
       sectie: r.sectie,
       wikkels: r.wikkels,
     };
   });
+}
+
+/**
+ * Afrondingsruimte in px.
+ *
+ * Hoogtes zijn afstanden tussen gemeten blokken, en de browser rekent in
+ * 1/64 px. 41 regels van 6,6 mm tellen daardoor soms een fractie boven de
+ * bladspiegel op, terwijl ze er precies in passen; zonder deze ruimte ging de
+ * laatste regel van een vol vel steeds naar het volgende.
+ */
+const AFRONDING = 1;
+
+/**
+ * Verdeelt per sectie, elk met een eigen bladhoogte.
+ *
+ * Een sectie begint toch al op een vers vel, dus apart verdelen verandert
+ * niets aan de vellen zelf — maar zo kan een rekenblad met speling rekenen en
+ * het rapport ernaast met de volle hoogte, en schuift een kop onderaan een
+ * sectie niet door naar het eerste vel van de volgende.
+ */
+export function verdeelPerSectie(blokken: Blok[], hoogteVoor: (sectie: string) => number): Blok[][] {
+  const paginas: Blok[][] = [];
+  let groep: Blok[] = [];
+  const sluit = () => {
+    if (groep.length > 0) paginas.push(...verdeelInPaginas(groep, hoogteVoor(groep[0].sectie)));
+    groep = [];
+  };
+  for (const blok of blokken) {
+    if (blok.nieuwePagina) sluit();
+    groep.push(blok);
+  }
+  sluit();
+  return paginas;
 }
 
 /**
@@ -150,7 +225,7 @@ export function verdeelInPaginas(blokken: Blok[], paginaHoogte: number): Blok[][
 
   for (const blok of blokken) {
     if (blok.nieuwePagina) sluit();
-    else if (gebruikt > 0 && gebruikt + blok.hoogte > paginaHoogte) sluit();
+    else if (gebruikt > 0 && gebruikt + blok.hoogte > paginaHoogte + AFRONDING) sluit();
     huidig.push(blok);
     gebruikt += blok.hoogte;
   }
@@ -177,7 +252,7 @@ function trekKoppenDoor(paginas: Blok[][], paginaHoogte: number): Blok[][] {
     if (verplaats.length === 0) continue;
     const erbij = verplaats.reduce((som, b) => som + b.hoogte, 0);
     const bezet = volgende.reduce((som, b) => som + b.hoogte, 0);
-    if (bezet + erbij <= paginaHoogte) volgende.unshift(...verplaats);
+    if (bezet + erbij <= paginaHoogte + AFRONDING) volgende.unshift(...verplaats);
     else pagina.push(...verplaats); // past niet; laat hem dan maar staan
   }
   return paginas;
