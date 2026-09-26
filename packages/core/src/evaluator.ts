@@ -8,6 +8,9 @@ import {
   raamwerkOplossing, raamwerkReacties, raamwerkVerplaatsingen, raamwerkStatus, raamwerkExtremen,
   raamwerkInterpoleer, raamwerkSvgPunten, raamwerkVormPunten, raamwerkKnik, raamwerkSamenvatting, raamwerkZakking,
 } from './raamwerk.js';
+import {
+  doorsnedeGrootheden, doorsnedeDeel, doorsnedePlastisch, doorsnedeStatisch, doorsnedeSvgPunten,
+} from './doorsnede.js';
 
 const math: MathJsInstance = create(all, {});
 
@@ -480,6 +483,55 @@ math.import(
     /** raamwerk_min(R1; R2; …) → per punt en per kolom de kleinste waarde (zelfde raster). */
     raamwerk_min: function (...ms: unknown[]) {
       return liggerMatrix(liggerSamen(-1, ...ms.map(liggerRijen)));
+    },
+  },
+  { override: true },
+);
+
+// ── Doorsnede (packages/core/src/doorsnede.ts) ──────────────────────────────
+// Grootheden van een samengestelde doorsnede: rijen [soort, p1 … p5, y, z, n,
+// draai] per deel, kale getallen in mm (een lengte met eenheid wordt naar mm
+// omgerekend). Zie doorsnede.ts voor de afspraken.
+
+/** Getal in mm; een kaal getal blijft. */
+function doorsnedeGetal(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'boolean') return v ? 1 : 0;
+  if (isUnit(v)) {
+    try { return v.toNumber('mm'); } catch { return v.value; }
+  }
+  return asNumber(v);
+}
+function doorsnedeRijen(v: unknown): number[][] {
+  const a = toArrayLike(v);
+  if (!a) return [[doorsnedeGetal(v)]];
+  return a.map((r) => {
+    const rr = toArrayLike(r);
+    return rr ? rr.map(doorsnedeGetal) : [doorsnedeGetal(r)];
+  });
+}
+
+math.import(
+  {
+    /** doorsnede(D) → [A; y_c; z_c; I_y; I_z; I_yz; y_min; y_max; z_min; z_max] van de ideële doorsnede. */
+    doorsnede: function (D: unknown) {
+      return math.matrix(doorsnedeGrootheden(doorsnedeRijen(D)));
+    },
+    /** doorsnede_deel(D; i) → [A; I_y; I_z; y_min; y_max; z_min; z_max] van deel i, om zijn eigen hart, zonder n. */
+    doorsnede_deel: function (D: unknown, i: unknown) {
+      return math.matrix(doorsnedeDeel(doorsnedeRijen(D), doorsnedeGetal(i)));
+    },
+    /** doorsnede_pl(D; as) → [W_pl; plaats van de plastische neutrale lijn], as 1 = om de y-as, 2 = om de z-as. */
+    doorsnede_pl: function (D: unknown, as: unknown) {
+      return math.matrix(doorsnedePlastisch(doorsnedeRijen(D), doorsnedeGetal(as)));
+    },
+    /** doorsnede_S(D; as; s) → [S; b]: statisch moment voorbij de lijn s om de zwaartelijn, en de breedte daar. */
+    doorsnede_S: function (D: unknown, as: unknown, s: unknown) {
+      return math.matrix(doorsnedeStatisch(doorsnedeRijen(D), doorsnedeGetal(as), doorsnedeGetal(s)));
+    },
+    /** doorsnede_svg(D; i; x0; y0; schaal) → "X,Y …" voor een polygoon met de omtrek van deel i. */
+    doorsnede_svg: function (D: unknown, i: unknown, x0: unknown, y0: unknown, schaal: unknown) {
+      return doorsnedeSvgPunten(doorsnedeRijen(D), doorsnedeGetal(i), doorsnedeGetal(x0), doorsnedeGetal(y0), doorsnedeGetal(schaal));
     },
   },
   { override: true },
