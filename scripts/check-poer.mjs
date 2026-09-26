@@ -1,9 +1,12 @@
 /**
- * Controlescript voor de module Tweepaals poer (NEN-EN 1992-1-1 met NB,
- * staafwerkmodel volgens §6.5 en §9.8.1).
+ * Controlescript voor de module Poer (templates/tweepaalsPoer.ts): een poer op
+ * twee, drie of vier palen (NEN-EN 1992-1-1 met NB, staafwerkmodel volgens
+ * §6.5 en §9.8.1) of op staal (NEN 9997-1 6.5 en NEN-EN 1992-1-1 §6.2, §6.4,
+ * §9.8.2).
  *
  * Voor deze module bestaat geen referentieberekening. Dit script rekent de
- * uitkomsten daarom op twee manieren na:
+ * uitkomsten daarom op twee manieren na. Voor de tweepaals poer (de eerste
+ * keuze van `poertype`, en het gedrag van elk blad van vóór die keuze):
  *
  *   1. Een onafhankelijke uitwerking in JavaScript: paalreacties met eigen
  *      gewicht en paalafwijking, een plastisch drukblok onder de kolom
@@ -26,6 +29,27 @@
  *      waarin de knoop onder de kolom precies op UC = 1 komt: net eronder
  *      voldoet de poer, net erboven niet.
  *
+ * Voor de drie- en vierpaals poer en de poer op staal net zo, met eigen
+ * rekenwegen die bewust anders lopen dan het blad:
+ *
+ *   • drie en vier palen — de paalreacties voor elke paal bij beide tekens van
+ *     de momenten en 720 richtingen van de paalafwijking; de vrije afstand
+ *     tussen kolom en paal door de randen te bemonsteren; de hefboomsarm door
+ *     iteratie op z = d − u/2 in plaats van de wortelformule; de kolomknoop als
+ *     zwaartepunt van een cirkelsector; W van de controle-omtrek door
+ *     numerieke integratie. Verder knopen, verankering, dwarskracht over de
+ *     volle breedte, pons rond kolom en paal, scheurwijdte en A_s,min.
+ *   • poer op staal — het draagvermogen met de formules van NEN 9997-1 in
+ *     radialen, de grondspanning als functie van x en de momenten, de
+ *     dwarskracht en de verankeringskracht (9.13) door numerieke integratie
+ *     (Simpson), de ongunstigste ponsomtrek door een fijne scan over a; op
+ *     trek het evenwicht (2.8), de buiging bovenin, dwarskracht en pons.
+ *
+ * Voor de standaardinvoer met vier en drie palen, voor een vierpaals poer met
+ * diagonalen en momenten, en voor een centrische, een excentrische (met en
+ * zonder kier), een horizontaal belaste en een op trek belaste poer op staal
+ * een handberekening in het commentaar bij de set.
+ *
  * Daarnaast: de beginwaarden van het beeld zijn gelijk aan de standaardinvoer
  * hier, elk invoerveld van het blad krijgt een beginwaarde, en het beeld
  * schrijft alleen naar velden die het blad kent.
@@ -41,11 +65,21 @@ import { laadTemplate, reken, toets, afronden } from "./lib/refcheck.mjs";
 const tpl = laadTemplate("tweepaalsPoer.ts");
 
 const STANDAARD = {
-  kolomvorm: 1, paalvorm: 1, d_kolom: 500, b_kolom: 500, b_paal: 450, l_paal: 450,
+  poertype: 2, kolomvorm: 1, paalvorm: 1, d_kolom: 500, b_kolom: 500, b_paal: 450, l_paal: 450,
   b_poer: 600, h_poer: 1250, l_hoh: 1600, oversteek: 400, e_paal: 100,
   betonklasse: 35, betonstaal: 2, betonoppervlak: 1, c_dek: 55,
   n_langs: 6, d_langs: 32, n_sneden: 4, d_beugel: 12, s_beugel: 75,
   F_Ed: 3600, M_Ed: 0, F_fr: 2500, R_cd: 2400,
+  l_hoh_y: 1600, M_Ed_y: 0, trekbanden: 1,
+  B_x: 2400, B_y: 2400, D_aanleg: 1500, belasting_staal: 1, afwijking: 1,
+  phi_k: 30, c_eff_k: 0, gamma_k: 18, gamma_sat: 20, grondwater: 1,
+  s_langs: 150, d_boven: 16, s_boven: 150, H_Ed: 0, phi_cv_k: 30, factoren: 1,
+};
+
+/** Een poer op staal voor de sets hieronder: 2400 × 2400 × 600 op 1 m, kolom 400 × 400, Ø16-150, C30/37. */
+const STAAL = {
+  poertype: 1, kolomvorm: 2, d_kolom: 400, b_kolom: 400, B_x: 2400, B_y: 2400, h_poer: 600, D_aanleg: 1000,
+  betonklasse: 30, c_dek: 50, d_langs: 16, s_langs: 150, F_Ed: 1500,
 };
 
 // ── Onafhankelijke uitwerking; eenheden N en mm, lasten in kN ────────────────
@@ -241,6 +275,431 @@ function verwachtingen(r, v) {
   // de kolomvoet de knoop onder de kolom niet.
   if (v.R_cd > 0) uit.UC_paal = ruim(r.UCpaal);
   if (r.kolomDruk) Object.assign(uit, { σ_Ed_1: ruim(r.sEd1), UC_kn_1: ruim(r.UCkn1) });
+  return uit;
+}
+
+// ── Onafhankelijke uitwerking, drie- en vierpaals poer; N en mm, lasten in kN ──
+function uitwerking34(v, CC = 2) {
+  const drie = v.poertype === 3;
+  const fck = v.betonklasse, fcd = fck / 1.5, fctm = 0.3 * fck ** (2 / 3), fctd = (0.7 * fctm) / 1.5;
+  const fyd = 500 / 1.15, nuK = 1 - fck / 250;
+  const Ecm = 22000 * ((fck + 8) / 10) ** 0.3, Es = 200000;
+  const rondK = v.kolomvorm === 1, rondP = v.paalvorm === 2;
+  const cxK = v.d_kolom, cyK = rondK ? v.d_kolom : v.b_kolom;
+  const pxP = v.b_paal, pyP = rondP ? v.b_paal : v.l_paal;
+  const s = v.l_hoh, ly = v.l_hoh_y, o = v.oversteek, e = v.e_paal, h = v.h_poer;
+  const phi = v.d_langs, n = v.n_langs, c = v.c_dek;
+  const r = s / Math.sqrt(3);
+  // Paalharten (x, y) t.o.v. het kolomhart.
+  const palen = drie ? [[-s / 2, -r / 2], [s / 2, -r / 2], [0, r]] : [[-s / 2, -ly / 2], [s / 2, -ly / 2], [s / 2, ly / 2], [-s / 2, ly / 2]];
+
+  // Vrije afstand kolom–paal: numeriek, door de randen te bemonsteren.
+  const rand = (rond, bx, by, x0, y0) => {
+    const pt = [];
+    if (rond) for (let i = 0; i < 1440; i++) { const t = (2 * Math.PI * i) / 1440; pt.push([x0 + (bx / 2) * Math.cos(t), y0 + (bx / 2) * Math.sin(t)]); }
+    else {
+      const m = 400;
+      for (let i = 0; i <= m; i++) {
+        const f = i / m;
+        pt.push([x0 - bx / 2 + f * bx, y0 - by / 2], [x0 - bx / 2 + f * bx, y0 + by / 2], [x0 - bx / 2, y0 - by / 2 + f * by], [x0 + bx / 2, y0 - by / 2 + f * by]);
+      }
+    }
+    return pt;
+  };
+  const kolRand = rand(rondK, cxK, cyK, 0, 0);
+  let apk = Infinity;
+  for (const [X, Y] of palen) {
+    const pr = rand(rondP, pxP, pyP, X, Y);
+    for (const [a1, b1] of kolRand) for (const [a2, b2] of pr) apk = Math.min(apk, Math.hypot(a1 - a2, b1 - b2));
+  }
+  const geldig = h > c + 2 * phi && apk > 1 && s > Math.max(pxP, pyP) && (drie || ly > Math.max(pxP, pyP)) && e >= 0 && c >= 0 &&
+    o > c + e && o >= Math.max(pxP, pyP) / 2 && n >= 1 && phi > 0 && v.F_Ed > 0 && v.F_fr >= 0 && cxK > 0 && cyK > 0;
+  if (!geldig) return { geldig };
+
+  // Paalreacties van een stijve poer, de zwaarste en de lichtste over alle
+  // tekens van de momenten en alle richtingen van de paalafwijking.
+  const Apoer = drie ? (Math.sqrt(3) / 4) * s * s + 3 * s * o + 2 * Math.sqrt(3) * o * o : (s + 2 * o) * (ly + 2 * o); // mm²
+  const Gk = 25e-9 * Apoer * h;
+  const gG = CC === 1 ? 1.2 : CC === 3 ? 1.5 : 1.35;
+  const N = v.F_Ed + gG * Gk;
+  const Sxx = palen.reduce((t, p) => t + p[0] ** 2, 0), Syy = palen.reduce((t, p) => t + p[1] ** 2, 0);
+  const reacties = (NN) => {
+    let max = -Infinity, min = Infinity;
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (let k = 0; k < 720; k++) {
+      const t = (2 * Math.PI * k) / 720;
+      const Mx = sx * Math.abs(v.M_Ed) * 1000 + NN * e * Math.cos(t), My = sy * Math.abs(v.M_Ed_y) * 1000 + NN * e * Math.sin(t); // kN·mm
+      for (const [x, y] of palen) {
+        const R = NN / palen.length + (Mx * x) / Sxx + (My * y) / Syy;
+        max = Math.max(max, R); min = Math.min(min, R);
+      }
+    }
+    return [max, min];
+  };
+  const [R, Rmin] = reacties(N);
+  const UCpaal = v.R_cd > 0 ? R / v.R_cd : 0;
+
+  // Staafwerk
+  const ys = c + phi, d = h - ys;
+  const ak = rondK ? (v.d_kolom * Math.sqrt(Math.PI)) / 2 : 0;
+  const Ak = rondK ? (Math.PI * v.d_kolom ** 2) / 4 : cxK * cyK;
+  // Kolomknoop: zwaartepunt van een kwart kolom (vier palen) of een sector van
+  // 120° (drie palen; bij een rechthoekige kolom van de ingeschreven cirkel).
+  const sectorZp = (Rr, halveHoek) => (2 * Rr * Math.sin(halveHoek)) / (3 * halveHoek);
+  let xk, yk;
+  if (drie) { xk = sectorZp(Math.min(cxK, cyK) / 2, Math.PI / 3); yk = xk; }
+  else if (rondK) { xk = sectorZp(v.d_kolom / 2, Math.PI / 4) / Math.SQRT2; yk = xk; }
+  else { xk = cxK / 4; yk = cyK / 4; }
+  const ex = (Math.abs(v.M_Ed) * 1000) / v.F_Ed, ey = (Math.abs(v.M_Ed_y) * 1000) / v.F_Ed;
+  let Ablok = Ak, ckx = rondK ? ak : cxK, cky = rondK ? ak : cyK, kolomDruk;
+  if (rondK) {
+    const ek = Math.hypot(ex, ey);
+    kolomDruk = 2 * ek < v.d_kolom;
+    if (kolomDruk && ek > 0) {
+      const Rk = v.d_kolom / 2;
+      const zp = (al) => (4 * Rk * Math.sin(al) ** 3) / (3 * (2 * al - Math.sin(2 * al)));
+      let lo = 1e-4, hi = Math.PI;
+      for (let i = 0; i < 200; i++) { const mid = (lo + hi) / 2; if (zp(mid) > ek) lo = mid; else hi = mid; }
+      const al = (lo + hi) / 2;
+      Ablok = (Rk * Rk * (2 * al - Math.sin(2 * al))) / 2;
+      const bk = Math.min(ak, 2 * Math.sqrt(Rk * Rk - ek * ek));
+      ckx = cky = Math.max(bk, Ablok / bk);
+    }
+  } else {
+    kolomDruk = 2 * ex < cxK && 2 * ey < cyK;
+    if (kolomDruk && ex + ey > 0) { ckx = cxK - 2 * ex; cky = cyK - 2 * ey; Ablok = ckx * cky; }
+  }
+  const ax = drie ? 0 : s / 2 - xk, ay = drie ? 0 : ly / 2 - yk;
+  const a = drie ? r - xk : Math.hypot(ax, ay);
+  // Hefboomsarm door iteratie: z = d − u/2 met u = (horizontale kracht door
+  // het zwaarste vlak)·c/F, vanaf z = d.
+  const Hvlak = (z) => drie ? Math.max((R * a) / z * cky, ((Math.sqrt(3) / 2) * R * a) / z * ckx) : Math.max(((2 * R * ax) / z) * ckx, ((2 * R * ay) / z) * cky);
+  const q = Hvlak(1) / v.F_Ed; // u·z
+  const knoopPast = d * d > 2 * q;
+  let z = d;
+  for (let i = 0; i < 500 && knoopPast; i++) z = d - Hvlak(z) / v.F_Ed / 2;
+  if (!knoopPast) z = d / 2;
+  const L = Math.hypot(z, a);
+  const C = (R * L) / z;
+  let Ftd, Ftdx = 0, Ftdy = 0;
+  const diag = !drie && v.trekbanden === 2;
+  if (drie) Ftd = (R * a) / z / (2 * Math.cos(Math.PI / 6));
+  else if (!diag) { Ftdx = (R * ax) / z; Ftdy = (R * ay) / z; Ftd = Math.max(Ftdx, Ftdy); }
+  else Ftd = (R * a) / z;
+  const As = (n * Math.PI * phi ** 2) / 4;
+  const AsNodig = (Ftd * 1e3) / fyd;
+  const UCtrek = AsNodig / As;
+
+  // Knopen
+  const sEd1 = kolomDruk ? (v.F_Ed * 1e3) / Ablok : 0;
+  const UCkn1 = sEd1 / (nuK * fcd);
+  const Ap = rondP ? (Math.PI * v.b_paal ** 2) / 4 : pxP * pyP;
+  const ap = rondP ? Math.sqrt(Ap) : Math.min(pxP, pyP);
+  const w2 = ap * (z / L) + 2 * ys * (a / L);
+  const sd = (C * 1e3) / (w2 * ap);
+  const UCkn2 = Math.max((R * 1e3) / Ap, sd) / (0.85 * nuK * fcd);
+
+  // Verankering en ombuiging
+  const bband = Math.min(ap + 2 * ys, 2 * (o - c));
+  const sh = (bband - phi) / Math.max(n - 1, 1);
+  const eta2 = phi <= 32 ? 1 : (132 - phi) / 100;
+  const fbd = 2.25 * eta2 * fctd;
+  const lbrqd = ((phi / 4) * ((Ftd * 1e3) / As)) / fbd;
+  const p = (R * 1e3) / (ap + 2 * ys) ** 2;
+  const a5 = Math.min(1, Math.max(0.7, 1 - 0.04 * p));
+  const cd = Math.min((sh - phi) / 2, c);
+  const a1 = cd > 3 * phi ? 0.7 : 1;
+  const lbd = Math.max(a1 * a5 * lbrqd, 0.3 * lbrqd, 10 * phi, 100);
+  const phim = Math.max((phi <= 16 ? 4 : 5) * phi, (((Ftd * 1e3) / n) * (1 / Math.min(sh / 2, c + phi / 2) + 1 / (2 * phi))) / Math.min(fcd, 55 / 1.5));
+  const ov = o - e;
+  const UCrol = (phim / 2 + phi) / (ov - c);
+  const rb = phim / 2 + phi / 2;
+  const l1 = ov + ap / 2 - c - phim / 2 - phi;
+  const lv = h - c - ys - rb;
+  const lbesch = l1 + (Math.PI * rb) / 2 + lv;
+  const UCank = lbd / lbesch;
+  const lvNodig = Math.max(lbd - l1 - (Math.PI * rb) / 2, 5 * phi);
+
+  // Dwarskracht en pons
+  const k = Math.min(2, 1 + Math.sqrt(200 / d));
+  const staalLengte = drie ? 3 * As * s : diag ? 2 * As * Math.hypot(s, ly) : 2 * As * (s + ly); // mm³
+  const rho = Math.min(0.02, staalLengte / (2 * Apoer * d));
+  const vRdc = Math.max(0.12 * k * (100 * rho * fck) ** (1 / 3), 0.035 * k ** 1.5 * Math.sqrt(fck));
+  const nu = 0.6 * nuK;
+  const snedes = drie
+    ? [{ V: 2 * R, b: s + 2 * o, av: Math.max(r / 2 - cyK / 2 - ap / 2, 0) }, { V: R, b: (2 / Math.sqrt(3)) * (2 * o + ap / 2), av: Math.max(r - cyK / 2 - ap / 2, 0) }]
+    : [{ V: 2 * R, b: ly + 2 * o, av: Math.max(s / 2 - cxK / 2 - ap / 2, 0) }, { V: 2 * R, b: s + 2 * o, av: Math.max(ly / 2 - cyK / 2 - ap / 2, 0) }];
+  let UCV = 0, UCVmax = 0;
+  for (const sn of snedes) {
+    const beta = Math.min(1, Math.max(sn.av, 0.5 * d) / (2 * d));
+    UCV = Math.max(UCV, (beta * sn.V * 1e3) / (vRdc * sn.b * d));
+    UCVmax = Math.max(UCVmax, (sn.V * 1e3) / (0.5 * sn.b * d * nu * fcd));
+  }
+  const apons = Math.min(2 * d, apk);
+  const vRd = (vRdc * 2 * d) / apons;
+  const vRdmax = 0.4 * nu * fcd;
+  // Tabel 6.1 met lineaire interpolatie
+  const kTab = (rr) => {
+    const t = [[0.5, 0.45], [1, 0.6], [2, 0.7], [3, 0.8]];
+    if (rr <= 0.5) return 0.45; if (rr >= 3) return 0.8;
+    for (let i = 1; i < t.length; i++) if (rr <= t[i][0]) return t[i - 1][1] + ((t[i][1] - t[i - 1][1]) * (rr - t[i - 1][0])) / (t[i][0] - t[i - 1][0]);
+    return 0.8;
+  };
+  // W van een controle-omtrek op afstand a rond een rechthoekige kolom
+  // numeriek: ∫|x|·dl over de afgeronde rechthoek, x in de richting van c1.
+  const Wnum = (c1, c2, aa) => {
+    let W = 0; const m = 4000;
+    W += 2 * c2 * (c1 / 2 + aa);                                  // twee zijden evenwijdig aan c2 op x = ±(c1/2 + a)
+    for (let i = 0; i < m; i++) { const x = -c1 / 2 + ((i + 0.5) / m) * c1; W += 2 * Math.abs(x) * (c1 / m); } // twee zijden evenwijdig aan c1
+    for (let i = 0; i < m; i++) { const t = ((i + 0.5) / m) * (Math.PI / 2); W += 4 * (c1 / 2 + aa * Math.cos(t)) * aa * (Math.PI / 2 / m); } // vier bogen
+    return W;
+  };
+  let vEdk, beta0, u0;
+  const Mx = Math.abs(v.M_Ed) * 1e6, My = Math.abs(v.M_Ed_y) * 1e6; // N·mm
+  if (rondK) {
+    u0 = Math.PI * v.d_kolom;
+    const u = Math.PI * (v.d_kolom + 2 * apons);
+    vEdk = (N * 1e3) / (u * d) + (0.6 * Math.hypot(Mx, My)) / ((v.d_kolom + 2 * apons) ** 2 * d);
+    beta0 = 1 + (0.6 * Math.PI * Math.hypot(ex, ey)) / (v.d_kolom + 4 * d);
+  } else {
+    u0 = 2 * (cxK + cyK);
+    const u = u0 + 2 * Math.PI * apons;
+    const kx = kTab(cxK / cyK), ky = kTab(cyK / cxK);
+    vEdk = (N * 1e3) / (u * d) + (kx * Mx) / (Wnum(cxK, cyK, apons) * d) + (ky * My) / (Wnum(cyK, cxK, apons) * d);
+    beta0 = 1 + ((kx * Mx) / Wnum(cxK, cyK, 2 * d) + (ky * My) / Wnum(cyK, cxK, 2 * d)) * (u0 + 4 * Math.PI * d) / (v.F_Ed * 1e3);
+  }
+  const UCponsK = vEdk / vRd;
+  const up0 = rondP ? Math.PI * v.b_paal : 2 * (pxP + pyP);
+  const hoek = drie ? Math.PI / 3 : Math.PI / 2;
+  const upp = Math.min(up0 + 2 * Math.PI * apons, 2 * o + (hoek / (2 * Math.PI)) * (up0 + 2 * Math.PI * apons));
+  const UCponsP = (R * 1e3) / (upp * d) / vRd;
+  const UCpons0 = Math.max((beta0 * v.F_Ed * 1e3) / (u0 * d), (R * 1e3) / (up0 * d)) / vRdmax;
+
+  // Scheurwijdte
+  const Nfr = v.F_fr + Gk;
+  const [Rfr] = reacties(Nfr).map((x, i) => (i === 0 ? x : 0));
+  // BGT: het drukblok over de hele kolom; alleen bij een moment anders dan de UGT.
+  let zFr = z;
+  if (kolomDruk && ex + ey > 0) {
+    const c0x = rondK ? ak : cxK, c0y = rondK ? ak : cyK;
+    const qfr = drie ? Math.max(R * a * c0y, (Math.sqrt(3) / 2) * R * a * c0x) / v.F_Ed : (2 * R * Math.max(ax * c0x, ay * c0y)) / v.F_Ed;
+    zFr = (d + Math.sqrt(Math.max(d * d - 2 * qfr, 0))) / 2;
+  }
+  const ss = (((Ftd * Rfr) / R) * (z / zFr) * 1e3) / As;
+  const hcef = Math.min(2.5 * ys, h / 2);
+  const rpe = As / (bband * hcef);
+  const srmax = sh > 5 * (c + phi / 2) ? 1.3 * h : 3.4 * c + (0.17 * phi) / rpe;
+  const eps = Math.max((ss - ((0.4 * fctm) / rpe) * (1 + (Es / Ecm) * rpe)) / Es, (0.6 * ss) / Es);
+  const wk = srmax * eps;
+  const UCw = wk / (v.betonoppervlak === 1 ? 0.3 : 0.2);
+
+  // Detaillering; A_s,min per richting over de breedte van de doorsnede.
+  const asmin1 = (fcd * (d - Math.sqrt(d * d - (h * h * fctm) / (3 * fcd)))) / fyd; // mm²/mm
+  let bx, by, Asx, Asy, Asxn, Asyn;
+  if (drie) { bx = (Math.sqrt(3) / 2) * s + 2 * o; by = (2 * s) / 3 + (4 / Math.sqrt(3)) * o; Asx = As; Asy = 2 * Math.cos(Math.PI / 6) ** 2 * As; Asxn = AsNodig; Asyn = 1.5 * AsNodig; }
+  else if (!diag) { bx = ly + 2 * o; by = s + 2 * o; Asx = 2 * As; Asy = 2 * As; Asxn = (2 * Ftdx * 1e3) / fyd; Asyn = (2 * Ftdy * 1e3) / fyd; }
+  else { const cb = s / Math.hypot(s, ly); bx = ly + 2 * o; by = s + 2 * o; Asx = 2 * cb * cb * As; Asy = 2 * (1 - cb * cb) * As; Asxn = 2 * cb * cb * AsNodig; Asyn = 2 * (1 - cb * cb) * AsNodig; }
+  const Asminx = Math.min(asmin1 * bx, 1.25 * Asxn), Asminy = Math.min(asmin1 * by, 1.25 * Asyn);
+  const det = phi >= 8 && !(n > 1 && sh - phi < Math.max(phi, 37)) && Asx >= Asminx && Asy >= Asminy && lv >= 5 * phi;
+
+  const UCmax = Math.max(UCpaal, UCtrek, UCkn1, UCkn2, UCank, UCrol, UCV, UCVmax, UCponsK, UCponsP, UCpons0, UCw);
+  const voldoet = knoopPast && det && UCmax <= 1 && Rmin >= 0 && kolomDruk;
+  return {
+    geldig, R, Rmin, UCpaal, z, Ftd, UCtrek, kolomDruk, UCkn1, UCkn2, apk, lbd, phim, UCrol, lbesch, UCank, lvNodig,
+    rho, UCV, UCVmax, apons, UCponsK, UCponsP, UCpons0, zFr, ss, wk, UCw, Asminx, Asminy, UCmax, knoopPast, det, voldoet, Ablok,
+  };
+}
+
+// ── Onafhankelijke uitwerking, poer op staal; N en mm, lasten in kN ─────────
+function uitwerkingStaal(v, CC = 2) {
+  const trek = v.belasting_staal === 2;
+  const fck = v.betonklasse, fcd = fck / 1.5, fctm = 0.3 * fck ** (2 / 3), fctd = (0.7 * fctm) / 1.5, fyd = 500 / 1.15;
+  const rondK = v.kolomvorm === 1;
+  const cx = v.d_kolom, cy = rondK ? v.d_kolom : v.b_kolom;
+  const Bx = v.B_x, By = v.B_y, h = v.h_poer, D = v.D_aanleg, c = v.c_dek;
+  const phi = trek ? v.d_boven : v.d_langs, sp = trek ? v.s_boven : v.s_langs;
+  let geldig = cx > 0 && cy > 0 && Bx > cx && By > cy && D >= h && c >= 0 && v.gamma_k > 0 && v.gamma_sat > 0 && v.F_Ed > 0 &&
+    h > c + 2 * phi && phi > 0 && sp > phi;
+  if (!trek) geldig = geldig && v.phi_k > 0 && v.phi_k < 50 && v.c_eff_k >= 0 && (v.H_Ed === 0 || (v.phi_cv_k > 0 && v.phi_cv_k < 50));
+  if (!geldig) return { geldig };
+  const gG = CC === 1 ? 1.2 : CC === 3 ? 1.5 : 1.35;
+  const Ab = (Bx * By) / 1e6, Ak = (rondK ? (Math.PI * cx * cx) / 4 : cx * cy) / 1e6; // m²
+  const nat = v.grondwater === 3;
+  const Gk = 25 * Ab * (h / 1000) + (nat ? v.gamma_sat : v.gamma_k) * (Ab - Ak) * ((D - h) / 1000);
+  const Uk = nat ? 10 * (D / 1000) * Ab : 0;
+  const rad = Math.PI / 180;
+
+  // Pons: de ongunstigste controle-omtrek door een fijne scan over a.
+  const kTab = (rr) => {
+    const t = [[0.5, 0.45], [1, 0.6], [2, 0.7], [3, 0.8]];
+    if (rr <= 0.5) return 0.45; if (rr >= 3) return 0.8;
+    for (let i = 1; i < t.length; i++) if (rr <= t[i][0]) return t[i - 1][1] + ((t[i][1] - t[i - 1][1]) * (rr - t[i - 1][0])) / (t[i][0] - t[i - 1][0]);
+    return 0.8;
+  };
+  const vc = (dd, rr) => { const k = Math.min(2, 1 + Math.sqrt(200 / dd)); return Math.max(0.12 * k * (100 * rr * fck) ** (1 / 3), 0.035 * k ** 1.5 * Math.sqrt(fck)); };
+  const pons = (F, sigma, dp, rho, Mx, My) => {
+    // F in kN, sigma in kPa (= 1e-3 N/mm²), M in kNm
+    const vRdc = vc(dp, rho);
+    const amax = Math.min(2 * dp, (Bx - cx) / 2, (By - cy) / 2);
+    const vE = (a) => {
+      const u = rondK ? Math.PI * (cx + 2 * a) : 2 * (cx + cy) + 2 * Math.PI * a;
+      const A = rondK ? Math.PI * (cx / 2 + a) ** 2 : cx * cy + 2 * a * (cx + cy) + Math.PI * a * a;
+      const V = Math.max(F * 1e3 - sigma * 1e-3 * A, 0);
+      const W = (c1, c2) => c1 * c1 / 2 + c1 * c2 + 2 * c2 * a + 4 * a * a + Math.PI * a * c1;
+      const mom = rondK ? (0.6 * Math.hypot(Mx, My) * 1e6) / (cx + 2 * a) ** 2 : (kTab(cx / cy) * Mx * 1e6) / W(cx, cy) + (kTab(cy / cx) * My * 1e6) / W(cy, cx);
+      return V / (u * dp) + mom / dp;
+    };
+    const UC = (a) => vE(a) / ((vRdc * 2 * dp) / a);
+    let best = 0, abest = 0;
+    const lo = 0.05 * dp, hi = Math.max(amax, 0.06 * dp);
+    for (let i = 0; i <= 4000; i++) { const a = lo + ((hi - lo) * i) / 4000; const u = UC(a); if (u > best) { best = u; abest = a; } }
+    return { UC: best, a: abest, vRdc };
+  };
+
+  if (trek) {
+    const [gdst, gstb] = v.factoren === 2 ? [1.1, 0.9] : [1.0, 0.9];
+    const UCupl = (v.F_Ed + gdst * Uk) / (gstb * Gk);
+    const qt = v.F_Ed / Ab; // kPa
+    const dx = h - c - phi / 2, dy = h - c - (3 * phi) / 2;
+    const as = (Math.PI * phi * phi) / 4 / sp; // mm²/mm
+    const Mx = (qt * 1e-3 * By * (Bx / 2 - cx / 2) ** 2) / 2, My = (qt * 1e-3 * Bx * (By / 2 - cy / 2) ** 2) / 2; // N·mm
+    const Asn = (M, b, dd) => (b * fcd * (dd - Math.sqrt(dd * dd - (2 * M) / (b * fcd)))) / fyd;
+    const Asxn = Asn(Mx, By, dx), Asyn = Asn(My, Bx, dy);
+    const UCM = Math.max(Asxn / (as * By), Asyn / (as * Bx));
+    const Vx = qt * 1e-3 * By * Math.max(Bx / 2 - cx / 2 - dx, 0), Vy = qt * 1e-3 * Bx * Math.max(By / 2 - cy / 2 - dy, 0);
+    const UCV = Math.max(Vx / (vc(dx, Math.min(0.02, as / dx)) * By * dx), Vy / (vc(dy, Math.min(0.02, as / dy)) * Bx * dy));
+    const dp = (dx + dy) / 2;
+    const rho = Math.sqrt(Math.min(0.02, as / dx) * Math.min(0.02, as / dy));
+    const pn = pons(v.F_Ed, qt, dp, rho, 0, 0);
+    const u0 = rondK ? Math.PI * cx : 2 * (cx + cy);
+    const UCpons0 = (v.F_Ed * 1e3) / (u0 * dp) / (0.4 * 0.6 * (1 - fck / 250) * fcd);
+    const asmin1 = (fcd * (dx - Math.sqrt(dx * dx - (h * h * fctm) / (3 * fcd)))) / fyd;
+    const det = phi >= 8 && sp <= Math.min(2 * h, 250) && sp - phi >= Math.max(phi, 37) &&
+      as * By >= Math.min(asmin1 * By, 1.25 * Asxn) && as * Bx >= Math.min(asmin1 * Bx, 1.25 * Asyn);
+    const okM = dx * dx > (2 * Mx) / (By * fcd) && dy * dy > (2 * My) / (Bx * fcd);
+    const UCmax = Math.max(UCupl, UCM, UCV, pn.UC, UCpons0);
+    return { geldig, trek, Gk, UCupl, UCM, UCV, UCpons: pn.UC, akrit: pn.a, UCpons0, UCmax, voldoet: okM && det && UCmax <= 1 };
+  }
+
+  // Druk: grond
+  const Vd = v.F_Ed + gG * Gk - Uk, Vmin = v.F_Ed + 0.9 * Gk - Uk;
+  const Mxd = Math.abs(v.M_Ed) + Math.abs(v.H_Ed) * (h / 1000), Myd = Math.abs(v.M_Ed_y);
+  if (Vmin <= 0) return { geldig, drijft: true, voldoet: false };
+  let ex = (Mxd / Vmin) * 1000, ey = (Myd / Vmin) * 1000;
+  const kier = ex > Bx / 6 || ey > By / 6;
+  if (ex > Bx / 6) ex += v.afwijking * 100;
+  if (ey > By / 6) ey += v.afwijking * 100;
+  if (ex >= Bx / 2 || ey >= By / 2) return { geldig, drijft: true, voldoet: false };
+  const Bxe = Bx - 2 * ex, Bye = By - 2 * ey, Aeff = (Bxe * Bye) / 1e6;
+  const b = Math.min(Bxe, Bye), l = Math.max(Bxe, Bye);
+  const phid = Math.atan(Math.tan(v.phi_k * rad) / 1.15);
+  const cd = v.c_eff_k / 1.6;
+  const Nq = Math.exp(Math.PI * Math.tan(phid)) * Math.tan(Math.PI / 4 + phid / 2) ** 2;
+  const Nc = (Nq - 1) / Math.tan(phid), Ng = 2 * (Nq - 1) * Math.tan(phid);
+  const sq = 1 + (b / l) * Math.sin(phid), sg = 1 - (0.3 * b) / l, sc = (sq * Nq - 1) / (Nq - 1);
+  let iq = 1, ig = 1, ic = 1;
+  if (v.H_Ed !== 0) {
+    const m = Bxe <= Bye ? (2 + b / l) / (1 + b / l) : (2 + l / b) / (1 + l / b);
+    const f = Math.max(1 - Math.abs(v.H_Ed) / Vmin, 0);
+    iq = f ** m; ig = f ** (m + 1);
+    if (cd > 0) ic = Math.max(iq - (1 - iq) / (Nc * Math.tan(phid)), 0);
+  }
+  const q = nat ? (v.gamma_sat * D) / 1000 / 1.1 - (10 * D) / 1000 : (v.gamma_k * D) / 1000 / 1.1;
+  const gEff = v.grondwater === 1 ? v.gamma_k / 1.1 : v.gamma_sat / 1.1 - 10;
+  let sig = cd * Nc * sc * ic + q * Nq * sq * iq + 0.5 * gEff * (b / 1000) * Ng * sg * ig;
+  if (kier) sig = Math.min(sig, cd * Nc * sc + 0.5 * gEff * (b / 1000) * Ng * sg);
+  const Rd = Math.max(sig, 0) * Aeff;
+  const UCdraag = Vd / Math.max(Rd, 0.001);
+  const UCglij = v.H_Ed !== 0 ? Math.abs(v.H_Ed) / (Vmin * Math.tan(Math.atan(Math.tan(v.phi_cv_k * rad) / 1.15))) : 0;
+
+  // Grondspanning per richting als functie van x (mm vanaf het midden), in N/mm².
+  const verdeling = (B, Bdw, e) => {
+    if (e <= B / 6) return (x) => ((Vd * 1e3) / (B * Bdw)) * (1 + (12 * e * x) / (B * B));
+    const Lc = 3 * (B / 2 - e), pm = (2 * Vd * 1e3) / (3 * Bdw * (B / 2 - e));
+    return (x) => Math.max(0, (pm * (x - (B / 2 - Lc))) / Lc);
+  };
+  const px = verdeling(Bx, By, ex), py = verdeling(By, Bx, ey);
+  const g = ((gG * Gk - Uk) * 1e3) / (Bx * By); // N/mm²
+  // Numerieke integratie (Simpson) van de netto grondspanning voorbij x0.
+  const integreer = (f, a0, a1) => { const m = 2000, hh = (a1 - a0) / m; let t = f(a0) + f(a1); for (let i = 1; i < m; i++) t += (i % 2 ? 4 : 2) * f(a0 + i * hh); return (t * hh) / 3; };
+  const kracht = (p, B, Bdw, x0) => integreer((x) => (p(x) - g) * Bdw, x0, B / 2);              // N
+  const moment = (p, B, Bdw, x0) => integreer((x) => (p(x) - g) * Bdw * (x - x0), x0, B / 2);   // N·mm
+  const bk = rondK ? (Math.sqrt(Math.PI) / 2) * cx : cx, bky = rondK ? bk : cy;
+  const xM = 0.35 * bk, yM = 0.35 * bky;
+  const Mbx = Math.max(moment(px, Bx, By, xM), 0), Mby = Math.max(moment(py, By, Bx, yM), 0);
+  const dx = h - c - phi / 2, dy = h - c - (3 * phi) / 2;
+  const as = (Math.PI * phi * phi) / 4 / sp;
+  const Asn = (M, bb, dd) => (bb * fcd * (dd - Math.sqrt(Math.max(dd * dd - (2 * M) / (bb * fcd), 0)))) / fyd;
+  const Asxn = Asn(Mbx, By, dx), Asyn = Asn(Mby, Bx, dy);
+  const UCM = Math.max(Asxn / (as * By), Asyn / (as * Bx));
+  const okM = dx * dx > (2 * Mbx) / (By * fcd) && dy * dy > (2 * Mby) / (Bx * fcd);
+  // Verankering op x = h/2 van de rand
+  const eta2 = phi <= 32 ? 1 : (132 - phi) / 100, fbd = 2.25 * eta2 * fctd;
+  const ank = (p, B, Bdw, xm, dd, As) => {
+    const xa = Math.min(h / 2, B / 2 - xm);
+    const x0 = B / 2 - xa;
+    const Ra = kracht(p, B, Bdw, x0);
+    const Mr = integreer((x) => (p(x) - g) * Bdw * (B / 2 - x), x0, B / 2); // om de rand
+    const ze = B / 2 - Mr / Ra - xm;
+    const Fs = Math.max((Ra * ze) / (0.9 * dd), 0);
+    const lbrqd = ((phi / 4) * Fs) / As / fbd;
+    return Math.max(lbrqd, 10 * phi, 100) / (xa - c);
+  };
+  const UCank = Math.max(ank(px, Bx, By, xM, dx, as * By), ank(py, By, Bx, yM, dy, as * Bx));
+  // Dwarskracht op d van de kolomrand
+  const Vx = Bx / 2 > cx / 2 + dx ? Math.max(kracht(px, Bx, By, cx / 2 + dx), 0) : 0;
+  const Vy = By / 2 > cy / 2 + dy ? Math.max(kracht(py, By, Bx, cy / 2 + dy), 0) : 0;
+  const rx = Math.min(0.02, as / dx), ry = Math.min(0.02, as / dy);
+  const UCV = Math.max(Vx / (vc(dx, rx) * By * dx), Vy / (vc(dy, ry) * Bx * dy));
+  // Pons
+  const dp = (dx + dy) / 2;
+  const sigN = Math.max(Math.min(px(0), py(0)) - g, 0) * 1e3; // kPa
+  const pn = pons(v.F_Ed, sigN, dp, Math.sqrt(rx * ry), Math.abs(v.M_Ed), Math.abs(v.M_Ed_y));
+  let beta0;
+  if (rondK) beta0 = 1 + (0.6 * Math.PI * (Math.hypot(v.M_Ed, v.M_Ed_y) / v.F_Ed) * 1000) / (cx + 4 * dp);
+  else {
+    const W1 = (c1, c2) => c1 * c1 / 2 + c1 * c2 + 4 * c2 * dp + 16 * dp * dp + 2 * Math.PI * dp * c1;
+    beta0 = 1 + ((kTab(cx / cy) * Math.abs(v.M_Ed) * 1e6) / W1(cx, cy) + (kTab(cy / cx) * Math.abs(v.M_Ed_y) * 1e6) / W1(cy, cx)) * (2 * (cx + cy) + 4 * Math.PI * dp) / (v.F_Ed * 1e3);
+  }
+  const u0 = rondK ? Math.PI * cx : 2 * (cx + cy);
+  const UCpons0 = (beta0 * v.F_Ed * 1e3) / (u0 * dp) / (0.4 * 0.6 * (1 - fck / 250) * fcd);
+  const asmin1 = (fcd * (dx - Math.sqrt(dx * dx - (h * h * fctm) / (3 * fcd)))) / fyd;
+  const det = phi >= 8 && sp <= Math.min(2 * h, 250) && sp - phi >= Math.max(phi, 37) &&
+    as * By >= Math.min(asmin1 * By, 1.25 * Asxn) && as * Bx >= Math.min(asmin1 * Bx, 1.25 * Asyn);
+  const hoekLos = (6 * ex) / Bx + (6 * ey) / By > 1 && ex > 0 && ey > 0;
+  const UCmax = Math.max(UCdraag, UCglij, UCM, UCank, UCV, pn.UC, UCpons0);
+  return {
+    geldig, trek, Gk, Vd, Vmin, ex, ey, kier, Rd, UCdraag, UCglij, Mbx, Mby, UCM, UCank, UCV, UCpons: pn.UC, akrit: pn.a, UCpons0, UCmax,
+    voldoet: okM && det && UCmax <= 1 && !hoekLos,
+  };
+}
+
+function verwachtingen34(r, v) {
+  const uit = {
+    R_Ed: ruim(r.R), R_Ed_min: ruim(r.Rmin), z: ruim(r.z), F_td: ruim(r.Ftd), UC_trek: ruim(r.UCtrek), UC_kn_2: ruim(r.UCkn2),
+    // de vrije afstand is bemonsterd: op een tiende millimeter
+    a_pk: { waarde: s4(r.apk), tol: 0.2 },
+    l_bd: ruim(r.lbd), φ_m: ruim(r.phim), UC_rol: ruim(r.UCrol), l_b_besch: ruim(r.lbesch), UC_ank: ruim(r.UCank),
+    l_v_nodig: ruim(r.lvNodig), ρ_l: ruim(r.rho), UC_V: ruim(r.UCV), UC_Vmax: ruim(r.UCVmax), a_pons: { waarde: s4(r.apons), tol: 0.2 },
+    UC_pons_k: ruim(r.UCponsK), UC_pons_p: ruim(r.UCponsP), UC_pons_0: ruim(r.UCpons0), σ_s: ruim(r.ss), w_k: ruim(r.wk),
+    UC_w: ruim(r.UCw), A_s_min_x: ruim(r.Asminx), A_s_min_y: ruim(r.Asminy), UC_max: ruim(r.UCmax),
+  };
+  if (v.R_cd > 0) uit.UC_paal = ruim(r.UCpaal);
+  if (r.kolomDruk) uit.UC_kn_1 = ruim(r.UCkn1);
+  if (r.kolomDruk && (v.M_Ed !== 0 || v.M_Ed_y !== 0)) Object.assign(uit, { A_blok: ruim(r.Ablok), z_fr: ruim(r.zFr) });
+  return uit;
+}
+
+function verwachtingenStaal(r, v) {
+  if (r.drijft) return {};
+  // a_krit ligt in een vlak maximum: op 2 %
+  const uit = { UC_M: ruim(r.UCM), UC_V: ruim(r.UCV), UC_pons: ruim(r.UCpons), a_krit: { waarde: s4(r.akrit), tol: 0.02 * r.akrit },
+    UC_pons_0: ruim(r.UCpons0), UC_max: ruim(r.UCmax), G_k: ruim(r.Gk) };
+  if (r.trek) return Object.assign(uit, { UC_upl: ruim(r.UCupl) });
+  Object.assign(uit, {
+    V_d: ruim(r.Vd), V_d_min: ruim(r.Vmin), e_x_d: ruim(r.ex), e_y_d: ruim(r.ey), R_d: ruim(r.Rd), UC_draag: ruim(r.UCdraag),
+    M_b_x: ruim(r.Mbx / 1e6), M_b_y: ruim(r.Mby / 1e6), UC_ank: ruim(r.UCank),
+  });
+  if (v.H_Ed !== 0) uit.UC_glij = ruim(r.UCglij);
   return uit;
 }
 
@@ -561,6 +1020,223 @@ const SETS = [
       c_k: "72.82", σ_Ed_1: "18.31", UC_kn_1: "0.9125", z: "1150", u_k: "33.96",
     },
   },
+  // ── Drie- en vierpaals poer ────────────────────────────────────────────────
+  {
+    naam: "29 — vierpaals poer: Ø500 op vier palen 450×450 h.o.h. 1600 × 1600, poer 2400 × 2400 × 1250, 6Ø32 per band langs de randen",
+    invoer: { poertype: 4 },
+    // Met de hand (N, mm, kN), f_cd, ν′, f_yd, f_ctd als set 1.
+    // Paalreacties: L_x = L_y = 1600 + 2·400 = 2400; G_k = 25·2,4·2,4·1,25 = 180,0 kN; N = 3600 + 1,35·180 = 3843 kN.
+    // Paalafwijking in de ongunstigste richting: N·e/2·√(1/l_x² + 1/l_y²) = 384,3/2·√2/1,6 = 192,15·0,8839 = 169,8 kN;
+    // R_Ed = 3843/4 + 169,8 = 960,75 + 169,8 = 1130,6 kN (R_Ed,min = 790,9); UC_paal = 1130,6/2400 = 0,471.
+    // Staafwerk: y_s = 55 + 32 = 87 (hart tussen de twee lagen), d = 1163; kwart kolom: x_k = y_k = 2·500/(3π) = 106,1;
+    // a_x = a_y = 800 − 106,1 = 693,9, a = 693,9·√2 = 981,3. Vlak door de knoop: 2·R·a_x·a_k/F
+    // = 2·1130,6·693,9·443,1/3600 = 193 120 → z = (1163 + √(1 352 569 − 386 240))/2 = (1163 + 983,0)/2 = 1073,0;
+    // θ = atan(1073,0/981,3) = 47,56°; L_d = 1454,0; C_d = 1130,6·1454,0/1073,0 = 1532 kN; u = 193 120/1073,0 = 180,0 mm.
+    // Trekband langs de rand: F_td = 1130,6·693,9/1073,0 = 731,1 kN → A_s,nodig = 1682 mm² tegen 4825: UC 0,349.
+    // Knoop onder de kolom als bij twee palen: 18,33/20,07 = 0,914 (maatgevend). Boven de paal: σ_p = 1130,6e3/202 500
+    // = 5,583; w_2 = (450·1073,0 + 174·981,3)/1454,0 = 449,5; σ_d = 1532e3/(449,5·450) = 7,574 → UC 7,574/17,06 = 0,444.
+    // Band: min(450 + 2·87; 2·(400 − 55)) = 624, s_h = (624 − 32)/5 = 118,4. σ_sd = 731,1e3/4825 = 151,5;
+    // l_b,rqd = 8·151,5/3,370 = 359,6; p = 1130,6e3/624² = 2,904 → α_5 = 0,884; c_d = 43,2 → α_1 = 1;
+    // 0,884·359,6 = 318 < l_b,min = 320 → l_bd = 320. φ_m,bet = 121 850·(1/59,2 + 1/64)/23,33 = 169,8 (> 160);
+    // UC_rol = (84,9 + 32)/(300 − 55) = 0,477; r_b = 100,9; l_1 = 300 + 225 − 55 − 84,9 − 32 = 353,1;
+    // l_v = 1250 − 55 − 87 − 100,9 = 1007,1; l_b,besch = 353,1 + 158,5 + 1007,1 = 1518,7 → UC_ank = 0,211.
+    // Dwarskracht: ρ_l = 4825·3200/(5,76e6·1163) = 0,002305; 0,12·1,4147·(8,068)^(1/3) = 0,3405 < v_min = 0,3484;
+    // V = 2·1130,6 = 2261 kN over 2400, a_v = 800 − 250 − 225 = 325 < 0,5d → β = 0,25; V_Rd,c = 0,3484·2400·1163
+    // = 972,5 kN → UC_V = 0,25·2261/972,5 = 0,581. (6.5): 2261/(0,5·2400·1163·0,516·23,33) = 0,135.
+    // Pons: kolomrand tot paalhoek (575; 575): √2·575 − 250 = 563,2 mm < 2d → a = 563,2; v_Rd = 0,3484·2326/563,2 = 1,439.
+    // Kolom: u = π·(500 + 2·563,2) = 5109 → v_Ed = 3843e3/(5109·1163) = 0,647 → UC 0,449.
+    // Paal: min(1800 + 2π·563,2; 2·400 + ¼·(1800 + 2π·563,2)) = min(5339; 2135) = 2135 → 1130,6e3/(2135·1163) = 0,455 → UC 0,317.
+    // Langs de kolom: 3600e3/(1571·1163) = 1,971 tegen 0,4·0,516·23,33 = 4,816 → 0,409.
+    // Scheurwijdte: R_fr = 2680/4 + 268,0/2·0,8839 = 670 + 118,4 = 788,4; σ_s = 731,1·788,4/1130,6·1e3/4825 = 105,7;
+    // h_c,ef = 217,5, ρ_p,eff = 4825/(624·217,5) = 0,03555; s_r,max = 3,4·55 + 0,17·32/0,03555 = 340,0;
+    // (105,7 − 0,4·3,210/0,03555·1,209)/2e5 = 3,1e-4 < 0,6·105,7/2e5 = 3,171e-4 → w_k = 0,1078 → UC 0,359.
+    // A_s,min: per breedte f_cd·(d − √(d² − h²·f_ctm/(3f_cd)))/f_yd = 23,33·(1163 − 1131,8)/434,8 = 1,676 mm²/mm;
+    // × 2400 = 4022 < 1,25·2·1682 = 4204 → A_s,min,x = 4022 tegen 2·4825 = 9651: voldoet.
+    handwerk: {
+      L_x: "2400", G_k: "180.0", N_Ed: "3843", ΔR_e: "169.8", R_Ed: "1131", R_Ed_min: "790.9", UC_paal: "0.471",
+      y_s: "87", d: "1163", x_k: "106.1", a_x: "693.9", a: "981.3", z: "1073", θ: "47.56", L_d: "1454", C_d: "1532",
+      u_k: "180.0", F_td: "731.1", A_s_nodig: "1682", UC_trek: "0.349", UC_kn_1: "0.914", σ_p: "5.583", w_2: "449.5",
+      σ_d: "7.574", UC_kn_2: "0.444", b_band: "624", s_h: "118.4", l_b_rqd: "359.6", α_5: "0.884", l_bd: "320",
+      φ_m_bet: "169.8", UC_rol: "0.477", l_b_besch: "1519", UC_ank: "0.211", ρ_l: "0.002305", v_Rd_c: "0.3484",
+      β_1: "0.25", V_Rd_c_1: "972.5", UC_V: "0.581", UC_Vmax: "0.135", a_pk: "563.2", v_Rd: "1.439", u_pk: "5109",
+      v_Ed_k: "0.647", UC_pons_k: "0.449", u_pp: "2135", UC_pons_p: "0.317", v_Ed_0: "1.971", UC_pons_0: "0.409",
+      R_fr: "788.4", σ_s: "105.7", ρ_p_eff: "0.03555", s_r_max: "340.0", w_k: "0.1078", UC_w: "0.359", A_s_min_x: "4022",
+      UC_max: "0.914",
+    },
+    melding: /\(knoop onder de kolom\) ≤ 1,0 → de poer voldoet/,
+  },
+  {
+    naam: "30 — driepaals poer: Ø500 op drie palen 450×450 in een driehoek met zijde 1600, 6Ø32 per band langs de zijden",
+    invoer: { poertype: 3 },
+    // r = 1600/√3 = 923,8; A = √3/4·1600² + 3·1600·400 + 2√3·400² = 1 108 513 + 1 920 000 + 554 256 = 3,583 m²;
+    // G_k = 25·3,583·1,25 = 112,0 kN; N = 3600 + 151,2 = 3751,1 kN; paalafwijking 2·N·e/(√3·l) = 750,2/2,771 = 270,7 kN;
+    // R_Ed = 3751,1/3 + 270,7 = 1521,1 kN (R_Ed,min = 979,7); UC_paal = 0,634.
+    // Sector van 120°: x_k = √3·500/(2π) = 137,8; a = 923,8 − 137,8 = 786,0. Vlak loodrecht op y:
+    // R·a·a_k/F = 1521,1·786,0·443,1/3600 = 147 140 → z = (1163 + √(1 352 569 − 294 280))/2 = (1163 + 1028,7)/2 = 1095,9.
+    // Band langs een zijde: F_td = R·a/(√3·z) = 1521,1·786,0/(1,732·1095,9) = 629,8 kN → UC 1449/4825 = 0,300.
+    // θ = atan(1095,9/786,0) = 54,35°; σ_p = 1521,1e3/202 500 = 7,512.
+    // Dwarskracht: ρ_l = 3·4825·1600/(2·3,583e6·1163) = 0,002779 → v_Rd,c = 0,12·1,4147·(9,727)^(1/3) = 0,3624.
+    // Voor de derde paal: V = 1521,1 kN over (2/√3)·(800 + 225) = 1183,6; a_v = 923,8 − 250 − 225 = 448,8 → β = 0,25;
+    // 0,25·1521,1e3/(0,3624·1183,6·1163) = 0,762 (langs de zijde met twee palen 0,752).
+    // Pons: van de kolom tot paal A (575; 236,9): √(575² + 236,9²) − 250 = 371,9 mm;
+    // rond de paal min(1800 + 2π·371,9; 800 + (1800 + 2π·371,9)/6) = min(4137; 1489,5) = 1489,5.
+    handwerk: {
+      r_p: "923.8", A_poer: "3.583", G_k: "112.0", ΔR_e: "270.7", R_Ed: "1521", R_Ed_min: "979.7", UC_paal: "0.634",
+      x_k: "137.8", a: "785.9", z: "1096", F_td: "629.8", UC_trek: "0.300", θ: "54.35", σ_p: "7.512", ρ_l: "0.002779",
+      v_Rd_c: "0.3624", b_V_2: "1184", a_v_2: "448.8", UC_V: "0.762", a_pk: "371.9", u_pp: "1489", UC_max: "0.914",
+    },
+  },
+  {
+    naam: "31 — vierpaals poer over de diagonalen, kolom 500×400 met M_Ed = 300 en M_Ed,y = 150 kNm, ronde palen Ø450",
+    invoer: { poertype: 4, trekbanden: 2, kolomvorm: 2, b_kolom: 400, M_Ed: 300, M_Ed_y: 150, paalvorm: 2 },
+    // ΔR_M = 300/3,2 + 150/3,2 = 93,75 + 46,88 = 140,6 kN → R_Ed = 960,75 + 140,6 + 169,8 = 1271,2 kN.
+    // Drukblok (c_x − 2e_x)(c_y − 2e_y): e = 83,3 en 41,7 → 333,3 × 316,7 = 105 560 mm² → σ = 34,11 N/mm²: UC 1,700.
+    // a_x = 800 − 125 = 675, a_y = 800 − 100 = 700; vlak loodrecht op x: 2·R·a_x·c_k,x/F = 2·1271,2·675·333,3/3600
+    // = 158 880 (y: 157 440) → z = (1163 + √1 034 810)/2 = 1090,1; diagonaal a = √(675² + 700²) = 972,4:
+    // F_td = 1271,2·972,4/1090,1 = 1134 kN → UC 0,541.
+    // Pons: van de kolomhoek (250; 200) tot de paal Ø450 op (800; 800): √(550² + 600²) − 225 = 588,9;
+    // k_x = 0,6 + 0,1·0,25 = 0,625, k_y = 0,45 + 0,3·0,3 = 0,54; W_x = 125 000 + 200 000 + 2·400·588,9 + 4·588,9²
+    // + π·588,9·500 = 3,108e6; v_Ed = 3843e3/(5500·1163) + 0,625·300e6/(3,108e6·1163) + 0,54·150e6/(2,996e6·1163)
+    // = 0,601 + 0,052 + 0,023 = 0,676.
+    handwerk: {
+      ΔR_M: "140.6", R_Ed: "1271", c_k_x: "333.3", c_k_y: "316.7", σ_Ed_1: "34.11", UC_kn_1: "1.700", a_x: "675.0",
+      a_y: "700.0", z: "1090", a: "972.4", F_td: "1134", UC_trek: "0.541", a_pk: "588.9", k_x: "0.625", k_y: "0.54",
+      v_Ed_k: "0.676",
+    },
+    melding: /\(knoop onder de kolom\) > 1,0/,
+  },
+  {
+    naam: "32 — driepaals poer, kolom 500×400 met M_Ed,y = −300 kNm, rechthoekige palen",
+    invoer: { poertype: 3, kolomvorm: 2, b_kolom: 400, M_Ed_y: -300 },
+  },
+  {
+    naam: "33 — vierpaals poer 2000 × 1400 h.o.h., kolom 600×400 met M_Ed = 200 kNm, 5Ø25, h = 1100",
+    invoer: { poertype: 4, l_hoh: 2000, l_hoh_y: 1400, kolomvorm: 2, d_kolom: 600, b_kolom: 400, M_Ed: 200, n_langs: 5, d_langs: 25, h_poer: 1100 },
+  },
+  {
+    naam: "34 — vierpaals poer, kleine last met groot moment: de kolomvoet krijgt trek",
+    invoer: { poertype: 4, F_Ed: 800, M_Ed: 700, F_fr: 500, R_cd: 0 },
+    // e_k = 700/800 = 875 mm > 250: de knoop onder de kolom is niet getoetst; de knoop rekent met het blok over de hele kolom.
+    melding: /kolomwapening krijgt trek/,
+  },
+  {
+    naam: "35 — driepaals poer met palen die elkaar raken: invoer past niet",
+    invoer: { poertype: 3, l_hoh: 440 },
+    melding: /invoer onvolledig/,
+  },
+  // ── Poer op staal ──────────────────────────────────────────────────────────
+  {
+    naam: "36 — poer op staal, centrisch: 2400 × 2400 × 600 op 1,0 m, kolom 400 × 400, F_Ed = 1500 kN, φ′ = 30°",
+    invoer: { ...STAAL },
+    // G_k = 25·5,76·0,6 + 18·(5,76 − 0,16)·0,4 = 86,4 + 40,32 = 126,72 kN; V_d = 1500 + 1,35·126,72 = 1671,1 kN.
+    // φ_d = atan(tan 30°/1,15) = atan(0,5020) = 26,66°; N_q = e^(π·0,5020)·tan²(58,33°) = 4,8415·2,6276 = 12,72;
+    // N_c = 11,72/0,5020 = 23,35; N_γ = 2·11,72·0,5020 = 11,77. Vierkant (D.4): s_q = 1 + sin 26,66° = 1,449,
+    // s_γ = 0,7, s_c = (1,449·12,72 − 1)/11,72 = 1,487. q = 18·1,0/1,1 = 16,36 kPa, γ′ = 16,36 kN/m³ (droog).
+    // σ′_max = 16,36·12,72·1,449 + 0,5·16,36·2,4·11,77·0,7 = 301,6 + 161,8 = 463,3 kPa → R_d = 463,3·5,76 = 2669 kN:
+    // UC_draag = 1671,1/2669 = 0,626.
+    // Beton (C30/37): netto grondspanning V_d/A − 1,35·G_k/A = 290,1 − 29,7 = 260,4 kPa = F/A.
+    // Buiging op 0,15·400 binnen de kolomrand, x = 140: M = 260,4·2,4·1,06²/2 = 351,1 kNm;
+    // d_x = 600 − 50 − 8 = 542: A_s = 2400·20·(542 − √(542² − 2·351,1e6/48 000))/434,8 = 48 000·13,67/434,8 = 1509 mm²;
+    // d_y = 526: 1556 mm² tegen 1340·2,4 = 3217 → UC_M = 0,484.
+    // Verankering op h/2 = 300 van de rand: R = 260,4·2,4·0,3 = 187,5 kN, z_e = 1200 − 150 − 140 = 910:
+    // F_s = 187,5·910/(0,9·542) = 349,8 kN; σ = 108,7 N/mm² → l_b,rqd = 4·108,7/3,041 = 143,0 → l_bd = 10φ = 160;
+    // beschikbaar 300 − 50 = 250 → UC_ank = 0,640 (maatgevend).
+    // Dwarskracht op d: 200 + 542 = 742 → V = 260,4·2,4·0,458 = 286,3 kN; ρ = 1340/(1000·542) = 0,002473, k = 1,607:
+    // v_min = 0,035·1,607^1,5·√30 = 0,3907 > 0,3762 → V_Rd,c = 0,3907·2400·542 = 508,2 kN; in y 296,3/497,4 = 0,596.
+    // Pons: d = (542 + 526)/2 = 534, v_Rd,c = v_min = 0,3923. De ongunstigste omtrek ligt op a = 408,1:
+    // u = 1600 + 2π·408,1 = 4164; A = 160 000 + 2·408,1·800 + π·408,1² = 1,336 m² → V_red = 1500 − 260,4·1,336
+    // = 1152,1 kN; v_Ed = 1152,1e3/(4164·534) = 0,518 tegen 0,3923·2·534/408,1 = 1,027 → UC 0,505.
+    // (Op a = 0,5d: 0,469; op a = d: 0,483.) Langs de kolom: 1500e3/(1600·534) = 1,756 tegen 0,4·0,6·0,88·20 = 4,224 → 0,416.
+    handwerk: {
+      G_k: "126.7", V_d: "1671", phi_d: "26.66", N_q: "12.72", N_c: "23.35", N_γ: "11.77", s_q: "1.449", s_c: "1.487",
+      q_eff: "16.36", σ_max_d: "463.3", R_d: "2669", UC_draag: "0.626", σ_x_max: "290.1", g_d: "29.70", x_M: "140.0",
+      M_b_x: "351.1", A_s_x_nodig: "1509", A_s_y_nodig: "1556", UC_M: "0.484", R_a_x: "187.5", z_e_x: "910.0", F_s_x: "349.8",
+      l_b_rqd_x: "143.0", l_bd_x: "160", UC_ank: "0.640", V_Ed_x: "286.3", V_Rd_c_x: "508.2", UC_V: "0.596", d_p: "534",
+      v_Rd_c: "0.3923", σ_n: "260.4", u_krit: { waarde: "4164", tol: 60, waarom: "de omtrek volgt a_krit, dat in een vlak maximum ligt" },
+      UC_pons: "0.505", v_Ed_0: "1.756", UC_pons_0: "0.416", UC_max: "0.640",
+    },
+    melding: /\(verankering\) ≤ 1,0 → de poer voldoet/,
+  },
+  {
+    naam: "37 — poer op staal, excentrisch binnen de kern: M_Ed = 500 kNm, grondwater op de zool",
+    invoer: { ...STAAL, F_Ed: 1200, M_Ed: 500, grondwater: 2 },
+    // V_d,min = 1200 + 0,9·126,72 = 1314,0 → e = 500/1314,0 = 380,5 mm < B/6 = 400: geen kier, geen afwijking.
+    // b′ = 2400 − 761,0 = 1639; s_q = 1 + 0,683·0,4487 = 1,306, s_γ = 1 − 0,3·0,683 = 0,795; γ′ = 20/1,1 − 10 = 8,18;
+    // σ′ = 16,36·12,72·1,306 + 0,5·8,18·1,639·11,77·0,795 = 271,9 + 62,7 = 334,7 kPa → R_d = 334,7·1,639·2,4 = 1317 kN;
+    // V_d = 1200 + 171,1 = 1371,1 → UC 1,041: voldoet niet.
+    // Grondspanning: 1371,1/5,76·(1 ± 6·380,5/2400) = 238,0·(1 ± 0,951) = 464,5 en 11,6 kPa.
+    handwerk: { e_x: "380.5", B_x_eff: "1639", s_q: "1.306", γ_eff: "8.182", σ_max_d: "334.7", R_d: "1317", UC_draag: "1.041", σ_x_max: "464.5", σ_x_min: "11.6" },
+    melding: /\(draagvermogen\) > 1,0/,
+  },
+  {
+    naam: "38 — poer op staal met een kier, bij de uitvoering speciale zorg: voldoet met de maatregelen van 6.5.4(1)P",
+    invoer: { ...STAAL, B_x: 3200, F_Ed: 900, M_Ed: 700, s_langs: 125, h_poer: 700, D_aanleg: 1200, phi_k: 35, afwijking: 0 },
+    // G_k = 25·7,68·0,7 + 18·7,52·0,5 = 134,4 + 67,7 = 202,1 kN; V_d = 900 + 272,8 = 1172,8; V_d,min = 1081,9;
+    // e = 700/1081,9 = 647,0 mm > 3200/6 = 533,3: kier; zonder afwijking b′ = 3200 − 1294,1 = 1905,9, ℓ′ = 2400.
+    // φ_d = atan(0,7002/1,15) = 31,34°: N_q = 21,45, N_γ = 24,90; s_q = 1,413, s_γ = 0,762.
+    // g1 = 19,64·21,45·1,413 + 0,5·16,36·1,906·24,90·0,762 = 595,1 + 295,8 = 890,9 kPa; g2 (q = 0) = 295,8 kPa
+    // → R_d = 295,8·1,906·2,4 = 1353 kN → UC 0,867. Contactlengte 3·(1600 − 647,0) = 2859.
+    handwerk: { e_x_d: "647.0", B_x_eff: "1906", N_q: "21.45", N_γ: "24.90", σ_g2_d: "295.8", σ_max_d: "295.8", R_d: "1353", UC_draag: "0.867", L_c_x: "2859" },
+    melding: /met de speciale maatregelen van 6\.5\.4\(1\)P → de poer voldoet/,
+  },
+  {
+    naam: "39 — dezelfde poer met de plaatsingsafwijking van 0,1 m (6.5.4(2)): voldoet niet",
+    invoer: { ...STAAL, B_x: 3200, F_Ed: 900, M_Ed: 700, s_langs: 125, h_poer: 700, D_aanleg: 1200, phi_k: 35 },
+    // e_d = 647,0 + 100 = 747,0 → b′ = 1705,9; s_q = 1,370, s_γ = 0,787; g2 = 0,5·16,36·1,706·24,90·0,787 = 273,5 kPa
+    // → R_d = 273,5·1,706·2,4 = 1120 kN → UC 1,048.
+    handwerk: { e_x_d: "747.0", B_x_eff: "1706", σ_max_d: "273.5", R_d: "1120", UC_draag: "1.048" },
+    melding: /\(draagvermogen\) > 1,0/,
+  },
+  {
+    naam: "40 — poer op staal met H_Ed = 80 kN in x: hellingsfactoren en glijden",
+    invoer: { ...STAAL, M_Ed: 100, H_Ed: 80 },
+    // M op de onderkant = 100 + 80·0,6 = 148 kNm; e = 148/1614,0 = 91,7 mm → b′ = 2216,6 (in x, langs H), ℓ′ = 2400.
+    // m = m_B = (2 + 0,9236)/(1 + 0,9236) = 1,520; i_q = (1 − 80/1614,0)^1,520 = 0,9256, i_γ = 0,9504^2,520 = 0,8798.
+    // s_q = 1 + 0,9236·0,4487 = 1,414, s_γ = 1 − 0,277 = 0,723; σ′ = 16,36·12,72·1,414·0,9256 + 0,5·16,36·2,217·11,77·0,723·0,8798
+    // = 272,5 + 135,8 = 408,3 kPa → R_d = 408,3·2,217·2,4 = 2172 kN → UC 1671,1/2172 = 0,769.
+    // Glijden: δ_d = φ′_cv;d = 26,66°, R_h = 1614,0·0,5020 = 810,3 kN → UC 80/810,3 = 0,099.
+    handwerk: { M_x_d: "148.0", m_i: "1.520", i_q: "0.9256", i_γ: "0.8798", σ_max_d: "408.3", R_d: "2172", UC_draag: "0.769", R_h_d: "810.3", UC_glij: "0.0987" },
+  },
+  {
+    naam: "41 — poer op staal op trek (UPL, tabel A.15), grondwater op maaiveld, net Ø12-150 bovenin",
+    invoer: { ...STAAL, belasting_staal: 2, F_Ed: 150, grondwater: 3, D_aanleg: 1500, d_boven: 12, s_boven: 150 },
+    // G_k = 25·5,76·0,6 + 20·(5,76 − 0,16)·0,9 = 86,4 + 100,8 = 187,2 kN; U = 10·1,5·5,76 = 86,4 kN.
+    // V_dst = 150 + 1,0·86,4 = 236,4; G_stb = 0,9·187,2 = 168,5 → UC 1,403; extra ballast (236,4 − 168,5)/0,9 = 75,5 kN.
+    // Buiging bovenin: q = 150/5,76 = 26,04 kPa, uitkraging vanaf de kolomrand 1000: M = 26,04·2,4·1,0²/2 = 31,25 kNm;
+    // d_x = 600 − 50 − 6 = 544 → A_s = 48 000·(544 − √(544² − 2·31,25e6/48 000))/434,8 = 132,3 mm² tegen 754·2,4 = 1810.
+    handwerk: { G_k: "187.2", U_k: "86.4", V_dst_d: "236.4", G_stb_d: "168.5", UC_upl: "1.403", ΔG_k: "75.47", q_t: "26.04", M_b_x: "31.25", A_s_x_nodig: "132.3" },
+    melding: /\(evenwicht tegen trek\) > 1,0/,
+  },
+  {
+    naam: "42 — poer op staal op trek met EQU (tabel NB.3 – A1.2(A)): 1,1 op de waterdruk",
+    invoer: { ...STAAL, belasting_staal: 2, F_Ed: 150, grondwater: 3, D_aanleg: 1500, d_boven: 12, s_boven: 150, factoren: 2 },
+    // V_dst = 150 + 1,1·86,4 = 245,0 → UC 245,0/168,5 = 1,454.
+    handwerk: { γ_G_dst: "1.1", V_dst_d: "245.0", UC_upl: "1.454" },
+  },
+  {
+    naam: "43 — poer op staal op trek die voldoet: droog, F_Ed = 100 kN",
+    invoer: { ...STAAL, belasting_staal: 2, F_Ed: 100, D_aanleg: 1500, d_boven: 12, s_boven: 150 },
+    // G_k = 86,4 + 18·5,6·0,9 = 177,1 kN; G_stb = 159,4 → UC 100/159,4 = 0,627.
+    handwerk: { G_k: "177.1", UC_upl: "0.627" },
+    melding: /\(evenwicht tegen trek\) ≤ 1,0 → de poer voldoet/,
+  },
+  {
+    naam: "44 — poer op staal, in twee richtingen excentrisch buiten de kern: een hoek komt los",
+    invoer: { ...STAAL, M_Ed: 400, M_Ed_y: 400 },
+    // e = 400/1614,0 = 247,8 mm in x en in y: 6·247,8/2400·2 = 1,24 > 1.
+    handwerk: { e_x: "247.8", e_y: "247.8" },
+    melding: /een hoek van de poer komt los/,
+  },
+  {
+    naam: "45 — poer op staal, de resultante valt buiten de poer",
+    invoer: { ...STAAL, F_Ed: 100, M_Ed: 500 },
+    melding: /de resultante valt buiten de poer/,
+  },
+  {
+    naam: "46 — poer op staal met de onderkant boven de bovenkant: invoer past niet",
+    invoer: { ...STAAL, D_aanleg: 500 },
+    melding: /invoer onvolledig/,
+  },
 ];
 
 let fouten = 0;
@@ -569,8 +1245,10 @@ for (const set of SETS) {
   const cc = set.cc ?? 2;
   const selectValues = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)]));
   const got = reken(tpl, selectValues, { CC: cc, K_FI: cc === 1 ? 0.9 : cc === 3 ? 1.1 : 1.0 });
-  const r = uitwerking(v, cc);
-  if (r.geldig) fouten += toets(`${set.naam} — narekening`, got, verwachtingen(r, v));
+  const [reken_, verwacht] = v.poertype === 1 ? [uitwerkingStaal, verwachtingenStaal]
+    : v.poertype >= 3 ? [uitwerking34, verwachtingen34] : [uitwerking, verwachtingen];
+  const r = reken_(v, cc);
+  if (r.geldig) fouten += toets(`${set.naam} — narekening`, got, verwacht(r, v));
   else console.log(`\n${set.naam} — ongeldige invoer, geen narekening`);
   if (set.handwerk) fouten += toets(`${set.naam} — handberekening`, got, set.handwerk);
 
@@ -595,6 +1273,32 @@ for (const set of SETS) {
   }
 }
 
+// ── Een blad van vóór de keuze poertype ──────────────────────────────────────
+// Na "Bladen bijwerken" heeft zo'n blad alleen de oude invoervelden: de nieuwe
+// keuzelijsten staan op hun eerste keuze, de nieuwe '?'-velden op 0. Het moet
+// dan exact rekenen als de tweepaals poer met de volledige standaardinvoer.
+{
+  console.log("\nBlad van vóór de keuze poertype");
+  const OUDE_VELDEN = [
+    "kolomvorm", "paalvorm", "d_kolom", "b_kolom", "b_paal", "l_paal", "b_poer", "h_poer", "l_hoh", "oversteek", "e_paal",
+    "betonklasse", "betonstaal", "betonoppervlak", "c_dek", "n_langs", "d_langs", "n_sneden", "d_beugel", "s_beugel",
+    "F_Ed", "M_Ed", "F_fr", "R_cd",
+  ];
+  let mis = 0, n = 0;
+  for (const set of SETS.filter((s) => !("poertype" in s.invoer) && !(s.invoer.poertype > 2))) {
+    const v = { ...STANDAARD, ...set.invoer };
+    const scope = { CC: 2, K_FI: 1.0 };
+    const oud = reken(tpl, Object.fromEntries(OUDE_VELDEN.map((k) => [k, String(v[k])])), scope);
+    const nu = reken(tpl, Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)])), scope);
+    const namen = new Set([...Object.keys(oud.values), ...Object.keys(nu.values)]);
+    for (const k of namen) if (oud.values[k] !== nu.values[k]) { mis++; if (mis < 6) console.log(`  FOUT   ${set.naam.slice(0, 40)}: ${k} ${oud.values[k]} tegen ${nu.values[k]}`); }
+    if (oud.text !== nu.text) { mis++; console.log(`  FOUT   ${set.naam.slice(0, 40)}: de uitwerking verschilt`); }
+    n++;
+  }
+  if (mis) fouten++;
+  console.log(`  ${mis ? "FOUT  " : "OK    "} ${n} sets met alleen de oude invoer rekenen gelijk aan poertype = 2`);
+}
+
 // ── Het beeld: beginwaarden en veldnamen lopen gelijk met het blad ──────────
 {
   console.log("\nBeeld tegen blad");
@@ -605,7 +1309,8 @@ for (const set of SETS) {
   const blok = ts.match(/const DEFAULTS[^{]*\{([\s\S]*?)\};/)[1];
   const beeld = Object.fromEntries([...blok.matchAll(/(\w+):\s*(-?[\d.]+)/g)].map((m) => [m[1], Number(m[2])]));
   const invoer = new Set([
-    ...[...tpl.matchAll(/^\s*(\w+)\s*=\s*\?/gm)].map((m) => m[1]),
+    // Namen met een komma in het blad (`l_hoh,y`) staan in het beeld met een liggend streepje.
+    ...[...tpl.matchAll(/^\s*([\p{L}_][\p{L}\p{N}_,]*)\s*=\s*\?/gmu)].map((m) => m[1].replace(/,/g, "_")),
     ...[...tpl.matchAll(/@select\s+(\w+)/g)].map((m) => m[1]),
   ]);
   const gezet = new Set([...ts.matchAll(/set\("(\w+)"/g)].map((m) => m[1]));
@@ -619,4 +1324,4 @@ for (const set of SETS) {
   console.log(`  ${mis.length ? "FOUT  " : "OK    "} ${invoer.size} invoervelden, ${Object.keys(beeld).length} beginwaarden, ${gezet.size} velden die het beeld schrijft`);
 }
 
-afronden(fouten, "Tweepaals poer");
+afronden(fouten, "Poer");
