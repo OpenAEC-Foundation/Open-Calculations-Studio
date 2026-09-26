@@ -25,7 +25,9 @@
  *     daarbuiten aan de veilige kant). Bij een lange verbinding (L_j > 15·d)
  *     de reductie β_Lf van §3.8 op F_v,Rd. De boutgroep volgens §3.7(1);
  *   • de schetsplaat op trek over de effectieve breedte (spreiding onder 30°
- *     over de boutrij, begrensd door de vrije randen), met (6.6) en (6.7);
+ *     over de boutrij), met (6.6) en (6.7). Bij bout 1 begrensd door alle
+ *     randen van de plaat, ook de gelaste: voorbij de las ligt het profiel
+ *     waaraan de plaat vastzit, en dat toetst dit blad niet (veilige kant);
  *   • blokschuif in de schetsplaat: twee afschuifvlakken langs de boutrij
  *     (3.9), of één met een trekvlak naar de vrije rand (3.10);
  *   • bij trek en druk: knik van de schetsplaat als strook over de effectieve
@@ -42,7 +44,9 @@
  *     de veilige kant;
  *   • het eind van het hoekstaal mag niet voorbij een gelaste rand steken
  *     (l_0 ≥ l_0,min); een gewiste l_0 valt daar ook onder. Het gat moet
- *     binnen het vlakke deel van het been liggen: e_2 + d_0/2 ≤ h − t.
+ *     binnen het vlakke deel van het been liggen: e_2 + d_0/2 ≤ h − t. De
+ *     sluitring onder kop of moer (ISO 7089) moet naast het uitstaande been
+ *     vlak liggen, vrij van de afronding: h − e_2 − d_s/2 ≥ t + r_1.
  *
  * Niet in dit blad: knik van de schoor zelf (dat hoort bij het blad van het
  * windverband), het profiel of de plaat waaraan de schetsplaat is gelast, en
@@ -169,6 +173,11 @@ UC_c = 0
     #end if
 #end if
 'Hoekstaal L 'h_L'×'h_L'×'t_L' mm, A = 'A_L' cm²'if(n_L ≡ 2; ", twee stuks rug aan rug"; "")'. S'staalsoort': f<sub>y</sub> = 'f_y', f<sub>u</sub> = 'f_u' N/mm² (tabel 3.1). Bout M'boutmaat' – 'boutkwaliteit/10': d<sub>0</sub> = 'd_0' mm, A<sub>s</sub> = 'A_s' mm², f<sub>ub</sub> = 'f_ub' N/mm². γ<sub>M0</sub> = γ<sub>M1</sub> = 1,0, γ<sub>M2</sub> = 1,25 (NB).
+#if n_bouten ≥ 1
+    #if n_b ≠ n_bouten
+        '<b style="color:#b45309">Het aantal bouten is geen geheel getal: gerekend met n = 'n_b'.</b>
+    #end if
+#end if
 
 #hide
 'Ligging van de bouten langs de as, vanaf het werkpunt: bout 1 bij het eind van het hoekstaal, bout n bij de rand van de plaat.
@@ -183,8 +192,9 @@ vr_n1 = if((h_schets - y_n)/cos(θ) < x_n/sin(θ); (h_schets - y_n)/cos(θ); 100
 vr_n2 = if((b_schets - x_n)/sin(θ) < y_n/cos(θ); (b_schets - x_n)/sin(θ); 100000*mm)
 e_2,p = min(vr_n1; vr_n2)
 vrij = if(e_2,p < 10000*mm; 1; 0)
-vr_11 = if((h_schets - y_1)/cos(θ) < x_1/sin(θ); (h_schets - y_1)/cos(θ); 100000*mm)
-vr_12 = if((b_schets - x_1)/sin(θ) < y_1/cos(θ); (b_schets - x_1)/sin(θ); 100000*mm)
+'Vanaf bout 1 loodrecht op de as, aan beide kanten tot de eerste rand van de plaat, vrij of gelast.
+r_11 = min((h_schets - y_1)/cos(θ); x_1/sin(θ))
+r_12 = min((b_schets - x_1)/sin(θ); y_1/cos(θ))
 'Kortste afstand van de buitenste bout tot een vrije rand, loodrecht op die rand: de randen staan schuin op de as.
 e_rand = min(h_schets - y_n; b_schets - x_n)
 'Het eind van het hoekstaal mag niet voorbij een gelaste rand steken: de vrije rand van het been ligt e_2 onder de as, de hiel h_L − e_2 erboven.
@@ -194,6 +204,12 @@ ok_L = if(l_0 + 0.001*mm ≥ l_0,min; 1; 0)
 e_gat = e_2 + 0.5*d_0
 h_vlak = h_L - t_L
 ok_gat = if(e_gat ≤ h_vlak + 0.001*mm; 1; 0)
+'De sluitring onder kop of moer (ISO 7089) ligt naast het uitstaande been en moet vrij blijven van de afronding r_1.
+r_1 = hlookup(hoekstalen; hoekprofiel; 1; 4)*mm
+d_s = if(boutmaat ≡ 12; 24; if(boutmaat ≡ 16; 30; if(boutmaat ≡ 20; 37; 44)))*mm
+c_ring = h_L - e_2 - 0.5*d_s
+c_nodig = t_L + r_1
+ok_ring = if(c_ring + 0.001*mm ≥ c_nodig; 1; 0)
 #show
 #if hoek > 0
     #if hoek < 90
@@ -204,6 +220,11 @@ ok_gat = if(e_gat ≤ h_vlak + 0.001*mm; 1; 0)
 #end if
 #if ok_gat ≡ 0
     '<b style="color:#b91c1c">Het gat valt buiten het vlakke deel van het been: e<sub>2</sub> + d<sub>0</sub>/2 = 'e_gat' mm > h − t = 'h_vlak' mm.</b>
+#end if
+#if ok_ring ≡ 1
+    'Sluitring Ø'd_s' mm: h − e<sub>2</sub> − d<sub>s</sub>/2 = 'c_ring' mm ≥ t + r<sub>1</sub> = 'c_nodig' mm<span style="color: green"> → vrij van de afronding</span>
+#else
+    '<b style="color:#b91c1c">De sluitring (Ø'd_s' mm) ligt op de afronding van het hoekstaal: h − e<sub>2</sub> − d<sub>s</sub>/2 = 'c_ring' mm &lt; t + r<sub>1</sub> = 'c_nodig' mm. Kies een kleinere e<sub>2</sub> of een kleinere bout.</b>
 #end if
 
 # 2. Hoekstaal op trek — §3.10.3
@@ -350,10 +371,10 @@ tekort = (if(e_1 < e_min; 1; 0) + if(e_2 < e_min; 1; 0) + if(n_b ≥ 2; if(p_1 <
 #if n_b ≥ 2
     b_w = 2*(n_b - 1)*p_1*tan(30*pi/180) to mm', spreiding onder 30° over de boutrij<span class="kolom-2"></span>'
     #hide
-    b_eff = min(b_w/2; vr_11) + min(b_w/2; vr_12)
+    b_eff = min(b_w/2; r_11) + min(b_w/2; r_12)
     #show
     #if b_eff < b_w
-        b_eff', begrensd door de vrije rand van de plaat<span class="kolom-2"></span>'
+        b_eff', bij bout 1 begrensd door de rand van de plaat, ook een gelaste rand<span class="kolom-2"></span>'
     #end if
     N_p,Rd = min(b_eff*t_schets*f_y/γ_M0; 0.9*(b_eff - d_0)*t_schets*f_u/γ_M2) to kN', (6.6) en (6.7) over b_eff, bij bout 1'
     UC_p = F_Ed/N_p,Rd', plaat op trek'
@@ -440,6 +461,8 @@ UC_max = max(UC_t; UC_bs; UC_b; UC_p; UC_bs,p; UC_c; UC_w; UC_v,p)
     '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar de boutrij valt buiten de schetsplaat, het gat valt buiten het vlakke deel van het been, of de hoek ligt niet tussen 0° en 90° → <b>de verbinding voldoet niet</b></span>
 #else if ok_L ≡ 0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar het eind van het hoekstaal steekt voorbij een gelaste rand van de schetsplaat (hoofdstuk 1) → <b>de verbinding voldoet niet</b></span>
+#else if ok_ring ≡ 0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar de sluitring ligt op de afronding van het hoekstaal (hoofdstuk 1) → <b>de verbinding voldoet niet</b></span>
 #else if tekort > 0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar 'tekort' afstand(en) buiten tabel 3.3 (hoofdstuk 3) → <b>de verbinding voldoet niet</b></span>
 #else if ok_las ≡ 0

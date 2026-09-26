@@ -113,7 +113,7 @@ const WERKING: { v: number; label: string }[] = [
 ];
 
 const DEFAULTS: Record<string, number> = {
-  profiel: 5, staalsoort: 235, werking: 1, eis_min: 60, verhitting: 4, schema: 1,
+  profiel: 5, staalsoort: 235, werking: 1, eis_min: 60, verhitting: 4, schema: 1, vloer: 0,
   bron_fi: 1, M_Ed: 50, N_Ed: 500, η_fi: 0.7, M_fi: 35, N_fi: 350,
   L_kip: 5, C_1: 1.13, C_2: -0.45, L_fi: 3,
   bekleed: 1, beklvorm: 1, beklmateriaal: 1, d_p: 18, lambda_p: 0.2, rho_p: 800, c_p: 1700,
@@ -137,6 +137,8 @@ export default function BrandwerendheidDesigner() {
   const eis = Math.round(d("eis_min"));
   const zijden = (Math.round(d("verhitting")) === 3 ? 3 : 4) as 3 | 4;
   const schema = Math.round(d("schema"));
+  // κ_1 < 1 alleen met een beton- of staalplaatbetonvloer aan de vierde zijde.
+  const betonvloer = werking === 1 && zijden === 3 && Math.round(d("vloer")) === 1;
   const bron = Math.round(d("bron_fi")) === 2 ? 2 : 1;
   const bekleed = Math.round(d("bekleed")) === 1;
   const vorm = Math.round(d("beklvorm"));          // 1 = koker, 2 = profielvolgend
@@ -162,7 +164,9 @@ export default function BrandwerendheidDesigner() {
   const mu0 = uitBlad("μ_0");
   const lamFi = uitBlad(werking === 2 ? "λ_LT" : "λ_z");
   const Efi = uitBlad("E_fi_d"), R0 = uitBlad("R_0");
-  const instab = (werking === 2 || werking === 3) && lamFi !== null;
+  // Klasse 4: het blad toont dan A_eff (knikweerstand bij 20 °C) en θ_a,cr = 350 °C.
+  const klasse4 = uitBlad("A_eff") !== null;
+  const instab = (werking === 2 || werking === 3) && lamFi !== null && !klasse4;
   const muR = instab && Efi !== null && R0 !== null && R0 > 0 ? Efi / R0 : mu0;
   const alfa = 0.65 * Math.sqrt(235 / fy);
   const rFi = (T: number) => {
@@ -170,8 +174,7 @@ export default function BrandwerendheidDesigner() {
     const phi = 0.5 * (1 + alfa * l + l * l);
     return kyTheta(T) / (phi + Math.sqrt(phi * phi - l * l));
   };
-  // Klasse 4 (het blad toont dan geen μ₀) of μ₀ > 1: θ_a,cr volgt dan niet uit een kromme.
-  const klasse4 = Tcr !== null && mu0 === null;
+  // Klasse 4 of μ₀ > 1: θ_a,cr volgt dan niet uit een kromme.
   const opKromme = Tcr !== null && !klasse4 && muR !== null && mu0 !== null && mu0 <= 1;
   const tKr = Tcr !== null ? kromme.find(([, T]) => T >= Tcr)?.[0] ?? null : null;
 
@@ -264,6 +267,14 @@ export default function BrandwerendheidDesigner() {
               <select style={{ width: "100%" }} value={schema} onChange={(e) => set("schema", parseInt(e.target.value))}>
                 <option value={1}>In het veld, of statisch bepaald</option>
                 <option value={2}>Boven een tussensteunpunt</option>
+              </select>
+            </label>
+          )}
+          {werking === 1 && zijden === 3 && (
+            <label style={{ flexDirection: "column", alignItems: "stretch" }}>Aan de vierde zijde
+              <select style={{ width: "100%" }} value={betonvloer ? 1 : 0} onChange={(e) => set("vloer", parseInt(e.target.value))}>
+                <option value={0}>Een andere vloer of een wand</option>
+                <option value={1}>Een beton- of staalplaatbetonvloer</option>
               </select>
             </label>
           )}
@@ -374,7 +385,7 @@ export default function BrandwerendheidDesigner() {
                   <g>
                     <rect x={dcx - bw - dpPx - 24} y={dcy - bh - dpPx - 16} width={2 * (bw + dpPx) + 48} height={14}
                       fill="#d1d5db" stroke="#6b7280" strokeWidth={1.1} />
-                    <text x={dcx} y={dcy - bh - dpPx - 22} textAnchor="middle" style={{ fontSize: 10, fill: "#6b7280" }}>vloer of wand — niet verhit</text>
+                    <text x={dcx} y={dcy - bh - dpPx - 22} textAnchor="middle" style={{ fontSize: 10, fill: "#6b7280" }}>{betonvloer ? "betonvloer" : "vloer of wand"} — niet verhit</text>
                   </g>
                 )}
                 <text x={dcx} y={dcy + bh + dpPx + 26} textAnchor="middle" style={{ fontSize: 11, fill: "#1e40af", fontWeight: 700 }}>{p.naam} S{fy}</text>
@@ -474,7 +485,7 @@ export default function BrandwerendheidDesigner() {
                   <g>
                     <line x1={ox2 + mL} y1={gy2(Tcr)} x2={ox2 + mL + cw} y2={gy2(Tcr)} stroke="#16a34a" strokeWidth={1.5} strokeDasharray="5 3" />
                     <text x={ox2 + mL + 6} y={gy2(Tcr) - 6} style={{ fontSize: 10.5, fill: "#16a34a", fontWeight: 700 }}>
-                      {klasse4 ? "klasse 4: θa,cr = 350 °C" : "μ₀ > 1: bezwijkt al bij 20 °C"}
+                      {mu0 !== null && mu0 > 1 ? "μ₀ > 1: bezwijkt al bij 20 °C" : "klasse 4: θa,cr = 350 °C"}
                     </text>
                   </g>
                 )}

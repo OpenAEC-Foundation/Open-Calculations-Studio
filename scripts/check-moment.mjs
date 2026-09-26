@@ -12,7 +12,10 @@
  *      driehoeksverdeling (§6.2.7.2(9), met de NB vanaf 1,8·F_t,Rd), M_j,Rd,
  *      de dwarskracht via de bouten, de lassen, S_j,ini (tabel 6.11) en de
  *      classificatie. Ook de gelaste verbinding, met de flenslassen op de volle
- *      flens (§4.10(5)). Het oordeel wordt gelezen zoals de rapportkop dat doet.
+ *      flens (§4.10(5)). De lassen volgens §6.2.3(4): de flenslas op
+ *      M_j,Rd/z_f, en de lijflas buiten de component liggerlijf op trek, in de
+ *      trekzone per mm minstens zo sterk als het lijf. Het oordeel wordt
+ *      gelezen zoals de rapportkop dat doet.
  *   2. Een handberekening van het voorbeeld (de beginwaarden van het beeld),
  *      met de tussenstappen hieronder uitgeschreven, en grensgevallen: UC
  *      precies rond 1, een sluitring precies tegen de flenslas, α op de
@@ -196,8 +199,8 @@ function uitwerking(v) {
       const cp = 2 * Math.PI * mp + 2 * span;
       const nc2 = (i === rf ? a * mp : 4 * mp + 1.25 * ep) + span;
       const l1 = Math.min(cp, nc2);
-      const perMm = Math.min(L.tw * fy, (Math.SQRT2 * v.a_lijf * fu) / (bw * gM2));
-      return { pl: Tstuk(l1, nc2, v.t_kp, mp, np, j - i + 1), lijf: l1 * perMm };
+      // Liggerlijf op trek (6.22) zonder de lijflas: die mag M_j,Rd niet begrenzen (§6.2.3(4)).
+      return { pl: Tstuk(l1, nc2, v.t_kp, mp, np, j - i + 1), lijf: l1 * L.tw * fy };
     };
     const F = Array(n).fill(0);
     const detail = [];
@@ -282,15 +285,18 @@ function uitwerking(v) {
   // Lassen van de ligger
   const Fw_f = (v.a_flens * (2 * L.b - L.tw - 2 * L.r) * fu) / (Math.SQRT2 * bw * gM2);
   const Fw_w = (v.a_lijf * 2 * (L.h - 2 * L.tf - 2 * L.r) * fu) / (Math.sqrt(3) * bw * gM2);
-  // Gelaste flens: de las draagt ten minste de volle flens over (§4.10(5)).
-  const Ff = geb ? M / zf : Math.max(M / zf, L.b * L.tf * fy);
+  // §6.2.3(4): de flenslas draagt de flenskracht bij M_j,Rd; een gelaste flens ten minste de
+  // volle flens (§4.10(5)). De lijflas in de trekzone van een kopplaat moet per mm minstens zo
+  // sterk zijn als het lijf: dubbele hoeklas dwars belast, √2·a·f_u/(β_w·γ_M2) ≥ t_w·f_y.
+  const Ff = geb ? Mj / zf : Math.max(Mj / zf, L.b * L.tf * fy);
   const UClf = Ff / Fw_f, UClw = V / Fw_w;
+  const UClt = geb ? (L.tw * fy) / ((Math.SQRT2 * v.a_lijf * fu) / (bw * gM2)) : 0;
   const UCM = M / Mj, UCVb = V / Vplb;
   const kb = v.stabiliteit === 2 ? 8 : 25;
   const EIL = (E * L.Iy) / v.L_b;
   const klasse = Sj >= kb * EIL ? "stijf" : Sj <= 0.5 * EIL ? "nominaal scharnierend" : "semi-stijf";
-  const UCmax = Math.max(UCM, r.UCV, UCVb, UClf, UClw);
-  return Object.assign(r, { Mj, Sj, UCM, UCVb, UClf, UClw, UCmax, klasse, zf, yc, Ff });
+  const UCmax = Math.max(UCM, r.UCV, UCVb, UClf, UClw, UClt);
+  return Object.assign(r, { Mj, Sj, UCM, UCVb, UClf, UClw, UClt, UCmax, klasse, zf, yc, Ff });
 }
 
 // ── Vergelijken ──────────────────────────────────────────────────────────────
@@ -315,6 +321,7 @@ function verwachtingen(u, v) {
     Object.assign(uit, {
       F_t_Rd: ruim(u.Ft / 1e3), B_p_Rd: ruim(u.Bp / 1e3), L_bout: ruim(u.Lb), m_c: ruim(u.mc), m_p: ruim(u.mp),
       F_v_Rd: ruim(u.Fv / 1e3), F_b_Rd: ruim(u.Fb / 1e3), V_Rd: ruim(u.VRd / 1e3), UC_V: ruim(u.UCV),
+      UC_lt: ruim(u.UClt),
     });
     // Zonder rij boven het drukpunt vervalt de stijfheid (het blad meldt dat).
     if (Number.isFinite(u.zeq)) Object.assign(uit, { z_eq: ruim(u.zeq), k_eq: ruim(u.keq) });
@@ -396,8 +403,11 @@ const SETS = [
     // M_j,Rd = 0,3851·124,8 + 0,3151·86,6 + 0,2551·3,4 = 76,2 kNm → UC = 60/76,2 = 0,787.
     // Dwarskracht: F_v,Rd = 60,29 kN; F_b,Rd = 2,5·0,556·360·16·13/1,25 = 83,2 kN;
     //   6 getrokken bouten: V_Rd = 2·60,29 + 6·0,2857·60,29 = 223,9 kN → UC 0,357.
-    // Lassen: z_f = 350,2 mm → F_f = 171,3 kN; flens 5·203,8·360/(√2·0,8·1,25) = 259,4 kN
-    //   → UC 0,660; lijf 3·380,8·360/(√3·1,0) = 237,4 kN → UC 0,337.
+    // Lassen (§6.2.3(4)): z_f = 350,2 mm → F_f = M_j,Rd/z_f = 76,22/0,3502 = 217,6 kN (bij M_Ed
+    //   zou het 171,3 kN zijn); flens 5·203,8·360/(√2·0,8·1,25) = 259,4 kN → UC 0,839; lijf op
+    //   afschuiving 3·380,8·360/(√3·1,0) = 237,4 kN → UC 0,337. Lijflas in de trekzone: √2·3·360/(0,8·1,25)
+    //   = 1527 N/mm tegen het lijf 6,2·235 = 1457 N/mm → UC 0,954, maatgevend. Het liggerlijf van rij 2
+    //   (240,8 kN) was al zonder las maatgevend in die component, dus M_j,Rd blijft 76,2 kNm.
     // Stijfheid: z_eq = 308,7 mm, k_eq = 6,91 mm, k_1 = 0,38·1759/308,7 = 2,165, k_2 = 9,635
     //   → S_j,ini = 210 000·308,7²/(1/2,165 + 1/9,635 + 1/6,906) = 28 170 kNm/rad;
     //   stijf vanaf 25·E·I_b/L_b = 34 055 → semi-stijf.
@@ -407,7 +417,8 @@ const SETS = [
       m_p: "28.51", m_x: "24.34", m_2: "24.54", "α": "5.80", Fc_1: "124.8", Fw_1: "190.8", Fp_1: "133.9",
       Fp_2: "168.5", Fb_2: "240.8", F_t1_Rd: "124.8", F_t2_Rd: "86.6", F_t3_Rd: "3.4", F_t4_Rd: "0",
       M_j_Rd: "76.2", UC_M: "0.787", F_b_Rd: "83.2", V_Rd: "223.9", UC_V: "0.357", F_w_f_Rd: "259.4",
-      UC_lf: "0.660", F_w_w_Rd: "237.4", UC_lw: "0.337", z_eq: "308.7", S_j_ini: "28170", UC_max: "0.787",
+      F_f_Ed: "217.6", UC_lf: "0.839", F_w_w_Rd: "237.4", UC_lw: "0.337", UC_lt: "0.954", z_eq: "308.7", S_j_ini: "28170",
+      UC_max: "0.954",
     },
     klasse: "semi-stijf",
   },
@@ -426,6 +437,19 @@ const SETS = [
       console: 0, n_boutrijen: 3, t_kp: 20, b_kp: 160, e_kp: 50, p_kp: 70, w_kp: 90, a_flens: 6, a_lijf: 4,
       M_Ed: 80, V_Ed: 100, N_c_Ed: 300, L_b: 7000, stabiliteit: 2,
     },
+    // §6.2.3(4): een lijflas van 4 mm in S355 is zwakker dan het lijf, √2·4·490/(0,9·1,25) = 2464 N/mm
+    // tegen 7,1·355 = 2520,5 N/mm → UC_lt = 1,023: voldoet niet, hoewel UC_M 0,785 is.
+    handwerk: { UC_lt: "1.023" },
+  },
+  {
+    naam: "4b — grensgeval lijflas: set 4 met a_lijf = 4,1 mm, net sterker dan het lijf",
+    invoer: {
+      kopplaattype: 1, kolomprofiel: 16, liggerprofiel: 24, staalsoort: 355, boutkwaliteit: 109, boutmaat: 20,
+      console: 0, n_boutrijen: 3, t_kp: 20, b_kp: 160, e_kp: 50, p_kp: 70, w_kp: 90, a_flens: 6, a_lijf: 4.1,
+      M_Ed: 80, V_Ed: 100, N_c_Ed: 300, L_b: 7000, stabiliteit: 2,
+    },
+    // √2·4,1·490/(0,9·1,25) = 2525,5 ≥ 2520,5 N/mm → UC_lt = 0,9980 (de grens ligt bij a = 4,092 mm).
+    handwerk: { UC_lt: "0.9980" },
   },
   {
     naam: "5 — grensgeval sluitring: korte kopplaat, rij 1 op 31,9 mm (vrij: 9,8 + √2·5 + 15 = 31,87)",
@@ -577,11 +601,13 @@ const SETS = [
     naam: "26 — opmerking NB bij §6.2.7.2(9): rij 1 boven 1,8·F_t,Rd in een volledig sterke verbinding (IPE 200)",
     invoer: {
       kopplaattype: 3, kolomprofiel: 20, liggerprofiel: 21, boutmaat: 16, t_kp: 25, b_kp: 150, w_kp: 100,
-      e_kp: 30, u_kp: 60, p_fl: 70, p_kp: 60, n_boutrijen: 3, console: 0, a_flens: 5, a_lijf: 4, M_Ed: 40, V_Ed: 30,
+      e_kp: 30, u_kp: 60, p_fl: 70, p_kp: 60, n_boutrijen: 3, console: 0, a_flens: 7, a_lijf: 4, M_Ed: 40, V_Ed: 30,
     },
     // Rij 1 haalt modus 3: 2·90,43 = 180,9 kN > 1,8·90,43 = 162,8 kN. M_pl,b,Rd = 220,6·235 = 51,84 kNm
     // en M_j,Rd = 54,8 kNm ≥ 51,84: volledig sterk (figuur 5.5), de driehoek geldt en het blad keurt niet af.
-    handwerk: { F_t1_Rd: "180.9" },
+    // Een volledig sterke verbinding vraagt ook een sterke flenslas (§6.2.3(4)): z_f = 195,75 − 4,25 = 191,5 mm,
+    // F_f = 54,82/0,1915 = 286,3 kN ≤ 7·170,4·360/(√2·0,8·1,25) = 303,6 kN → UC 0,943 (met a = 5 mm: 1,32).
+    handwerk: { F_t1_Rd: "180.9", F_f_Ed: "286.3", F_w_f_Rd: "303.6", UC_lf: "0.943" },
     geenMelding: /niet volledig sterk/,
     driehoek: true,
   },

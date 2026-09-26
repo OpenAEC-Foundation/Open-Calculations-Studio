@@ -144,7 +144,9 @@ function uitwerking(v) {
   } else {
     kipgeval = 1; C2 = 0;
     C1 = Math.min(1.75 - 1.05 * psi + 0.3 * psi * psi, 2.3);
-    Lk = Math.min(Math.max(1.4 - 0.8 * psi, 1), 1.4) * Lcr;
+    // NB.NB.4.3(1): tussen twee gaffels L_kip = L_st; (1,4 − 0,8β)·L_st geldt
+    // alleen tussen een gaffel en een kipsteun of tussen twee kipsteunen.
+    Lk = Lcr;
   }
   const S = Math.sqrt((E * Iw) / (G * It));
   const Mcr = ((Math.PI * C1) / Lk) *
@@ -237,23 +239,24 @@ const SETS = [
     // = 5080 kN, λ̄_y = √(1063/5080) = 0,4575, Φ = 0,6484, χ_y = 0,9026;
     // N_cr,z = 1871 kN, λ̄_z = 0,7538, Φ = 0,9198, χ_z = 0,6912 → N_b,Rd = 735,0 kN,
     // UC_N = 0,5442.
-    // Kip, geval 1 met β = ψ = −10/20 = −0,5: L_kip = min(1,4 + 0,4; 1,4)·3200 =
-    // 4480 mm, C_1 = min(1,75 + 0,525 + 0,075; 2,3) = 2,3. S = √(E·I_w/(G·I_t)) =
-    // 1027 mm; √(EI_z·GI_t) = 1,5257·10¹¹ Nmm²; √(1 + π²·1027²/4480²) = 1,2323
-    // → M_cr = π·2,3/4480·1,2323·1,5257·10¹¹ = 303,2 kNm. λ̄_LT = √(76,35/303,2)
-    // = 0,5018, kromme b: Φ_LT = 0,5·(1 + 0,34·0,1018 + 0,75·0,2518) = 0,6117 →
-    // χ_LT = 1/(0,6117 + √(0,3742 − 0,1889)) = 0,9595; M_b,Rd = 73,26 kNm.
+    // Kip, geval 1 met β = ψ = −10/20 = −0,5, tussen twee gaffels: L_kip = L_cr =
+    // 3200 mm (NB.NB.4.3(1)), C_1 = min(1,75 + 0,525 + 0,075; 2,3) = 2,3.
+    // S = √(E·I_w/(G·I_t)) = 1027 mm; √(EI_z·GI_t) = 1,5257·10¹¹ Nmm²;
+    // √(1 + π²·1027²/3200²) = 1,4201 → M_cr = π·2,3/3200·1,4201·1,5257·10¹¹ =
+    // 489,2 kNm. λ̄_LT = √(76,35/489,2) = 0,3951 < λ̄_LT,0 = 0,4, kromme b: Φ_LT =
+    // 0,5·(1 − 0,34·0,0049 + 0,75·0,1561) = 0,5577 → χ_LT = min(1; 1,002) = 1;
+    // M_b,Rd = 76,35 kNm.
     // Tabel B.3: C_m = 0,6 + 0,4·(−0,5) = 0,4 (= de ondergrens).
     // n_y = 400/(0,9026·1063) = 0,4168, n_z = 0,5442.
     // k_yy = 0,4·min(1 + 0,2575·0,4168; 1 + 0,8·0,4168) = 0,4429;
     // k_zy = max(1 − 0,1·0,7538·0,5442/0,15; 1 − 0,1·0,5442/0,15) = 0,7265.
-    // (6.61): 0,4168 + 0,4429·20/73,26 = 0,5377; (6.62): 0,5442 + 0,7265·0,2730
-    // = 0,7426 → maatgevend, de kolom voldoet.
+    // (6.61): 0,4168 + 0,4429·20/76,35 = 0,5328; (6.62): 0,5442 + 0,7265·0,2619
+    // = 0,7346 → maatgevend, de kolom voldoet.
     handwerk: {
       V_Ed: "9.375", V_pl_Rd: "196.3", M_N_Rd: "54.26", UC_d: "0.3762", N_cr_y: "5080", χ_y: "0.9026",
-      N_cr_z: "1871", χ_z: "0.6912", N_b_Rd: "735.0", L_kip: "4480", C_1: "2.3", S: "1027", M_cr: "303.2",
-      χ_LT: "0.9595", M_b_Rd: "73.26", C_my: "0.4", k_yy: "0.4429", k_zy: "0.7265",
-      UC_661: "0.5377", UC_662: "0.7426", UC_max: "0.7426",
+      N_cr_z: "1871", χ_z: "0.6912", N_b_Rd: "735.0", L_kip: "3200", C_1: "2.3", S: "1027", M_cr: "489.2",
+      χ_LT: "1", M_b_Rd: "76.35", UC_LT: "0.2619", C_my: "0.4", k_yy: "0.4429", k_zy: "0.7265",
+      UC_661: "0.5328", UC_662: "0.7346", UC_max: "0.7346",
     },
   },
   {
@@ -382,22 +385,23 @@ const SETS = [
     // Knik (h/b = 2,0: kromme a om y, b om z): N_cr,y = π²·210 000·5790·10⁴/5000²
     // = 4800 kN, λ̄_y = 0,5131, Φ_y = 0,6645, χ_y = 0,9202; N_cr,z = 348,1 kN,
     // λ̄_z = 1,905, Φ_z = 2,605, χ_z = 0,2283 → N_b,Rd = 288,4 kN, UC_N = 0,5201.
-    // Kip, geval 1 met β = 0: L_kip = 1,4·5000 = 7000 mm, C_1 = 1,75, C_2 = 0.
-    // S = √(210 000·70,58·10⁹/(81 000·15,94·10⁴)) = 1071 mm; πS/L_kip = 0,4809 →
-    // √(1 + 0,2312) = 1,1096; √(EI_z·GI_t) = 1,0670·10¹¹ Nmm² → M_cr = π·1,75/
-    // 7000·1,1096·1,0670·10¹¹ = 92,99 kNm. λ̄_LT = √(133,1/92,99) = 1,196, kromme
-    // b (h/b = 2,0): Φ_LT = 0,5·(1 + 0,34·0,796 + 0,75·1,431) = 1,172 → χ_LT =
-    // 1/(1,172 + √(1,3739 − 1,0735)) = 0,5813; M_b,Rd = 77,37 kNm, UC_LT = 0,5170.
+    // Kip, geval 1 met β = 0, tussen twee gaffels: L_kip = L_cr = 5000 mm
+    // (NB.NB.4.3(1)), C_1 = 1,75, C_2 = 0.
+    // S = √(210 000·70,58·10⁹/(81 000·15,94·10⁴)) = 1071 mm; πS/L_kip = 0,6729 →
+    // √(1 + 0,4528) = 1,2053; √(EI_z·GI_t) = 1,0670·10¹¹ Nmm² → M_cr = π·1,75/
+    // 5000·1,2053·1,0670·10¹¹ = 141,4 kNm. λ̄_LT = √(133,1/141,4) = 0,9702, kromme
+    // b (h/b = 2,0): Φ_LT = 0,5·(1 + 0,34·0,5702 + 0,75·0,9413) = 0,9499 → χ_LT =
+    // 1/(0,9499 + √(0,9024 − 0,7060)) = 0,7179; M_b,Rd = 95,55 kNm, UC_LT = 0,4186.
     // Tabel B.3: C_m = 0,6 + 0,4·0 = 0,6. n_y = 150/(0,9202·1264) = 0,1290,
     // n_z = 0,5201. k_yy = 0,6·min(1 + 0,3131·0,1290; 1 + 0,8·0,1290) = 0,6242;
     // k_zy = max(1 − 0,1·1,905·0,5201/0,35; 1 − 0,1·0,5201/0,35) = 0,8514.
-    // (6.61): 0,1290 + 0,6242·40/77,37 = 0,4517; (6.62): 0,5201 + 0,8514·0,5170
-    // = 0,9602 → maatgevend, de kolom voldoet.
+    // (6.61): 0,1290 + 0,6242·40/95,55 = 0,3903; (6.62): 0,5201 + 0,8514·0,4186
+    // = 0,8765 → maatgevend, de kolom voldoet.
     handwerk: {
       V_Ed: "8", V_pl_Rd: "351.5", klasse: "1", M_N_Rd: "133.1", UC_d: "0.3005", N_cr_y: "4800", χ_y: "0.9202",
-      N_cr_z: "348.1", χ_z: "0.2283", N_b_Rd: "288.4", UC_N: "0.5201", L_kip: "7000", C_1: "1.75", S: "1071",
-      M_cr: "92.99", χ_LT: "0.5813", M_b_Rd: "77.37", UC_LT: "0.5170", C_my: "0.6", k_yy: "0.6242", k_zy: "0.8514",
-      UC_661: "0.4517", UC_662: "0.9602", UC_max: "0.9602",
+      N_cr_z: "348.1", χ_z: "0.2283", N_b_Rd: "288.4", UC_N: "0.5201", L_kip: "5000", C_1: "1.75", S: "1071",
+      M_cr: "141.4", χ_LT: "0.7179", M_b_Rd: "95.55", UC_LT: "0.4186", C_my: "0.6", k_yy: "0.6242", k_zy: "0.8514",
+      UC_661: "0.3903", UC_662: "0.8765", UC_max: "0.8765",
     },
   },
   {
@@ -446,9 +450,24 @@ for (const set of SETS) {
   const v = { ...STANDAARD, N_Ed: -100 };
   const got = reken(tpl, Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)])), {});
   const ok = /N Ed is een trekkracht; dit blad toetst een kolom op druk/.test(got.text) &&
-    /Maatgevende UC = [\d.]+ → de kolom is niet getoetst/.test(got.text) && !/de kolom voldoet/.test(got.text);
+    /Maatgevende UC niet bepaald → de kolom is niet getoetst/.test(got.text) && !/de kolom voldoet/.test(got.text);
   if (!ok) fouten++;
-  console.log(`  ${ok ? "OK    " : "FOUT  "} melding en slotzin "niet getoetst"`);
+  console.log(`  ${ok ? "OK    " : "FOUT  "} melding en slotzin "niet bepaald → niet getoetst"`);
+  // Zoals de pons: geen UC_max op het blad, dus geen UC in de rapportkop, en
+  // het oordeel dat bladResultaat.leesResultaat uit de slotzin haalt is geen
+  // "voldoet".
+  const geenUC = got.values.UC_max === undefined && !/Maatgevende UC = /.test(got.text);
+  if (!geenUC) fouten++;
+  console.log(`  ${geenUC ? "OK    " : "FOUT  "} UC_max     ${geenUC ? "niet op het blad, dus geen UC in de rapportkop" : `staat er toch: ${got.values.UC_max}`}`);
+  const zin = got.text.slice(got.text.lastIndexOf("Maatgevende UC"), got.text.lastIndexOf("Maatgevende UC") + 240);
+  const kop = !/voldoe[nt] niet/.test(zin) && /voldoe[nt]/.test(zin);
+  if (kop) fouten++;
+  console.log(`  ${!kop ? "OK    " : "FOUT  "} rapportkop ${kop ? "leest toch voldoet" : "leest geen voldoet"}`);
+  // De grens: N_Ed = 0 is geen trek en krijgt gewoon een UC.
+  const nul = reken(tpl, Object.fromEntries(Object.entries({ ...STANDAARD, N_Ed: 0 }).map(([k, x]) => [k, String(x)])), {});
+  const okNul = nul.values.UC_max !== undefined && /Maatgevende UC = [\d.]+/.test(nul.text) && !/trekkracht/.test(nul.text);
+  if (!okNul) fouten++;
+  console.log(`  ${okNul ? "OK    " : "FOUT  "} N_Ed = 0   ${okNul ? `geen trek, UC_max = ${nul.values.UC_max}` : "toch als trek behandeld"}`);
 }
 
 // ── De beginwaarden van het beeld zijn de standaardinvoer van dit script ─────

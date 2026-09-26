@@ -8,19 +8,35 @@
  *     paalrij, het eigen gewicht van de poer (γ_G van 6.10a, veilige kant) en
  *     de afwijking van de paalpositie in het werk (9.8.1(1)); getoetst aan het
  *     draagvermogen per paal uit NEN 9997-1 (7.1), als dat is ingevuld.
- *   • De kolomknoop ligt op 2D/(3π) van het hart bij een ronde kolom en op a/4
- *     bij een rechthoekige. De knoop onder de kolom is hydrostatisch
- *     (6.5.4(8)): zijn hoogte is u = a_k/2·cot θ, dus z = d − u/2 en met
- *     tan θ = z/a volgt z = ½(d + √(d² − a_k·a)). Een ronde kolom telt daarbij
- *     als het vierkant met dezelfde oppervlakte. Past de knoop niet
- *     (d² ≤ a_k·a), dan voldoet de poer niet.
+ *   • De kolomknoop ligt op 2D/(3π) van het hart bij een ronde kolom en op
+ *     d_kolom/4 bij een rechthoekige; met de zwaarst belaste paal voor beide helften
+ *     ligt dat aan de veilige kant, ook bij een moment.
+ *   • Onder de kolom een plastisch drukblok met de resultante op
+ *     e_k = M_Ed/F_Ed: bij een rechthoekige kolom de lengte c_k = a_k − 2·e_k,
+ *     bij een ronde het cirkelsegment met zijn zwaartepunt op e_k (c_k is dan
+ *     de oppervlakte gedeeld door de knoopbreedte b_k: het vierkant a_k met
+ *     dezelfde oppervlakte, of de kolombreedte op e_k als die kleiner is; het
+ *     scheidingsvlak tussen de knoophelften ligt niet voorbij het zwaartepunt,
+ *     dus nooit smaller dan b_k).
+ *     Valt de resultante buiten de halve kolommaat, dan krijgt de
+ *     kolomwapening trek en is de knoop niet getoetst.
+ *   • De knoop onder de kolom is hydrostatisch (6.5.4(8)): het verticale vlak
+ *     tussen de twee knoophelften draagt F_td onder dezelfde spanning als het
+ *     drukblok, dus u = F_td·c_k/F_Ed.
+ *     Met z = d − u/2 en F_td = R_Ed·a/z volgt z = ½(d + √(d² − 2·R_Ed·a·c_k/F_Ed)).
+ *     Zonder moment en met R_Ed = F_Ed/2 is dat ½(d + √(d² − a_k·a)). Past de
+ *     knoop niet (d² ≤ 2·R_Ed·a·c_k/F_Ed), dan voldoet de poer niet.
  *   • Trekband F_td = R_Ed·a/z met de zwaarst belaste paal voor beide helften.
- *   • Knopen: onder de kolom (6.60) met k_1 = 1,0, met een plastisch drukblok
- *     waarvan de resultante op e_k = M_Ed/F_Ed ligt (een ronde kolom als het
- *     vierkant a_k); valt de resultante buiten a_k/2, dan krijgt de
- *     kolomwapening trek en is de knoop niet getoetst. Boven de paal (6.61)
+ *   • Knopen: onder de kolom (6.60) met k_1 = 1,0, op het drukblok (en daarmee
+ *     op alle vlakken van de hydrostatische knoop). Boven de paal (6.61)
  *     met k_2 = 0,85; daar zowel de oplegspanning als de diagonaal aan de
  *     knoop (figuur 6.27, u = 2·y_s). De verhoging van 6.5.4(5) is niet benut.
+ *   • Dwarstrek in de drukdiagonaal (6.5.3(3)) in het vlak van het staafwerk:
+ *     (6.59) met h = L_d/2 en a de smalste kant van de diagonaal (aan de
+ *     kolomknoop of aan de paalknoop). (6.59) geeft ook bij een gedeeltelijke
+ *     discontinuïteit (6.58) de grootste waarde. Opgenomen door de beugels
+ *     over de horizontale lengte a van de diagonaal, met hun component
+ *     loodrecht op de diagonaal (cos θ).
  *   • Verankering vanaf de binnenkant van de paal (6.5.4(7)), langs de
  *     staafas (8.4.3(3)): recht deel, ombuiging en opgebogen deel tot onder de
  *     dekking. α_5 uit de druk van de paal, gespreid onder 45° tot de trekband
@@ -34,17 +50,24 @@
  *     0,75·a_v van de werkelijke a_v (6.19): alleen die kruisen de scheur
  *     tussen kolom en paal. De bovengrens (6.5)/(6.9) zonder β.
  *   • Scheurwijdte (7.3.4) met de staalspanning uit de trekband (7.3.1(8))
- *     onder de frequente combinatie (tabel 7.1N van de NB). k_x = 1. Een
- *     betonoppervlak dat niet te inspecteren is krijgt w_max = 0,2 mm: een
- *     eigen, strengere aanname.
+ *     onder de frequente combinatie (tabel 7.1N van de NB). Bij een moment met
+ *     de hefboomsarm van het drukblok over de hele kolom: het kortere plastische
+ *     blok geldt alleen in de UGT, in de BGT horen de drukstaven bij de
+ *     elasticiteitstheorie (5.6.4(2)). k_x = 1. w_max is
+ *     0,3 mm bij X0 tot en met XC4 (bij X0/XC1 staat de NB 0,4 toe) en 0,2 mm
+ *     bij XD en XS. Een betonoppervlak dat niet te inspecteren is krijgt
+ *     w_max = 0,2 mm: een eigen, strengere aanname.
  *   • Detaillering: φ_min (9.8.1(3)), vrije ruimte (8.2(2), d_g = 32 mm
- *     aangenomen), A_s,min (9.2.1.1), de trekband binnen de drukspreiding
- *     boven de paal en de beugelafstanden (9.2.2(6) en (8), NB).
+ *     aangenomen), A_s,min (NB bij 9.2.1.1(1): de kleinste van A_s,min1 voor
+ *     M_E,min = W·f_ctm bij zuivere buiging en A_s,min2 = 1,25·A_s,nodig), de
+ *     trekband binnen de drukspreiding boven de paal en de beugelafstanden
+ *     (9.2.2(6) en (8), NB).
  *
  * Niet getoetst: de dwarsrichting (koppelbalken of ingeklemde palen), een
  * trekpaal of trek in de kolomvoet (dan zegt de slotregel "niet volledig
- * getoetst"), de dwarstrek in de drukdiagonalen (6.5.3(3)), de verankering
- * van de paalwapening, huidwapening (7.3.3(3)) en bovenwapening.
+ * getoetst"), de dwarstrek uit het vlak van het staafwerk (de spreiding van
+ * de diagonaal over de poerbreedte), de verankering van de paalwapening,
+ * huidwapening (7.3.3(3)) en bovenwapening.
  *
  * Geen referentieberekening beschikbaar; scripts/check-poer.mjs rekent de
  * uitkomsten onafhankelijk na en legt een handberekening vast.
@@ -104,9 +127,10 @@ e_paal = ?*(mm)', afwijking van de paalpositie in het werk (9.8.1(1))<span class
   B500C = 3
 @end
 
-@select betonoppervlak "Betonoppervlak"
-  Controleerbaar = 1
-  Niet controleerbaar = 2
+@select betonoppervlak "Milieuklasse en betonoppervlak (tabel 7.1N)"
+  X0 tot en met XC4, te inspecteren = 1
+  X0 tot en met XC4, niet te inspecteren = 2
+  XD of XS = 3
 @end
 
 c_dek = ?*(mm)', betondekking op de beugels<span class="kolom-3"></span>'
@@ -137,7 +161,7 @@ R_cd = ?*(kN)', rekenwaarde van het draagvermogen per paal (NEN 9997-1); 0 = nie
 
 #hide
 x_k0 = if(kolomvorm ≡ 1; 2*d_kolom/(3*pi); d_kolom/4)
-ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal ≥ 0 mm and oversteek > c_dek + e_paal and b_poer > 0 mm and d_kolom > 0 mm and b_paal > 0 mm and n_langs ≥ 1 and d_langs > 0 mm and s_beugel > 0 mm and F_Ed ≥ 0 kN and F_fr ≥ 0 kN; 1; 0)
+ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal ≥ 0 mm and oversteek > c_dek + e_paal and b_poer > 0 mm and d_kolom > 0 mm and b_paal > 0 mm and n_langs ≥ 1 and d_langs > 0 mm and s_beugel > 0 mm and F_Ed > 0 kN and F_fr ≥ 0 kN; 1; 0)
 #show
 #if kolomvorm ≡ 2
     #hide
@@ -188,48 +212,71 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
     #if kolomvorm ≡ 1
         a_k = sqrt(pi)/2*d_kolom', vierkant met dezelfde oppervlakte<span class="kolom-3"></span>'
         x_k = 2*d_kolom/(3*pi)', zwaartepunt van de halve kolom<span class="kolom-3"></span>'
+        A_k = pi/4*d_kolom^2 to mm^2'<span class="kolom-3"></span>'
     #else
         a_k = d_kolom', langs de paalrij<span class="kolom-3"></span>'
         x_k = d_kolom/4', zwaartepunt van de halve kolom<span class="kolom-3"></span>'
+        A_k = d_kolom*b_kolom to mm^2'<span class="kolom-3"></span>'
     #end if
     a = l_hoh/2 - x_k', van de kolomknoop tot het paalhart<span class="kolom-3"></span>'
-    z = (d + sqrt(max(d^2 - a_k*a; 0 mm^2)))/2', hefboomsarm met een hydrostatische knoop onder de kolom (6.5.4(8))<span class="alleen-scherm">: knoophoogte u = a<sub>k</sub>/2·cot θ, z = d − u/2 en tan θ = z/a</span>'
+    e_k = abs(M_Ed)/F_Ed to mm', excentriciteit van de kolomlast<span class="kolom-3"></span>'
+    #hide
+    ok_kolom = if(2*e_k < d_kolom; 1; 0)
+    A_blok = A_k
+    #show
+    #if ok_kolom ≡ 1 and e_k > 0 mm
+        #if kolomvorm ≡ 1
+            #hide
+            ε_ = 2*e_k/d_kolom
+            α_ = $Find{2/3*sin(t)^3/(t - sin(t)*cos(t)) - ε_ @ t = 0.001 : 3.2}
+            #show
+            A_blok = d_kolom^2/4*(α_ - sin(α_)*cos(α_)) to mm^2', plastisch drukblok: het cirkelsegment met zijn zwaartepunt op e<sub>k</sub><span class="kolom-2"></span>'
+            b_k = min(a_k; 2*sqrt(d_kolom^2/4 - e_k^2))', breedte van de knoop: a<sub>k</sub>, of de kolombreedte op e<sub>k</sub> als die kleiner is<span class="kolom-2"></span>'
+            c_k = A_blok/b_k', lengte van het drukblok bij de breedte b<sub>k</sub><span class="kolom-2"></span>'
+        #else
+            c_k = d_kolom - 2*e_k', plastisch drukblok met de resultante op e<sub>k</sub><span class="kolom-2"></span>'
+            A_blok = b_kolom*c_k to mm^2'<span class="kolom-2"></span>'
+        #end if
+    #else if ok_kolom ≡ 1
+        c_k = a_k', drukblok over de hele kolom<span class="kolom-3"></span>'
+    #else
+        c_k = a_k', de kolomvoet krijgt trek (hoofdstuk 6): hier als zonder moment<span class="kolom-2"></span>'
+    #end if
+    z = (d + sqrt(max(d^2 - 2*R_Ed*a*c_k/F_Ed; 0 mm^2)))/2', hefboomsarm met een hydrostatische knoop onder de kolom (6.5.4(8))<span class="alleen-scherm">: het verticale vlak tussen de knoophelften draagt F<sub>td</sub> onder de spanning van het drukblok, dus u = F<sub>td</sub>·c<sub>k</sub>/F<sub>Ed</sub>, z = d − u/2 en F<sub>td</sub> = R<sub>Ed</sub>·a/z</span>'
     #hide
     ok_knoop = 1
     #show
-    #if d^2 ≤ a_k*a
+    #if d^2 ≤ 2*R_Ed*a*c_k/F_Ed
         #hide
         ok_knoop = 0
         #show
-        '<b style="color:#b91c1c">De knoop onder de kolom past niet in de poer (d² ≤ a<sub>k</sub>·a): de poer is te laag voor dit staafwerk.</b>
+        '<b style="color:#b91c1c">De knoop onder de kolom past niet in de poer (d² ≤ 2·R<sub>Ed</sub>·a·c<sub>k</sub>/F<sub>Ed</sub>): de poer is te laag voor dit staafwerk.</b>
     #end if
     θ = atan(z/a)*180/pi', hoek van de drukdiagonaal in graden<span class="kolom-3"></span>'
     F_td = R_Ed*a/z to kN', trekband<span class="kolom-3"></span>'
+    u_k = F_td*c_k/F_Ed to mm', hoogte van de knoop onder de kolom<span class="kolom-3"></span>'
     A_s,nodig = F_td/f_yd to mm^2'<span class="kolom-3"></span>'
     A_s = n_langs*pi/4*d_langs^2 to mm^2'<span class="kolom-3"></span>'
     s_h = (b_poer - 2*(c_dek + d_beugel) - d_langs)/max(n_langs - 1; 1)', h.o.h. van de staven<span class="kolom-3"></span>'
     UC_trek = A_s,nodig/A_s', trekband (6.5.3)'
 
-    # 6. Knopen (§6.5.4)
+    # 6. Knopen en diagonaal (§6.5.3, §6.5.4)
 
-    #if kolomvorm ≡ 1
-        A_k = pi/4*d_kolom^2 to mm^2'<span class="kolom-3"></span>'
-    #else
-        A_k = d_kolom*b_kolom to mm^2'<span class="kolom-3"></span>'
-    #end if
-    e_k = abs(M_Ed)/max(F_Ed; 1 kN) to mm', excentriciteit van de kolomlast<span class="kolom-3"></span>'
     σ_Rd,1 = ν_k*f_cd', k<sub>1</sub> = 1,0 (6.60)<span class="kolom-3"></span>'
     #hide
     UC_kn,1 = 0
     #show
-    #if 2*e_k < a_k
-        σ_Ed,1 = F_Ed/(A_k*(1 - 2*e_k/a_k)) to N/mm^2', drukblok onder de kolom met de resultante op e<sub>k</sub><span class="kolom-2"></span>'
-        UC_kn,1 = σ_Ed,1/σ_Rd,1', knoop onder de kolom'
-    #else
+    #if ok_kolom ≡ 0
         #hide
         ok_druk = 0
         #show
-        '<b style="color:#b45309">De kolomlast valt buiten de halve kolommaat (2·e<sub>k</sub> ≥ a<sub>k</sub>): de kolomwapening krijgt trek en de knoop onder de kolom is niet getoetst.</b>
+        '<b style="color:#b45309">De kolomlast valt buiten de halve kolommaat (2·e<sub>k</sub> ≥ d<sub>kolom</sub>): de kolomwapening krijgt trek en de knoop onder de kolom is niet getoetst.</b>
+    #else if e_k > 0 mm
+        σ_Ed,1 = F_Ed/A_blok to N/mm^2', op het drukblok, en in de hydrostatische knoop op elk vlak<span class="kolom-2"></span>'
+        UC_kn,1 = σ_Ed,1/σ_Rd,1', knoop onder de kolom'
+    #else
+        σ_Ed,1 = F_Ed/A_k to N/mm^2', onder de kolom, en in de hydrostatische knoop op elk vlak<span class="kolom-2"></span>'
+        UC_kn,1 = σ_Ed,1/σ_Rd,1', knoop onder de kolom'
     #end if
     #if paalvorm ≡ 1
         A_p = b_paal*l_paal to mm^2'<span class="kolom-3"></span>'
@@ -245,6 +292,24 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
     σ_d = R_Ed*sqrt(z^2 + a^2)/(z*w_2*min(b_p; b_poer)) to N/mm^2', drukdiagonaal aan de paalknoop<span class="kolom-2"></span>'
     σ_Rd,2 = 0.85*ν_k*f_cd', k<sub>2</sub> = 0,85 met beugels of haarspelden om de knoop (6.61, NB)<span class="kolom-2"></span>'
     UC_kn,2 = max(σ_p; σ_d)/σ_Rd,2', knoop boven de paal'
+    L_d = sqrt(z^2 + a^2)', lengte van de drukdiagonaal<span class="kolom-3"></span>'
+    C_d = R_Ed*L_d/z to kN', kracht in de drukdiagonaal<span class="kolom-3"></span>'
+    w_1 = R_Ed*c_k*L_d/(F_Ed*z) to mm', breedte aan de kolomknoop<span class="kolom-3"></span>'
+    T_dw = max(0.25*(1 - 0.7*min(w_1; w_2)/(L_d/2)); 0)*C_d to kN', dwarstrek (6.59) met h = L<sub>d</sub>/2, in het vlak van het staafwerk; de spreiding over de poerbreedte is niet getoetst'
+    n_dw = floor(a/s_beugel)', beugels over de lengte a van de diagonaal<span class="kolom-2"></span>'
+    T_Rd,dw = n_dw*n_sneden*pi/4*d_beugel^2*f_yd*a/L_d to kN', alleen de beugels, hun component loodrecht op de diagonaal (cos θ)<span class="kolom-2"></span>'
+    #hide
+    UC_dw = 0
+    ok_dw = 1
+    #show
+    #if T_Rd,dw > 0 kN
+        UC_dw = T_dw/T_Rd,dw', dwarstrek in de drukdiagonaal (6.5.3(3))'
+    #else if T_dw > 0 kN
+        #hide
+        ok_dw = 0
+        #show
+        '<b style="color:#b91c1c">Er kruisen geen beugels de drukdiagonaal: de dwarstrek (6.5.3(3)) wordt niet opgenomen.</b>
+    #end if
 
     # 7. Verankering en ombuiging (§8.3, §8.4, §9.8.1)
 
@@ -291,7 +356,13 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
     # 9. Scheurwijdte (§7.3.4)
 
     R_fr = (F_fr + G_k)/2 + (abs(M_Ed) + (F_fr + G_k)*e_paal)/l_hoh to kN', frequent, met M<sub>Ed</sub> zelf (veilige kant)<span class="kolom-2"></span>'
-    σ_s = R_fr*a/(z*A_s) to N/mm^2', uit de trekband (7.3.1(8))<span class="kolom-2"></span>'
+    #hide
+    z_fr = z
+    #show
+    #if ok_kolom ≡ 1 and e_k > 0 mm
+        z_fr = (d + sqrt(max(d^2 - 2*R_Ed*a*a_k/F_Ed; 0 mm^2)))/2', hefboomsarm in de BGT, met het drukblok over de hele kolom (5.6.4(2))<span class="alleen-scherm">: het plastische blok van het moment geldt alleen in de UGT</span><span class="kolom-2"></span>'
+    #end if
+    σ_s = R_fr*a/(z_fr*A_s) to N/mm^2', uit de trekband (7.3.1(8))<span class="kolom-2"></span>'
     h_c,ef = min(2.5*y_s; h_poer/2)', (h − x)/3 niet benut<span class="kolom-3"></span>'
     ρ_p,eff = A_s/(b_poer*h_c,ef)', (7.10)<span class="kolom-3"></span>'
     c_s = c_dek + d_beugel', dekking op de trekband<span class="kolom-3"></span>'
@@ -303,16 +374,20 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
     ε_sm = max((σ_s - 0.4*f_ctm/ρ_p,eff*(1 + E_s/E_cm*ρ_p,eff))/E_s; 0.6*σ_s/E_s)', ε<sub>sm</sub> − ε<sub>cm</sub> (7.9), k<sub>t</sub> = 0,4<span class="kolom-2"></span>'
     w_k = s_r,max*ε_sm to mm', (7.8)<span class="kolom-2"></span>'
     #if betonoppervlak ≡ 1
-        w_max = 0.3 mm', tabel 7.1N (NB), XC2–XC4, k<sub>x</sub> = 1<span class="kolom-2"></span>'
-    #else
+        w_max = 0.3 mm', tabel 7.1N (NB), XC2–XC4, k<sub>x</sub> = 1; bij X0 en XC1 ook 0,3 (veilige kant)<span class="kolom-2"></span>'
+    #else if betonoppervlak ≡ 2
         w_max = 0.2 mm', niet te inspecteren: strenger aangehouden (veilige kant)<span class="kolom-2"></span>'
+    #else
+        w_max = 0.2 mm', tabel 7.1N (NB), XD en XS, k<sub>x</sub> = 1<span class="kolom-2"></span>'
     #end if
     UC_w = w_k/w_max', scheurwijdte'
 
     # 10. Detaillering (§8.2, §9.2, §9.8.1(3))
 
     a_vrij = s_h - d_langs', vrije ruimte; ≥ max(φ; d<sub>g</sub> + 5; 20) met d<sub>g</sub> = 32 mm (8.2(2))<span class="kolom-2"></span>'
-    A_s,min = max(0.26*f_ctm/f_yk; 0.0013)*b_poer*d to mm^2', (9.1N), strenger dan de NB (veilige kant)<span class="kolom-2"></span>'
+    M_E,min = b_poer*h_poer^2/6*f_ctm to kN*m', W·f<sub>ctm</sub> bij zuivere buiging<span class="kolom-3"></span>'
+    A_s,min1 = b_poer*f_cd*(d - sqrt(d^2 - 2*M_E,min/(b_poer*f_cd)))/f_yd to mm^2', voor M<sub>E,min</sub> volgens 6.1, rechthoekig drukblok<span class="kolom-3"></span>'
+    A_s,min = min(A_s,min1; 1.25*A_s,nodig)', NB bij 9.2.1.1(1), A<sub>s,min2</sub> = 1,25·A<sub>s,nodig</sub><span class="kolom-3"></span>'
     b_band = b_poer - 2*(c_dek + d_beugel)', breedte van de trekband<span class="kolom-2"></span>'
     b_zone = b_p + 2*y_s', drukspreiding boven de paal<span class="kolom-2"></span>'
     s_t = (b_poer - 2*c_dek - d_beugel)/max(n_sneden - 1; 1)', tussen de beugelsneden<span class="kolom-2"></span>'
@@ -363,8 +438,8 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
 
     #hide
     M_dwars = (F_Ed + γ_G*G_k)*e_paal to kN*m
-    UC_max = max(UC_paal; UC_trek; UC_kn,1; UC_kn,2; UC_ank; UC_rol; UC_V; UC_Vmax; UC_w)
-    maatg = if(UC_max ≡ UC_paal; "paal"; if(UC_max ≡ UC_trek; "trekband"; if(UC_max ≡ UC_kn,1; "knoop onder de kolom"; if(UC_max ≡ UC_kn,2; "knoop boven de paal"; if(UC_max ≡ UC_ank; "verankering"; if(UC_max ≡ UC_rol; "ombuiging"; if(UC_max ≡ UC_V; "dwarskracht"; if(UC_max ≡ UC_Vmax; "dwarskracht, bovengrens"; "scheurwijdte"))))))))
+    UC_max = max(UC_paal; UC_trek; UC_kn,1; UC_kn,2; UC_dw; UC_ank; UC_rol; UC_V; UC_Vmax; UC_w)
+    maatg = if(UC_max ≡ UC_paal; "paal"; if(UC_max ≡ UC_trek; "trekband"; if(UC_max ≡ UC_kn,1; "knoop onder de kolom"; if(UC_max ≡ UC_kn,2; "knoop boven de paal"; if(UC_max ≡ UC_dw; "dwarstrek, drukdiagonaal"; if(UC_max ≡ UC_ank; "verankering"; if(UC_max ≡ UC_rol; "ombuiging"; if(UC_max ≡ UC_V; "dwarskracht"; if(UC_max ≡ UC_Vmax; "dwarskracht, bovengrens"; "scheurwijdte")))))))))
     #show
     '<i>Dwars op de paalrij heeft de poer geen stijfheid: een moment of de paalafwijking in die richting (tot 'M_dwars' kNm) gaat via koppelbalken of ingeklemde palen en is hier niet getoetst.</i>
     '<table class="alleen-scherm" style="width:100%; border-collapse:collapse; font-size:0.95em;">
@@ -375,12 +450,17 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Draagvermogen paal</td><td style="padding:3px 8px;">NEN 9997-1 (7.1)</td><td style="padding:3px 8px; text-align:right; color:#9ca3af;">—</td><td style="padding:3px 8px; color:#9ca3af;">niet getoetst</td></tr>
     #end if
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Trekband</td><td style="padding:3px 8px;">§6.5.3</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_trek)'">'UC_trek'</td><td style="padding:3px 8px; color:'kleur(UC_trek)'">'oordeel(UC_trek)'</td></tr>
-    #if 2*e_k < a_k
+    #if ok_kolom ≡ 1
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Knoop onder de kolom</td><td style="padding:3px 8px;">(6.60)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_kn,1)'">'UC_kn,1'</td><td style="padding:3px 8px; color:'kleur(UC_kn,1)'">'oordeel(UC_kn,1)'</td></tr>
     #else
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Knoop onder de kolom</td><td style="padding:3px 8px;">(6.60)</td><td style="padding:3px 8px; text-align:right; color:#9ca3af;">—</td><td style="padding:3px 8px; color:#9ca3af;">niet getoetst</td></tr>
     #end if
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Knoop boven de paal</td><td style="padding:3px 8px;">(6.61)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_kn,2)'">'UC_kn,2'</td><td style="padding:3px 8px; color:'kleur(UC_kn,2)'">'oordeel(UC_kn,2)'</td></tr>
+    #if ok_dw ≡ 1
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Dwarstrek in de diagonaal</td><td style="padding:3px 8px;">§6.5.3(3)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_dw)'">'UC_dw'</td><td style="padding:3px 8px; color:'kleur(UC_dw)'">'oordeel(UC_dw)'</td></tr>
+    #else
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Dwarstrek in de diagonaal</td><td style="padding:3px 8px;">§6.5.3(3)</td><td style="padding:3px 8px; text-align:right;">—</td><td style="padding:3px 8px; color:#b91c1c;">geen beugels</td></tr>
+    #end if
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Verankering trekband</td><td style="padding:3px 8px;">§8.4, §9.8.1(5)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_ank)'">'UC_ank'</td><td style="padding:3px 8px; color:'kleur(UC_ank)'">'oordeel(UC_ank)'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Ombuiging voorbij het paalhart</td><td style="padding:3px 8px;">§8.3</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_rol)'">'UC_rol'</td><td style="padding:3px 8px; color:'kleur(UC_rol)'">'oordeel(UC_rol)'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Dwarskracht</td><td style="padding:3px 8px;">§6.2.2(6), §6.2.3(8)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_V)'">'UC_V'</td><td style="padding:3px 8px; color:'kleur(UC_V)'">'oordeel(UC_V)'</td></tr>
@@ -395,6 +475,8 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
     UC_max'<span class="alleen-scherm"></span>'
     #if ok_knoop ≡ 0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar de knoop onder de kolom past niet in de poer (hoofdstuk 5) → <b>de poer voldoet niet</b></span>
+    #else if ok_dw ≡ 0
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> ('maatg'), maar geen beugels nemen de dwarstrek in de diagonaal op (hoofdstuk 6) → <b>de poer voldoet niet</b></span>
     #else if ok_det ≡ 0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> ('maatg'), maar de detaillering past niet (hoofdstuk 10) → <b>de poer voldoet niet</b></span>
     #else if UC_max > 1.0

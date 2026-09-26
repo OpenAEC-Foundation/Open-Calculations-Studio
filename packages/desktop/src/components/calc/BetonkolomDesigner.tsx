@@ -1,5 +1,8 @@
+import { useEffect } from "react";
 import { useDesigner, Dim, Force, Ro, Defs, loadMark, betonFill, HDim, VDim, fmt, clamp, JaNee, UitkomstKop } from "./designerKit";
-import { useBladUitkomst } from "./bladResultaat";
+import { useBladUitkomst, ucTekst } from "./bladResultaat";
+import { useProjectStore } from "../../store/projectStore";
+import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
 import "./VoetplaatDesigner.css";
 
 /**
@@ -15,6 +18,12 @@ import "./VoetplaatDesigner.css";
  * maatgevende UC en het oordeel van het blad, de notities onder de invoer de
  * slankheid, het rekenmoment en het draagvermogen per as uit dezelfde
  * uitwerking. Het beeld rekent zelf alleen A_s en ρ uit, voor de tekening.
+ *
+ * Een blad van vóór de toetsing kende één moment per as, geen φ_ef en bij een
+ * ronde kolom 2·n_b staven. Het beeld vult daar alleen aan wat de uitkomst niet
+ * stil verandert (zie DEFAULTS en NIEUW hieronder). Een blad met boven en onder
+ * maar zonder de keuze eindmomenten rekent met één moment per as, het grootste
+ * van de twee; het beeld meldt dat (ouderOnder).
  */
 const MARKER = "Betonkolom";
 
@@ -26,14 +35,32 @@ const STAALSOORT = [{ v: 1, label: "B500A" }, { v: 2, label: "B500B" }, { v: 3, 
 const DIAM = [8, 10, 12, 16, 20, 25, 32, 40];
 
 // Een vierkante kolom 350×350 in C30/37 met 8Ø20, 3,5 m hoog en geschoord, met
-// een moment om beide assen. Dezelfde waarden als de standaardinvoer van
+// een moment om beide assen. DEFAULTS en NIEUW samen zijn de standaardinvoer van
 // scripts/check-betonkolom.mjs.
+//
+// DEFAULTS vult het beeld aan in elk blad van deze module, ook in een blad van
+// vóór de toetsing. Daarom staat hier niets wat een bestaande invoer anders zou
+// laten rekenen: de keuze voor twee eindmomenten, het tweede moment en φ_ef
+// ontbreken, zodat zo'n blad na bijwerken met één moment per as (een constant
+// moment, de veilige kant) rekent en zonder φ_ef afkeurt tot die is ingevuld
+// (tenzij kruip er niet toe doet of 5.8.4(4) het toestaat).
 const DEFAULTS: Record<string, number> = {
   vorm: 1, h_kol: 350, b_kol: 350, L_kol: 3500, insitu: 0,
   betonklasse: 30, betonstaal: 2, c_dek: 30,
-  n_h: 3, n_b: 3, n_rond: 8, d_staaf: 20, d_beugel: 8, s_beugel: 250,
+  n_h: 3, n_b: 3, d_staaf: 20, d_beugel: 8, s_beugel: 250,
   L_cry: 3500, L_crz: 3500, geschoord_y: 1, geschoord_z: 1,
-  N_Ed: 1200, "φ_ef": 1.5, M_yEd: 40, M_yEd_1: 20, M_zEd: 10, M_zEd_1: 10,
+  N_Ed: 1200, M_yEd: 40, M_zEd: 10,
+};
+// Alleen voor een nieuw blad, dat nog geen enkele invoer heeft.
+const NIEUW: Record<string, number> = {
+  eindmomenten: 2, M_yEd_1: 20, M_zEd_1: 10, "φ_ef": 1.5, n_rond: 8,
+};
+// Een ouder rond blad tekende max(4; 2·n_b) staven, met n_b van 2 tot 8 en
+// zonder invoer 4. Zo'n blad krijgt dat aantal als n_rond, niet het getal van
+// een nieuw blad.
+const nRondOud = (nb: string | undefined) => {
+  const n = parseFloat(String(nb ?? "").replace(",", "."));
+  return Math.max(4, 2 * clamp(Math.round(Number.isFinite(n) ? n : 4), 2, 8));
 };
 
 export default function BetonkolomDesigner() {
@@ -41,6 +68,24 @@ export default function BetonkolomDesigner() {
   // De uitkomst en de tussenwaarden van het blad zelf; vóór de vroege return,
   // zodat de volgorde van de hooks vast ligt.
   const uitkomst = useBladUitkomst();
+  const exemplaar = useActiefExemplaar();
+  const alleenLezen = useAlleenLezen();
+  const seedWaarden = useProjectStore((s) => s.seedWaarden);
+  const blad = alleenLezen ? undefined : exemplaar;
+  const waarden = blad?.waarden;
+  // Aanvullen naast DEFAULTS. `waarden` is de stand bij het tekenen, dus van
+  // vóór de aanvulling door useDesigner: leeg betekent echt een nieuw blad.
+  useEffect(() => {
+    if (!ctx.actief || !blad || !waarden) return;
+    if (Object.keys(waarden).length === 0) {
+      seedWaarden(blad.id, Object.fromEntries(Object.entries(NIEUW).map(([k, v]) => [k, String(v)])));
+    } else if (waarden.n_rond === undefined || waarden.n_rond === "") {
+      seedWaarden(blad.id, { n_rond: String(nRondOud(waarden.n_b)) });
+    }
+    // Eén keer per blad; waarden bewust niet in de deps, anders telt de
+    // aanvulling van useDesigner als "geen nieuw blad".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx.actief, blad?.id, seedWaarden]);
   if (!ctx.actief) return null;
   const { d, set, box, wrapRef } = ctx;
 
@@ -61,9 +106,26 @@ export default function BetonkolomDesigner() {
   const Lcry = Math.max(1, d("L_cry")), Lcrz = Math.max(1, d("L_crz"));
   const geschY = Math.round(d("geschoord_y")) === 1, geschZ = Math.round(d("geschoord_z")) === 1;
   const NEd = d("N_Ed"), phiEf = d("φ_ef");
-  const MyEd = d("M_yEd"), MyEd1 = d("M_yEd_1"), MzEd = d("M_zEd"), MzEd1 = d("M_zEd_1");
+  // Eén moment per as (aan beide einden gelijk) tenzij het blad twee eindmomenten
+  // kiest; zonder keuze rekent het blad met de eerste optie, dus ook hier.
+  const twee = Math.round(d("eindmomenten")) === 2;
+  const MyEd = d("M_yEd"), MzEd = d("M_zEd");
+  const MyEd1 = twee ? d("M_yEd_1") : MyEd, MzEd1 = twee ? d("M_zEd_1") : MzEd;
+  // Met één moment per as telt een groter ondermoment dat het blad nog heeft
+  // (uit een versie met boven en onder) aan beide einden; het blad meldt dat.
+  const ouderOnder = !twee && (Math.abs(d("M_yEd_1")) > Math.abs(MyEd) || Math.abs(d("M_zEd_1")) > Math.abs(MzEd));
   // Een leeg of half ingetypt veld wordt 0, zodat het blad niet met NaN rekent.
   const zet = (naam: string, v: number) => set(naam, Number.isFinite(v) ? v : 0);
+  // Naar twee eindmomenten: een onderste moment dat nog niet bestaat, begint gelijk
+  // aan het bovenste, zodat de omschakeling zelf de uitkomst niet verandert. Terug
+  // naar één moment: het onderste wordt het bovenste, zodat er geen verborgen
+  // groter ondermoment blijft meetellen.
+  const zetTwee = (aan: boolean) => {
+    for (const [onder, boven] of [["M_yEd_1", MyEd], ["M_zEd_1", MzEd]] as const) {
+      if (!aan || waarden?.[onder] === undefined || waarden[onder] === "") set(onder, boven);
+    }
+    set("eindmomenten", aan ? 2 : 1);
+  };
 
   // Staafposities over de omtrek — hoekstaven één keer.
   const nTot = vorm === 2 ? nRond : 2 * nH + 2 * nB - 4;
@@ -74,6 +136,8 @@ export default function BetonkolomDesigner() {
   // Uit de uitwerking; "—" zolang het blad het getal (nog) niet toont.
   const g = uitkomst?.getallen ?? {};
   const w = (naam: string, dec = 1) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));
+  // Een UC kan ∞ zijn: buiten het bereik van N_Ed is er geen momentcapaciteit.
+  const wUc = (naam: string) => (g[naam] === undefined ? "—" : ucTekst(g[naam]));
   const tweedeOrde = (as: "y" | "z") =>
     g[`λ_${as}`] !== undefined && g[`λ_lim_${as}`] !== undefined && g[`λ_${as}`] > g[`λ_lim_${as}`];
 
@@ -149,7 +213,7 @@ export default function BetonkolomDesigner() {
             <input type="number" step={100} value={L} onChange={(e) => zet("L_kol", parseFloat(e.target.value))} />
           </label>
           <JaNee label="In-situ gestorte paal" waarde={insitu} onChange={(v) => set("insitu", v ? 1 : 0)} />
-          {insitu && <span className="gd-note">Het blad rekent met een kleinere maat (§2.3.4.2(2)) en de paaleisen van §9.8.5.</span>}
+          {insitu && <span className="gd-note">Het blad rekent met een kleinere maat (§2.3.4.2(2)) en de paaleisen van de NB bij §9.8.5(3).</span>}
 
           <span className="vd-ctrl-h">Beton en wapening</span>
           <label>Sterkteklasse
@@ -213,25 +277,40 @@ export default function BetonkolomDesigner() {
           <label>N<sub>Ed</sub> (kN)
             <input type="number" step={50} value={NEd} onChange={(e) => zet("N_Ed", parseFloat(e.target.value))} />
           </label>
-          <label title="Effectief kruipgetal (5.19): φ(∞,t0)·M0Eqp/M0Ed, met φ uit het blad Kruipfactor">φ<sub>ef</sub>
+          <label title="Effectief kruipgetal (5.19): φ(∞,t0)·M0Eqp/M0Ed, met φ uit het blad Kruipfactor. 0 alleen onder 5.8.4(4); het blad toetst dat.">φ<sub>ef</sub>
             <input type="number" step={0.1} value={phiEf} onChange={(e) => zet("φ_ef", parseFloat(e.target.value))} />
           </label>
-          <label title="Eindmoment om de y-as aan de bovenzijde">M<sub>y</sub> boven (kNm)
+          {phiEf <= 0 && NEd > 0 && <span className="gd-note">Zonder φ<sub>ef</sub> keurt het blad af, tenzij kruip er niet toe doet of 5.8.4(4) het toestaat.</span>}
+          <JaNee label="Boven en onder apart" waarde={twee} onChange={zetTwee} />
+          {ouderOnder && (
+            <span className="gd-note">
+              Het blad heeft nog een groter ondermoment ({fmt(d("M_yEd_1"))}/{fmt(d("M_zEd_1"))} kNm) en rekent met het grootste
+              moment aan beide einden. Met "Boven en onder apart" tellen beide eindmomenten.
+            </span>
+          )}
+          <label title={twee ? "Eindmoment om de y-as aan de bovenzijde" : "Moment om de y-as, aan beide einden gelijk (constant over de kolom)"}>
+            M<sub>y</sub>{twee ? " boven" : ""} (kNm)
             <input type="number" step={5} value={MyEd} onChange={(e) => zet("M_yEd", parseFloat(e.target.value))} />
           </label>
-          <label title="Eindmoment om de y-as aan de onderzijde; gelijk teken = enkele kromming">M<sub>y</sub> onder (kNm)
-            <input type="number" step={5} value={MyEd1} onChange={(e) => zet("M_yEd_1", parseFloat(e.target.value))} />
-          </label>
-          <label title="Eindmoment om de z-as aan de bovenzijde">M<sub>z</sub> boven (kNm)
+          {twee && (
+            <label title="Eindmoment om de y-as aan de onderzijde; gelijk teken = enkele kromming">M<sub>y</sub> onder (kNm)
+              <input type="number" step={5} value={MyEd1} onChange={(e) => zet("M_yEd_1", parseFloat(e.target.value))} />
+            </label>
+          )}
+          <label title={twee ? "Eindmoment om de z-as aan de bovenzijde" : "Moment om de z-as, aan beide einden gelijk (constant over de kolom)"}>
+            M<sub>z</sub>{twee ? " boven" : ""} (kNm)
             <input type="number" step={5} value={MzEd} onChange={(e) => zet("M_zEd", parseFloat(e.target.value))} />
           </label>
-          <label title="Eindmoment om de z-as aan de onderzijde; gelijk teken = enkele kromming">M<sub>z</sub> onder (kNm)
-            <input type="number" step={5} value={MzEd1} onChange={(e) => zet("M_zEd_1", parseFloat(e.target.value))} />
-          </label>
+          {twee && (
+            <label title="Eindmoment om de z-as aan de onderzijde; gelijk teken = enkele kromming">M<sub>z</sub> onder (kNm)
+              <input type="number" step={5} value={MzEd1} onChange={(e) => zet("M_zEd_1", parseFloat(e.target.value))} />
+            </label>
+          )}
           <span className="gd-note">
-            Om y: M<sub>Ed</sub> = {w("M_Ed_y")} kNm, M<sub>Rd</sub> = {w("M_Rd_y")} kNm, UC = {w("UC_y", 2)}
+            Om y: M<sub>Ed</sub> = {w("M_Ed_y")} kNm, M<sub>Rd</sub> = {w("M_Rd_y")} kNm, UC = {wUc("UC_y")}
             {/* Een ronde kolom heeft om elke as hetzelfde M_Rd; het blad toont het één keer. */}
-            <br />Om z: M<sub>Ed</sub> = {w("M_Ed_z")} kNm, M<sub>Rd</sub> = {w(vorm === 2 ? "M_Rd_y" : "M_Rd_z")} kNm, UC = {w("UC_z", 2)}
+            <br />Om z: M<sub>Ed</sub> = {w("M_Ed_z")} kNm, M<sub>Rd</sub> = {w(vorm === 2 ? "M_Rd_y" : "M_Rd_z")} kNm, UC = {wUc("UC_z")}
+            {g["UC_N"] !== undefined && <><br />Normaalkracht alleen: UC<sub>N</sub> = {wUc("UC_N")}</>}
           </span>
         </div>
 
@@ -310,7 +389,7 @@ export default function BetonkolomDesigner() {
 
               <Force ctx={ctx} name="N_Ed" value={NEd} x={ax + 34} y={yT - 56} unit="kN" label="N_Ed" step={50} />
               {MyEd !== 0 && <Force ctx={ctx} name="M_yEd" value={MyEd} x={ax + 66} y={yT + 8} unit="kNm" label="M_y" step={5} />}
-              {MyEd1 !== 0 && <Force ctx={ctx} name="M_yEd_1" value={MyEd1} x={ax + 66} y={yB - 30} unit="kNm" label="M_y" step={5} />}
+              {MyEd1 !== 0 && <Force ctx={ctx} name={twee ? "M_yEd_1" : "M_yEd"} value={MyEd1} x={ax + 66} y={yB - 30} unit="kNm" label="M_y" step={5} />}
               <Dim ctx={ctx} name="L_kol" value={L} x={ax + kolPx / 2 + 40} y={(yT + yB) / 2} step={100} label="L" />
             </div>
           </div>
@@ -325,8 +404,9 @@ export default function BetonkolomDesigner() {
           {vorm === 2 ? ` Ø${fmt(h)}` : ` ${fmt(b)}×${fmt(h)}`} mm · L = {fmt(L)} mm · dekking {fmt(c)} mm ·
           {nTot}Ø{fmt(dS)} → A<sub>s</sub> = {fmt(As)} mm² ({fmt(rho, 2)} %) · Ø{fmt(dBg)}-{fmt(sBg)} ·
           l<sub>0,y</sub>/l<sub>0,z</sub> = {fmt(Lcry)}/{fmt(Lcrz)} mm{geschY && geschZ ? " geschoord" : !geschY && !geschZ ? " ongeschoord" : ""} ·
-          N<sub>Ed</sub> = {fmt(NEd)} kN · M<sub>y</sub> = {fmt(MyEd)}/{fmt(MyEd1)} kNm ·
-          M<sub>z</sub> = {fmt(MzEd)}/{fmt(MzEd1)} kNm · φ<sub>ef</sub> = {fmt(phiEf, 2)}{insitu ? " · in-situ paal" : ""}
+          N<sub>Ed</sub> = {fmt(NEd)} kN · M<sub>y</sub> = {twee ? `${fmt(MyEd)}/${fmt(MyEd1)}` : fmt(MyEd)} kNm ·
+          M<sub>z</sub> = {twee ? `${fmt(MzEd)}/${fmt(MzEd1)}` : fmt(MzEd)} kNm{twee ? "" : " (constant)"} ·
+          φ<sub>ef</sub> = {fmt(phiEf, 2)}{insitu ? " · in-situ paal" : ""}
         </span>
       </div>
     </div>

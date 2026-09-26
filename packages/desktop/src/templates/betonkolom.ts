@@ -10,7 +10,9 @@
  *   - de imperfectie e_i = θ_i·l_0/2 ((5.1) en (5.2)) en de minimale
  *     excentriciteit e_0 = max(h/30; 20 mm) (6.1(4));
  *   - de slankheid λ = l_0/i per as tegen λ_lim volgens (5.13N), met φ_ef, ω
- *     en r_m = M_01/M_02 (ongeschoord: C = 0,7);
+ *     en r_m = M_01/M_02 (ongeschoord: C = 0,7). φ_ef = 0 mag alleen als het er
+ *     niet toe doet (ook met A = 0,7 van 5.8.3.1(1) geen tweede orde) of als
+ *     5.8.4(4) voldaan is; anders keurt het blad af;
  *   - de tweede orde met de nominale kromming (§5.8.8): K_r (5.36),
  *     K_φ (5.37), 1/r_0 = ε_yd/(0,45·d) met d = h/2 + i_s, e_2 = (1/r)·l_0²/c,
  *     M_0e (5.32) en M_Ed = M_0Ed + M_2 (5.31). c = 10, en 8 bij een constant
@@ -23,12 +25,31 @@
  *   - scheve buiging: de scheiding volgens (5.38a/b), anders (5.39), met de
  *     imperfectie alleen in de ongunstigste richting (5.8.9(2)), dus in twee
  *     gevallen;
- *   - de detaillering: A_s,min (9.12N), A_s,max en Ø ≥ 8 mm (§9.5.2), de
- *     beugels (§9.5.3, met de kleinere afstand bij de einden van 9.5.3(4) als
- *     melding); bij een in-situ gestorte paal de kleinere rekenmaat
- *     (§2.3.4.2(2)) voor het draagvermogen, A_s,min volgens tabel 9.6N met de
- *     nominale doorsnede, Ø ≥ 16 mm, ten minste zes staven en ten hoogste
- *     200 mm vrij tussen de staven (§9.8.5(3)).
+ *   - de detaillering met de NB-waarden: A_s,min (9.12N), A_s,max = 0,04·A_c
+ *     (NB bij 9.5.2(3) voor een kolom met overlappingslassen, buiten de las;
+ *     zonder lassen staat de NB 0,08·A_c toe, dus veilige kant) en Ø ≥ 8 mm
+ *     (§9.5.2), de beugels (§9.5.3, met de kleinere afstand bij de einden van
+ *     9.5.3(4) als melding); bij een in-situ gestorte paal de kleinere
+ *     rekenmaat (§2.3.4.2(2)) voor het draagvermogen, A_s,min volgens tabel
+ *     9.6N met de nominale doorsnede, en volgens de NB bij 9.8.5(3) Ø ≥ 12 mm
+ *     en ten minste vier staven. De grens van 200 mm vrij tussen de staven is
+ *     de aanbeveling die de NB vervangt; het blad meldt hem alleen.
+ *
+ * Eindmomenten: standaard één moment per as, aan beide einden gelijk (een
+ * constant moment, de ongunstigste verdeling bij een gegeven grootste moment).
+ * Pas met de keuze "boven en onder een eigen eindmoment" telt M_yEd,1/M_zEd,1
+ * als eigen eindmoment. Heeft een blad bij één moment per as nog een groter
+ * ondermoment (een blad van vóór deze keuze, met boven en onder), dan geldt
+ * het grootste aan beide einden, met een melding; nooit het kleinere.
+ * Zo rekent een blad van vóór die velden na bijwerken aan de veilige kant, en
+ * een ontbrekend φ_ef (0) keurt af, tenzij het er niet toe doet of 5.8.4(4) het
+ * toestaat. Het beeld vult bij zo'n blad geen tweede moment of φ_ef in.
+ *
+ * Buiten het bereik van de normaalkracht (N_Ed ≥ N_Rd,max of ≤ N_Rd,min) is er
+ * geen momentcapaciteit meer: UC = ∞ zodra er een moment werkt, net als de
+ * grens van M_Ed/M_Rd vlak ervoor. UC_N = N_Ed/N_Rd geeft dan hoe ver de
+ * normaalkracht alleen al te groot is; bij trek telt UC_N ook binnen het
+ * bereik mee, zodat een trekstaaf zonder moment niet op UC = 0 uitkomt.
  *
  * Op papier is het blad beknopter dan op het scherm (PrintDocument.css): uitleg
  * draagt alleen-scherm, korte regels een merkteken kolom-2, kolom-3 of kolom-4,
@@ -200,12 +221,36 @@ L_crz = ?*(mm)', kniklengte l<sub>0,z</sub><span class="kolom-3"></span>'
 @end
 
 N_Ed = ?*(kN)', normaalkracht, druk positief<span class="kolom-2"></span>'
-φ_ef = ?', effectief kruipgetal (5.19)<span class="alleen-scherm">: φ(∞,t<sub>0</sub>)·M<sub>0Eqp</sub>/M<sub>0Ed</sub>, met φ uit het kruipfactorblad</span><span class="kolom-2"></span>'
-'<i class="alleen-scherm">Eindmomenten van de eerste orde, zonder imperfectie. Gelijk teken: trek aan dezelfde zijde (enkele kromming); tegengesteld teken: dubbele kromming. Werkt er een dwarslast op de kolom, vul dan aan beide einden het grootste moment in.</i><span class="alleen-scherm"></span>
-M_yEd = ?*(kN*m)', om de y-as, boven<span class="kolom-2"></span>'
-M_yEd,1 = ?*(kN*m)', om de y-as, onder<span class="kolom-2"></span>'
-M_zEd = ?*(kN*m)', om de z-as, boven<span class="kolom-2"></span>'
-M_zEd,1 = ?*(kN*m)', om de z-as, onder<span class="kolom-2"></span>'
+φ_ef = ?', effectief kruipgetal (5.19)<span class="alleen-scherm">: φ(∞,t<sub>0</sub>)·M<sub>0Eqp</sub>/M<sub>0Ed</sub>, met φ uit het kruipfactorblad; 0 alleen onder 5.8.4(4)</span><span class="kolom-2"></span>'
+
+@select eindmomenten "Eerste-orde-momenten langs de kolom"
+  Eén moment per as, aan beide einden gelijk = 1
+  Boven en onder een eigen eindmoment = 2
+@end
+
+'<i class="alleen-scherm">Eindmomenten van de eerste orde, zonder imperfectie. Eén moment per as rekent als een constant moment over de kolom: bij een gegeven grootste moment de ongunstigste verdeling. Met twee eindmomenten: gelijk teken is trek aan dezelfde zijde (enkele kromming), tegengesteld teken dubbele kromming. Werkt er een dwarslast op de kolom, vul dan aan beide einden het grootste moment in.</i><span class="alleen-scherm"></span>
+#if eindmomenten ≡ 2
+    M_yEd = ?*(kN*m)', om de y-as, boven<span class="kolom-2"></span>'
+    M_yEd,1 = ?*(kN*m)', om de y-as, onder<span class="kolom-2"></span>'
+    M_zEd = ?*(kN*m)', om de z-as, boven<span class="kolom-2"></span>'
+    M_zEd,1 = ?*(kN*m)', om de z-as, onder<span class="kolom-2"></span>'
+#else
+    M_yEd = ?*(kN*m)', om de y-as, aan beide einden<span class="kolom-2"></span>'
+    M_zEd = ?*(kN*m)', om de z-as, aan beide einden<span class="kolom-2"></span>'
+    #hide
+    'Een ondermoment dat het blad nog heeft (van vóór deze keuze): het grootste moment geldt aan beide einden.
+    M_yEd,1 = ?*(kN*m)
+    M_zEd,1 = ?*(kN*m)
+    ok_M1 = if(abs(M_yEd,1) > abs(M_yEd) or abs(M_zEd,1) > abs(M_zEd); 0; 1)
+    M_yEd = max(abs(M_yEd); abs(M_yEd,1))
+    M_zEd = max(abs(M_zEd); abs(M_zEd,1))
+    M_yEd,1 = M_yEd
+    M_zEd,1 = M_zEd
+    #show
+    #if ok_M1 ≡ 0
+        '<b style="color:#b45309">Het blad heeft nog een groter ondermoment: gerekend met 'M_yEd/(1 kN*m)' kNm om y en 'M_zEd/(1 kN*m)' kNm om z, aan beide einden. Met de keuze "boven en onder een eigen eindmoment" tellen beide eindmomenten.</b>
+    #end if
+#end if
 
 #hide
 'Eindmomenten gesorteerd: M_0 is het grootste in absolute waarde, M_1 het andere met het teken ten opzichte van M_0.
@@ -215,6 +260,7 @@ M_0z = max(abs(M_zEd); abs(M_zEd,1))
 M_1z = if(abs(M_zEd) ≥ abs(M_zEd,1); M_zEd,1*sign(M_zEd); M_zEd*sign(M_zEd,1))
 θ_0 = 1/200
 α_m = 1
+ok_φ = 1
 #show
 
 # 3. Imperfectie en slankheid (§5.2 en §5.8.3)
@@ -260,6 +306,24 @@ M_1z = if(abs(M_zEd) ≥ abs(M_zEd,1); M_zEd,1*sign(M_zEd); M_zEd*sign(M_zEd,1))
     t2_y = if(λ_y > λ_lim,y; 1; 0)
     t2_z = if(λ_z > λ_lim,z; 1; 0)
     #show
+    #if φ_ef ≤ 0
+        #hide
+        'Zonder kruip: mag als het er niet toe doet (met A = 0,7 van 5.8.3.1(1) om beide assen nog steeds geen tweede orde) of onder 5.8.4(4), met M_0Ed = M_02.
+        t7_y = if(λ_y > 0.7*λ_lim,y/A_φ; 1; 0)
+        t7_z = if(λ_z > 0.7*λ_lim,z/A_φ; 1; 0)
+        ok_844 = if(λ_y ≤ 75 and λ_z ≤ 75 and M_02,y/N_Ed ≥ h and M_02,z/N_Ed ≥ b; 1; 0)
+        ok_φ = if(φ_ef ≡ 0 and (t7_y + t7_z ≡ 0 or ok_844 ≡ 1); 1; 0)
+        #show
+        #if φ_ef < 0
+            '<b style="color:#b91c1c">φ<sub>ef</sub> = 'φ_ef': een negatief kruipgetal bestaat niet. Vul φ<sub>ef</sub> in volgens (5.19).</b>
+        #else if ok_φ ≡ 0
+            '<b style="color:#b91c1c">φ<sub>ef</sub> = 'φ_ef': zonder kruip rekenen mag alleen als φ(∞,t<sub>0</sub>) ≤ 2, λ ≤ 75 en M<sub>0Ed</sub>/N<sub>Ed</sub> ≥ h om elke as (5.8.4(4)), en dat is hier niet zo. Vul φ<sub>ef</sub> in volgens (5.19).</b>
+        #else if t7_y + t7_z ≡ 0
+            '<i>φ<sub>ef</sub> = 0 doet er niet toe: ook met A = 0,7 (φ<sub>ef</sub> onbekend, 5.8.3.1(1)) is λ ≤ λ<sub>lim</sub> om beide assen.</i>
+        #else
+            '<i>φ<sub>ef</sub> = 0 volgens 5.8.4(4): λ ≤ 75 en M<sub>02</sub>/N<sub>Ed</sub> ≥ h om beide assen, aangenomen dat φ(∞,t<sub>0</sub>) ≤ 2.</i>
+        #end if
+    #end if
 #else
     '<i>Geen drukkracht: geen imperfectie en geen tweede orde; de doorsnede rekent met de eindmomenten.</i>
     #hide
@@ -418,18 +482,24 @@ N_Rd,min = Nmin_/1000*kN
 #show
 N_Rd,max', volledige druk<span class="kolom-2"></span>'
 N_Rd,min', volledige trek<span class="alleen-scherm"></span>'
-#if N_Ed ≥ N_Rd,max
-    '<b style="color:#b91c1c">N<sub>Ed</sub> ≥ N<sub>Rd,max</sub>: de doorsnede kan de normaalkracht niet opnemen.</b>
-    UC_y = N_Ed/N_Rd,max'<span class="kolom-2"></span>'
+#hide
+UC_N = 0
+#show
+#if N_Ed ≥ N_Rd,max or N_Ed ≤ N_Rd,min
+    #if N_Ed ≥ N_Rd,max
+        '<b style="color:#b91c1c">N<sub>Ed</sub> ≥ N<sub>Rd,max</sub>: de doorsnede kan de normaalkracht niet opnemen, ook zonder moment.</b>
+        UC_N = N_Ed/N_Rd,max', alleen de normaalkracht<span class="kolom-2"></span>'
+    #else
+        '<b style="color:#b91c1c">De trekkracht is groter dan de wapening kan opnemen.</b>
+        UC_N = N_Ed/N_Rd,min', alleen de normaalkracht<span class="kolom-2"></span>'
+    #end if
+    '<i class="alleen-scherm">Bij deze normaalkracht is er geen momentcapaciteit meer: met een moment is UC = ∞, net als de grens van M<sub>Ed</sub>/M<sub>Rd</sub> vlak binnen het bereik.</i><span class="alleen-scherm"></span>
     #hide
-    UC_z = UC_y
+    UC_y = if(M_Ed,y > 0 kN*m; 1/0; UC_N)
+    UC_z = if(M_Ed,z > 0 kN*m; 1/0; UC_N)
     #show
-#else if N_Ed ≤ N_Rd,min
-    '<b style="color:#b91c1c">De trekkracht is groter dan de wapening kan opnemen.</b>
-    UC_y = N_Ed/N_Rd,min'<span class="kolom-2"></span>'
-    #hide
-    UC_z = UC_y
-    #show
+    UC_y'<span class="kolom-4"></span>'
+    UC_z'<span class="kolom-4"></span>'
 #else
     #if vorm ≡ 1
         x_y'<span class="alleen-scherm">, drukzonehoogte bij N<sub>Ed</sub>, buiging om y</span><span class="kolom-4"></span>'
@@ -443,6 +513,9 @@ N_Rd,min', volledige trek<span class="alleen-scherm"></span>'
         M_Rd,y', om elke as<span class="kolom-2"></span>'
         UC_y = M_Ed,y/M_Rd,y'<span class="kolom-2"></span>'
         UC_z = M_Ed,z/M_Rd,z'<span class="kolom-2"></span>'
+    #end if
+    #if N_Ed < 0 kN
+        UC_N = N_Ed/N_Rd,min', trek<span class="alleen-scherm">, ook zonder moment</span><span class="kolom-2"></span>'
     #end if
 #end if
 
@@ -504,7 +577,7 @@ UC_biax = 0
 
 # 7. Detaillering (§9.5)
 
-'<i>Met de aanbevolen waarden van §9.5.2, §9.5.3 en, bij een in-situ gestorte paal, §9.8.5(3).</i>
+'<i>Met de waarden van de NB bij §9.5.2, §9.5.3 en, bij een in-situ gestorte paal, §9.8.5(3).</i>
 #hide
 ja(ok) = if(ok ≡ 1; "voldoet"; "voldoet niet")
 kl(ok) = if(ok ≡ 1; "#047857"; "#b91c1c")
@@ -518,8 +591,9 @@ kl(ok) = if(ok ≡ 1; "#047857"; "#b91c1c")
         A_c,nom = pi*h_kol^2/4
     #end if
     A_s,paal = if(A_c,nom ≤ 0.5 m^2; 0.005*A_c,nom; if(A_c,nom ≤ 1 m^2; 2500 mm^2; 0.0025*A_c,nom))
-    Ø_min = 16 mm
-    n_min = 6
+    'NB bij 9.8.5(3): Ø ≥ 12 mm en ten minste vier staven.
+    Ø_min = 12 mm
+    n_min = 4
     #show
     A_s,min = max(0.10*N_Ed/f_yd; 0.002*A_c,nom; A_s,paal) to mm^2', (9.12N) en tabel 9.6N, met A<sub>c</sub> van de nominale maat (veilige kant)<span class="alleen-scherm"></span>'
 #else
@@ -529,7 +603,7 @@ kl(ok) = if(ok ≡ 1; "#047857"; "#b91c1c")
     #show
     A_s,min = max(0.10*N_Ed/f_yd; 0.002*A_c) to mm^2', (9.12N)<span class="alleen-scherm"></span>'
 #end if
-A_s,max = 0.04*A_c to mm^2', 9.5.2(3)<span class="alleen-scherm"></span>'
+A_s,max = 0.04*A_c to mm^2', NB 9.5.2(3)<span class="alleen-scherm">: kolom met overlappingslassen, buiten de las; zonder lassen mag 0,08·A<sub>c</sub></span><span class="alleen-scherm"></span>'
 Ø_b,min = max(6 mm; d_staaf/4)', 9.5.3(1)<span class="alleen-scherm"></span>'
 s_cl,max = min(20*d_staaf; min(b; h); 400 mm)', 9.5.3(3)<span class="alleen-scherm"></span>'
 #hide
@@ -550,29 +624,32 @@ s_cl,eind = 0.6*s_cl,max
 ok_As = if(A_s ≥ A_s,min and A_s ≤ A_s,max; 1; 0)
 ok_Ø = if(d_staaf ≥ Ø_min and d_beugel ≥ Ø_b,min; 1; 0)
 ok_s = if(s_beugel ≤ s_cl,max; 1; 0)
-ok_vrij = if(insitu ≡ 0 or s_vrij ≤ 200 mm; 1; 0)
-ok_det = min(ok_As; ok_Ø; ok_s; ok_n; ok_vrij)
+ok_det = min(ok_As; ok_Ø; ok_s; ok_n)
 #show
 'A<sub>s,min</sub> ≤ A<sub>s</sub> ≤ A<sub>s,max</sub> ((9.12N)'if(insitu ≡ 1; ", tabel 9.6N met de nominale doorsnede"; "")', 9.5.2(3)): 'A_s,min/(1 mm^2)' ≤ 'A_s/(1 mm^2)' ≤ 'A_s,max/(1 mm^2)' mm² → <b style="color:'kl(ok_As)'">'ja(ok_As)'</b>
-'Staaf Ø'd_staaf/(1 mm)' ≥ Ø'Ø_min/(1 mm)' (9.5.2(1)'if(insitu ≡ 1; ", paal 9.8.5(3)"; "")'), beugel Ø'd_beugel/(1 mm)' ≥ Ø'Ø_b,min/(1 mm)' (9.5.3(1)) → <b style="color:'kl(ok_Ø)'">'ja(ok_Ø)'</b>
+'Staaf Ø'd_staaf/(1 mm)' ≥ Ø'Ø_min/(1 mm)' (9.5.2(1)'if(insitu ≡ 1; ", paal: NB 9.8.5(3)"; "")'), beugel Ø'd_beugel/(1 mm)' ≥ Ø'Ø_b,min/(1 mm)' (9.5.3(1)) → <b style="color:'kl(ok_Ø)'">'ja(ok_Ø)'</b>
 'Beugelafstand 's_beugel/(1 mm)' ≤ s<sub>cl,max</sub> = 's_cl,max/(1 mm)' mm (9.5.3(3)) → <b style="color:'kl(ok_s)'">'ja(ok_s)'</b>; bij een balk of vloer en bij overlappingen (Ø > 14 mm) ≤ 's_cl,eind/(1 mm)' mm (9.5.3(4))
-'Aantal staven 'n_tot', ten minste 'n_min' staven'if(vorm ≡ 1; ", met een staaf in elke hoek"; "")' (9.5.2(4)) → <b style="color:'kl(ok_n)'">'ja(ok_n)'</b>
-#if insitu ≡ 1
-    'Vrij tussen de staven 's_vrij/(1 mm)' mm ≤ 200 mm (9.8.5(3)) → <b style="color:'kl(ok_vrij)'">'ja(ok_vrij)'</b>
+'Aantal staven 'n_tot', ten minste 'n_min' staven'if(vorm ≡ 1; ", met een staaf in elke hoek"; "")' (9.5.2(4)'if(insitu ≡ 1; ", paal: NB 9.8.5(3)"; "")') → <b style="color:'kl(ok_n)'">'ja(ok_n)'</b>
+#if insitu ≡ 1 and s_vrij > 200 mm
+    '<b style="color:#b45309">Vrij tussen de staven 's_vrij/(1 mm)' mm: meer dan de 200 mm die 9.8.5(3) aanbeveelt. De NB vervangt die aanbeveling; de detaillering van de paal volgt 9.8.5(4).</b>
 #end if
 #if u_150 > 150 mm
     '<b style="color:#b45309">Een staaf ligt 'u_150/(1 mm)' mm van de dichtstbijzijnde hoekstaaf: staven verder dan 150 mm van een opgesloten staaf apart opsluiten met een beugel of haarspeld (9.5.3(6)).</b>
 #end if
 
-UC_max = max(UC_y; UC_z; UC_biax)
-#if UC_max ≤ 1.0 and ok_det ≡ 1
+UC_max = max(UC_y; UC_z; UC_biax; UC_N)
+#hide
+'Wat naast de UC afkeurt: de detaillering (ok_det) en rekenen zonder kruip buiten 5.8.4(4) (ok_φ).
+reden(d; k) = if(k ≡ 1; "de detaillering voldoet niet (§9.5)"; if(d ≡ 1; "rekenen zonder kruip mag hier niet (5.8.4(4))"; "de detaillering voldoet niet (§9.5) en rekenen zonder kruip mag hier niet (5.8.4(4))"))
+#show
+#if UC_max ≤ 1.0 and ok_det ≡ 1 and ok_φ ≡ 1
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de kolom voldoet</b></span>
-#else if UC_max ≤ 1.0
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> ≤ 1,0, maar de detaillering voldoet niet (§9.5) → <b>de kolom voldoet niet</b></span>
-#else if ok_det ≡ 0
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 en de detaillering voldoet niet (§9.5) → <b>de kolom voldoet niet</b></span>
-#else
+#else if ok_det ≡ 1 and ok_φ ≡ 1
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de kolom voldoet niet</b></span>
+#else if UC_max ≤ 1.0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> ≤ 1,0, maar 'reden(ok_det; ok_φ)' → <b>de kolom voldoet niet</b></span>
+#else
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 en 'reden(ok_det; ok_φ)' → <b>de kolom voldoet niet</b></span>
 #end if
 'Niet getoetst: dwarskracht (§6.2), scheurwijdte (§7.3) en brandwerendheid.
 `;

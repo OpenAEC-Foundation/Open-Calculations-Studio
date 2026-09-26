@@ -1,5 +1,6 @@
 import { useDesigner, Dim, Ro, Defs, betonFill, HDim, VDim, fmt, clamp, UitkomstKop } from "./designerKit";
 import { useBladUitkomst } from "./bladResultaat";
+import { useActiefExemplaar } from "../../store/actiefBlad";
 import "./VoetplaatDesigner.css";
 
 /**
@@ -29,13 +30,25 @@ const DIAM = [6, 8, 10, 12, 16, 20, 25, 32];
 // Een balk 200×300 in C30/37 met 2Ø16 onder, 2Ø8 in de tussenlaag, 2Ø12 boven
 // en beugels Ø8-150, op buiging en dwarskracht. Dezelfde waarden als de
 // standaardinvoer van scripts/check-betondoorsnede.mjs.
+//
+// M_Ed_max begint op 0 (= de doorsnede met het grootste moment, geen toeslag
+// uit de verschuivingsregel): de seed vult ook bestaande bladen aan zodra het
+// beeld opent, en een andere startwaarde zou hun uitkomst stil veranderen.
 const DEFAULTS: Record<string, number> = {
   b_dsn: 200, h_dsn: 300, betonklasse: 30, betonstaal: 2, c_dek: 25,
   n_onder: 2, d_onder: 16, n_midden: 2, d_midden: 8, n_boven: 2, d_boven: 12,
   d_beugel: 8, s_beugel: 150, n_sneden: 2,
-  N_Ed: 0, M_Ed: 35, V_Ed: 50, T_Ed: 0,
-  N_qp: 0, M_qp: 20, "φ_kr": 2, milieuklasse: 2, belastingduur: 1,
+  N_Ed: 0, M_Ed: 35, V_Ed: 50, T_Ed: 0, M_Ed_max: 0,
+  N_fr: 0, M_fr: 20, "φ_kr": 2, milieuklasse: 2, belastingduur: 1,
 };
+
+// Een bestaand blad zonder M_fr is van vóór de frequente combinatie: het heeft
+// nog N_qp en M_qp, of het is bijgewerkt terwijl het beeld dicht was en die
+// zijn al vervallen. Dat krijgt geen voorbeeldwaarde voor M_fr: het blad meldt
+// dan dat de scheurwijdte niet getoetst is, in plaats van stil te rekenen met
+// een moment dat de gebruiker nooit heeft ingevuld. Een nieuw blad heeft nog
+// geen waarden en krijgt de gewone beginwaarden.
+const DEFAULTS_OUD_BLAD: Record<string, number> = { ...DEFAULTS, M_fr: 0 };
 
 /** Eén unity check uit het blad, gekleurd naar de uitkomst; ∞ bij weerstand nul. */
 function UcChip({ naam, uc }: { naam: string; uc: number | undefined }) {
@@ -45,7 +58,9 @@ function UcChip({ naam, uc }: { naam: string; uc: number | undefined }) {
 }
 
 export default function BetondoorsnedeDesigner() {
-  const ctx = useDesigner(MARKER, DEFAULTS);
+  const waarden = useActiefExemplaar()?.waarden;
+  const oudBlad = !!waarden && !("M_fr" in waarden) && Object.keys(waarden).some((k) => k in DEFAULTS);
+  const ctx = useDesigner(MARKER, oudBlad ? DEFAULTS_OUD_BLAD : DEFAULTS);
   // Vóór de vroege return: de volgorde van de hooks moet vast liggen.
   const uitkomst = useBladUitkomst();
   if (!ctx.actief) return null;
@@ -61,8 +76,8 @@ export default function BetondoorsnedeDesigner() {
   const nB = clamp(Math.round(d("n_boven")), 0, 12), dB = Math.max(4, d("d_boven"));
   const dBg = Math.max(4, d("d_beugel")), sBg = Math.max(20, d("s_beugel"));
   const nSn = clamp(Math.round(d("n_sneden")), 2, 6);
-  const NEd = d("N_Ed"), MEd = d("M_Ed"), VEd = d("V_Ed"), TEd = d("T_Ed");
-  const Nqp = d("N_qp"), Mqp = d("M_qp"), phi = d("φ_kr");
+  const NEd = d("N_Ed"), MEd = d("M_Ed"), VEd = d("V_Ed"), TEd = d("T_Ed"), MEdMax = d("M_Ed_max");
+  const Nfr = d("N_fr"), Mfr = d("M_fr"), phi = d("φ_kr");
   const milieu = Math.round(d("milieuklasse")), duur = Math.round(d("belastingduur"));
 
   // Geometrie van de wapening — alleen oppervlakken, voor de tekening en de notitie.
@@ -72,8 +87,8 @@ export default function BetondoorsnedeDesigner() {
   const rho = (Astot / (b * h)) * 100;
 
   // Gedrukte rand bij de UGT, zoals het blad hem kiest: tegenover de trekzijde
-  // van M_Ed, bij M_Ed = 0 die van M_qp.
-  const bovenGedrukt = MEd < 0 ? false : MEd > 0 ? true : !(Mqp < 0);
+  // van M_Ed, bij M_Ed = 0 die van M_Ed,max en anders die van M_fr.
+  const bovenGedrukt = MEd !== 0 ? MEd > 0 : MEdMax !== 0 ? MEdMax > 0 : !(Mfr < 0);
   const xu = g.x_u, yc = g.y_c;
 
   // ── layout ────────────────────────────────────────────────────────────────
@@ -85,22 +100,24 @@ export default function BetondoorsnedeDesigner() {
   const x0 = cx - (b * s) / 2, x1 = cx + (b * s) / 2;
   const y0 = cy - (h * s) / 2, y1 = cy + (h * s) / 2;
 
-  // beugel op de dekking
-  const bx0 = x0 + c * s, bx1 = x1 - c * s, by0 = y0 + c * s, by1 = y1 - c * s;
+  // beugel: de buitenkant op de dekking, dus de hartlijn (waarop de lijn
+  // getekend wordt) een halve beugeldikte naar binnen
   const bgPx = Math.max(1.6, dBg * s);
+  const bx0 = x0 + c * s + bgPx / 2, bx1 = x1 - c * s - bgPx / 2;
+  const by0 = y0 + c * s + bgPx / 2, by1 = y1 - c * s - bgPx / 2;
   const rr = Math.max(3, dBg * s * 2);
 
-  /** Staven van één laag, gelijkmatig over de binnenzijde van de beugel. */
+  /** Staven van één laag, gelijkmatig tegen de binnenkant van de beugel. */
   const laag = (n: number, dia: number, y: number) => {
     if (n <= 0) return [];
     const r = Math.max(2.2, (dia * s) / 2);
-    const l = bx0 + bgPx + r, rgt = bx1 - bgPx - r;
+    const l = bx0 + bgPx / 2 + r, rgt = bx1 - bgPx / 2 - r;
     return Array.from({ length: n }, (_, i) => ({
       x: n === 1 ? (l + rgt) / 2 : l + ((rgt - l) * i) / (n - 1), y, r,
     }));
   };
-  const yO = by1 - bgPx - (dO * s) / 2;
-  const yB = by0 + bgPx + (dB * s) / 2;
+  const yO = by1 - bgPx / 2 - (dO * s) / 2;
+  const yB = by0 + bgPx / 2 + (dB * s) / 2;
   const yM = (yO + yB) / 2;
   const staven = [...laag(nB, dB, yB), ...laag(nM, dM, yM), ...laag(nO, dO, yO)];
 
@@ -110,7 +127,7 @@ export default function BetondoorsnedeDesigner() {
   const naY = xu !== undefined && xu < h ? (bovenGedrukt ? y0 + xu * s : y1 - xu * s) : null;
 
   const UC = (naam: string) => g[naam];
-  const regels = Math.max(UC("UC_As_min") ?? 0, UC("UC_As_max") ?? 0, UC("UC_ρw") ?? 0, UC("UC_sl") ?? 0, UC("UC_st") ?? 0);
+  const regels = Math.max(UC("UC_As_min") ?? 0, UC("UC_As_max") ?? 0, UC("UC_ρw") ?? 0, UC("UC_sl") ?? 0, UC("UC_st") ?? 0, UC("UC_sl_T") ?? 0);
 
   return (
     <div className="vd-panel">
@@ -181,12 +198,15 @@ export default function BetondoorsnedeDesigner() {
           <label>T<sub>Ed</sub> (kNm)
             <input type="number" step={1} value={TEd} onChange={(e) => set("T_Ed", parseFloat(e.target.value))} />
           </label>
-          <span className="vd-ctrl-h">Belastingen (BGT, quasi-blijvend)</span>
-          <label title="Druk positief">N<sub>qp</sub> (kN)
-            <input type="number" step={10} value={Nqp} onChange={(e) => set("N_qp", parseFloat(e.target.value))} />
+          <label title="Het grootste moment in de ligger, zelfde teken als M_Ed. Begrenst de toeslag uit de verschuivingsregel (ΔF_td); 0 = dit is de doorsnede met het grootste moment">M<sub>Ed,max</sub> (kNm)
+            <input type="number" step={5} value={MEdMax} onChange={(e) => set("M_Ed_max", parseFloat(e.target.value))} />
           </label>
-          <label>M<sub>qp</sub> (kNm)
-            <input type="number" step={5} value={Mqp} onChange={(e) => set("M_qp", parseFloat(e.target.value))} />
+          <span className="vd-ctrl-h">Belastingen (BGT, frequent)</span>
+          <label title="Druk positief; frequente combinatie volgens de NB bij 7.3.1(5)">N<sub>fr</sub> (kN)
+            <input type="number" step={10} value={Nfr} onChange={(e) => set("N_fr", parseFloat(e.target.value))} />
+          </label>
+          <label title="N_fr = M_fr = 0: de scheurwijdte wordt niet getoetst">M<sub>fr</sub> (kNm)
+            <input type="number" step={5} value={Mfr} onChange={(e) => set("M_fr", parseFloat(e.target.value))} />
           </label>
           <label title="Kruipcoëfficiënt φ(∞,t₀); telt alleen bij een langdurende belasting">φ(∞,t<sub>0</sub>)
             <input type="number" step={0.1} min={0} value={phi} onChange={(e) => set("φ_kr", parseFloat(e.target.value))} />

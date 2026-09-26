@@ -8,15 +8,28 @@
  *   • de doorsnedeklasse bij brand (§4.2.2, ε = 0,85·√(235/f_y));
  *   • de kritieke temperatuur. Zonder instabiliteit (ligger met verhinderde
  *     kip, trekstaaf) met (4.22) uit μ_0 = E_fi,d/R_fi,d,0 (4.23), bij een
- *     ligger met κ_1 en κ_2 (§4.2.3.3(7) en (8)). Bij kip of knik de
- *     temperatuur waarbij de weerstand met χ_LT,fi of χ_fi (§4.2.3.3,
- *     §4.2.3.2) gelijk wordt aan E_fi,d, gevonden door halvering. In
- *     doorsnedeklasse 4 350 °C (§4.2.3.6);
+ *     ligger met κ_1 en κ_2 (§4.2.3.3(7) en (8)). κ_1 < 1 alleen bij
+ *     driezijdige verhitting met een beton- of staalplaatbetonvloer aan de
+ *     vierde zijde; dat is een aparte keuze, die op "een andere vloer of een
+ *     wand" (κ_1 = 1) begint. Bij kip of knik de temperatuur waarbij de
+ *     weerstand met χ_LT,fi of χ_fi (§4.2.3.3, §4.2.3.2) gelijk wordt aan
+ *     E_fi,d, gevonden door halvering. In doorsnedeklasse 4 350 °C (§4.2.3.6);
+ *     die regel veronderstelt een element dat de belasting draagt, dus toetst
+ *     het blad daar ook μ_0 ≤ 1 met de knikweerstand bij 20 °C en A_eff zoals
+ *     in bijlage E (NEN-EN 1993-1-5 §4.4, eigenschappen bij 20 °C). Klasse 4
+ *     komt bij deze profielen alleen voor bij het lijf van een IPE onder druk;
+ *     de flenzen blijven dan volledig meewerken;
  *   • de staaltemperatuur na de eis, incrementeel: onbekleed (4.25) met k_sh
  *     (4.26a) en ḣ_net uit NEN-EN 1991-1-2 (3.1) t/m (3.3), Δt = 5 s; bekleed
  *     (4.27) en (4.28), Δt = 30 s: de grootste stap volgens §4.2.5.1 en
  *     §4.2.5.2. c_a(θ) volgens §3.4.1.2, gaskromme (3.4) van NEN-EN 1991-1-2;
  *   • UC = θ_a,t/θ_a,cr; bij kip of knik daarnaast de weerstand bij θ_a,t.
+ *     Bij μ_0 > 1 telt de weerstand bij θ_a,t; in klasse 4 de grootste van
+ *     μ_0 en θ_a,t/350.
+ *
+ * Een blad zonder belasting (E_fi,d = 0) of, bij kip of knik, zonder lengte
+ * krijgt geen UC maar "niet te bepalen → voldoet niet": een leeg veld telt als
+ * 0, en daarmee zou het profiel ten onrechte voldoen.
  *
  * De stap houdt de staaltemperatuur onder de gastemperatuur. Bij een
  * realistische bekleding raakt die grens nooit; hij voorkomt dat de expliciete
@@ -99,6 +112,12 @@ export const brandwerendheid = `"Brandwerendheid — stalen profiel volgens EN 1
       In het veld, of een statisch bepaalde ligger = 1
       Boven een tussensteunpunt van een statisch onbepaalde ligger = 2
     @end
+    #if verhitting ≡ 3
+        @select vloer "Aan de vierde zijde"
+          Een andere vloer of een wand = 0
+          Een beton- of staalplaatbetonvloer = 1
+        @end
+    #end if
 #end if
 
 #hide
@@ -144,6 +163,10 @@ f_y = staalsoort*N/mm^2', tabel 3.1 van EN 1993-1-1, t ≤ 40 mm<span class="kol
         M_fi = ?*(kN*m)', grootste moment bij brand (6.11b)'
         E_fi,d = abs(M_fi) to kN*m
     #end if
+    #hide
+    geen_E = if(E_fi,d/(1 kN*m) > 0; 0; 1)
+    geen_L = 0
+    #show
 #else
     #if bron_fi ≡ 1
         N_Ed = ?*(kN)', normaalkracht bij normale temperatuur<span class="kolom-2"></span>'
@@ -153,13 +176,23 @@ f_y = staalsoort*N/mm^2', tabel 3.1 van EN 1993-1-1, t ≤ 40 mm<span class="kol
         N_fi = ?*(kN)', normaalkracht bij brand (6.11b)'
         E_fi,d = abs(N_fi) to kN
     #end if
+    #hide
+    geen_E = if(E_fi,d/(1 kN) > 0; 0; 1)
+    geen_L = 0
+    #show
 #end if
 #if werking ≡ 2
     L_kip = ?*(m)', kiplengte tussen de gaffels<span class="kolom-3"></span>'
     C_1 = ?', tabel NB.NB.1<span class="kolom-3"></span>'
     C_2 = ?', tabel NB.NB.1<span class="alleen-scherm">, negatief bij een last op de bovenflens;een gelijkmatige last op de bovenflens, naar het buitenvlak geëxtrapoleerd: −0,45·h/(h − t<sub>f</sub>)</span><span class="kolom-3"></span>'
+    #hide
+    geen_L = if(L_kip/(1 m) > 0 and C_1 > 0; 0; 1)
+    #show
 #else if werking ≡ 3
     L_fi = ?*(m)', kniklengte bij brand<span class="alleen-scherm">; in een geschoord gebouw met een brandcompartiment per verdieping 0,5·L, op de bovenste verdieping 0,7·L (§4.2.3.2)</span>'
+    #hide
+    geen_L = if(L_fi/(1 m) > 0; 0; 1)
+    #show
 #end if
 
 # 3. Bekleding
@@ -219,7 +252,31 @@ k_E(θ) = if(θ ≤ 100; 1; max(lin_T(kE_tab; θ); 0.0001))
 W_y = if(klasse ≤ 2; W_pl,y; W_el,y)
 instab = if(klasse < 4 and (werking ≡ 2 or werking ≡ 3); 1; 0)
 #show
-#if klasse ≡ 4
+#if klasse ≡ 4 and werking ≡ 3
+    '<i>In klasse 4 is de toets θ<sub>a,t</sub> ≤ 350 °C (§4.2.3.6). Die regel gaat uit van een element dat de belasting kan dragen; daarom ook de knikweerstand bij 20 °C, met de effectieve doorsnede bij de eigenschappen van 20 °C zoals in bijlage E.</i><span class="alleen-scherm"></span>
+    #hide
+    ε_20 = sqrt(235/staalsoort)
+    c_w = h - 2*t_f - 2*r
+    λ_p,w = c_w/t_w/(28.4*ε_20*2)
+    ρ_w = if(c_w/t_w ≤ 42*ε_20; 1; min(1; (λ_p,w - 0.22)/λ_p,w^2))
+    #show
+    ρ_w', lijf bij 20 °C (NEN-EN 1993-1-5 §4.4, ψ = 1, k<sub>σ</sub> = 4)<span class="kolom-2"></span>'
+    A_eff = A - (1 - ρ_w)*c_w*t_w to cm^2', flenzen volledig<span class="kolom-2"></span>'
+    α_fi = 0.65*sqrt(235 N/mm^2/f_y)', §4.2.3.2<span class="kolom-2"></span>'
+    N_cr,z = π^2*E*I_z/L_fi^2 to kN', zwakke as, bij 20 °C<span class="kolom-2"></span>'
+    λ_z = sqrt(A_eff*f_y/N_cr,z)', λ̄<sub>z</sub> met A<sub>eff</sub><span class="kolom-2"></span>'
+    #hide
+    Φ_0 = 0.5*(1 + α_fi*λ_z + λ_z^2)
+    #show
+    χ_fi,0 = 1/(Φ_0 + sqrt(Φ_0^2 - λ_z^2))', χ<sub>fi</sub> bij 20 °C<span class="kolom-2"></span>'
+    R_fi,d,0 = χ_fi,0*A_eff*f_y/γ_M,fi to kN', (4.5) bij 20 °C met A<sub>eff</sub><span class="kolom-2"></span>'
+    μ_0 = E_fi,d/R_fi,d,0', benuttingsgraad bij 20 °C<span class="kolom-2"></span>'
+    #if μ_0 ≤ 1
+        θ_a,cr = 350', °C, doorsnedeklasse 4 (aanbevolen waarde van §4.2.3.6)'
+    #else
+        θ_a,cr = 20', °C: μ<sub>0</sub> > 1, het element bezwijkt al bij normale temperatuur'
+    #end if
+#else if klasse ≡ 4
     θ_a,cr = 350', °C, doorsnedeklasse 4 (aanbevolen waarde van §4.2.3.6)'
     #hide
     μ_0 = 0
@@ -227,10 +284,15 @@ instab = if(klasse < 4 and (werking ≡ 2 or werking ≡ 3); 1; 0)
 #else if werking ≡ 1 or werking ≡ 4
     #if werking ≡ 1
         #hide
-        κ_1 = if(verhitting ≡ 3; if(bekleed ≡ 1; 0.85; 0.7); 1)
+        κ_1 = 1
         κ_2 = if(schema ≡ 2; 0.85; 1)
         #show
-        κ_1', §4.2.3.3(7)<span class="alleen-scherm">; 0,7 of 0,85 alleen met een beton- of staalplaatbetonvloer aan de vierde zijde, anders 1,0: kies dan vierzijdig (veilige kant)</span><span class="kolom-3"></span>'
+        #if verhitting ≡ 3
+            #hide
+            κ_1 = if(vloer ≡ 1; if(bekleed ≡ 1; 0.85; 0.7); 1)
+            #show
+        #end if
+        κ_1', §4.2.3.3(7)<span class="alleen-scherm">: 0,7 onbekleed of 0,85 bekleed alleen bij driezijdige verhitting met een beton- of staalplaatbetonvloer aan de vierde zijde, anders 1,0</span><span class="kolom-3"></span>'
         κ_2', §4.2.3.3(8)<span class="kolom-3"></span>'
         W_y', W<sub>pl,y</sub> in klasse 1 en 2, W<sub>el,y</sub> in klasse 3<span class="kolom-3"></span>'
         R_fi,d,0 = W_y*f_y/(γ_M,fi*κ_1*κ_2) to kN*m', M<sub>fi,t,Rd</sub> bij 20 °C, (4.8) met (4.10)'
@@ -362,14 +424,22 @@ UC_R = 0
         N_b,fi,t,Rd = χ_fi,t*A*k_y,θ*f_y/γ_M,fi to kN', (4.5)'
         UC_R = E_fi,d/N_b,fi,t,Rd
     #end if
+#else if μ_0 > 1 and klasse < 4
+    k_y,θ = k_y(θ_a,t)', bij θ<sub>a,t</sub> (tabel 3.1)<span class="kolom-2"></span>'
+    R_fi,d,t = k_y,θ*R_fi,d,0', weerstand bij θ<sub>a,t</sub><span class="kolom-2"></span>'
+    UC_R = E_fi,d/R_fi,d,t
+#else if μ_0 > 1
+    UC_θ = θ_a,t/350', θ<sub>a,t</sub> ≤ 350 °C (§4.2.3.6), naast μ<sub>0</sub> ≤ 1'
 #end if
 #hide
-UC_max = if(μ_0 > 1; if(instab ≡ 1; UC_R; μ_0); if(instab ≡ 1; max(UC_θ; UC_R); UC_θ))
+UC_max = if(μ_0 > 1; if(klasse < 4; UC_R; max(μ_0; UC_θ)); if(instab ≡ 1; max(UC_θ; UC_R); UC_θ))
 #show
 #if t_kr > 0 and θ_a,cr > 20
     '<span style="color:#b91c1c">θ<sub>a,cr</sub> is bereikt na 't_kr' minuten.</span>
 #end if
-#if UC_max ≤ 1.0
+#if geen_E + geen_L > 0
+    '<b>Maatgevende UC</b><span style="color:#b91c1c"> niet te bepalen: vul 'if(geen_E ≡ 1; "de belasting bij brand"; "")''if(geen_E + geen_L ≡ 2; if(werking ≡ 2; ", "; " en "); "")''if(geen_L ≡ 1; if(werking ≡ 2; "de kiplengte en C<sub>1</sub>"; "de kniklengte"); "")' in → <b>het profiel voldoet niet</b></span>
+#else if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>het profiel voldoet aan R 'eis_min'</b></span>
 #else
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>het profiel voldoet niet aan R 'eis_min'</b></span>

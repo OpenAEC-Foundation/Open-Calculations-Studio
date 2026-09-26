@@ -24,7 +24,9 @@
  * lijf bij zuivere druk slank (c/t > 42ε), dan telt A_eff (NEN-EN 1993-1-5
  * §4.4) voor N in §6.2 én §6.3. De factor f uit 6.3.2.3(2) is weggelaten.
  * Bij L_cr/h < 5 meldt het blad dat bijlage NB.NB niet geldt (NB.NB.1(2)),
- * net als de gevelkolom.
+ * net als de gevelkolom. Bij trek (N_Ed < 0) is de maatgevende UC niet
+ * bepaald: de slotzin noemt geen getal en UC_max staat niet op het blad, zodat
+ * de rapportkop geen UC toont (zoals de pons bij een onvolledige invoer).
  *
  * Profielen HEA 100–300, HEB 100–300 en IPE 200–400 (id's 1–27, gelijk aan
  * components/calc/profielen.ts). De matrix hieronder is daar uit geplakt met
@@ -306,8 +308,8 @@ C_2,q = if(lasthoogte ≡ 1; -0.45*h/(h - t_f); if(lasthoogte ≡ 2; 0; 0.45))
     '<b style="color:#b45309">L<sub>cr</sub>/h &lt; 5: de rekenregels van bijlage NB.NB gelden hier niet (NB.NB.1(2)); toets de gedrukte rand volgens NB.NB.4.2(3).</b>
 #end if
 #if kipgeval ≡ 1
-    'M<sub>cr</sub> volgens bijlage NB.NB, tabel NB.NB.1 geval 1 (eindmomenten, β = ψ = 'ψ')<span class="alleen-scherm">: L<sub>kip</sub> = (1,4 − 0,8β)·L<sub>cr</sub> tussen 1,0 en 1,4·L<sub>cr</sub>, C<sub>1</sub> = 1,75 − 1,05β + 0,3β² ≤ 2,3 en C<sub>2</sub> = 0</span>.
-    L_kip = min(max(1.4 - 0.8*(ψ); 1); 1.4)*L_cr to mm'<span class="alleen-scherm"></span>'
+    'M<sub>cr</sub> volgens bijlage NB.NB, tabel NB.NB.1 geval 1 (eindmomenten, β = ψ = 'ψ')<span class="alleen-scherm">: C<sub>1</sub> = 1,75 − 1,05β + 0,3β² ≤ 2,3 en C<sub>2</sub> = 0; tussen twee gaffels is L<sub>kip</sub> = L<sub>cr</sub> (NB.NB.4.3(1)), de factor 1,4 − 0,8β geldt alleen naast een kipsteun</span>.
+    L_kip = L_cr'<span class="alleen-scherm"></span>'
     C_1 = min(1.75 - 1.05*(ψ) + 0.3*(ψ)^2; 2.3)'<span class="alleen-scherm"></span>'
     C_2 = 0'<span class="alleen-scherm"></span>'
 #else if kipgeval ≡ 2
@@ -392,23 +394,25 @@ UC_662 = n_z + k_zy*M_Ed/M_b,Rd', (6.62)'
 
 # 8. Samenvatting
 
-'<table class="alleen-scherm" style="width:100%; border-collapse:collapse; font-size:0.95em;">
-'<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:4px 8px;">Toets</th><th style="text-align:left; padding:4px 8px;">Norm</th><th style="text-align:right; padding:4px 8px;">UC</th><th style="text-align:left; padding:4px 8px;">Oordeel</th></tr>
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Dwarskracht</td><td style="padding:4px 8px;">§6.2.6 (6.17)</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_V)'">'UC_V'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_V)'">'oordeel(UC_V)'</td></tr>
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Doorsnede, normaalkracht en buiging</td><td style="padding:4px 8px;">§6.2.9</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_d)'">'UC_d'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_d)'">'oordeel(UC_d)'</td></tr>
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Knik</td><td style="padding:4px 8px;">§6.3.1 (6.46)</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_N)'">'UC_N'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_N)'">'oordeel(UC_N)'</td></tr>
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Kip</td><td style="padding:4px 8px;">§6.3.2 (6.54)</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_LT)'">'UC_LT'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_LT)'">'oordeel(UC_LT)'</td></tr>
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Druk met buiging</td><td style="padding:4px 8px;">(6.61) / (6.62)</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(max(UC_661; UC_662))'">'UC_661' / 'UC_662'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(max(UC_661; UC_662))'">'oordeel(max(UC_661; UC_662))'</td></tr>
-'</table>
-UC_max = max(UC_V; UC_d; UC_N; UC_LT; UC_661; UC_662)'<span class="alleen-scherm"></span>'
 #if N_Ed < 0 kN
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>de kolom is niet getoetst</b>: N<sub>Ed</sub> is een trekkracht.</span>
-#else if f_klasse ≡ 4
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>de kolom voldoet niet</b>: de flens valt in klasse 4, en die valt buiten dit blad.</span>
-#else if UC_max ≤ 1.0
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de kolom voldoet</b></span>
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>de kolom is niet getoetst</b>: N<sub>Ed</sub> is een trekkracht, en dit blad toetst een kolom op druk.</span>
 #else
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de kolom voldoet niet</b></span>
+    '<table class="alleen-scherm" style="width:100%; border-collapse:collapse; font-size:0.95em;">
+    '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:4px 8px;">Toets</th><th style="text-align:left; padding:4px 8px;">Norm</th><th style="text-align:right; padding:4px 8px;">UC</th><th style="text-align:left; padding:4px 8px;">Oordeel</th></tr>
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Dwarskracht</td><td style="padding:4px 8px;">§6.2.6 (6.17)</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_V)'">'UC_V'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_V)'">'oordeel(UC_V)'</td></tr>
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Doorsnede, normaalkracht en buiging</td><td style="padding:4px 8px;">§6.2.9</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_d)'">'UC_d'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_d)'">'oordeel(UC_d)'</td></tr>
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Knik</td><td style="padding:4px 8px;">§6.3.1 (6.46)</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_N)'">'UC_N'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_N)'">'oordeel(UC_N)'</td></tr>
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Kip</td><td style="padding:4px 8px;">§6.3.2 (6.54)</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_LT)'">'UC_LT'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_LT)'">'oordeel(UC_LT)'</td></tr>
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Druk met buiging</td><td style="padding:4px 8px;">(6.61) / (6.62)</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(max(UC_661; UC_662))'">'UC_661' / 'UC_662'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(max(UC_661; UC_662))'">'oordeel(max(UC_661; UC_662))'</td></tr>
+    '</table>
+    UC_max = max(UC_V; UC_d; UC_N; UC_LT; UC_661; UC_662)'<span class="alleen-scherm"></span>'
+    #if f_klasse ≡ 4
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>de kolom voldoet niet</b>: de flens valt in klasse 4, en die valt buiten dit blad.</span>
+    #else if UC_max ≤ 1.0
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de kolom voldoet</b></span>
+    #else
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de kolom voldoet niet</b></span>
+    #end if
 #end if
 
 '<i>Niet getoetst: eigen gewicht, buiging om de z-as, de verbindingen en de krachtsinleiding. Tweede-orde-effecten in het vlak lopen via L<sub>cr,y</sub> en de knikvorm.</i>

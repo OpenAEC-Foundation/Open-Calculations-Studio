@@ -27,6 +27,12 @@ const BETONLABEL: Record<number, string> = {
 };
 const STAALSOORT = [{ v: 1, label: "B500A" }, { v: 2, label: "B500B" }, { v: 3, label: "B500C" }];
 const DIAM = [12, 16, 20, 25, 32, 40];
+/** Keuzes van `betonoppervlak` in het blad; w_max 0,3 / 0,2 / 0,2 mm. */
+const OPPERVLAK = [
+  { v: 1, label: "X0–XC4, te inspecteren", kort: "X0–XC4" },
+  { v: 2, label: "X0–XC4, niet te inspecteren", kort: "niet te inspecteren" },
+  { v: 3, label: "XD of XS", kort: "XD/XS" },
+];
 
 const DEFAULTS: Record<string, number> = {
   kolomvorm: 1, paalvorm: 1, d_kolom: 500, b_kolom: 500, b_paal: 450, l_paal: 450,
@@ -186,10 +192,10 @@ export default function TweepaalsPoerDesigner() {
               {STAALSOORT.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
             </select>
           </label>
-          <label style={{ flexDirection: "column", alignItems: "stretch" }} title="Niet controleerbaar: w_max = 0,2 mm in plaats van 0,3 mm">Betonoppervlak
+          <label style={{ flexDirection: "column", alignItems: "stretch" }}
+            title="w_max volgens tabel 7.1N (NB): 0,3 mm bij X0 tot en met XC4, 0,2 mm bij XD en XS; niet te inspecteren: 0,2 mm">Milieuklasse, oppervlak
             <select style={{ width: "100%" }} value={opp} onChange={(e) => set("betonoppervlak", parseInt(e.target.value))}>
-              <option value={1}>Controleerbaar</option>
-              <option value={2}>Niet controleerbaar</option>
+              {OPPERVLAK.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
             </select>
           </label>
           <label>Dekking c
@@ -334,12 +340,15 @@ export default function TweepaalsPoerDesigner() {
           <br />{BETONLABEL[fck]} · {STAALSOORT.find((o) => o.v === staal)?.label} · {kolVorm === 1 ? `ronde kolom Ø${fmt(dKol)}` : `kolom ${fmt(dKol)}×${fmt(kolB)}`} ·
           palen {paalVorm === 1 ? `${fmt(bPaal)}×${fmt(lPaal)}` : `Ø${fmt(bPaal)}`} h.o.h. {fmt(lHoh)} · e = {fmt(ePaal)} ·
           {nL}Ø{fmt(dL)} · Ø{fmt(dBg)}-{fmt(sBg)} ({nSn}sn.) · F<sub>Ed</sub> = {fmt(FEd)} kN · M<sub>Ed</sub> = {fmt(MEd)} kNm ·
-          F<sub>fr</sub> = {fmt(Ffr)} kN · {opp === 1 ? "controleerbaar" : "niet controleerbaar"}</span>
+          F<sub>fr</sub> = {fmt(Ffr)} kN · {OPPERVLAK.find((o) => o.v === opp)?.kort}</span>
         <span className="vd-live">
           {Rcd > 0 ? <UcChip naam="paal" uc={g.UC_paal} /> : <span className="vd-uc-nvt">paal n.v.t.</span>}
           <UcChip naam="trekband" uc={g.UC_trek} />
           <UcChip naam="knoop kolom" uc={g.UC_kn_1} />
           <UcChip naam="knoop paal" uc={g.UC_kn_2} />
+          {g.T_Rd_dw === 0 && (g.T_dw ?? 0) > 0
+            ? <span className="vd-uc-chip bad">dwarstrek: geen beugels</span>
+            : <UcChip naam="dwarstrek" uc={g.UC_dw} />}
           <UcChip naam="verankering" uc={g.UC_ank} />
           <UcChip naam="ombuiging" uc={g.UC_rol} />
           <UcChip naam="dwarskracht" uc={g.UC_V === undefined ? undefined : Math.max(g.UC_V, g.UC_Vmax ?? 0)} />

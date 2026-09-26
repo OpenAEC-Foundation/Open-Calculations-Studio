@@ -14,6 +14,7 @@
  */
 
 import type { EvaluatedNode } from "@ifc-calc/core";
+import { projectWaarde } from "../store/projectGegevens";
 
 interface ContentBlock {
   type: string;
@@ -178,7 +179,8 @@ export function projectToReport(
     ["Locatie", gegevens.locatie],
     ["Gevolgklasse", gegevens.CC ? `CC${gegevens.CC}` : undefined],
     ["Betrouwbaarheidsklasse", gegevens.RC ? `RC${gegevens.RC}` : undefined],
-    ["Ontwerplevensduur", gegevens.DesignLife ? `${gegevens.DesignLife} jaar` : undefined],
+    // De geldende waarde: een vervallen keuze staat er als haar vervanger.
+    ["Ontwerplevensduur", gegevens.DesignLife ? `${projectWaarde(gegevens, "DesignLife")} jaar` : undefined],
   ];
   const voorblad: Section = { title: projectNaam, level: 1, content: [] };
   for (const [label, waarde] of kop) {

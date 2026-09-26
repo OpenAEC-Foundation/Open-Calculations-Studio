@@ -77,8 +77,9 @@ export default function PonsDesigner() {
   // De excentriciteit telt alleen als β eruit volgt; anders tekent het beeld haar niet.
   const ey = betaKeuze === 0 ? d("e_y") : 0, ez = betaKeuze === 0 ? d("e_z") : 0;
   const ponswap = Math.round(d("ponswap")) === 1;
-  const dSw = Math.max(4, d("d_sw")), nSw = Math.max(1, Math.round(d("n_sw")));
-  const nOm = Math.max(1, Math.round(d("n_om")));
+  // Hele staven en omtrekken, naar beneden afgerond, zoals het blad rekent.
+  const dSw = Math.max(4, d("d_sw")), nSw = Math.max(1, Math.floor(d("n_sw")));
+  const nOm = Math.max(1, Math.floor(d("n_om")));
   const sR = Math.max(10, d("s_r")), aSw = Math.max(0, d("a_sw"));
   const hoekPons = clamp(d("hoek_pons"), 45, 90);
 
@@ -282,6 +283,10 @@ export default function PonsDesigner() {
           )}
           {g.A_sw_nodig !== undefined && (
             <span className="gd-note">Nodig: A<sub>sw</sub> ≥ {fmt(g.A_sw_nodig)} mm² per omtrek bij s<sub>r</sub> = 0,75d.</span>
+          )}
+          {g.v_Rd_cs_max !== undefined && g.v_Ed !== undefined && g.v_Ed > g.v_Rd_cs_max && (
+            <span className="gd-note" style={{ color: "#b91c1c" }}>v<sub>Ed</sub> = {fmt(g.v_Ed, 3)} &gt; k<sub>max</sub>·v<sub>Rd,c</sub> = {fmt(g.v_Rd_cs_max, 3)} N/mm²:
+              ook met ponswapening voldoet de plaat niet.</span>
           )}
         </div>
 

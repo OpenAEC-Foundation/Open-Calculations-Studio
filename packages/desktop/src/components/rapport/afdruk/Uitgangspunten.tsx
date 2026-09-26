@@ -10,7 +10,7 @@ import {
   normVoorBouwjaar,
   ontwerpSupervisie,
 } from "../../../rapport/normwaarden";
-import { kFiVoor } from "../../../store/projectGegevens";
+import { kFiVoor, projectWaarde } from "../../../store/projectGegevens";
 import type { RapportWeergave } from "./useRapportWeergave";
 import { Cel, Eenheid, Index, Leeg, Rij, Tekst } from "./raster";
 
@@ -43,7 +43,7 @@ function Veld({ label, waarde, norm, invoer }: {
 export function Bouwwerk({ w }: { w: RapportWeergave }) {
   const cc = klasse(w.gegevens.CC, 2);
   const rc = klasse(w.gegevens.RC, 2);
-  const jaren = getal(w.gegevens.DesignLife);
+  const jaren = getal(projectWaarde(w.gegevens, "DesignLife"));
   const levensduur = Number.isFinite(jaren) ? jaren : 50;
   return (
     <>

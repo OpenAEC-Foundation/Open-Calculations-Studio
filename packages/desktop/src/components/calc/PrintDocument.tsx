@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useProjectStore, type Exemplaar } from "../../store/projectStore";
-import { projectScope } from "../../store/projectGegevens";
+import { projectScope, projectWaarde } from "../../store/projectGegevens";
 import { usePrintStore } from "../../store/printStore";
 import { ucTekst, type Resultaat } from "./bladResultaat";
 import { rekenBladDoor, zorgVoorKernstijlen } from "./bladDoorrekenen";
@@ -60,7 +60,7 @@ export function useUitdraai(): Uitdraai {
     ["Locatie", gegevens.locatie],
     ["Gevolgklasse", gegevens.CC ? `CC${gegevens.CC}` : undefined],
     ["Betrouwbaarheidsklasse", gegevens.RC ? `RC${gegevens.RC}` : undefined],
-    ["Ontwerplevensduur", gegevens.DesignLife ? `${gegevens.DesignLife} jaar` : undefined],
+    ["Ontwerplevensduur", gegevens.DesignLife ? `${projectWaarde(gegevens, "DesignLife")} jaar` : undefined],
     // Op de splitspunten tussen de referentie-uitwerking en de norm rekent elk blad allebei en
     // kiest er één. Welke, moet op de afdruk staan: zonder die regel zijn twee
     // rapporten uit hetzelfde project niet met elkaar te vergelijken, en weet

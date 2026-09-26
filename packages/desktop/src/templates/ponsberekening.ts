@@ -19,12 +19,17 @@
  *     figuur 6.20 (c_1 loodrecht op de rand) of van tabel 6.1 (c_1 evenwijdig
  *     aan e_par, dan c_2/(2c_1) in de maten van figuur 6.20). k volgt uit de
  *     grootste van beide: de veilige kant;
- *   - v_Ed (6.38) tegen v_Rd,c (6.47) met k ≤ 2 en v_min (6.3N);
- *   - v_Ed,0 langs de kolom (6.53) tegen v_Rd,max = 0,4·ν·f_cd (6.4.5(3),
- *     aanbevolen waarde: de veilige kant);
- *   - ponswapening (6.52) met f_ywd,ef = 250 + 0,25d ≤ f_ywd, de omtrek
- *     u_out,ef (6.54) met de buitenste omtrek ten hoogste 1,5d daarbinnen
- *     (6.4.5(4)), en de detaillering van §9.4.3: ten minste twee omtrekken,
+ *   - v_Ed (6.38) tegen v_Rd,c (6.47) met k ≤ 2, C_Rd,c = 0,18/γ_C en v_min
+ *     (6.3N), alle drie volgens de NB bij 6.4.4(1);
+ *   - v_Ed,0 langs de kolom (6.53) tegen v_Rd,max = 0,4·ν·f_cd (NB bij
+ *     6.4.5(3)), met ν volgens (6.6N);
+ *   - ponswapening (6.52) met f_ywd,ef = 250 + 0,25d ≤ f_ywd en v_Rd,cs ten
+ *     hoogste k_max·v_Rd,c met k_max = 1,6 (NB bij 6.4.5(1)). Is v_Ed groter
+ *     dan k_max·v_Rd,c, dan helpt ponswapening niet en zegt de slotzin dat.
+ *     Verder de omtrek u_out,ef (6.54) met de buitenste omtrek ten hoogste kd
+ *     daarbinnen, k = 1,5 (NB bij 6.4.5(4)), en de detaillering van §9.4.3.
+ *     Staven per omtrek en omtrekken tellen als hele getallen, naar beneden
+ *     afgerond. Detaillering: ten minste twee omtrekken,
  *     s_r ≤ 0,75d, eerste omtrek ≤ 0,5d van de kolom, s_t ≤ 1,5d binnen u_1
  *     en ≤ 2d daarbuiten, en A_sw,min (9.11) met de grootste tangentiële
  *     afstand: op u_1, of op de buitenste omtrek als die buiten 2d ligt. Een
@@ -41,8 +46,10 @@
  * het blad niet getoetst is.
  *
  * Niet in dit blad: kolomkoppen (§6.4.2(8)–(11)), sparingen bij de kolom
- * (6.4.2(3)), voorspanning (σ_cp) en funderingsplaten of poeren (6.4.4(2),
- * V_Ed,red met de gronddruk binnen de omtrek).
+ * (6.4.2(3)), voorspanning (σ_cp), funderingsplaten of poeren (6.4.4(2),
+ * V_Ed,red met de gronddruk binnen de omtrek) en bij een rand- of hoekkolom
+ * de wapening loodrecht op de vrije rand binnen b_e (9.4.2, figuur 9.9) en
+ * de randwapening (9.3.1.4); dat laatste noemt het blad op het scherm.
  *
  * De keuzewaarden van beta_keuze blijven 0 (uit de excentriciteit) en 1
  * (handmatig); figuur 6.21N is 2. Met figuur 6.21N geeft het blad dezelfde
@@ -174,6 +181,9 @@ d_eff = (d_y + d_z)/2', (6.32)'
     u_0 = min(3*d_eff; c_1 + c_2)', 6.4.5(3)'
     u_1 = c_1 + c_2 + pi*d_eff', figuur 6.15'
 #end if
+#if plaats > 1
+'<i>Niet in dit blad: de wapening loodrecht op de vrije rand binnen b<sub>e</sub> (9.4.2, figuur 9.9) en de randwapening (9.3.1.4).</i><span class="alleen-scherm"></span>
+#end if
 
 # 5. Factor β (§6.4.3)
 
@@ -250,15 +260,15 @@ f_ck = betonklasse
 #end if
 v_Ed = β*V_Ed/(u_1*d_eff) to N/mm^2', (6.38)'
 k = min(1 + sqrt(200 mm/d_eff); 2)', 6.4.4(1)'
-v_min = 0.035*k^(3/2)*sqrt(f_ck)*1 N/mm^2', (6.3N)'
-v_Rd,c = 0.12*k*(100*ρ_l*f_ck)^(1/3)*1 N/mm^2', (6.47), C<sub>Rd,c</sub> = 0,18/γ<sub>C</sub>'
+v_min = 0.035*k^(3/2)*sqrt(f_ck)*1 N/mm^2', (6.3N), NB'
+v_Rd,c = 0.12*k*(100*ρ_l*f_ck)^(1/3)*1 N/mm^2', (6.47), C<sub>Rd,c</sub> = 0,18/γ<sub>C</sub> (NB)'
 #if v_Rd,c < v_min
     v_Rd,c = v_min', ten minste v<sub>min</sub> (6.47)'
 #end if
 UC_pons = v_Ed/v_Rd,c
 v_Ed,0 = β*V_Ed/(u_0*d_eff) to N/mm^2', (6.53)'
 ν = 0.6*(1 - f_ck/250)', (6.6N)'
-v_Rd,max = 0.4*ν*f_ck/1.5*1 N/mm^2', 0,4·ν·f<sub>cd</sub> (6.4.5(3)), aanbevolen waarde: de veilige kant'
+v_Rd,max = 0.4*ν*f_ck/1.5*1 N/mm^2', 0,4·ν·f<sub>cd</sub> (6.4.5(3), NB)'
 UC_vRd,max = v_Ed,0/v_Rd,max
 
 # 7. Ponswapening (§6.4.5 en §9.4.3)
@@ -275,8 +285,14 @@ UC_w = UC_pons
     #end if
 #else
     f_ywd,ef = min(250 + 0.25*d_eff/(1 mm); 500/1.15)*1 N/mm^2', (6.52), ≤ f<sub>ywd</sub> van B500'
+    v_Rd,cs,max = 1.6*v_Rd,c', k<sub>max</sub>·v<sub>Rd,c</sub> (6.52), k<sub>max</sub> = 1,6 (NB)'
+    #if UC_pons > 1.6
+        '<b style="color:#b91c1c">v<sub>Ed</sub> > k<sub>max</sub>·v<sub>Rd,c</sub>: ook met ponswapening voldoet de plaat niet. Maak de plaat dikker of de kolom groter, of kies meer langswapening of een hogere betonklasse.</b>
+    #end if
     #if ponswap ≡ 0
-        A_sw,nodig = (v_Ed - 0.75*v_Rd,c)*u_1*0.75*d_eff/(1.5*f_ywd,ef) to mm^2', per omtrek, loodrechte staven op s<sub>r</sub> = 0,75d (6.52)'
+        #if UC_pons ≤ 1.6
+            A_sw,nodig = (v_Ed - 0.75*v_Rd,c)*u_1*0.75*d_eff/(1.5*f_ywd,ef) to mm^2', per omtrek, loodrechte staven op s<sub>r</sub> = 0,75d (6.52)'
+        #end if
     #else if n_sw < 1 or n_om < 1 or s_r ≤ 0 mm or d_sw ≤ 0 mm or a_sw ≤ 0 mm or hoek_pons < 45 or hoek_pons > 90
         #hide
         ok_sw = 0
@@ -285,10 +301,22 @@ UC_w = UC_pons
     #else
         #hide
         α = hoek_pons*1 deg
+        n_sw,h = floor(n_sw)
+        n_om,h = floor(n_om)
         #show
+        #if n_sw,h ≠ n_sw or n_om,h ≠ n_om
+            '<b style="color:#b45309">Het blad rekent met hele staven en omtrekken, naar beneden afgerond: 'n_sw,h' staven per omtrek, 'n_om,h' omtrekken.</b>
+            #hide
+            n_sw = n_sw,h
+            n_om = n_om,h
+            #show
+        #end if
         A_sw = n_sw*pi*d_sw^2/4', per omtrek'
         v_Rd,s = 1.5*A_sw*f_ywd,ef*sin(α)/(s_r*u_1) to N/mm^2', (6.52)<span class="alleen-scherm">: het deel van de ponswapening, met d/(u<sub>1</sub>·d) = 1/u<sub>1</sub></span>'
         v_Rd,cs = 0.75*v_Rd,c + v_Rd,s', (6.52)'
+        #if v_Rd,cs > v_Rd,cs,max
+            v_Rd,cs = v_Rd,cs,max', ten hoogste k<sub>max</sub>·v<sub>Rd,c</sub> (6.52)'
+        #end if
         UC_cs = v_Ed/v_Rd,cs
         u_out,ef = β*V_Ed/(v_Rd,c*d_eff) to mm', (6.54)'
         #if vorm ≡ 2 and plaats ≡ 1
@@ -317,7 +345,7 @@ UC_w = UC_pons
             #show
         #end if
         a_n = a_sw + (n_om - 1)*s_r', buitenste omtrek'
-        UC_uit = (a_out - 1.5*d_eff)/a_n', 6.4.5(4)<span class="alleen-scherm">: buitenste omtrek ten hoogste 1,5d binnen u<sub>out,ef</sub></span>'
+        UC_uit = (a_out - 1.5*d_eff)/a_n', 6.4.5(4)<span class="alleen-scherm">: buitenste omtrek ten hoogste kd binnen u<sub>out,ef</sub>, k = 1,5 (NB)</span>'
         UC_n = 2/n_om', 9.4.3(1): ten minste twee omtrekken'
         UC_sr = s_r/(0.75*d_eff)', 9.4.3(1)'
         UC_a = a_sw/(0.5*d_eff)', 9.4.3(4)'
@@ -355,6 +383,8 @@ UC_max = max(UC_w; UC_vRd,max)
 UC_max', grootste UC'
 #if UC_max ≤ 1.0
 '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de plaat voldoet</b></span>
+#else if UC_pons > 1.6
+'<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de plaat voldoet niet</b>: ook met ponswapening niet, v<sub>Ed</sub> > k<sub>max</sub>·v<sub>Rd,c</sub>.</span>
 #else if UC_pons > 1 and ponswap ≡ 0 and UC_vRd,max ≤ 1
 '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de plaat voldoet niet</b>: ponswapening nodig.</span>
 #else

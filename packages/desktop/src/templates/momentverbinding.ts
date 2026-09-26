@@ -5,7 +5,7 @@
  * Geboute kopplaat: de componentenmethode van §6.2.7.2. Per boutrij (6) de
  * kleinste van kolomflens op buiging (tabel 6.4), kolomlijf op trek (6.15),
  * kopplaat op buiging (tabel 6.6, α uit figuur 6.11) en liggerlijf op trek
- * met de lijflas (6.22); daarna de grens uit kolomlijf op afschuiving,
+ * (6.22); daarna de grens uit kolomlijf op afschuiving,
  * kolomlijf op druk en liggerflens op druk (7), de rijgroepen (8) en de
  * driehoeksverdeling (9), volgens de NB vanaf 1,8·F_t,Rd in plaats van
  * 1,9·F_t,Rd. Draagt een rij meer dan 1,8·F_t,Rd terwijl de verbinding niet
@@ -16,6 +16,14 @@
  * flenslassen op de volle flens (§4.10(5)). Verder de dwarskracht via de
  * bouten met de interactie van tabel 3.4, de lassen van de ligger (§4.5.3),
  * S_j,ini (§6.3, tabel 6.11) en de classificatie (§5.2.2.5).
+ *
+ * Lassen volgens §6.2.3(4): ze mogen M_j,Rd niet begrenzen. De flenslas
+ * draagt daarom de flenskracht bij M_j,Rd, M_j,Rd/z_f (niet M_Ed/z_f). De
+ * lijflas zit niet in de component liggerlijf op trek; in de trekzone moet hij
+ * per mm minstens zo sterk zijn als het lijf zelf (√2·a·f_u/(β_w·γ_M2) ≥
+ * t_w·f_y/γ_M0), dan kan hij bij geen enkele rij of rijgroep maatgevend zijn.
+ * Een zwakkere lijflas keurt af, ook als de rijen het lijf niet volbelasten
+ * (veilige kant).
  *
  * Geometrie. De diepte y loopt vanaf de bovenkant van de ligger naar beneden.
  * Korte kopplaat: plaat gelijk met de ligger, rij 1 op e_kp. Overstekende en
@@ -365,6 +373,7 @@ n_t = 1
 #hide
 ok_all = if(ok_last ≡ 1 and ok_a ≡ 1 and ok_cs ≡ 1 and ok_dc ≡ 1 and ok_geo ≡ 1 and ok_bfc ≡ 1; 1; 0)
 M_j,Rd = 0 kN*m
+UC_lt = 0
 #show
 
 #if ok_all ≡ 1
@@ -485,11 +494,11 @@ M_j,Rd = 0 kN*m
         om(b) = 1/sqrt(1 + 1.3*(b*t_wc/A_vc)^2)
         Fwcb(b) = om(b)*b*t_wc*f_y/γ_M0
         Fwc(j; r) = Fwcb(min(lcc(sp(j; r)); lnc(sp(j; r))))
-        'Kopplaat (tabel 6.6) en liggerlijf op trek met de lijflas (6.22), rijen onder de trekflens.
+        'Kopplaat (tabel 6.6) en liggerlijf op trek (6.22), rijen onder de trekflens. De lijflas staat in hoofdstuk 8 (§6.2.3(4)).
         lcp(s) = 2*pi*m_p + 2*s
         lnp(j; s) = if(j ≡ r_f; α*m_p; 4*m_p + 1.25*e_p) + s
         Fep(j; r) = Tst(min(lcp(sp(j; r)); lnp(j; sp(j; r))); lnp(j; sp(j; r)); t_kp; m_p; n_p; r - j + 1)
-        Fwbb(b) = b*min(t_wb*f_y/γ_M0; sqrt(2)*a_lijf*f_u/(β_w*γ_M2))
+        Fwbb(b) = b*t_wb*f_y/γ_M0
         Fwb(j; r) = Fwbb(min(lcp(sp(j; r)); lnp(j; sp(j; r))))
         F_px = Tst(min(l_x,cp; l_x,nc); l_x,nc; t_kp; m_x; n_x; 1)
         'Groep j..r: kleinste groepsweerstand min de rijen erboven in de groep.
@@ -507,7 +516,7 @@ M_j,Rd = 0 kN*m
         x_F = 0 kN
         x_h = 1 mm
         #show
-        '<i>Per rij de kleinste van: kolomflens op buiging, kolomlijf op trek, kopplaat op buiging en liggerlijf op trek met de lijflas, als losse rij (§6.2.7.2(6)); de rest van de grens F<sub>lim</sub> (7); de groepen met de rijen erboven, al verminderd met die rijen (8); en onder een rij met meer dan 1,8·F<sub>t,Rd</sub> de driehoeksverdeling (9, NB: 1,8 in plaats van 1,9). Krachten in kN.</i><span class="alleen-scherm"></span>
+        '<i>Per rij de kleinste van: kolomflens op buiging, kolomlijf op trek, kopplaat op buiging en liggerlijf op trek, als losse rij (§6.2.7.2(6)); de rest van de grens F<sub>lim</sub> (7); de groepen met de rijen erboven, al verminderd met die rijen (8); en onder een rij met meer dan 1,8·F<sub>t,Rd</sub> de driehoeksverdeling (9, NB: 1,8 in plaats van 1,9). Krachten in kN.</i><span class="alleen-scherm"></span>
         '<table style="border-collapse:collapse; font-size:0.9em; margin:2px 0 6px 0;">
         '<tr style="border-bottom:1px solid #9ca3af;"><th style="padding:1px 5px; text-align:left; font-weight:600;">Rij</th><th style="padding:1px 5px; text-align:left; font-weight:600;">t.o.v. flens</th><th style="padding:1px 5px; text-align:right; font-weight:600;">h<sub>r</sub> [mm]</th><th style="padding:1px 5px; text-align:right; font-weight:600;">kolomflens</th><th style="padding:1px 5px; text-align:right; font-weight:600;">kolomlijf</th><th style="padding:1px 5px; text-align:right; font-weight:600;">kopplaat</th><th style="padding:1px 5px; text-align:right; font-weight:600;">liggerlijf</th><th style="padding:1px 5px; text-align:right; font-weight:600;">groep</th><th style="padding:1px 5px; text-align:right; font-weight:600;">rest F<sub>lim</sub></th><th style="padding:1px 5px; text-align:right; font-weight:600;">driehoek</th><th style="padding:1px 5px; text-align:right; font-weight:600;">F<sub>tr,Rd</sub></th></tr>
         #if n_r ≥ 1
@@ -750,11 +759,12 @@ M_j,Rd = 0 kN*m
 
     # 8. Lassen van de ligger (§4.5.3)
 
+    '<i>De lassen mogen M<sub>j,Rd</sub> niet begrenzen (§6.2.3(4)): de flenslas draagt de flenskracht bij M<sub>j,Rd</sub>, niet bij M<sub>Ed</sub>.</i><span class="alleen-scherm"></span>
     #if verbindingstype ≡ 1
-        F_f,Ed = M_Ed/z_f to kN', flenskracht, z_f = y_c − t_fb/2<span class="alleen-scherm"></span>'
-        F_f,Ed', flenskracht, z_f = y_c − t_fb/2<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+        F_f,Ed = M_j,Rd/z_f to kN', flenskracht bij M<sub>j,Rd</sub>, z<sub>f</sub> = y<sub>c</sub> − t<sub>fb</sub>/2 (§6.2.3(4))<span class="alleen-scherm"></span>'
+        F_f,Ed', M<sub>j,Rd</sub>/z<sub>f</sub> (§6.2.3(4))<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     #else
-        F_f,Ed = max(M_Ed/z_f; b_b*t_fb*f_y/γ_M0) to kN', flenskracht, ten minste de volle liggerflens (§4.10(5))<span class="alleen-scherm"></span>'
+        F_f,Ed = max(M_j,Rd/z_f; b_b*t_fb*f_y/γ_M0) to kN', flenskracht, ten minste de volle liggerflens (§4.10(5))<span class="alleen-scherm"></span>'
         F_f,Ed', ten minste de volle liggerflens (§4.10(5))<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     #end if
     L_w,f = 2*b_b - t_wb - 2*r_b', flenslassen, boven- en onderzijde<span class="alleen-scherm"></span>'
@@ -766,7 +776,11 @@ M_j,Rd = 0 kN*m
     F_w,w,Rd = a_lijf*L_w,w*f_u/(sqrt(3)*β_w*γ_M2) to kN', langs belast (4.3)'
     UC_lw = V_Ed/F_w,w,Rd', lijflassen'
     #if verbindingstype ≡ 1
-        '<i>De lijflas in de trekzone zit in de component liggerlijf op trek (§6).</i><span class="alleen-scherm"></span>
+        f_w,t = sqrt(2)*a_lijf*f_u/(β_w*γ_M2) to N/mm', lijflassen in de trekzone, beide zijden, dwars belast (4.1)<span class="alleen-scherm"></span>'
+        f_w,t', lijflassen dwars belast (4.1)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+        f_wb,t = t_wb*f_y/γ_M0 to N/mm', liggerlijf op trek per mm (6.22)<span class="alleen-scherm"></span>'
+        f_wb,t', liggerlijf per mm (6.22)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+        UC_lt = f_wb,t/f_w,t', lijflassen in de trekzone, sterker dan het lijf (§6.2.3(4))'
     #end if
 
     # 9. Rotatiestijfheid en classificatie (§6.3 en §5.2.2)
@@ -905,7 +919,7 @@ M_j,Rd = 0 kN*m
     '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>de verbinding voldoet niet</b>: er is geen momentweerstand.</span>
 #else
     #hide
-    UC_max = max(UC_M; UC_V; UC_Vb; UC_lf; UC_lw)
+    UC_max = max(UC_M; UC_V; UC_Vb; UC_lf; UC_lw; UC_lt)
     #show
     #if ok_volsterk ≡ 0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar <b>de verbinding voldoet niet</b>: een boutrij draagt meer dan 1,8·F<sub>t,Rd</sub> in een verbinding die niet volledig sterk is (NB bij §6.2.7.2(9)).</span>
@@ -915,5 +929,5 @@ M_j,Rd = 0 kN*m
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de verbinding voldoet niet</b></span>
     #end if
 #end if
-'<i>Nog niet getoetst: moment met trek onderin, normaalkracht in de ligger, verstijvingen of een kolomeinde bij de verbinding, trek en afschuiving samen in de lijflas, lassen die sterker zijn dan de verbinding (§6.2.3(4): de flenslas is op M<sub>Ed</sub> getoetst en de lijflas kan F<sub>tr,Rd</sub> bepalen), het liggerlijf op druk aan het eind van de console (§6.2.6.7(3)) en de rotatiecapaciteit (§6.4).</i>
+'<i>Nog niet getoetst: moment met trek onderin, normaalkracht in de ligger, verstijvingen of een kolomeinde bij de verbinding, trek en afschuiving samen in de lijflas, de lassen bij een plastisch scharnier in de verbinding (§6.2.3(5)), het liggerlijf op druk aan het eind van de console (§6.2.6.7(3)) en de rotatiecapaciteit (§6.4).</i>
 `;
