@@ -13,7 +13,7 @@ import {
   pdfIcon,
   moduleIcon,
 } from "./calcIcons";
-import { useProjectStore } from "../../store/projectStore";
+import { useProjectStore, RAPPORT_ID } from "../../store/projectStore";
 import { usePrintStore } from "../../store/printStore";
 import { useBestandActies } from "../../hooks/useBestandActies";
 import { useModuleKiezer } from "../../store/moduleKiezer";
@@ -50,7 +50,8 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
       alert("Dit project bevat nog geen rekenbladen.");
       return;
     }
-    afdrukken(null);
+    // Het hele project is het rapport: voorblad, hoofdstukken en bijlage A.
+    afdrukken(null, "rapport");
   }, [afdrukken]);
 
   /** Alleen de berekening die openstaat, als losse uitdraai met een titelblok. */
@@ -60,7 +61,7 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
       alert("Open eerst het rekenblad dat je als PDF wilt opslaan.");
       return;
     }
-    afdrukken([activeId]);
+    afdrukken([activeId], "bladen");
   }, [afdrukken, activeId]);
 
   const handleVoorbeeld = useCallback(() => {
@@ -68,7 +69,9 @@ export default function CalcTab({ onSettingsClick: _onSettingsClick }: CalcTabPr
       alert("Dit project bevat nog geen rekenbladen.");
       return;
     }
-    toonVoorbeeld(null);
+    // Het voorbeeld van het project is het rapportvoorbeeld, bij de knoop Rapport.
+    useProjectStore.getState().selecteer(RAPPORT_ID);
+    toonVoorbeeld(null, "rapport");
   }, [toonVoorbeeld]);
 
   return (
