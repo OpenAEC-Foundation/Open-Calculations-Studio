@@ -16,6 +16,9 @@
  *      dus alle uitkomsten moeten gelijk blijven aan document1
  *   6  klimaatklasse 3 — de lagere k_mod-tak
  *
+ * Daarnaast twee sets met een negatieve dwarslast (geen referentieblad, met de
+ * hand nagerekend): het extreem ligt dan in het veld en is negatief.
+ *
  * Draaien:  node scripts/check-kolom.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
@@ -38,24 +41,24 @@ const REFERENTIES = [
     invoer: {},
     verwacht: {
       f_myd: "11.08", f_mzd: "12.7", f_c0d: "9.7", k_hz: "1.149",
-      sig_c0d: "0.8", lam_y: "63.34", lam_z: "147.80",
-      lam_rel_y: "1.074", lam_rel_z: "2.506",
+      "σ_c0d": "0.8", "λ_y": "63.34", "λ_z": "147.80",
+      "λ_rel_y": "1.074", "λ_rel_z": "2.506",
       k_y: "1.15", k_z: "3.86", k_cy: "0.63", k_cz: "0.15",
-      l_ef: "3200", sig_mcrit: "58", lam_rel_m: "0.643", k_crit: "1.00",
+      l_ef: "3200", "σ_mcrit": "58", "λ_rel_m": "0.643", k_crit: "1.00",
       UC_623: "0.12", UC_624: "0.53",
     } },
 
   { blad: "document2 — eindmoment M_yA = 3 kNm",
     invoer: { M_yA_Ed: "3" },
     verwacht: {
-      M_yEd: "3.000", V_Ed: "0.9375", sig_myd: "7.8", tau_d: "0.11", f_vd: "1.8",
+      M_yEd: "3.000", V_Ed: "0.9375", "σ_myd": "7.8", "τ_d": "0.11", f_vd: "1.8",
       UC_619: "0.71", UC_623: "0.83", UC_624: "1.03", UC_635: "1.03",
     } },
 
   { blad: "document3 — dwarslast q_z = 1,5 kN/m",
     invoer: { q_z_Ed: "1.5" },
     verwacht: {
-      M_yEd: "1.920", V_Ed: "2.400", sig_myd: "5.0", tau_d: "0.27",
+      M_yEd: "1.920", V_Ed: "2.400", "σ_myd": "5.0", "τ_d": "0.27",
       UC_619: "0.46", UC_623: "0.58", UC_624: "0.85", UC_635: "0.74",
     } },
 
@@ -65,13 +68,13 @@ const REFERENTIES = [
     verwacht: {
       k_hy: "1.008", k_hz: "1.278", f_myd: "11.2", f_mzd: "14.2",
       // Het werkelijke veldmaximum, niet max|M_A;M_B| + q·L²/8 (= 7,56).
-      M_yEd: "6.658", V_Ed: "3.825", sig_c0d: "2.4", sig_myd: "43.8", tau_d: "0.91",
-      lam_y: "36.08", lam_rel_y: "0.612", k_y: "0.72", k_cy: "0.91",
-      lam_z: { waarde: "157.46", tol: 0.05,
+      M_yEd: "6.658", V_Ed: "3.825", "σ_c0d": "2.4", "σ_myd": "43.8", "τ_d": "0.91",
+      "λ_y": "36.08", "λ_rel_y": "0.612", k_y: "0.72", k_cy: "0.91",
+      "λ_z": { waarde: "157.46", tol: 0.05,
                waarom: "ons blad drukt boven 100 nog maar één decimaal af" },
-      lam_rel_z: "2.670", k_z: "4.30", k_cz: "0.13",
+      "λ_rel_z": "2.670", k_z: "4.30", k_cz: "0.13",
       // l_ef rekent met de kolomlengte 3200, niet met L_cr = 1600.
-      l_ef: "3168", sig_mcrit: "24.5", lam_rel_m: "0.99", k_crit: "0.818",
+      l_ef: "3168", "σ_mcrit": "24.5", "λ_rel_m": "0.99", k_crit: "0.818",
       UC_619: "3.98", UC_623: "4.19", UC_624: "4.62", UC_635: "24.87",
     } },
 
@@ -97,23 +100,56 @@ function ucsUitTekst(text) {
   return uit;
 }
 
+/**
+ * Negatieve dwarslast. Het momentenverloop is dan convex en het negatieve
+ * extreem ligt in het veld; |M| en V horen gelijk te zijn aan de gespiegelde
+ * belasting.
+ */
+const NEGATIEF = [
+  { blad: "document4 gespiegeld — M_A = −5, M_B = −3, q_z = −2",
+    invoer: { profiel: "11", Lcr_y: "1500", Lcr_z: "2000", Lcr: "1600",
+              N_Ed: "15", M_yA_Ed: "-5", M_yB_Ed: "-3", q_z_Ed: "-2" },
+    // Alle lasten van teken omgekeerd: M(x) keert om, |M| en V blijven die van document4.
+    verwacht: { M_yEd: "6.658", V_Ed: "3.825", "σ_myd": "43.8", "τ_d": "0.91",
+                UC_619: "3.98", UC_623: "4.19", UC_624: "4.62", UC_635: "24.87", UC_max: "24.87" } },
+
+  { blad: "75×175, alleen q_z = −2 kN/m",
+    invoer: { q_z_Ed: "-2" },
+    // |M| = 2·3,2²/8 = 2,56 kNm · V = 2·3,2/2 = 3,2 kN
+    // τ_d = 1,5·3200/(75·175) = 0,366 · f_v,d = 0,6·4,0/1,3 = 1,846 → UC 0,198
+    verwacht: { M_yEd: "2.560", V_Ed: "3.200", "τ_d": "0.366", UC_613: "0.198" } },
+];
+
 let fouten = 0;
-for (const ref of REFERENTIES) {
+for (const ref of [...REFERENTIES, ...NEGATIEF]) {
   const got = reken(tpl, { ...BASIS, ...ref.invoer }, PROJECT);
   fouten += toets(ref.blad, got, ref.verwacht, ref.afwijkend ?? {}, ucsUitTekst(got.text));
 }
 
 // ── Norm-stand ────────────────────────────────────────────────────────────
-// Eén splitspunt: de kiplengte rekent bij de referentie-uitwerking met de kolomlengte L, bij
-// de norm met max(L; L_cr). Op alle zes bladen is L_cr ≤ L, dus l_ef hoort in
-// beide standen gelijk te zijn — dat is precies wat hier wordt vastgelegd.
-for (const ref of REFERENTIES) {
+// Twee splitspunten. De kiplengte rekent bij de referentie-uitwerking met de
+// kolomlengte L, bij de norm met max(L; L_cr); op alle bladen is L_cr ≤ L, dus
+// l_ef hoort in beide standen gelijk te zijn. De afschuiving rekent bij de norm
+// met b_ef = k_cr·b (k_cr = 0,67): τ_d en UC_6.13 liggen dan hoger zodra er
+// dwarskracht is.
+for (const ref of [...REFERENTIES, ...NEGATIEF]) {
   const invoer = { ...BASIS, ...ref.invoer };
   const xc = reken(tpl, invoer, PROJECT);
   const nb = reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 });
+  const afschuiving = xc.values.V_Ed > 0 ? { "τ_d": "hoger", UC_613: "hoger" } : { "τ_d": "gelijk" };
   fouten += toetsNormStand(ref.blad, xc, nb, {
-    l_ef: "gelijk", sig_mcrit: "gelijk", k_crit: "gelijk", k_cy: "gelijk", k_cz: "gelijk",
+    l_ef: "gelijk", "σ_mcrit": "gelijk", k_crit: "gelijk", k_cy: "gelijk", k_cz: "gelijk",
+    ...afschuiving,
   });
+}
+
+// De norm-tak van de afschuiving op document4, met de hand:
+// τ_d = 1,5·3825/(0,67·44·144) = 1,352 N/mm² · UC = 1,352/1,846 = 0,732
+{
+  const doc4 = REFERENTIES.find((r) => r.blad.startsWith("document4"));
+  const nb = reken(tpl, { ...BASIS, ...doc4.invoer }, { ...PROJECT, rekenwijze: 0 });
+  fouten += toets("document4 — norm-stand, afschuiving met k_cr = 0,67", nb,
+    { "τ_d": "1.352", UC_613: "0.732" }, {}, ucsUitTekst(nb.text));
 }
 
 console.log(`

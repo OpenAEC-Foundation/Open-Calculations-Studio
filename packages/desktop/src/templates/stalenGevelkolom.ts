@@ -10,6 +10,10 @@
  * χ_LT volgens §6.3.2.3, druk met buiging volgens bijlage B (§6.3.3) en de
  * doorbuiging. Winddruk en windzuiging apart: bij druk is de buitenflens
  * gedrukt en steunen de regels die, bij zuiging is de binnenflens gedrukt.
+ * Twee combinaties: N_Ed hoort bij wind als hoofdbelasting (§6.2.9 en
+ * bijlage B), N_Ed,max bij de combinatie zonder wind (knik zonder buiging).
+ * Valt het lijf bij zuivere druk in klasse 4, dan telt voor die knik A_eff
+ * volgens NEN-EN 1993-1-5 §4.4, met χ op het bruto oppervlak.
  *
  * Profielen IPE 80–600, HEA 100–1000 en HEB 100–400 (id's 1–18, 19–42 en
  * 43–57). I_w volgt uit de benadering I_z·(h − t_f)²/4 van bijlage NB.NB.
@@ -19,7 +23,7 @@
 
 export const stalenGevelkolom = `"Stalen gevelkolom — EN 1993-1-1 §6.2 en §6.3
 
-'<i>Een stalen kolom in de gevel, scharnierend aan beide einden, belast door wind loodrecht op de gevel en een drukkracht. Getoetst worden de doorsnede (§6.2), knik en torsieknik (§6.3.1), kip met M<sub>cr</sub> volgens bijlage NB.NB (§6.3.2.3), druk met buiging volgens bijlage B (§6.3.3) en de doorbuiging. Winddruk en windzuiging worden apart getoetst: bij winddruk is de buitenflens gedrukt en steunen de gevelregels die flens; bij windzuiging is de binnenflens gedrukt, en die is tussen de einden vrij.</i>
+'<i>Gevelkolom, scharnierend met gaffels aan beide einden, belast door wind en een drukkracht. Winddruk en windzuiging apart: bij winddruk is de buitenflens gedrukt en steunen de regels die flens, bij windzuiging is de binnenflens gedrukt en tussen de einden vrij.</i>
 
 # 1. Profiel en materiaal
 
@@ -135,16 +139,17 @@ n_r = ?', aantal gevelregels tussen de einden, op gelijke afstand'
 @end
 
 L_st = L/(n_r + 1)', afstand tussen de regels'
-k_st = if(regelsteun ≡ 1 and n_r ≥ 1; 1; 0)', 1 als de regels kniksteunen en kipsteunen zijn'
+#hide
+k_st = if(regelsteun ≡ 1 and n_r ≥ 1; 1; 0)
+L_cr,z = if(k_st ≡ 1; L_st; L)
+#show
 L_cr,y = L', kniklengte om de y-as'
-L_cr,z = if(k_st ≡ 1; L_st; L)', kniklengte om de z-as'
+L_cr,z', kniklengte om de z-as: L_st als de regels de flens steunen, anders L'
 #if L < 5*h
     '<b style="color:#b45309">L/h < 5: de rekenregels van bijlage NB.NB gelden hier niet (NB.NB.1(2)); toets de gedrukte rand volgens NB.NB.4.2(3).</b>
 #end if
 
 # 3. Wind (NEN-EN 1991-1-4 met NB)
-
-'<i>Windgebied en terreincategorie staan in de projectgegevens; de referentiehoogte hoort bij deze gevel. Voor een gevel is z<sub>e</sub> de hoogte van het gebouw (figuur 7.4; aan de veilige kant ook als het gebouw hoger is dan breed). De uitwendige drukcoëfficiënten komen uit tabel NB.6 – 7.1, de inwendige is +0,2 of −0,3, de ongunstigste van de twee (7.2.9(6)).</i>
 
 @select windbron "Wind op de gevel"
   Uit de projectgegevens = 1
@@ -158,7 +163,7 @@ L_cr,z = if(k_st ≡ 1; L_st; L)', kniklengte om de z-as'
     w_d,k = w_d,hand
     w_z,k = w_z,hand
 #else
-    z_wind = ?*(m)', hoogte van het gebouw, referentiehoogte z_e'
+    z_wind = ?*(m)', hoogte van het gebouw, referentiehoogte z_e (figuur 7.4)'
     d_geb = ?*(m)', diepte van het gebouw, loodrecht op deze gevel'
     a_hoek = ?*(m)', afstand van de kolom tot de dichtstbijzijnde hoek van het gebouw'
 #end if
@@ -183,8 +188,7 @@ L_cr,z = if(k_st ≡ 1; L_st; L)', kniklengte om de z-as'
     q_p = q_wind_hand
 #end if
 #if windbron ≠ 3
-    '<i>Bij wind loodrecht op de gevel ligt de kolom in zone D (druk) of, aan de lijzijde, in zone E (zuiging). Bij wind evenwijdig aan de gevel hangt de zone af van de afstand tot de hoek: A tot e/5, B tot e, daarna C (figuur 7.5). Voor die afstand telt de rand van het belaste vlak die het dichtst bij de hoek ligt. Is de belaste oppervlakte kleiner dan 10 m², dan wordt tussen c<sub>pe,1</sub> en c<sub>pe,10</sub> geïnterpoleerd (figuur 7.2).</i>
-    A_bel = b_belast*L to m^2', belaste oppervlakte van de kolom'
+    A_bel = b_belast*L to m^2', belaste oppervlakte; onder 10 m² tussen c_pe,1 en c_pe,10 (figuur 7.2)'
     hd = z_wind/d_geb', verhouding h/d van het gebouw'
     e_w = min(d_geb; 2*z_wind)', maat e bij wind evenwijdig aan de gevel'
     x_r = max(a_hoek - b_belast/2; 0 m)', afstand van de rand van het belaste vlak tot de hoek'
@@ -192,23 +196,27 @@ L_cr,z = if(k_st ≡ 1; L_st; L)', kniklengte om de z-as'
     cpe(c1; c10) = if(A_bel ≥ 10 m^2; c10; if(A_bel ≤ 1 m^2; c1; c1 - (c1 - c10)*log10(A_bel/(1 m^2))))
     zone = if(x_r < e_w/5; 1; if(x_r < e_w; 2; 3))
     #show
-    c_pe,D = cpe(1.0; 0.8)', zone D, loefzijde'
+    c_pe,D = cpe(1.0; 0.8)', zone D, loefzijde (tabel NB.6 – 7.1)'
     c_pe,E = -0.5 - 0.2*min(max(hd - 1; 0); 4)/4', zone E, lijzijde; lineair tussen h/d = 1 en 5'
     #hide
     c_pe,zij = if(zone ≡ 1; cpe(-1.4; -1.2); if(zone ≡ 2; cpe(-1.1; -0.8); -0.5))
     #show
-    'Bij wind evenwijdig aan de gevel ligt de kolom in zone <b>'if(zone ≡ 1; "A"; if(zone ≡ 2; "B"; "C"))'</b>; c<sub>pe,10</sub> is daar −1,2 (A), −0,8 (B) of −0,5 (C), en c<sub>pe,1</sub> −1,4 (A) of −1,1 (B).
+    'Zone bij wind evenwijdig aan de gevel: <b>'if(zone ≡ 1; "A"; if(zone ≡ 2; "B"; "C"))'</b> (figuur 7.5).
     c_pe,zij', zijgevel'
     c_pe,z = min(c_pe,zij; c_pe,E)', ongunstigste zuiging'
     w_d,k = (c_pe,D + 0.3)*q_p', netto druk, met c_pi = −0,3 (onderdruk binnen)'
-    w_z,k = (0.2 - c_pe,z)*q_p', netto zuiging, met c_pi = +0,2 (overdruk binnen)'
+    w_z,k = (0.2 - c_pe,z)*q_p', netto zuiging, met c_pi = +0,2 (overdruk binnen, 7.2.9(6))'
 #end if
 
 # 4. Belasting op de kolom
 
-'<i>De rekenwaarde van de wind volgt met γ<sub>Q</sub> bij de gevolgklasse uit de projectgegevens. De drukkracht is de rekenwaarde in dezelfde combinatie, met wind als hoofdbelasting.</i>
-N_Ed = ?*(kN)', drukkracht, rekenwaarde'
-γ_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))', tabel NB.4 of NB.5 van NEN-EN 1990'
+'<i>Twee combinaties: met wind als hoofdbelasting, en zonder wind met de grootste drukkracht (ψ<sub>0</sub> = 0 voor wind).</i>
+N_Ed = ?*(kN)', drukkracht in de combinatie met wind als hoofdbelasting, rekenwaarde'
+N_Ed,max = ?*(kN)', grootste drukkracht, in de combinatie zonder wind; bij 0 of minder dan N_Ed telt N_Ed'
+#hide
+γ_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))
+#show
+γ_Q', bij de gevolgklasse uit de projectgegevens (tabel NB.4 of NB.5 van NEN-EN 1990)'
 q_d,Ed = γ_Q*w_d,k*b_belast to kN/m', winddruk op de kolom'
 q_z,Ed = γ_Q*w_z,k*b_belast to kN/m', windzuiging op de kolom'
 M_d,Ed = q_d,Ed*L^2/8 to kN*m', bij winddruk'
@@ -237,9 +245,12 @@ w_klasse = if(k_w ≤ g_1; 1; if(k_w ≤ g_2; 2; if(k_w ≤ g_3; 3; 4)))
 'Lijf onder druk en buiging (α = 'α_w', ψ = 'ψ_w'): c/t = 'c_w/t_w' = 'k_w'·ε, grenzen 'g_1'·ε, 'g_2'·ε en 'g_3'·ε → klasse 'w_klasse'.
 klasse = max(f_klasse; w_klasse)', doorsnedeklasse'
 #if klasse ≡ 4
-    '<b style="color:#b91c1c">De doorsnede valt in klasse 4. Daarvoor is een effectieve doorsnede volgens NEN-EN 1993-1-5 nodig, die deze module niet uitrekent: kies een ander profiel of een hogere staalsoort.</b>
+    '<b style="color:#b91c1c">De doorsnede valt in klasse 4. Daarvoor is een effectieve doorsnede volgens NEN-EN 1993-1-5 nodig, die deze module niet uitrekent: kies een ander profiel.</b>
 #end if
-W_y = if(klasse ≤ 2; W_pl,y; W_el,y)', plastisch in klasse 1 en 2, elastisch in klasse 3'
+#hide
+W_y = if(klasse ≤ 2; W_pl,y; W_el,y)
+#show
+W_y', W_pl,y in klasse 1 en 2, W_el,y in klasse 3'
 
 # 6. Doorsnede (§6.2)
 
@@ -275,7 +286,7 @@ UC_V = V_Ed/V_pl,Rd', dwarskracht bij de oplegging'
 
 # 7. Knik (§6.3.1)
 
-'<i>Tabel 6.2 voor een gewalst I-profiel: h/b > 1,2 geeft kromme a om de y-as en b om de z-as; h/b ≤ 1,2 geeft b om y en c om z.</i>
+'Tabel 6.2, gewalst I-profiel met h/b = 'h/b_p': kromme 'if(h/b_p > 1.2; "a"; "b")' om de y-as en 'if(h/b_p > 1.2; "b"; "c")' om de z-as.
 #hide
 α_y = if(h/b_p > 1.2; 0.21; 0.34)
 α_z = if(h/b_p > 1.2; 0.34; 0.49)
@@ -290,7 +301,7 @@ N_cr,z = pi^2*E*I_z/L_cr,z^2 to kN
 χ_z = min(1; 1/(Φ_z + sqrt(Φ_z^2 - λ_z^2)))
 #if k_st ≡ 1
     '<h6>Torsieknik om de door de regels vastgehouden as</h6>
-    '<i>De regels grijpen niet in het zwaartepunt aan maar op de buitenflens; dan is een toets op torsieknik nodig (NB bij 6.3.1.4(5)). Het profiel draait om de as van de regels, op afstand a = h/2 van het zwaartepunt; de einden zijn gaffels. Kromme als voor de z-as (6.3.1.4(3)).</i>
+    '<i>De regels grijpen op de buitenflens aan (NB bij 6.3.1.4(5)): het profiel draait om de as van de regels, op a = h/2 van het zwaartepunt, met gaffels aan de einden; kromme als om de z-as (6.3.1.4(3)).</i>
     a_r = h/2', afstand van de as van de regels tot het zwaartepunt'
     i_s = sqrt((I_y + I_z)/A + a_r^2) to mm', traagheidsstraal om de as van de regels'
     K_z = pi^2*E*I_z*a_r^2/L^2 to kN*m^2', zijdelingse buiging, meegedraaid om de as van de regels'
@@ -309,12 +320,28 @@ N_cr,z = pi^2*E*I_z/L_cr,z^2 to kN
 #end if
 χ_zT = min(χ_z; χ_TF)', zijdelings: buigknik om z of torsieknik'
 λ_zT = max(λ_z; λ_TF)
-N_b,Rd = min(χ_y; χ_zT)*A*f_y/γ_M1 to kN
-UC_N = N_Ed/N_b,Rd', knik zonder buiging'
+'<h6>Knik zonder buiging, met de grootste drukkracht</h6>
+#hide
+λ_p,w = c_w/t_w/(28.4*ε*2)
+ρ_w = if(c_w/t_w ≤ 42*ε; 1; min(1; (λ_p,w - 0.22)/λ_p,w^2))
+#show
+#if ρ_w < 1
+    '<i>Bij zuivere druk valt het lijf in klasse 4 (c/t > 42ε): effectieve breedte volgens NEN-EN 1993-1-5 §4.4 met ψ = 1 en k<sub>σ</sub> = 4. χ blijft bepaald met het bruto oppervlak; dat ligt aan de veilige kant.</i>
+    λ_p,w', plaatslankheid van het lijf'
+    ρ_w', reductiefactor van het lijf (§4.4(2))'
+    A_eff = A - (1 - ρ_w)*c_w*t_w to cm^2', effectief oppervlak bij zuivere druk'
+#else
+    #hide
+    A_eff = A
+    #show
+#end if
+N_max = max(N_Ed; N_Ed,max) to kN', grootste drukkracht van de twee combinaties'
+N_b,Rd = min(χ_y; χ_zT)*A_eff*f_y/γ_M1 to kN', (6.47), bij klasse 4 (6.48)'
+UC_N = N_max/N_b,Rd
 
 # 8. Kip (§6.3.2.3 en bijlage NB.NB)
 
-'<i>M<sub>cr</sub> = (C/L<sub>g</sub>)·√(E·I<sub>z</sub>·G·I<sub>t</sub>) met C = (π·C<sub>1</sub>·L<sub>g</sub>/L<sub>kip</sub>)·[√(1 + π²·S²·(C<sub>2</sub>² + 1)/L<sub>kip</sub>²) + π·C<sub>2</sub>·S/L<sub>kip</sub>] en S = √(E·I<sub>w</sub>/(G·I<sub>t</sub>)), met k<sub>red</sub> = 1 voor een gewalst profiel (NB.NB.4). C<sub>2</sub> is negatief als de last op de gedrukte flens aangrijpt en positief op de getrokken flens. Kipkromme volgens tabel 6.5: b bij h/b ≤ 2, c daarboven; λ̄<sub>LT,0</sub> = 0,4 en β = 0,75 (NB bij 6.3.2.3).</i>
+'<i>M<sub>cr</sub> volgens bijlage NB.NB, met k<sub>red</sub> = 1 voor een gewalst profiel (NB.NB.4); C<sub>2</sub> is negatief bij een last op de gedrukte flens. Kipkromme 'if(h/b_p ≤ 2; "b"; "c")' (tabel 6.5, h/b = 'h/b_p'), λ̄<sub>LT,0</sub> = 0,4 en β = 0,75 (NB bij 6.3.2.3).</i>
 S = sqrt(E*I_w/(G*I_t)) to m
 #hide
 α_LT = if(h/b_p ≤ 2; 0.34; 0.49)
@@ -323,7 +350,7 @@ M_cr(Lk; C1; C2) = pi*C1/Lk*(sqrt(1 + pi^2*S^2*(C2^2 + 1)/Lk^2) + pi*C2*S/Lk)*sq
 #show
 '<h6>Winddruk: de buitenflens is gedrukt</h6>
 #if k_st ≡ 1
-    '<i>De regels steunen de gedrukte flens. Per veld tussen twee steunen is L<sub>kip</sub> = (1,4 − 0,8·β)·L<sub>st</sub> met 1,0 ≤ L<sub>kip</sub>/L<sub>st</sub> ≤ 1,4, en C<sub>1</sub> = 1,75 − 1,05·β + 0,3·β² ≤ 2,3 (tabel NB.NB.1, geval 1), met β de verhouding van de momenten aan de einden van het veld. C<sub>2</sub> = 0: de last komt via de regels in de steunpunten. De kolom is symmetrisch, dus alleen de onderste helft van de velden is uitgeschreven. In de toets geldt de kleinste χ<sub>LT</sub> van de velden (NB.NB.2).</i>
+    '<i>Per veld tussen de regels: L<sub>kip</sub> = (1,4 − 0,8·β)·L<sub>st</sub>, tussen 1,0 en 1,4·L<sub>st</sub>, C<sub>1</sub> = 1,75 − 1,05·β + 0,3·β² ≤ 2,3 en C<sub>2</sub> = 0 (tabel NB.NB.1, geval 1), met β de verhouding van de eindmomenten van het veld. De kleinste χ<sub>LT</sub> geldt (NB.NB.2); de kolom is symmetrisch, dus de tabel toont de onderste helft.</i>
     N_v = n_r + 1', aantal velden'
     #hide
     χ_LT,d = 1
@@ -347,7 +374,7 @@ M_cr(Lk; C1; C2) = pi*C1/Lk*(sqrt(1 + pi^2*S^2*(C2^2 + 1)/Lk^2) + pi*C2*S/Lk)*sq
     '</table>
     χ_LT,d', kleinste waarde van de velden'
 #else
-    '<i>Zonder steun van de regels is de gedrukte flens tussen de gaffels vrij, en de last grijpt op die flens aan: C<sub>1</sub> = 1,13 en C<sub>2</sub> = −0,45 (tabel NB.NB.1, geval 2), lineair geëxtrapoleerd van het zwaartepunt van de flens naar het buitenvlak waar de gevel aangrijpt (NB.NB.4.3).</i>
+    '<i>Gedrukte flens vrij tussen de gaffels, last op die flens: C<sub>1</sub> = 1,13 en C<sub>2</sub> = −0,45 (tabel NB.NB.1, geval 2), geëxtrapoleerd naar het buitenvlak (NB.NB.4.3).</i>
     C_2,d = -0.45*h/(h - t_f)
     M_cr,d = M_cr(L; 1.13; C_2,d) to kN*m
     λ_LT,d = sqrt(W_y*f_y/M_cr,d)
@@ -356,7 +383,7 @@ M_cr(Lk; C1; C2) = pi*C1/Lk*(sqrt(1 + pi^2*S^2*(C2^2 + 1)/Lk^2) + pi*C2*S/Lk)*sq
 M_b,Rd,d = χ_LT,d*W_y*f_y/γ_M1 to kN*m
 UC_LT,d = M_d,Ed/M_b,Rd,d
 '<h6>Windzuiging: de binnenflens is gedrukt</h6>
-'<i>De gedrukte binnenflens is tussen de gaffels vrij: L<sub>kip</sub> = L. De last grijpt via de regels aan op de getrokken buitenflens: C<sub>1</sub> = 1,13 en C<sub>2</sub> = +0,45 (tabel NB.NB.1, geval 2). De steun die de regels aan de getrokken flens geven, is verwaarloosd; dat ligt aan de veilige kant.</i>
+'<i>L<sub>kip</sub> = L, last op de getrokken flens: C<sub>1</sub> = 1,13 en C<sub>2</sub> = +0,45 (tabel NB.NB.1, geval 2); de steun van de regels aan die flens is verwaarloosd.</i>
 M_cr,z = M_cr(L; 1.13; 0.45) to kN*m
 λ_LT,z = sqrt(W_y*f_y/M_cr,z)
 χ_LT,z = χ_lt(λ_LT,z)
@@ -365,29 +392,34 @@ UC_LT,z = M_z,Ed/M_b,Rd,z
 
 # 9. Druk met buiging (§6.3.3, bijlage B)
 
-'<i>Een open profiel is gevoelig voor torsievervorming: k<sub>yy</sub> en k<sub>zy</sub> volgen uit tabel B.2 (verplicht volgens de NB bij 6.3.3(5)). C<sub>my</sub> = 0,95 voor een gelijkmatige last zonder eindmomenten (tabel B.3). Voor C<sub>mLT</sub> telt het momentverloop tussen de kipsteunen: 0,95 over de hele lengte, en 1,0 voor een veld tussen de regels (aan de veilige kant). Aan de z-kant telt de kleinste van χ<sub>z</sub> en χ<sub>TF</sub>.</i>
+'<i>k<sub>yy</sub> en k<sub>zy</sub> uit tabel B.2 (NB bij 6.3.3(5)); C<sub>my</sub> = 0,95 (tabel B.3); C<sub>mLT</sub> = 0,95 over de hele lengte, 1,0 per veld tussen de regels. Aan de z-kant telt min(χ<sub>z</sub>; χ<sub>TF</sub>).</i>
 N_Rk = A*f_y to kN
 n_y = N_Ed/(χ_y*N_Rk/γ_M1)
 n_z = N_Ed/(χ_zT*N_Rk/γ_M1)
 C_my = 0.95
-C_mLT,d = if(k_st ≡ 1; 1.0; 0.95)', winddruk'
+#hide
+C_mLT,d = if(k_st ≡ 1; 1.0; 0.95)
+#show
+C_mLT,d', winddruk'
 C_mLT,z = 0.95', windzuiging'
 #if klasse ≤ 2
-    '<i>Tabel B.2, klasse 1 en 2: k<sub>yy</sub> = C<sub>my</sub>·min(1 + (λ̄<sub>y</sub> − 0,2)·n<sub>y</sub>; 1 + 0,8·n<sub>y</sub>), en k<sub>zy</sub> = max(1 − 0,1·λ̄<sub>z</sub>·n<sub>z</sub>/(C<sub>mLT</sub> − 0,25); 1 − 0,1·n<sub>z</sub>/(C<sub>mLT</sub> − 0,25)), bij λ̄<sub>z</sub> < 0,4 ten hoogste 0,6 + λ̄<sub>z</sub>.</i>
     #hide
     k_yy = C_my*min(1 + (λ_y - 0.2)*n_y; 1 + 0.8*n_y)
     k_zy(Cm) = if(λ_zT < 0.4; min(0.6 + λ_zT; 1 - 0.1*λ_zT*n_z/(Cm - 0.25)); max(1 - 0.1*λ_zT*n_z/(Cm - 0.25); 1 - 0.1*n_z/(Cm - 0.25)))
     #show
 #else
-    '<i>Tabel B.2, klasse 3: k<sub>yy</sub> = C<sub>my</sub>·min(1 + 0,6·λ̄<sub>y</sub>·n<sub>y</sub>; 1 + 0,6·n<sub>y</sub>), en k<sub>zy</sub> = max(1 − 0,05·λ̄<sub>z</sub>·n<sub>z</sub>/(C<sub>mLT</sub> − 0,25); 1 − 0,05·n<sub>z</sub>/(C<sub>mLT</sub> − 0,25)).</i>
     #hide
     k_yy = C_my*min(1 + 0.6*λ_y*n_y; 1 + 0.6*n_y)
     k_zy(Cm) = max(1 - 0.05*λ_zT*n_z/(Cm - 0.25); 1 - 0.05*n_z/(Cm - 0.25))
     #show
 #end if
-k_yy
-k_zy,d = k_zy(C_mLT,d)', winddruk'
-k_zy,z = k_zy(C_mLT,z)', windzuiging'
+k_yy', tabel B.2'
+#hide
+k_zy,d = k_zy(C_mLT,d)
+k_zy,z = k_zy(C_mLT,z)
+#show
+k_zy,d', winddruk'
+k_zy,z', windzuiging'
 '<h6>Winddruk</h6>
 UC_661,d = n_y + k_yy*M_d,Ed/M_b,Rd,d', (6.61)'
 UC_662,d = n_z + k_zy,d*M_d,Ed/M_b,Rd,d', (6.62)'
@@ -501,7 +533,7 @@ UC_max', grootste van de toetsen hieronder'
 '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:4px 8px;">Toets</th><th style="text-align:left; padding:4px 8px;">Norm</th><th style="text-align:right; padding:4px 8px;">UC</th><th style="text-align:left; padding:4px 8px;">Oordeel</th></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Dwarskracht</td><td style="padding:4px 8px;">§6.2.6</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_V)'">'UC_V'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_V)'">'oordeel(UC_V)'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Doorsnede, buiging met normaalkracht</td><td style="padding:4px 8px;">§6.2.9</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_d)'">'UC_d'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_d)'">'oordeel(UC_d)'</td></tr>
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Knik en torsieknik</td><td style="padding:4px 8px;">§6.3.1</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_N)'">'UC_N'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_N)'">'oordeel(UC_N)'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Knik en torsieknik, grootste N</td><td style="padding:4px 8px;">§6.3.1</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_N)'">'UC_N'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_N)'">'oordeel(UC_N)'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Kip, winddruk / windzuiging</td><td style="padding:4px 8px;">§6.3.2.3, NB.NB</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(max(UC_LT,d; UC_LT,z))'">'UC_LT,d' / 'UC_LT,z'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(max(UC_LT,d; UC_LT,z))'">'oordeel(max(UC_LT,d; UC_LT,z))'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Druk met buiging, winddruk</td><td style="padding:4px 8px;">(6.61) / (6.62)</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(max(UC_661,d; UC_662,d))'">'UC_661,d' / 'UC_662,d'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(max(UC_661,d; UC_662,d))'">'oordeel(max(UC_661,d; UC_662,d))'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Druk met buiging, windzuiging</td><td style="padding:4px 8px;">(6.61) / (6.62)</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(max(UC_661,z; UC_662,z))'">'UC_661,z' / 'UC_662,z'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(max(UC_661,z; UC_662,z))'">'oordeel(max(UC_661,z; UC_662,z))'</td></tr>
@@ -509,7 +541,7 @@ UC_max', grootste van de toetsen hieronder'
 '</table>
 
 #if klasse ≡ 4
-    '<b style="color:#b91c1c">De kolom voldoet niet: de doorsnede valt in klasse 4, en die valt buiten deze module.</b>
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>de kolom voldoet niet</b>: de doorsnede valt in klasse 4, en die valt buiten deze module.</span>
 #else if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de kolom voldoet</b></span>
 #else
@@ -517,6 +549,6 @@ UC_max', grootste van de toetsen hieronder'
 #end if
 
 '<hr/>
-'<i>Aandachtspunten en vereenvoudigingen:</i>
-'<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>De kolom is aan beide einden scharnierend opgelegd met gaffels. Eigen gewicht, een excentriciteit van de normaalkracht en de invloed van de doorbuiging op het moment zijn niet meegenomen.</li><li>De regels steunen de buitenflens alleen als ze zelf aan een vast punt zijn gekoppeld, bijvoorbeeld een windverband in de gevel. Kies anders “Nee” bij de vraag of de regels de buitenflens vasthouden.</li><li>Bij windzuiging is de steun van de regels aan de getrokken buitenflens verwaarloosd. Met kniksteunen of schoren naar de binnenflens wordt de kiplengte korter; dan is deze toets te ongunstig.</li><li>De factor f uit 6.3.2.3(2) is niet toegepast; ook dat ligt aan de veilige kant.</li><li>De wind is als gelijkmatige last over de hoogte aangenomen, met q<sub>p</sub> op de hoogte van het gebouw. Heeft het gebouw een dominante opening (7.2.9(5)), dan is de inwendige druk groter dan +0,2 of −0,3: vul dan de netto druk en zuiging zelf in.</li><li>De verbindingen aan de einden en de regels zelf zijn niet getoetst.</li></ul>
+'<i>Uitgangspunten:</i>
+'<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Gaffels aan beide einden; eigen gewicht, excentriciteit van N en het tweede-orde-effect van de doorbuiging niet meegenomen.</li><li>De regels steunen de buitenflens alleen als ze aan een vast punt zijn gekoppeld, zoals een windverband.</li><li>Steun van de regels aan de getrokken flens en de factor f uit 6.3.2.3(2) verwaarloosd; beide aan de veilige kant.</li><li>Wind gelijkmatig over de hoogte, met q<sub>p</sub> op de gebouwhoogte; bij een dominante opening (7.2.9(5)) de netto wind zelf invullen.</li><li>Verbindingen en regels niet getoetst.</li></ul>
 `;

@@ -4,6 +4,10 @@
  *
  * Formules en artikelverwijzingen conform:
  * NEN-EN 1992-1-1:2005+A1:2015+NB:2016+A1:2020
+ *
+ * De invoer staat als vaste waarde in de bladtekst. Elk toetsblad sluit af met
+ * UC_max en de slotzin "Maatgevende UC = …", die de afdruk als oordeel leest.
+ * Controle: scripts/check-en1992.mjs.
  */
 
 // ---------------------------------------------------------------------------
@@ -11,9 +15,9 @@
 // ---------------------------------------------------------------------------
 
 /** EN 1992-1-1 Tabel 3.1 -- Materiaaleigenschappen beton */
-export const ec2Materiaal = `# Materiaaleigenschappen -- EN 1992-1-1 Tabel 3.1
+export const ec2Materiaal = `# Materiaaleigenschappen — EN 1992-1-1 tabel 3.1
 
-## Betoneigenschappen
+## Beton
 
 @select sterkteklasse "Betonsterkteklasse (Tabel 3.1)"
 C12/15 -- f_ck=12 = 12
@@ -33,15 +37,8 @@ C80/95 -- f_ck=80 = 80
 C90/105 -- f_ck=90 = 90
 @end
 
-Karakteristieke cilinderdruksterkte (Tabel 3.1):
-
 f_ck = sterkteklasse * 1 N/mm^2
-
-Gemiddelde cilinderdruksterkte (Tabel 3.1):
-
 f_cm = f_ck + 8 N/mm^2
-
-Gemiddelde treksterkte (Tabel 3.1, formule 3.1):
 
 #if sterkteklasse < 51
   f_ctm = 0.30 * sterkteklasse^(2/3) * 1 N/mm^2
@@ -49,45 +46,21 @@ Gemiddelde treksterkte (Tabel 3.1, formule 3.1):
   f_ctm = 2.12 * ln(1 + f_cm / (10 N/mm^2)) * 1 N/mm^2
 #end if
 
-5%-fractielwaarde treksterkte:
-
 f_ctk005 = 0.7 * f_ctm to N/mm^2
-
-95%-fractielwaarde treksterkte:
-
 f_ctk095 = 1.3 * f_ctm to N/mm^2
-
-Elasticiteitsmodulus (Tabel 3.1):
-
 E_cm = 22000 * (f_cm / (10 N/mm^2))^0.3 * 1 N/mm^2
 
-## Partiele factoren (Tabel 2.1N / NB)
-
-Partiele factor beton:
+## Partiële factoren (tabel 2.1N / NB)
 
 gamma_C = 1.5
-
-Partiele factor betonstaal:
-
 gamma_S = 1.15
-
-Factor alpha_cc (NB):
-
-alpha_cc = 1.0
-
-Factor alpha_ct (NB):
-
-alpha_ct = 1.0
+alpha_cc = 1.0', NB'
+alpha_ct = 1.0', NB'
 
 ## Rekenwaarden (art. 3.1.6)
 
-Rekenwaarde druksterkte (formule 3.15):
-
-f_cd = alpha_cc * f_ck / gamma_C to N/mm^2
-
-Rekenwaarde treksterkte (formule 3.16):
-
-f_ctd = alpha_ct * f_ctk005 / gamma_C to N/mm^2
+f_cd = alpha_cc * f_ck / gamma_C to N/mm^2', (3.15)'
+f_ctd = alpha_ct * f_ctk005 / gamma_C to N/mm^2', (3.16)'
 
 ## Betonstaal
 
@@ -97,17 +70,9 @@ B500A -- f_yk=500 = 500
 B400 -- f_yk=400 = 400
 @end
 
-Karakteristieke vloeigrens:
-
 f_yk = staalsoort * 1 N/mm^2
-
-Elasticiteitsmodulus staal:
-
 E_s = 200000 N/mm^2
-
-Rekenwaarde vloeigrens (art. 3.2.7):
-
-f_yd = f_yk / gamma_S to N/mm^2
+f_yd = f_yk / gamma_S to N/mm^2', art. 3.2.7'
 
 ## Rechthoekig spanningsblok (art. 3.1.7, formules 3.19-3.22)
 
@@ -119,9 +84,7 @@ f_yd = f_yk / gamma_S to N/mm^2
   eta = 1.0 - (sterkteklasse - 50) / 200
 #end if
 
-Reductiefactor dwarskracht (formule 6.6N):
-
-nu = 0.6 * (1 - f_ck / (250 N/mm^2))
+nu = 0.6 * (1 - f_ck / (250 N/mm^2))', reductiefactor dwarskracht (6.6N)'
 `;
 
 // ---------------------------------------------------------------------------
@@ -129,7 +92,7 @@ nu = 0.6 * (1 - f_ck / (250 N/mm^2))
 // ---------------------------------------------------------------------------
 
 /** EN 1992-1-1 art. 6.1 -- Buiging rechthoekige doorsnede */
-export const ec2Buiging = `# Buigingsweerstand -- EN 1992-1-1 art. 6.1
+export const ec2Buiging = `# Buigingsweerstand — EN 1992-1-1 art. 6.1
 
 ## Materiaal
 
@@ -152,100 +115,83 @@ B500A -- f_yk=500 = 500
 @end
 
 f_yk = staalsoort * 1 N/mm^2
-
-Partiele factoren (Tabel 2.1N / NB):
+E_s = 200000 N/mm^2
 
 gamma_C = 1.5
 gamma_S = 1.15
 alpha_cc = 1.0
 
-Rekenwaarden:
-
 f_cd = alpha_cc * f_ck / gamma_C to N/mm^2
 f_yd = f_yk / gamma_S to N/mm^2
+eps_yd = f_yd / E_s
 
-Spanningsblokparameters (art. 3.1.7):
-
-lambda = 0.8
-eta = 1.0
+lambda = 0.8', (3.19)'
+eta = 1.0', (3.21)'
+eps_cu3 = 0.0035', tabel 3.1'
 
 ## Doorsnede
 
 b = 300 mm
 h = 500 mm
 d_1 = 50 mm
-
-Effectieve hoogte:
-
 d = h - d_1 to mm
+
+A_s = 1257 mm^2', aanwezige trekwapening'
 
 ## Belasting
 
-Maatgevend buigend moment:
-
 M_Ed = 200 kN*m
 
-## Buigingsberekening (rechthoekig spanningsblok)
-
-Relatief moment:
+## Benodigde wapening (rechthoekig spanningsblok)
 
 mu_Ed = M_Ed / (b * d^2 * eta * f_cd)
-
-Grenswaarde relatief moment (x_u/d = 0.45 voor voldoende ductiliteit):
-
-mu_lim = lambda * 0.45 * (1 - lambda * 0.45 / 2)
+mu_lim = lambda * 0.45 * (1 - lambda * 0.45 / 2)', bij x_u/d = 0,45'
 
 #if mu_Ed > mu_lim
-  Drukwapening nodig! mu_Ed > mu_lim.
+  Drukwapening nodig: mu_Ed > mu_lim.
 #end if
 
-Relatieve drukhoogte:
+zeta = 1 - sqrt(max(1 - 2 * mu_Ed; 0))', drukzone λx/d'
+z_req = d * (1 - zeta / 2) to mm
+A_s_req = M_Ed / (z_req * f_yd) to mm^2
 
-zeta = 1 - sqrt(1 - 2 * mu_Ed)
+## Momentweerstand bij de aanwezige wapening
 
-x_u = zeta * d to mm
+x_y = A_s * f_yd / (lambda * eta * f_cd * b) to mm', drukzonehoogte als het staal vloeit'
 
-Hefboomsarm:
-
-z = d * (1 - lambda * zeta / 2) to mm
-
-Benodigde wapening (uit M_Ed = z * A_s * f_yd):
-
-A_s_req = M_Ed / (z * f_yd) to mm^2
-
-Momentweerstand bij gegeven wapening:
-
-A_s = A_s_req to mm^2
-
-M_Rd = z * A_s * f_yd to kN*m
-
-## Toetsing
-
-UC_buiging = M_Ed / M_Rd
-
-#if UC_buiging < 1
-  Buiging voldoet (UC = {{UC_buiging}}).
+#if x_y / d ≤ eps_cu3 / (eps_cu3 + eps_yd)
+  x_u = x_y to mm
+  sigma_sd = f_yd to N/mm^2', het staal vloeit'
 #else
-  Buiging voldoet NIET (UC = {{UC_buiging}})!
+  Het staal vloeit niet: x_u en sigma_sd volgen uit de rekverdeling.
+  F_c = lambda * eta * f_cd * b to N/mm
+  F_s = A_s * E_s * eps_cu3 to N
+  x_u = (sqrt(F_s^2 + 4 * F_c * F_s * d) - F_s) / (2 * F_c) to mm
+  sigma_sd = E_s * eps_cu3 * (d - x_u) / x_u to N/mm^2
 #end if
+
+#if x_u / d > 0.45
+  Let op: x_u/d > 0,45, beperkte rotatiecapaciteit (art. 5.6.3(2)).
+#end if
+
+z = d - lambda * x_u / 2 to mm
+M_Rd = A_s * sigma_sd * z to kN*m
 
 ## Minimumwapening (art. 9.2.1.1)
 
 f_ctm = 0.30 * sterkteklasse^(2/3) * 1 N/mm^2
+A_smin = max(0.26 * f_ctm / f_yk * b * d; 0.0013 * b * d) to mm^2', (9.1N)'
 
-A_smin1 = 0.26 * f_ctm / f_yk * b * d to mm^2
-A_smin2 = 0.0013 * b * d to mm^2
+## Toetsing
 
-#if A_smin1 > A_smin2
-  A_smin = A_smin1', (maatgevend)'
+UC_buiging = M_Ed / M_Rd
+UC_min = A_smin / A_s
+UC_max = max(UC_buiging; UC_min)
+
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
-  A_smin = A_smin2', (maatgevend)'
-#end if
-
-#if A_s < A_smin1
-  Let op: A_s < A_s,min!
-#else
-  Minimumwapening voldoet.
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -254,7 +200,7 @@ A_smin2 = 0.0013 * b * d to mm^2
 // ---------------------------------------------------------------------------
 
 /** EN 1992-1-1 art. 6.2.2 -- Dwarskracht zonder beugels */
-export const ec2DwarskrachtZonder = `# Dwarskracht zonder beugels -- EN 1992-1-1 art. 6.2.2
+export const ec2DwarskrachtZonder = `# Dwarskracht zonder beugels — EN 1992-1-1 art. 6.2.2
 
 ## Materiaal
 
@@ -282,63 +228,34 @@ b_w = 300 mm
 h = 500 mm
 d = 450 mm
 
-Langswapening in trekzone:
-
-A_sl = 1257 mm^2
+A_sl = 1257 mm^2', langswapening in de trekzone'
 
 ## Belasting
 
 V_Ed = 120 kN
-N_Ed = 0 kN
+N_Ed = 0 kN', druk positief'
 
-## Dwarskrachtweerstand zonder beugels (formule 6.2.a/b)
-
-Coefficienten (NB):
+## Dwarskrachtweerstand (formule 6.2a/b, NB)
 
 C_Rdc = 0.18 / gamma_C
-
 k_1 = 0.15
 
-Schaalfactor k (art. 6.2.2):
+k_shear = min(1 + sqrt(200 mm / d); 2)
+rho_l = min(A_sl / (b_w * d); 0.02)
+sigma_cp = min(N_Ed / (b_w * h); 0.2 * f_cd) to N/mm^2
+v_min = 0.035 * k_shear^(3/2) * sqrt(f_ck / (1 N/mm^2)) * 1 N/mm^2 to N/mm^2', (6.3N)'
 
-k_shear = 1 + sqrt(200 mm / d)
-
-#if k_shear > 2
-  k_shear is begrensd tot 2,0.
-#end if
-
-Wapeningsverhouding langswapening:
-
-rho_l = A_sl / (b_w * d)
-
-#if rho_l > 0.02
-  rho_l is begrensd tot 0,02.
-#end if
-
-Betondrukspanning door normaalkracht:
-
-sigma_cp = N_Ed / (b_w * h) to N/mm^2
-
-V_Rdc = (C_Rdc * k_shear * (100 * rho_l * f_ck / (1 N/mm^2))^(1/3) * 1 N/mm^2 + k_1 * sigma_cp) * b_w * d to kN
-
-Minimumwaarde (formule 6.2.b):
-
-v_min = 0.035 * k_shear^(3/2) * sqrt(f_ck / (1 N/mm^2)) * 1 N/mm^2
-
-V_Rdc_min = (v_min + k_1 * sigma_cp) * b_w * d to kN
-
-#if V_Rdc < V_Rdc_min
-  V_Rdc verhoogd naar minimumwaarde.
-#end if
+V_Rdc = max(C_Rdc * k_shear * (100 * rho_l * f_ck / (1 N/mm^2))^(1/3) * 1 N/mm^2; v_min) * b_w * d + k_1 * sigma_cp * b_w * d to kN
 
 ## Toetsing
 
 UC_dwarskracht = V_Ed / V_Rdc
+UC_max = UC_dwarskracht
 
-#if UC_dwarskracht < 1
-  Geen beugels nodig (UC = {{UC_dwarskracht}}).
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>, geen dwarskrachtwapening nodig
 #else
-  Beugels vereist! V_Ed > V_Rd,c (UC = {{UC_dwarskracht}}).
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span> zonder beugels: dwarskrachtwapening nodig (art. 6.2.3)
 #end if
 `;
 
@@ -347,7 +264,7 @@ UC_dwarskracht = V_Ed / V_Rdc
 // ---------------------------------------------------------------------------
 
 /** EN 1992-1-1 art. 6.2.3 -- Dwarskracht met beugels */
-export const ec2DwarskrachtMet = `# Dwarskracht met beugels -- EN 1992-1-1 art. 6.2.3
+export const ec2DwarskrachtMet = `# Dwarskracht met beugels — EN 1992-1-1 art. 6.2.3
 
 ## Materiaal
 
@@ -384,9 +301,7 @@ b_w = 300 mm
 h = 600 mm
 d = 550 mm
 
-Hefboomsarm (aanname z = 0.9d):
-
-z = 0.9 * d to mm
+z = 0.9 * d to mm', art. 6.2.3(1)'
 
 ## Beugels
 
@@ -397,19 +312,10 @@ dia10 -- A=78.5 = 78.5
 dia12 -- A=113.1 = 113.1
 @end
 
-Oppervlakte per beugelpoot:
-
-A_sw1 = beugeldia * 1 mm^2
-
-Aantal poten:
-
+A_sw1 = beugeldia * 1 mm^2', per beugelpoot'
 n_poten = 2
-
 A_sw = n_poten * A_sw1 to mm^2
-
-Hart-op-hart afstand beugels:
-
-s = 200 mm
+s = 200 mm', hart-op-hartafstand'
 
 ## Drukdiagonaalhoek theta
 
@@ -429,55 +335,28 @@ tan_theta = 1 / cot_theta
 
 V_Ed = 300 kN
 
-## Dwarskrachtweerstand beugels (formule 6.8)
+## Dwarskrachtweerstand
 
-V_Rds = A_sw / s * z * f_ywd * cot_theta to kN
+V_Rds = A_sw / s * z * f_ywd * cot_theta to kN', beugels (6.8)'
 
-## Maximale dwarskrachtweerstand drukdiagonaal (formule 6.9)
+alpha_cw = 1.0', niet voorgespannen'
+nu_1 = 0.6 * (1 - f_ck / (250 N/mm^2))', (6.6N), NB: ν_1 = ν'
 
-Niet-voorgespannen constructie:
+V_Rdmax = alpha_cw * b_w * z * nu_1 * f_cd / (cot_theta + tan_theta) to kN', drukdiagonaal (6.9)'
 
-alpha_cw = 1.0
-
-Reductiefactor (formule 6.6N, NB: v_1 = v):
-
-nu_1 = 0.6 * (1 - f_ck / (250 N/mm^2))
-
-V_Rdmax = alpha_cw * b_w * z * nu_1 * f_cd / (cot_theta + tan_theta) to kN
+s_max = 0.75 * d to mm', art. 9.2.2(6)'
 
 ## Toetsing
 
-Maatgevend is de kleinste waarde:
-
-#if V_Rds < V_Rdmax
-  V_Rd = V_Rds', (beugels maatgevend)'
-#else
-  V_Rd = V_Rdmax', (drukdiagonaal maatgevend)'
-#end if
-
 UC_Vrds = V_Ed / V_Rds
 UC_Vrdmax = V_Ed / V_Rdmax
+UC_s = s / s_max
+UC_max = max(UC_Vrds; UC_Vrdmax; UC_s)
 
-#if UC_Vrds < 1
-  Beugels voldoen (UC = {{UC_Vrds}}).
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
-  Beugels voldoen NIET (UC = {{UC_Vrds}})! Meer beugels of kleinere s nodig.
-#end if
-
-#if UC_Vrdmax < 1
-  Drukdiagonaal voldoet (UC = {{UC_Vrdmax}}).
-#else
-  Drukdiagonaal voldoet NIET (UC = {{UC_Vrdmax}})! Grotere doorsnede of kleiner theta nodig.
-#end if
-
-## Maximale beugel h.o.h. (art. 9.2.2)
-
-s_max = 0.75 * d to mm
-
-#if s > s_max
-  Let op: beugel h.o.h. s = {{s}} mm > s_max = {{s_max}} mm!
-#else
-  Beugel h.o.h. voldoet (s = {{s}} mm <= {{s_max}} mm).
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -485,8 +364,15 @@ s_max = 0.75 * d to mm
 // 5. Pons (punching shear) -- EN 1992-1-1 art. 6.4
 // ---------------------------------------------------------------------------
 
-/** EN 1992-1-1 art. 6.4 -- Pons */
-export const ec2Pons = `# Ponsweerstand -- EN 1992-1-1 art. 6.4
+/**
+ * EN 1992-1-1 art. 6.4 -- Pons.
+ *
+ * Rand- en hoekkolom liggen gelijk met de plaatrand. Dan gelden de
+ * controle-omtrek van figuur 6.15 en de kolomomtrek u_0 van art. 6.4.5(3); de
+ * β-waarden van figuur 6.21N horen bij die kleinere omtrek. De keuzewaarden
+ * blijven 1.15/1.40/1.50, zodat opgeslagen bladen hun keuze houden.
+ */
+export const ec2Pons = `# Ponsweerstand — EN 1992-1-1 art. 6.4
 
 ## Materiaal
 
@@ -510,116 +396,82 @@ f_cd = alpha_cc * f_ck / gamma_C to N/mm^2
 
 ## Plaat
 
-Plaatdikte:
-
 h = 250 mm
-
-Effectieve hoogten in twee richtingen:
-
 d_y = 200 mm
 d_z = 190 mm
+d_eff = (d_y + d_z) / 2 to mm', (6.32)'
 
-Gemiddelde effectieve hoogte (formule 6.32):
-
-d_eff = (d_y + d_z) / 2 to mm
+rho_ly = 0.008
+rho_lz = 0.008
+rho_l = min(sqrt(rho_ly * rho_lz); 0.02)', art. 6.4.4(1)'
 
 ## Kolom
 
-@select kolomtype "Kolomtype"
+@select kolomtype "Kolomtype (rand- en hoekkolom gelijk met de plaatrand)"
 Middenkolom (beta = 1.15) = 1.15
 Randkolom (beta = 1.40) = 1.40
 Hoekkolom (beta = 1.50) = 1.50
 @end
 
-Belastingverdelingsfactor beta (figuur 6.21N):
+beta_pons = kolomtype * 1', figuur 6.21N'
 
-beta_pons = kolomtype * 1
-
-Kolomafmetingen:
-
-c_1 = 400 mm
-c_2 = 400 mm
-
-## Wapening in plaat
-
-Wapeningsverhouding y-richting:
-
-rho_ly = 0.008
-
-Wapeningsverhouding z-richting:
-
-rho_lz = 0.008
-
-Geometrisch gemiddelde (art. 6.4.4):
-
-rho_l = sqrt(rho_ly * rho_lz)
-
-#if rho_l > 0.02
-  rho_l begrensd tot 0,02.
-#end if
+c_1 = 400 mm', loodrecht op de vrije rand (figuur 6.20a)'
+c_2 = 400 mm', evenwijdig aan de vrije rand'
 
 ## Belasting
 
-Ponskracht:
-
 V_Ed = 500 kN
 
-## Eerste controle-omtrek u_1 (art. 6.4.2)
+## Controle-omtrek u_1 op 2d (art. 6.4.2, figuur 6.13 en 6.15)
 
-Omtrek op afstand 2d van kolom (rechthoekige kolom):
+#if kolomtype < 1.3
+  u_1 = 2 * (c_1 + c_2) + 4 * pi * d_eff to mm
+#else if kolomtype < 1.45
+  u_1 = 2 * c_1 + c_2 + 2 * pi * d_eff to mm
+#else
+  u_1 = c_1 + c_2 + pi * d_eff to mm
+#end if
 
-u_1 = 2 * (c_1 + c_2) + 2 * pi * 2 * d_eff to mm
+v_Ed = beta_pons * V_Ed / (u_1 * d_eff) to N/mm^2', (6.38)'
 
-Schuifspanning (formule 6.38):
-
-v_Ed = beta_pons * V_Ed / (u_1 * d_eff) to N/mm^2
-
-## Ponsweerstand zonder ponswapening (art. 6.4.4, formule 6.47)
+## Ponsweerstand zonder ponswapening (art. 6.4.4)
 
 C_Rdc = 0.18 / gamma_C
+k_pons = min(1 + sqrt(200 mm / d_eff); 2)
+v_min = 0.035 * k_pons^(3/2) * sqrt(f_ck / (1 N/mm^2)) * 1 N/mm^2 to N/mm^2', (6.3N)'
+v_Rdc = max(C_Rdc * k_pons * (100 * rho_l * f_ck / (1 N/mm^2))^(1/3) * 1 N/mm^2; v_min) to N/mm^2', (6.47)'
 
-k_pons = 1 + sqrt(200 mm / d_eff)
+## Maximale ponsweerstand langs de kolom (art. 6.4.5(3), NB)
 
-#if k_pons > 2
-  k_pons begrensd tot 2,0.
+#if kolomtype < 1.3
+  u_0 = 2 * (c_1 + c_2) to mm
+#else if kolomtype < 1.45
+  u_0 = min(c_2 + 3 * d_eff; c_2 + 2 * c_1) to mm
+#else
+  u_0 = min(3 * d_eff; c_1 + c_2) to mm
 #end if
 
-v_Rdc = C_Rdc * k_pons * (100 * rho_l * f_ck / (1 N/mm^2))^(1/3) * 1 N/mm^2
-
-Minimumwaarde:
-
-v_min = 0.035 * k_pons^(3/2) * sqrt(f_ck / (1 N/mm^2)) * 1 N/mm^2
-
-#if v_Rdc < v_min
-  v_Rdc verhoogd naar v_min.
-#end if
-
-## Maximale ponsweerstand (art. 6.4.5, NB)
-
-Kolomrand-omtrek:
-
-u_0 = 2 * (c_1 + c_2) to mm
-
-nu = 0.6 * (1 - f_ck / (250 N/mm^2))
-
+nu = 0.6 * (1 - f_ck / (250 N/mm^2))', (6.6N)'
 v_Rdmax = 0.4 * nu * f_cd to N/mm^2
-
 v_Ed0 = beta_pons * V_Ed / (u_0 * d_eff) to N/mm^2
 
 ## Toetsing
 
 UC_pons = v_Ed / v_Rdc
+UC_vRdmax = v_Ed0 / v_Rdmax
+UC_max = max(UC_pons; UC_vRdmax)
 
-UC_max = v_Ed0 / v_Rdmax
-
-#if UC_max > 1
-  Maximale ponsweerstand overschreden! Grotere kolom of dikkere plaat nodig (UC = {{UC_max}}).
+#if UC_vRdmax > 1
+  Drukdiagonaal langs de kolom bezwijkt: grotere kolom of dikkere plaat nodig.
+#end if
+#if UC_pons > 1
+  Ponswapening nodig (6.52); die is in dit blad niet uitgewerkt.
 #end if
 
-#if UC_pons < 1
-  Geen ponswapening nodig (UC = {{UC_pons}}).
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
-  Ponswapening vereist (UC = {{UC_pons}}).
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -628,7 +480,7 @@ UC_max = v_Ed0 / v_Rdmax
 // ---------------------------------------------------------------------------
 
 /** EN 1992-1-1 art. 7.3.4 -- Scheurwijdte */
-export const ec2Scheurwijdte = `# Scheurwijdteberekening -- EN 1992-1-1 art. 7.3.4
+export const ec2Scheurwijdte = `# Scheurwijdteberekening — EN 1992-1-1 art. 7.3.4
 
 ## Materiaal
 
@@ -646,82 +498,25 @@ C50/60 -- f_ck=50 = 50
 f_ck = sterkteklasse * 1 N/mm^2
 f_cm = f_ck + 8 N/mm^2
 f_ctm = 0.30 * sterkteklasse^(2/3) * 1 N/mm^2
-
-Effectieve treksterkte op moment van scheuren:
-
-f_cteff = f_ctm to N/mm^2
+f_cteff = f_ctm to N/mm^2', treksterkte bij het ontstaan van de scheur'
 
 E_s = 200000 N/mm^2
 E_cm = 22000 * (f_cm / (10 N/mm^2))^0.3 * 1 N/mm^2
-
-Verhouding elasticiteitsmoduli:
-
 alpha_e = E_s / E_cm
 
-## Doorsnede
+## Doorsnede en wapening
 
 b = 300 mm
 h = 500 mm
 d = 450 mm
 
-## Wapening
+phi = 16 mm', staafdiameter langswapening'
+c = 35 mm', betondekking op de langswapening'
+A_s = 1257 mm^2', aanwezige trekwapening'
 
-Staafdiameter langswapening:
-
-phi = 16 mm
-
-Betondekking op langswapening:
-
-c = 35 mm
-
-Aanwezige trekwapening:
-
-A_s = 1257 mm^2
-
-## Effectief trekspanningsgebied (figuur 7.1)
-
-Hoogte effectief trekgebied h_c,ef (kleinste van):
-
-h_cef_1 = 2.5 * (h - d) to mm
-h_cef_2 = (h - d) / 3 to mm
-h_cef_3 = h / 2 to mm
-
-h_cef = h_cef_1 to mm
-
-Effectief trekoppervlak:
-
-A_ceff = b * h_cef to mm^2
-
-Effectieve wapeningsverhouding (formule 7.10):
-
-rho_peff = A_s / A_ceff
-
-## Staalspanning onder BGT-belasting
+## Belasting (BGT)
 
 M_Ed_bgt = 120 kN*m
-
-Hefboomsarm (gescheurde doorsnede, aanname):
-
-z = 0.9 * d to mm
-
-Staalspanning:
-
-sigma_s = M_Ed_bgt / (z * A_s) to N/mm^2
-
-## Berekening scheurafstand (formule 7.11, NB)
-
-Coefficienten (NB):
-
-k_1 = 0.8
-k_2 = 0.5
-k_3 = 3.4
-k_4 = 0.425
-
-Maximale scheurafstand (formule 7.11):
-
-s_rmax = k_3 * c + k_1 * k_2 * k_4 * phi / rho_peff to mm
-
-## Rek-verschil (formule 7.9)
 
 @select belastingduur "Type belasting"
 Langdurend (k_t = 0.4) = 0.4
@@ -730,23 +525,35 @@ Kortdurend (k_t = 0.6) = 0.6
 
 k_t = belastingduur * 1
 
-eps_verschil = (sigma_s - k_t * f_cteff / rho_peff * (1 + alpha_e * rho_peff)) / E_s
+phi_kr = 2.5', kruipcoëfficiënt φ(∞,t_0) (bijlage B), alleen bij langdurende belasting'
 
-eps_minimum = 0.6 * sigma_s / E_s
+## Staalspanning in de gescheurde doorsnede
 
-#if eps_verschil < eps_minimum
-  Rek-verschil verhoogd naar minimum 0.6 * sigma_s / E_s.
+#if k_t < 0.5
+  alpha_eL = alpha_e * (1 + phi_kr)', E_s/E_c,eff (art. 7.4.3(5))'
+#else
+  alpha_eL = alpha_e
 #end if
 
-## Scheurwijdte (formule 7.8)
+rho = A_s / (b * d)
+x = d * (sqrt((alpha_eL * rho)^2 + 2 * alpha_eL * rho) - alpha_eL * rho) to mm
+sigma_s = M_Ed_bgt / ((d - x / 3) * A_s) to N/mm^2
 
-w_k = s_rmax * eps_verschil to mm
+## Effectief trekgebied (art. 7.3.2(3), figuur 7.1)
 
-#if eps_verschil < eps_minimum
-  w_k = s_rmax * eps_minimum to mm
-#end if
+h_cef = min(2.5 * (h - d); (h - x) / 3; h / 2) to mm
+rho_peff = A_s / (b * h_cef)', (7.10)'
 
-## Grenswaarde (Tabel 7.1N)
+## Scheurafstand en scheurwijdte (NB)
+
+k_1 = 0.8
+k_2 = 0.5
+k_3 = 3.4
+k_4 = 0.425
+
+s_rmax = k_3 * c + k_1 * k_2 * k_4 * phi / rho_peff to mm', (7.11)'
+eps_sm = max((sigma_s - k_t * f_cteff / rho_peff * (1 + alpha_e * rho_peff)) / E_s; 0.6 * sigma_s / E_s)', ε_sm − ε_cm (7.9)'
+w_k = s_rmax * eps_sm to mm', (7.8)'
 
 @select milieuklasse "Milieuklasse"
 X0 / XC1 (w_max = 0.4 mm) = 0.4
@@ -754,14 +561,17 @@ XC2 / XC3 / XC4 (w_max = 0.3 mm) = 0.3
 XD1 / XD2 / XD3 / XS1 / XS2 / XS3 (w_max = 0.3 mm) = 0.3
 @end
 
-w_max = milieuklasse * 1 mm
+w_max = milieuklasse * 1 mm', tabel 7.1N'
+
+## Toetsing
 
 UC_scheur = w_k / w_max
+UC_max = UC_scheur
 
-#if UC_scheur < 1
-  Scheurwijdte voldoet (w_k = {{w_k}} mm <= {{w_max}} mm).
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
-  Scheurwijdte voldoet NIET (w_k = {{w_k}} mm > {{w_max}} mm)!
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -770,7 +580,7 @@ UC_scheur = w_k / w_max
 // ---------------------------------------------------------------------------
 
 /** EN 1992-1-1 art. 7.4.2 -- Doorbuiging (slankheidscontrole) */
-export const ec2Doorbuiging = `# Doorbuigingscontrole -- EN 1992-1-1 art. 7.4.2
+export const ec2Doorbuiging = `# Doorbuigingscontrole — EN 1992-1-1 art. 7.4.2
 
 ## Materiaal
 
@@ -806,71 +616,40 @@ K_sys = systeem * 1
 b = 300 mm
 h = 500 mm
 d = 450 mm
+L = 6000 mm', overspanning'
 
-Overspanning:
+## Wapening
 
-L = 6000 mm
-
-## Wapeningsverhouding
-
-Benodigde trekwapening:
-
-A_s_req = 1200 mm^2
-
-Aanwezige trekwapening:
-
-A_s_prov = 1257 mm^2
-
-Drukwapening:
-
-A_s2 = 0 mm^2
-
-Trekwapeningsverhouding:
+A_s_req = 1200 mm^2', benodigde trekwapening'
+A_s_prov = 1257 mm^2', aanwezige trekwapening'
+A_s2 = 0 mm^2', drukwapening'
 
 rho = A_s_req / (b * d)
-
-Drukwapeningsverhouding:
-
 rho_prime = A_s2 / (b * d)
-
-Referentiewapeningsverhouding:
-
 rho_0 = sqrt(f_ck / (1 N/mm^2)) / 1000
 
-## Grenswaarde slankheid l/d (formule 7.16)
+## Grenswaarde l/d (formule 7.16)
 
 #if rho < rho_0
-  Laag wapeningspercentage (rho <= rho_0), formule 7.16.a is maatgevend.
+  ld_basis = K_sys * (11 + 1.5 * sqrt(f_ck / (1 N/mm^2)) * rho_0 / rho + 3.2 * sqrt(f_ck / (1 N/mm^2)) * (rho_0 / rho - 1)^(3/2))', (7.16a)'
 #else
-  Hoog wapeningspercentage (rho > rho_0), formule 7.16.b is maatgevend.
+  ld_basis = K_sys * (11 + 1.5 * sqrt(f_ck / (1 N/mm^2)) * rho_0 / (rho - rho_prime) + 1/12 * sqrt(f_ck / (1 N/mm^2)) * sqrt(rho_prime / rho_0))', (7.16b)'
 #end if
 
-Basiswaarde l/d (vereenvoudigd, Tabel 7.4N):
-
-#if rho < rho_0
-  ld_basis = K_sys * (11 + 1.5 * sqrt(f_ck / (1 N/mm^2)) * rho_0 / rho + 3.2 * sqrt(f_ck / (1 N/mm^2)) * (rho_0 / rho - 1)^(3/2))
-#else
-  ld_basis = K_sys * (11 + 1.5 * sqrt(f_ck / (1 N/mm^2)) * rho_0 / (rho - rho_prime) + 1/12 * sqrt(f_ck / (1 N/mm^2)) * sqrt(rho_prime / rho_0))
-#end if
-
-Correctie voor f_yk en A_s,prov / A_s,req (formule 7.17):
-
-corr_staal = 500 / (f_yk / (1 N/mm^2)) * A_s_prov / A_s_req
+corr_staal = 500 / (f_yk / (1 N/mm^2)) * A_s_prov / A_s_req', (7.17)'
 
 ld_toel = ld_basis * corr_staal
-
-## Werkelijke slankheid
-
 ld_werk = L / d
 
 ## Toetsing
 
 UC_doorbuiging = ld_werk / ld_toel
+UC_max = UC_doorbuiging
 
-#if UC_doorbuiging < 1
-  Doorbuiging voldoet via slankheidscriterium (l/d = {{ld_werk}} <= {{ld_toel}}).
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span> via het slankheidscriterium
 #else
-  Doorbuiging voldoet NIET via slankheidscriterium (l/d = {{ld_werk}} > {{ld_toel}})! Nadere berekening vereist.
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span> via het slankheidscriterium; nadere berekening nodig (art. 7.4.3)
 #end if
 `;
 
@@ -879,7 +658,11 @@ UC_doorbuiging = ld_werk / ld_toel
 // ---------------------------------------------------------------------------
 
 /** EN 1992-1-1 Complete -- Volledige betonbalk toetsing */
-export const ec2BetonBalk = `# Volledige Toetsing Betonbalk -- EN 1992-1-1
+export const ec2BetonBalk = `# Volledige toetsing betonbalk — EN 1992-1-1
+
+#hide
+oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
+#show
 
 ## Materiaal
 
@@ -913,57 +696,27 @@ alpha_cc = 1.0
 
 f_cd = alpha_cc * f_ck / gamma_C to N/mm^2
 f_yd = f_yk / gamma_S to N/mm^2
-f_ctd = 0.7 * f_ctm / gamma_C to N/mm^2
 
-## Doorsnede
+## Doorsnede en wapening
 
 b = 300 mm
 h = 600 mm
 d_1 = 50 mm
-
-Effectieve hoogte:
-
 d = h - d_1 to mm
 
-Weerstandsmoment (ongescheurd):
-
-W = b * h^2 / 6 to mm^3
-
-Traagheidsmoment (ongescheurd):
-
-I = b * h^3 / 12 to mm^4
-
-## Wapening
-
-Staafdiameter:
-
-phi = 20 mm
-
-Aantal staven:
-
+phi = 20 mm', staafdiameter'
 n_staven = 4
-
-Trekwapening:
-
 A_s = n_staven * pi / 4 * phi^2 to mm^2
 
 ## Systeem en belasting
 
-Overspanning:
-
-L = 7000 mm
-
-Gelijkmatig verdeelde belasting (UGT):
-
-q_d = 30 kN/m
-
-Maatgevend moment:
+L = 7000 mm', vrij opgelegde overspanning'
+q_d = 30 kN/m', UGT'
+q_qp = 20 kN/m', quasi-blijvend: g_k + ψ_2·q_k (NEN-EN 1990, 6.16b)'
 
 M_Ed = q_d * L^2 / 8 to kN*m
-
-Maatgevende dwarskracht:
-
 V_Ed = q_d * L / 2 to kN
+M_qp = q_qp * L^2 / 8 to kN*m
 
 ---
 
@@ -971,107 +724,68 @@ V_Ed = q_d * L / 2 to kN
 
 lambda = 0.8
 eta = 1.0
+eps_cu3 = 0.0035
+eps_yd = f_yd / E_s
 
-Relatief moment:
+x_y = A_s * f_yd / (lambda * eta * f_cd * b) to mm', drukzonehoogte als het staal vloeit'
 
-mu_Ed = M_Ed / (b * d^2 * eta * f_cd)
+#if x_y / d ≤ eps_cu3 / (eps_cu3 + eps_yd)
+  x_u = x_y to mm
+  sigma_sd = f_yd to N/mm^2', het staal vloeit'
+#else
+  Het staal vloeit niet: x_u en sigma_sd volgen uit de rekverdeling.
+  F_c = lambda * eta * f_cd * b to N/mm
+  F_s = A_s * E_s * eps_cu3 to N
+  x_u = (sqrt(F_s^2 + 4 * F_c * F_s * d) - F_s) / (2 * F_c) to mm
+  sigma_sd = E_s * eps_cu3 * (d - x_u) / x_u to N/mm^2
+#end if
 
-Relatieve drukhoogte:
+#if x_u / d > 0.45
+  Let op: x_u/d > 0,45, beperkte rotatiecapaciteit (art. 5.6.3(2)).
+#end if
 
-zeta = 1 - sqrt(1 - 2 * mu_Ed)
-
-Drukhoogte:
-
-x_u = zeta * d to mm
-
-Hefboomsarm:
-
-z = d * (1 - lambda * zeta / 2) to mm
-
-Momentweerstand:
-
-M_Rd = z * A_s * f_yd to kN*m
+z = d - lambda * x_u / 2 to mm
+M_Rd = A_s * sigma_sd * z to kN*m
 
 UC_buiging = M_Ed / M_Rd
 
-#if UC_buiging < 1
-  [OK] Buiging voldoet (UC = {{UC_buiging}}).
-#else
-  [NIET OK] Buiging voldoet NIET (UC = {{UC_buiging}})!
-#end if
-
 ---
 
-## 2. Dwarskracht zonder beugels (art. 6.2.2)
+## 2. Dwarskracht (art. 6.2)
 
 C_Rdc = 0.18 / gamma_C
+k_shear = min(1 + sqrt(200 mm / d); 2)
+rho_l = min(A_s / (b * d); 0.02)
+v_min = 0.035 * k_shear^(3/2) * sqrt(f_ck / (1 N/mm^2)) * 1 N/mm^2 to N/mm^2', (6.3N)'
+V_Rdc = max(C_Rdc * k_shear * (100 * rho_l * f_ck / (1 N/mm^2))^(1/3) * 1 N/mm^2; v_min) * b * d to kN', (6.2a/b)'
 
-k_shear = 1 + sqrt(200 mm / d)
-
-#if k_shear > 2
-  k_shear begrensd tot 2,0.
-#end if
-
-rho_l = A_s / (b * d)
-
-V_Rdc = C_Rdc * k_shear * (100 * rho_l * f_ck / (1 N/mm^2))^(1/3) * 1 N/mm^2 * b * d to kN
-
-v_min = 0.035 * k_shear^(3/2) * sqrt(f_ck / (1 N/mm^2)) * 1 N/mm^2
-
-V_Rdc_min = v_min * b * d to kN
-
-#if V_Ed < V_Rdc
-  [OK] Geen beugels nodig (V_Ed = {{V_Ed}} kN < V_Rd,c = {{V_Rdc}} kN).
-#else
-  [ACTIE] Beugels vereist (V_Ed = {{V_Ed}} kN > V_Rd,c = {{V_Rdc}} kN).
-#end if
-
----
-
-## 3. Dwarskracht met beugels (art. 6.2.3)
-
-Beugelwapening (tweesnedig):
-
-phi_w = 8 mm
-
+phi_w = 8 mm', beugel, tweesnedig'
 A_sw = 2 * pi / 4 * phi_w^2 to mm^2
-
-Beugel h.o.h.:
-
 s_w = 200 mm
-
 f_ywd = f_yd to N/mm^2
-
-Hoek drukdiagonaal (aanname cot theta = 2.5):
-
+z_v = 0.9 * d to mm', art. 6.2.3(1)'
 cot_theta = 2.5
 tan_theta = 1 / cot_theta
 
-V_Rds = A_sw / s_w * z * f_ywd * cot_theta to kN
+V_Rds = A_sw / s_w * z_v * f_ywd * cot_theta to kN', (6.8)'
 
-nu_1 = 0.6 * (1 - f_ck / (250 N/mm^2))
+nu_1 = 0.6 * (1 - f_ck / (250 N/mm^2))', (6.6N)'
 alpha_cw = 1.0
 
-V_Rdmax = alpha_cw * b * z * nu_1 * f_cd / (cot_theta + tan_theta) to kN
+V_Rdmax = alpha_cw * b * z_v * nu_1 * f_cd / (cot_theta + tan_theta) to kN', (6.9)'
 
-UC_Vrds = V_Ed / V_Rds
+#if V_Ed ≤ V_Rdc
+  Geen rekenkundige dwarskrachtwapening nodig; minimumbeugels volgens art. 9.2.2.
+  UC_dwarskracht = V_Ed / V_Rdc
+#else
+  UC_dwarskracht = V_Ed / V_Rds
+#end if
+
 UC_Vrdmax = V_Ed / V_Rdmax
-
-#if UC_Vrds < 1
-  [OK] Beugels voldoen (UC = {{UC_Vrds}}).
-#else
-  [NIET OK] Meer beugels nodig (UC = {{UC_Vrds}})!
-#end if
-
-#if UC_Vrdmax < 1
-  [OK] Drukdiagonaal voldoet (UC = {{UC_Vrdmax}}).
-#else
-  [NIET OK] Drukdiagonaal voldoet NIET (UC = {{UC_Vrdmax}})!
-#end if
 
 ---
 
-## 4. Scheurwijdte (art. 7.3.4, vereenvoudigd)
+## 3. Scheurwijdte (art. 7.3.4)
 
 @select milieuklasse "Milieuklasse"
 X0 / XC1 (w_max = 0.4 mm) = 0.4
@@ -1079,58 +793,35 @@ XC2 / XC3 / XC4 (w_max = 0.3 mm) = 0.3
 XD / XS (w_max = 0.3 mm) = 0.3
 @end
 
-w_max = milieuklasse * 1 mm
-
-Betondekking:
-
-c_nom = 35 mm
-
-Effectief trekgebied (h_c,ef = 2.5*(h-d)):
-
-h_cef = 2.5 * (h - d) to mm
-
-A_ceff = b * h_cef to mm^2
-
-rho_peff = A_s / A_ceff
-
-BGT belasting (quasi-blijvend, aanname 50% van UGT):
-
-M_bgt = 0.5 * M_Ed to kN*m
-
-sigma_s = M_bgt / (z * A_s) to N/mm^2
-
-k_t = 0.4
+w_max = milieuklasse * 1 mm', tabel 7.1N'
+c_nom = 35 mm', dekking op de langswapening'
+phi_kr = 2.5', kruipcoëfficiënt φ(∞,t_0) (bijlage B)'
 
 alpha_e = E_s / E_cm
+alpha_eL = alpha_e * (1 + phi_kr)', E_s/E_c,eff (art. 7.4.3(5))'
+rho_s = A_s / (b * d)
+x_bgt = d * (sqrt((alpha_eL * rho_s)^2 + 2 * alpha_eL * rho_s) - alpha_eL * rho_s) to mm', gescheurde doorsnede'
+sigma_s = M_qp / ((d - x_bgt / 3) * A_s) to N/mm^2
 
-eps_smcm = (sigma_s - k_t * f_ctm / rho_peff * (1 + alpha_e * rho_peff)) / E_s
+h_cef = min(2.5 * (h - d); (h - x_bgt) / 3; h / 2) to mm', art. 7.3.2(3)'
+rho_peff = A_s / (b * h_cef)', (7.10)'
 
-eps_min = 0.6 * sigma_s / E_s
+k_t = 0.4', langdurend'
+eps_sm = max((sigma_s - k_t * f_ctm / rho_peff * (1 + alpha_e * rho_peff)) / E_s; 0.6 * sigma_s / E_s)', (7.9)'
 
-k_3 = 3.4
-k_4 = 0.425
 k_1 = 0.8
 k_2 = 0.5
+k_3 = 3.4
+k_4 = 0.425
 
-s_rmax = k_3 * c_nom + k_1 * k_2 * k_4 * phi / rho_peff to mm
-
-#if eps_smcm > eps_min
-  w_k = s_rmax * eps_smcm to mm
-#else
-  w_k = s_rmax * eps_min to mm
-#end if
+s_rmax = k_3 * c_nom + k_1 * k_2 * k_4 * phi / rho_peff to mm', (7.11)'
+w_k = s_rmax * eps_sm to mm', (7.8)'
 
 UC_scheur = w_k / w_max
 
-#if UC_scheur < 1
-  [OK] Scheurwijdte voldoet (w_k = {{w_k}} mm <= {{w_max}} mm).
-#else
-  [NIET OK] Scheurwijdte voldoet NIET (w_k = {{w_k}} mm > {{w_max}} mm)!
-#end if
-
 ---
 
-## 5. Doorbuiging (art. 7.4.2, slankheidscontrole)
+## 4. Doorbuiging (art. 7.4.2, slankheidscontrole)
 
 @select systeem "Constructief systeem (Tabel 7.4N)"
 Vrij opgelegd (K=1.0) = 1.0
@@ -1141,38 +832,39 @@ Tussenoverspanning doorgaand (K=1.5) = 1.5
 K_sys = systeem * 1
 
 rho_doorb = A_s / (b * d)
-
 rho_0 = sqrt(f_ck / (1 N/mm^2)) / 1000
 
 #if rho_doorb < rho_0
-  ld_basis = K_sys * (11 + 1.5 * sqrt(f_ck / (1 N/mm^2)) * rho_0 / rho_doorb + 3.2 * sqrt(f_ck / (1 N/mm^2)) * (rho_0 / rho_doorb - 1)^(3/2))
+  ld_basis = K_sys * (11 + 1.5 * sqrt(f_ck / (1 N/mm^2)) * rho_0 / rho_doorb + 3.2 * sqrt(f_ck / (1 N/mm^2)) * (rho_0 / rho_doorb - 1)^(3/2))', (7.16a)'
 #else
-  ld_basis = K_sys * (11 + 1.5 * sqrt(f_ck / (1 N/mm^2)) * rho_0 / rho_doorb)
+  ld_basis = K_sys * (11 + 1.5 * sqrt(f_ck / (1 N/mm^2)) * rho_0 / rho_doorb)', (7.16b)'
 #end if
 
 ld_toel = ld_basis * 500 / (f_yk / (1 N/mm^2))
-
 ld_werk = L / d
 
 UC_doorbuiging = ld_werk / ld_toel
-
-#if UC_doorbuiging < 1
-  [OK] Doorbuiging voldoet (l/d = {{ld_werk}} <= {{ld_toel}}).
-#else
-  [NIET OK] Doorbuiging voldoet NIET (l/d = {{ld_werk}} > {{ld_toel}})!
-#end if
 
 ---
 
 ## Samenvatting
 
-| Toetsing | UC | Resultaat |
-|---|---|---|
-| Buiging (6.1) | {{UC_buiging}} | |
-| Dwarskracht beugels (6.2.3) | {{UC_Vrds}} | |
-| Drukdiagonaal (6.2.3) | {{UC_Vrdmax}} | |
-| Scheurwijdte (7.3.4) | {{UC_scheur}} | |
-| Doorbuiging (7.4.2) | {{UC_doorbuiging}} | |
+'<table style="border-collapse:collapse; font-size:13px">
+'<tr><th style="text-align:left; padding:2px 12px 2px 0">Toetsing</th><th style="text-align:right; padding-right:14px">UC</th><th style="text-align:left">Oordeel</th></tr>
+'<tr><td style="padding:2px 12px 2px 0">Buiging (6.1)</td><td style="text-align:right; padding-right:14px">'UC_buiging'</td><td>'oordeel(UC_buiging)'</td></tr>
+'<tr><td style="padding:2px 12px 2px 0">Dwarskracht, V<sub>Rd,c</sub> of beugels (6.2.2/6.2.3)</td><td style="text-align:right; padding-right:14px">'UC_dwarskracht'</td><td>'oordeel(UC_dwarskracht)'</td></tr>
+'<tr><td style="padding:2px 12px 2px 0">Drukdiagonaal (6.9)</td><td style="text-align:right; padding-right:14px">'UC_Vrdmax'</td><td>'oordeel(UC_Vrdmax)'</td></tr>
+'<tr><td style="padding:2px 12px 2px 0">Scheurwijdte (7.3.4)</td><td style="text-align:right; padding-right:14px">'UC_scheur'</td><td>'oordeel(UC_scheur)'</td></tr>
+'<tr><td style="padding:2px 12px 2px 0">Doorbuiging (7.4.2)</td><td style="text-align:right; padding-right:14px">'UC_doorbuiging'</td><td>'oordeel(UC_doorbuiging)'</td></tr>
+'</table>
+
+UC_max = max(UC_buiging; UC_dwarskracht; UC_Vrdmax; UC_scheur; UC_doorbuiging)
+
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
+#else
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
+#end if
 
 ## Overzicht
 

@@ -24,8 +24,7 @@
 export const en1996Druksterkte = `# Druksterkte metselwerk — EN 1996-1-1 §3.6.1
 
 '<i>Karakteristieke druksterkte van metselwerk volgens formule (3.2), met K, α en β uit
-'tabel NB-2 en de grenzen op f<sub>b</sub> en f<sub>m</sub> uit de Nederlandse bijlage. Pas de
-'waarden hieronder aan in de bladtekst.</i>
+'tabel NB-2 en de grenzen op f<sub>b</sub> en f<sub>m</sub> uit de Nederlandse bijlage.</i>
 
 ## Steen en mortel
 
@@ -91,8 +90,7 @@ export const en1996Drukwand = `# Wand op druk — EN 1996-1-1 §6.1.2
 '<i>Ongewapende enkelbladige wand, gesteund aan boven- en onderzijde (n = 2), gerekend
 'op een strook van 1 m. Getoetst worden de slankheid (§5.5.1.4), de reductiefactor Φ
 'aan kop en voet (6.4) en op halve hoogte (bijlage G), en de extra toets met een
-'minimale excentriciteit uit de Nederlandse bijlage (NB bij 5.5.1.1(5)). Pas de
-'waarden hieronder aan in de bladtekst.</i>
+'minimale excentriciteit uit de Nederlandse bijlage (NB bij 5.5.1.1(5)).</i>
 
 ## Metselwerk
 
@@ -295,7 +293,6 @@ UC_max = max(UC_lam; UC_1; UC_2)
   <text x="300" y="130" text-anchor="middle" font-size="11" fill="#374151">f_d = {{f_d}} N/mm2</text>
   <text x="300" y="155" text-anchor="middle" font-size="11" fill="#374151">h_ef = {{h_ef}} mm</text>
   <text x="300" y="175" text-anchor="middle" font-size="11" fill="#374151">N_Rd = {{N_Rd}} kN per m</text>
-  <text x="300" y="210" text-anchor="middle" font-size="13" fill="#059669" font-weight="bold">UC = {{UC_max}}</text>
 </svg>
 @end
 `;
@@ -309,7 +306,7 @@ export const en1996Afschuiving = `# Afschuiving metselwerk — EN 1996-1-1 §6.2
 
 '<i>Afschuiving in het vlak van een ongewapende wand: V<sub>Ed</sub> ≤ V<sub>Rd</sub> = f<sub>vd</sub>·t·l<sub>c</sub>
 '(6.13). De schuifsterkte volgt uit (3.5) of (3.6) met de bovengrens van de Nederlandse
-'bijlage, f<sub>vlt</sub> = 0,065·f<sub>b</sub>. Pas de waarden hieronder aan in de bladtekst.</i>
+'bijlage, f<sub>vlt</sub> = 0,065·f<sub>b</sub>.</i>
 
 ## Metselwerk
 
@@ -384,13 +381,13 @@ V_Rd = f_vd*t_w*l_c to kN', (6.13)'
 export const en1996Slankheid = `# Slankheid en effectieve hoogte — EN 1996-1-1 §5.5.1
 
 '<i>Effectieve hoogte met ρ<sub>2</sub>, ρ<sub>3</sub> of ρ<sub>4</sub> (§5.5.1.2), effectieve dikte
-'(§5.5.1.3) en de grens λ ≤ 27 (§5.5.1.4). Pas de waarden hieronder aan in de bladtekst.</i>
+'(§5.5.1.3) en de grens λ ≤ 27 (§5.5.1.4).</i>
 
 ## Wand
 
 h_w = 2700*mm', vrije verdiepingshoogte'
 t_w = 100*mm', dikte van het (dragende) blad'
-L_v = 4000*mm', afstand tussen de verticale steunen'
+L_v = 4000*mm', lengte l: van de vrije rand tot de verticale steun (n = 3) of tussen de verticale steunen (n = 4)'
 
 @select ondersteuning "Ondersteuning boven en onder (§5.5.1.2(11))"
   betonvloer of -dak aan beide zijden = 1

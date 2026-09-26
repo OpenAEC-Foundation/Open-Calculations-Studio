@@ -6,9 +6,13 @@
  *   §6.1.4   Druk evenwijdig aan de vezels (uitgangspunt)
  *   §6.3.2   Knikcontrole (kolom op druk + buiging)
  *
- * Onderbouw + matrices identiek aan houtenBalklaag.ts (zelfde C-klassen,
- * zelfde k_def en k_mod-keuzes). Geometrie is een staaflengte met
+ * Onderbouw als in houtenBalklaag.ts (zelfde C-klassen, zelfde k_def en
+ * k_mod-keuzes). Geometrie is een staaflengte met
  * kniklengte-factoren per knikrichting (y en z).
+ *
+ * Niet in gebruik: het blad staat niet in templates/index.ts en is vervangen
+ * door kolom.ts. Het toetst alleen (6.23)/(6.24); met buiging ontbreken kip
+ * (6.33)–(6.35) en dwarskracht (6.13). Zonder die toetsen mag het niet terug.
  */
 
 export const houtenKolom = `"Houten kolom — knikcheck EN 1995-1-1 §6.3.2
@@ -151,14 +155,14 @@ L = ?*(m)', staaflengte (m)'
 @select randvoorw_y "Randvoorwaarden y-y-as (sterke as)"
   Beide einden scharnierend, L_cr = 1.0·L = 100
   Boven scharnier, onder ingeklemd, L_cr = 0.7·L = 70
-  Boven ingeklemd, onder vrij (kraagkolom), L_cr = 2.0·L = 200
+  Onder ingeklemd, boven vrij (kraagkolom), L_cr = 2.0·L = 200
   Beide einden ingeklemd, L_cr = 0.5·L = 50
 @end
 
 @select randvoorw_z "Randvoorwaarden z-z-as (zwakke as)"
   Beide einden scharnierend, L_cr = 1.0·L = 100
   Boven scharnier, onder ingeklemd, L_cr = 0.7·L = 70
-  Boven ingeklemd, onder vrij (kraagkolom), L_cr = 2.0·L = 200
+  Onder ingeklemd, boven vrij (kraagkolom), L_cr = 2.0·L = 200
   Beide einden ingeklemd, L_cr = 0.5·L = 50
 @end
 
@@ -179,6 +183,11 @@ k_z = 0.5*(1 + β_c*(λ_rel,z - 0.3) + λ_rel,z^2)
 'k_c,y/k_c,z (§6.3.2.3 formule 6.25/6.26)
 k_c,y = if(λ_rel,y ≤ 0.3; 1.0; 1/(k_y + sqrt(k_y^2 - λ_rel,y^2)))
 k_c,z = if(λ_rel,z ≤ 0.3; 1.0; 1/(k_z + sqrt(k_z^2 - λ_rel,z^2)))
+'Namen zonder Griekse letter voor de tekening: {{…}} vult alleen ASCII-namen in.
+lam_y = λ_y
+lam_z = λ_z
+lam_rel_y = λ_rel,y
+lam_rel_z = λ_rel,z
 #show
 
 '<b>Kniklengtes:</b> L<sub>cr,y</sub> = 'L_cr,y', L<sub>cr,z</sub> = 'L_cr,z
@@ -274,10 +283,10 @@ UC_max = max(UC_y; UC_z)
 
   <!-- Resultaten -->
   <text x="380" y="80" font-size="12" fill="#1e40af" font-weight="bold">EN 1995-1-1 §6.3.2</text>
-  <text x="380" y="102" font-size="10" fill="#374151">λ_y = {{λ_y}}</text>
-  <text x="380" y="116" font-size="10" fill="#374151">λ_z = {{λ_z}}</text>
-  <text x="380" y="135" font-size="10" fill="#374151">λ̄_rel,y = {{λ_rel,y}}</text>
-  <text x="380" y="149" font-size="10" fill="#374151">λ̄_rel,z = {{λ_rel,z}}</text>
+  <text x="380" y="102" font-size="10" fill="#374151">λ_y = {{lam_y}}</text>
+  <text x="380" y="116" font-size="10" fill="#374151">λ_z = {{lam_z}}</text>
+  <text x="380" y="135" font-size="10" fill="#374151">λ̄_rel,y = {{lam_rel_y}}</text>
+  <text x="380" y="149" font-size="10" fill="#374151">λ̄_rel,z = {{lam_rel_z}}</text>
   <text x="380" y="168" font-size="11" fill="#1e40af" font-weight="bold">k_c,y = {{k_c,y}}</text>
   <text x="380" y="184" font-size="11" fill="#1e40af" font-weight="bold">k_c,z = {{k_c,z}}</text>
   <text x="380" y="210" font-size="10" fill="#374151">UC_y = {{UC_y}}</text>

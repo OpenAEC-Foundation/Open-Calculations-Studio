@@ -6,11 +6,13 @@
  * uitkomsten daarom op twee manieren na:
  *
  *   1. Een onafhankelijke uitwerking in JavaScript: de horizontale kracht uit
- *      wind en scheefstand (5.3.2), trek op de bruto en de netto doorsnede —
+ *      wind en scheefstand (5.3.2), vergroot met 1/(1 − 1/α_cr) als
+ *      3 ≤ α_cr < 10 (5.2.2(5)B), trek op de bruto en de netto doorsnede —
  *      strip volgens (6.7), hoekprofiel aan één been volgens (3.11) tot (3.13)
- *      met tabel 3.8 —, knik van een enkele diagonaal met de effectieve
- *      slankheid van BB.1.2, en de horizontale verplaatsing.
- *   2. Voor twee sets de getallen van een handberekening.
+ *      met tabel 3.8 —, de blokschuif (3.9) of (3.10), knik van een enkele
+ *      diagonaal met de effectieve slankheid van BB.1.2, de benodigde
+ *      keelvlakte van een las (4.4) en de horizontale verplaatsing.
+ *   2. Voor enkele sets de getallen van een handberekening.
  *
  * De profielgegevens staan hieronder los overgenomen uit EN 10056-1, zodat ook
  * de matrix in het blad wordt gecontroleerd.
@@ -27,7 +29,7 @@ const tpl = laadTemplate("verticaalWindverband.ts");
 
 const STANDAARD = {
   verbandtype: 1, profile: 20, staalkwaliteit: 235, b_v: 6, h_v: 5, F_w_k: 40, V_Ed: 600, m_k: 4,
-  aansluiting: 2, d_0: 18, p_1: 60, e_2: 30, n_d: 1, grens_u: 300,
+  aansluiting: 2, d_0: 18, p_1: 60, e_1: 40, e_2: 30, n_d: 1, grens_u: 300,
 };
 const PROJECT = { CC: 2, K_FI: 1 };
 
@@ -35,6 +37,7 @@ const PROJECT = { CC: 2, K_FI: 1 };
 const PROFIEL = {
   5: { soort: 1, b: 60, t: 8 },
   11: { soort: 1, b: 100, t: 10 },
+  14: { soort: 1, b: 120, t: 12 },
   18: { soort: 2, b: 50, t: 5, A: 480, Iy: 11.0e4, Iv: 4.54e4 },
   20: { soort: 2, b: 60, t: 6, A: 691, Iy: 22.8e4, Iv: 9.43e4 },
   23: { soort: 2, b: 80, t: 8, A: 1230, Iy: 72.2e4, Iv: 29.9e4 },
@@ -55,7 +58,11 @@ function uitwerking(v, P) {
   const am = Math.sqrt(0.5 * (1 + 1 / Math.max(v.m_k, 1)));
   const phi = (ah * am) / 200;
   const H = Fw >= 0.15 * V ? 0 : phi * V; // 5.3.2(4)B
-  const Fh = Fw + H, N = Fh / cos;
+  // (5.2) met δ = F·L/(E·A·cos²α): alleen de verlenging van de diagonaal.
+  const acr = V > 0 ? (h * 210000 * p.A * cos * cos) / (V * L) : Infinity;
+  const kcr = acr >= 3 && acr < 10 ? 1 / (1 - 1 / acr) : 1;
+  const tweedeOk = acr >= 3;
+  const Fh = kcr * (Fw + H), N = Fh / cos;
 
   const Npl = p.A * fy;
   let Nu = Infinity, beta = null;
@@ -73,6 +80,27 @@ function uitwerking(v, P) {
   }
   const Nt = Math.min(Npl, Nu);
 
+  // Blokschuif: hoek (3.10) naar de vrije rand van het been, strip met meer
+  // gaten naast elkaar (3.9): het blok tussen de buitenste rijen of de twee
+  // randstroken daarbuiten, met dezelfde afschuifvlakken; een strip met één rij
+  // heeft geen blok. Drie of meer bouten → 3. A_nt of A_nv ≤ 0 → niet getoetst.
+  let blokOk = true, Veff = null, UCbs = 0, Anw = null, fvwd = null;
+  if (v.aansluiting > 0 && (p.soort === 2 || v.n_d > 1)) {
+    const n = Math.min(v.aansluiting, 3);
+    const lv = v.e_1 + (n - 1) * v.p_1 - (n - 0.5) * v.d_0;
+    const Ant = p.soort === 2
+      ? (v.e_2 - 0.5 * v.d_0) * p.t
+      : Math.min(p.b - 2 * v.e_2 - (v.n_d - 1) * v.d_0, 2 * v.e_2 - v.d_0) * p.t;
+    const Anv = (p.soort === 2 ? 1 : 2) * lv * p.t;
+    if (!(v.e_1 > 0) || Ant <= 0 || Anv <= 0) blokOk = false;
+    else Veff = ((p.soort === 2 ? 0.5 : 1) * fu * Ant) / 1.25 + (fy * Anv) / Math.sqrt(3);
+    if (Veff !== null) UCbs = N / Veff;
+  } else if (v.aansluiting === 0) {
+    const bw = { 235: 0.8, 275: 0.85, 355: 0.9 }[fy];
+    fvwd = fu / (Math.sqrt(3) * bw * 1.25);
+    Anw = N / fvwd;
+  }
+
   let drukOk = true, UCc = 0, Nb = null, lamEff = null, chi = null;
   if (v.verbandtype === 2) {
     if (p.soort === 1 || v.aansluiting === 1 || p.b / p.t / eps > 11.5) drukOk = false;
@@ -88,7 +116,10 @@ function uitwerking(v, P) {
   }
   const u = (v.F_w_k * 1000 * L) / (210000 * p.A * cos * cos);
   const UCt = N / Nt, UCu = u / (h / v.grens_u);
-  return { phi, H, Fh, N, Npl, Nu, beta, Nt, UCt, drukOk, lamEff, chi, Nb, UCc, u, UCu, UCmax: Math.max(UCt, UCc, UCu) };
+  return {
+    phi, acr, kcr, tweedeOk, H, Fh, N, Npl, Nu, beta, Nt, UCt, blokOk, Veff, UCbs, fvwd, Anw,
+    drukOk, lamEff, chi, Nb, UCc, u, UCu, UCmax: Math.max(UCt, UCc, UCu, UCbs),
+  };
 }
 
 const s4 = (x) => {
@@ -106,6 +137,10 @@ function verwachtingen(r, v) {
   if (Number.isFinite(r.Nu)) uit.N_u_Rd = ruim(r.Nu / 1000);
   if (r.beta !== null) uit[v.aansluiting === 2 ? "β_2" : "β_3"] = ruim(r.beta);
   if (r.Nb !== null) Object.assign(uit, { λ_eff: ruim(r.lamEff), χ: ruim(r.chi), N_b_Rd: ruim(r.Nb / 1000), UC_c: ruim(r.UCc) });
+  if (Number.isFinite(r.acr)) uit.α_cr = ruim(r.acr);
+  if (r.kcr > 1) uit.k_cr = ruim(r.kcr);
+  if (r.Veff !== null) Object.assign(uit, { V_eff_Rd: ruim(r.Veff / 1000), UC_bs: ruim(r.UCbs) });
+  if (r.Anw !== null) Object.assign(uit, { f_vw_d: ruim(r.fvwd), A_w_nodig: ruim(r.Anw) });
   if (r.drukOk) uit.UC_max = ruim(r.UCmax);
   return uit;
 }
@@ -119,7 +154,13 @@ const SETS = [
     // φ = 0,003536, H = 2,12 kN. N_Ed = 62,12/0,7682 = 80,86 kN. p_1/d_0 = 3,33 →
     // β_2 = 0,4 + 0,3·0,333 = 0,50; A_net = 691 − 18·6 = 583 mm² →
     // N_u,Rd = 0,5·583·360/1,25 = 83,95 kN; UC = 0,963. u = 40 000·7810/(210 000·691·0,590) = 3,65 mm.
-    handwerk: { φ: "0.003536", H_imp: "2.121", N_Ed: "80.86", β_2: "0.500", N_u_Rd: "83.95", UC_t: "0.963", u_h: "3.65" },
+    // α_cr = 5000·210 000·691·0,590/(600 000·7810) = 91 ≥ 10 → geen vergroting.
+    // Blokschuif (3.10), e₁ = 40: A_nt = (30 − 9)·6 = 126 mm²; A_nv = (40 + 60 − 1,5·18)·6 = 438 mm²;
+    // V_eff,2,Rd = 0,5·360·126/1,25 + 235·438/√3 = 18,14 + 59,43 = 77,57 kN → UC = 80,86/77,57 = 1,042.
+    handwerk: {
+      φ: "0.003536", H_imp: "2.121", N_Ed: "80.86", β_2: "0.500", N_u_Rd: "83.95", UC_t: "0.963", u_h: "3.65",
+      α_cr: "91", A_nt: "126", A_nv: "438", V_eff_Rd: "77.57", UC_bs: "1.042",
+    },
   },
   {
     naam: "2 — strip 100×10 S275, één bout, CC3",
@@ -137,11 +178,17 @@ const SETS = [
     // λ_v = 5315/(19,50·93,9) = 2,903 → λ_eff,v = 0,35 + 0,7·2,903 = 2,382;
     // i_y = 30,36 mm → λ_eff,y = 0,5 + 0,7·1,864 = 1,805. Φ = 3,708 →
     // χ = 1/(3,708 + √(13,750 − 5,674)) = 0,1527; N_b,Rd = 0,1527·1920·235 = 68,9 kN.
-    handwerk: { λ_eff: "2.382", χ: "0.1527", N_b_Rd: "68.9" },
+    // Las: N_Ed = 39,87/0,7526 = 52,98 kN; f_vw,d = 360/(√3·0,8·1,25) = 207,8 N/mm²;
+    // Σ a·l_eff ≥ 52 980/207,8 = 254,9 mm².
+    handwerk: { λ_eff: "2.382", χ: "0.1527", N_b_Rd: "68.9", N_Ed: "52.98", f_vw_d: "207.8", A_w_nodig: "254.9" },
   },
   {
     naam: "5 — L 50×50×5, één bout (3.11), X-kruis",
     invoer: { profile: 18, aansluiting: 1, d_0: 14, e_2: 25, F_w_k: 20, V_Ed: 0 },
+    // Met de hand: N_Ed = 30/0,7682 = 39,05 kN; (3.11) N_u,Rd = 2·(25 − 7)·5·360/1,25 = 51,84 kN.
+    // Blokschuif (3.10), e₁ = 40: A_nt = (25 − 7)·5 = 90 mm², A_nv = (40 − 0,5·14)·5 = 165 mm²;
+    // V_eff,2,Rd = 0,5·360·90/1,25 + 235·165/√3 = 12,96 + 22,39 = 35,35 kN → UC = 1,105: voldoet niet.
+    handwerk: { N_u_Rd: "51.84", A_nt: "90", A_nv: "165", V_eff_Rd: "35.35", UC_bs: "1.105" },
   },
   {
     naam: "6 — L 120×120×12 als enkele diagonaal, twee bouten op ruime steek (β_2 = 0,7), grens h/150",
@@ -154,6 +201,49 @@ const SETS = [
   {
     naam: "8 — L 100×100×10 S355 als enkele diagonaal: klasse 4",
     invoer: { verbandtype: 2, profile: 26, staalkwaliteit: 355, aansluiting: 2, d_0: 18, p_1: 70 },
+  },
+  {
+    naam: "9 — strip 120×12, smal vak met grote V_Ed: 3 ≤ α_cr < 10",
+    invoer: { profile: 14, b_v: 3, h_v: 6, F_w_k: 60, V_Ed: 6000, m_k: 6, aansluiting: 2, d_0: 18, n_d: 1 },
+    // Met de hand: L_d = √45 = 6,708 m, cos α = 0,4472, cos²α = 0,2, A = 1440 mm².
+    // α_cr = 6000·210 000·1440·0,2/(6 000 000·6708) = 9,016 → k = 1/(1 − 1/9,016) = 1,125.
+    // F_w,Ed = 90 kN < 0,15·6000 → φ = (2/√6)·√(0,5·7/6)/200 = 0,003118, H = 18,71 kN.
+    // F_h,Ed = 1,125·108,71 = 122,3 kN; N_Ed = 122,3/0,4472 = 273,4 kN.
+    // N_u,Rd = 0,9·(1440 − 18·12)·360/1,25 = 317,3 kN → UC_t = 0,862 (zonder vergroting 0,766).
+    handwerk: { α_cr: "9.016", k_cr: "1.125", F_h_Ed: "122.3", N_Ed: "273.4", UC_t: "0.862" },
+  },
+  {
+    naam: "10 — idem met V_Ed 20 000: α_cr < 3, tweede-orde-analyse nodig",
+    invoer: { profile: 14, b_v: 3, h_v: 6, F_w_k: 60, V_Ed: 20000, m_k: 6, aansluiting: 2, d_0: 18, n_d: 1 },
+    // α_cr = 9,016·6000/20 000 = 2,705 < 3.
+    handwerk: { α_cr: "2.705" },
+  },
+  {
+    naam: "11 — standaard zonder e₁: blokschuif niet getoetst",
+    invoer: { e_1: 0 },
+  },
+  {
+    naam: "11b — strip 100×10 met één rij bouten, zonder e₁: geen blokschuif, dus ook geen e₁ nodig",
+    invoer: { profile: 11, aansluiting: 2, n_d: 1, e_1: 0 },
+  },
+  {
+    naam: "12 — strip 100×10 met twee gaten naast elkaar, drie bouten: blokschuif (3.9)",
+    invoer: { profile: 11, aansluiting: 3, n_d: 2, e_2: 25 },
+    // A_nt = (100 − 2·25 − 18)·10 = 320 mm²; A_nv = 2·(40 + 2·60 − 2,5·18)·10 = 2300 mm²;
+    // V_eff,1,Rd = 360·320/1,25 + 235·2300/√3 = 92,16 + 312,1 = 404,2 kN.
+    handwerk: { A_nt: "320", A_nv: "2300", V_eff_Rd: "404.2" },
+  },
+  {
+    naam: "12b — idem met gaten dicht bij de rand (e₂ 22): de randstroken zijn maatgevend",
+    invoer: { profile: 11, aansluiting: 3, n_d: 2, e_2: 22 },
+    // Blok tussen de rijen: (100 − 2·22 − 18)·10 = 380 mm²; randstroken: (2·22 − 18)·10 = 260 mm² → A_nt = 260.
+    // A_nv = 2·(40 + 2·60 − 2,5·18)·10 = 2300 mm²;
+    // V_eff,1,Rd = 360·260/1,25 + 235·2300/√3 = 74,88 + 312,1 = 386,9 kN.
+    handwerk: { A_nt: "260", A_nv: "2300", V_eff_Rd: "386.9" },
+  },
+  {
+    naam: "12c — strip 100×10, twee gaten naast elkaar met e₂ 8 < d₀/2: blokschuif niet te toetsen",
+    invoer: { profile: 11, aansluiting: 3, n_d: 2, e_2: 8 },
   },
 ];
 
@@ -168,10 +258,15 @@ for (const set of SETS) {
   if (set.handwerk) fouten += toets(`${set.naam} — handberekening`, got, set.handwerk);
 
   let ok;
-  if (!r.drukOk) {
-    ok = /Het verband voldoet niet: de druk bij omkerende wind/.test(got.text);
-    console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    druk niet op te nemen of niet te toetsen, gemeld`);
-  } else {
+  const slot = got.text.slice(got.text.lastIndexOf("Maatgevende UC"));
+  const gemeld = (re, wat) => {
+    ok = re.test(slot) && /het verband voldoet niet/.test(slot);
+    console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ${wat}, gemeld als voldoet niet`);
+  };
+  if (!r.drukOk) gemeld(/de druk bij omkerende wind/, "druk niet op te nemen of niet te toetsen");
+  else if (!r.blokOk) gemeld(/de blokschuif is niet getoetst/, "blokschuif niet getoetst");
+  else if (!r.tweedeOk) gemeld(/tweede-orde-analyse/, "α_cr < 3");
+  else {
     const voldoet = /het verband voldoet(?! niet)/.test(got.text);
     ok = voldoet === r.UCmax <= 1;
     console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${voldoet ? "voldoet" : "voldoet niet"}   narekening ${r.UCmax <= 1 ? "voldoet" : "voldoet niet"}`);

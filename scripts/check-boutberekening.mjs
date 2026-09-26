@@ -10,24 +10,24 @@
  *
  * B_p,Rd is een splitspunt — de referentie-uitwerking vult voor d_m de sleutelwijdte in in
  * plaats van het gemiddelde uit §3.6.1(3). In de referentiestand hoort hij
- * daarom exact te kloppen; de norm-tak staat op het blad als `B_p,Rd,nb`.
- * gemarkeerd en telt niet als fout. Zie docs/afwijkingen-referentie.md §6.
+ * daarom exact te kloppen; in de norm-stand hoort hij hoger uit te komen.
+ * Zie docs/afwijkingen-referentie.md §6.
+ *
+ * Daarna volgen sets zonder referentieblad, elk met een handberekening:
+ * een randbout zonder tweede bout loodrecht op de kracht, een ongeldige p₂,
+ * een randbout waarbij de p₂-tak maatgevend is, een steek boven het maximum
+ * van tabel 3.3 (signaal, geen afkeur) en de binnenste bout loodrecht op de
+ * kracht in beide rekenwijzen.
  *
  * Draaien:  node scripts/check-boutberekening.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
-import { parse, evaluate } from "../packages/core/dist/index.js";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { laadTemplate, reken, toetsNormStand } from "./lib/refcheck.mjs";
+
+const tpl = laadTemplate("boutberekening.ts");
 
 /** Projectgegevens: `rekenwijze` = 1 → de referentie-uitwerking volgen op de splitspunten. */
 const PROJECT = { rekenwijze: 1 };
-
-const hier = dirname(fileURLToPath(import.meta.url));
-const bron = readFileSync(join(hier, "../packages/desktop/src/templates/boutberekening.ts"), "utf8");
-// De template-literal uit het TS-bestand pakken.
-const tpl = bron.slice(bron.indexOf("`") + 1, bron.lastIndexOf("`"));
 
 const BASIS = {
   staalsoort: "235", boutkwaliteit: "88", boutdiameter: "16",
@@ -63,7 +63,8 @@ const REFERENTIES = [
   },
   {
     blad: "document5C — enkele bout (p₁ en p₂ niet in gebruik)",
-    invoer: {},
+    // Enkele bout = randbout zonder tweede bout loodrecht op de kracht: p₂ = 0.
+    invoer: { p_2: "0" },
     verwacht: { B_p_Rd: 260.6, F_t_Rd: 90.4, F_v_Rd: 60.3, F_b_Rd: 112.1, k_1: 2.189, "α_d": 0.556 },
   },
   {
@@ -73,37 +74,124 @@ const REFERENTIES = [
   },
 ];
 
+/**
+ * Sets zonder referentieblad. De verwachting volgt uit de handberekening in
+ * het commentaar erboven (tabel 3.4 met het correctieblad); `oordeel` is de
+ * slotzin die het blad moet geven.
+ */
+const HANDWERK = [
+  {
+    naam: "Randbout zonder tweede bout loodrecht op de kracht (p₂ = 0) · t 10 · n_v 2 · F_v,Ed 100",
+    standen: [1, 0],
+    invoer: { t_plaat: "10", p_2: "0", n_v: "2", F_v_Ed: "100" },
+    // k₁ = min(2,8·25/18 − 1,7; 2,5) = 2,189 — de p₂-tak vervalt.
+    // α_b = min(30/54; 800/360; 1) = 0,5556.
+    // F_b,Rd = 2,189·0,5556·360·16·10/1,25 = 56,04 kN → UC_b = 100/56,04 = 1,785.
+    verwacht: { k_1: 2.189, F_b_Rd: 56.04, UC_b: 1.785 },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "Idem, p₂ niet ingevuld",
+    standen: [1, 0],
+    invoer: { t_plaat: "10", p_2: undefined, n_v: "2", F_v_Ed: "100" },
+    // Zelfde handberekening als hierboven: een niet ingevuld veld telt als 0.
+    verwacht: { k_1: 2.189, F_b_Rd: 56.04, UC_b: 1.785 },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "Randbout met p₂ 20 < 2,4·d₀ · t 10 · n_v 2 · F_v,Ed 100",
+    standen: [1, 0],
+    invoer: { t_plaat: "10", p_2: "20", n_v: "2", F_v_Ed: "100" },
+    // k₁ = min(2,189; 1,4·20/18 − 1,7 = −0,144; 2,5) = −0,144 → F_b,Rd < 0:
+    // een invoerfout, dus nooit "voldoet", hoe klein UC_v ook is.
+    verwacht: { k_1: -0.144 },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "Randbout, p₂-tak maatgevend: e₂ 40 · p₂ 45 · schacht · n_v 2 · F_v,Ed 100",
+    standen: [1, 0],
+    invoer: { e_2: "40", p_2: "45", afschuifvlak: "2", n_v: "2", F_v_Ed: "100" },
+    // k₁ = min(2,8·40/18 − 1,7 = 4,522; 1,4·45/18 − 1,7 = 1,800; 2,5) = 1,800.
+    // F_b,Rd = 1,800·0,5556·360·16·20/1,25 = 92,16 kN → UC_b = 100/92,16 = 1,085.
+    verwacht: { k_1: 1.8, F_b_Rd: 92.16, UC_b: 1.085 },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "Randbout met p₂ 150 > 14·t = 140 · t 10 · F_v,Ed 40",
+    standen: [1, 0],
+    invoer: { t_plaat: "10", p_2: "150", F_v_Ed: "40" },
+    // k₁ = min(2,189; 1,4·150/18 − 1,7 = 9,967; 2,5) = 2,189 → F_b,Rd = 56,04 kN.
+    // UC_b = 40/56,04 = 0,714; UC_v = 40/60,29 = 0,663 → UC_max = 0,714.
+    // Het maximum van tabel 3.3 geldt alleen bij gedrukte of aan weer blootgestelde
+    // delen: een signaal, geen afkeur.
+    verwacht: { k_1: 2.189, F_b_Rd: 56.04, UC_b: 0.714 },
+    oordeel: "voldoet",
+  },
+  {
+    naam: "Binnenste bout loodrecht op de kracht — norm",
+    standen: [0],
+    invoer: { randpositie: "2" },
+    // k₁ = min(1,4·60/18 − 1,7 = 2,967; 2,5) = 2,5.
+    // F_b,Rd = 2,5·0,5556·360·16·20/1,25 = 128,0 kN.
+    verwacht: { k_1: 2.5, F_b_Rd: 128.0 },
+  },
+  {
+    naam: "Binnenste bout loodrecht op de kracht — referentie-uitwerking (register punt 7)",
+    standen: [1],
+    invoer: { randpositie: "2" },
+    // k₁ = min(2,189; 2,967; 2,5) = 2,189 → F_b,Rd = 112,1 kN.
+    verwacht: { F_b_Rd: 112.1 },
+  },
+];
+
 /** de referentie-uitwerking print op vier cijfers; die marge houden we aan. */
 const gelijk = (a, b) => Math.abs(a - b) <= Math.max(0.05, Math.abs(b) * 0.0006);
 
-function waarden(selectValues) {
-  const uit = {};
-  for (const node of evaluate(parse(tpl), selectValues, PROJECT)) {
-    if (node.type === "var-display") uit[node.name] = parseFloat(String(node.result).replace(",", "."));
-  }
-  return uit;
-}
+const doorreken = (invoer, rekenwijze) => {
+  const waarden = { ...BASIS, ...invoer };
+  for (const k of Object.keys(waarden)) if (waarden[k] === undefined) delete waarden[k];
+  return reken(tpl, waarden, { ...PROJECT, rekenwijze });
+};
 
 let fouten = 0;
 for (const ref of REFERENTIES) {
   console.log(`\n${ref.blad}`);
   let got;
   try {
-    got = waarden({ ...BASIS, ...ref.invoer });
+    got = doorreken(ref.invoer, 1);
   } catch (err) {
     console.log(`  FOUT   blad kon niet worden doorgerekend: ${err.message}`);
     fouten++;
     continue;
   }
   for (const [naam, xc] of Object.entries(ref.verwacht)) {
-    const ons = got[naam];
+    const ons = got.values[naam];
     const ok = ons !== undefined && gelijk(ons, xc);
     if (!ok) fouten++;
     console.log(`  ${ok ? "OK    " : "FOUT  "} ${naam.padEnd(8)} ons ${String(ons ?? "—").padStart(8)}   de referentie-uitwerking ${xc}`);
   }
-  for (const [naam, xc] of Object.entries(ref.afwijkend ?? {})) {
-    const ons = got[naam];
-    console.log(`  afwijkend ${naam.padEnd(6)} ons ${String(ons ?? "—").padStart(8)}   de referentie-uitwerking ${xc}   (§6 in het register)`);
+  // Norm-stand: voor een randbout valt k₁ samen met de tabel, dus F_b,Rd
+  // blijft gelijk; d_m volgens §3.6.1(3) maakt B_p,Rd groter.
+  fouten += toetsNormStand(ref.blad, got, doorreken(ref.invoer, 0), { F_b_Rd: "gelijk", B_p_Rd: "hoger" });
+}
+
+for (const set of HANDWERK) {
+  for (const stand of set.standen) {
+    console.log(`\n${set.naam}  — ${stand === 1 ? "referentiestand" : "norm-stand"}`);
+    const got = doorreken(set.invoer, stand);
+    for (const [naam, doel] of Object.entries(set.verwacht)) {
+      const ons = got.values[naam];
+      const ok = ons !== undefined && gelijk(ons, doel);
+      if (!ok) fouten++;
+      console.log(`  ${ok ? "OK    " : "FOUT  "} ${naam.padEnd(8)} ons ${String(ons ?? "—").padStart(8)}   hand ${doel}`);
+    }
+    if (set.oordeel) {
+      const slot = got.text.slice(got.text.lastIndexOf("Maatgevende UC"));
+      const ons = /voldoet niet/.test(slot) ? "voldoet niet" : /voldoet/.test(slot) ? "voldoet" : "—";
+      const ok = ons === set.oordeel;
+      if (!ok) fouten++;
+      console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel  ons ${ons}   hand ${set.oordeel}`);
+    }
   }
 }
 

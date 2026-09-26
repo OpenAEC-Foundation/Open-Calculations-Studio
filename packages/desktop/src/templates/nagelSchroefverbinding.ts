@@ -9,22 +9,24 @@
  * schroefnagels, en schroeven. Nagels tot 8 mm en schroeven met d_ef ≤ 6 mm
  * volgen de nagelregels (§8.3.1); schroeven met d_ef > 6 mm de boutregels
  * (§8.5.1 via §8.7.1(4)), nagels boven 8 mm alleen voor de stuiksterkte
- * (§8.3.1.1(6)).
+ * (§8.3.1.1(6)). Een vierkante of gegroefde nagel zonder profilering volgens
+ * EN 14592 is axiaal een gladde nagel; alleen het vloeimoment (8.14) en de
+ * grens van het koordeffect verschillen.
  *
  * Axiaal: §8.3.2 voor nagels en §8.7.2 voor schroeven, met (8.40a) in de
  * vorm van het Engelstalige aanvullingsblad A1. Het koordeffect telt mee
  * volgens §8.2.2(2) en krijgt alleen het deel van de uittreksterkte dat de
  * axiale belasting overlaat (NB bij §8.2.2(5)). Groep volgens §8.1.2 met n_ef
- * uit tabel 8.1 of (8.34)/(8.35); combinatie (8.27)/(8.28); minimale
- * afstanden uit tabel 8.2, 8.4 en 8.6 met de buitendiameter (§8.7.1(1)).
+ * uit tabel 8.1 of (8.34)/(8.35); combinatie (8.27)/(8.28); splijten door de
+ * kracht loodrecht op de vezel (8.2)–(8.4); minimale afstanden uit tabel 8.2,
+ * 8.4 en 8.6 met de buitendiameter (§8.7.1(1)). De hoeken α (kracht) en α_s
+ * (schroefas) tellen als de scherpe hoek met de vezel.
  *
  * Geen referentieberekening beschikbaar; scripts/check-nagel-schroef.mjs
  * rekent de uitkomsten onafhankelijk na. Status in de catalogus: controleren.
  */
 
 export const nagelSchroefverbinding = `"Nagel- en schroefverbinding — EN 1995-1-1 hoofdstuk 8
-
-'<i>Een verbinding met nagels of schroeven, belast op afschuiving en eventueel op trek in de richting van de verbindingsmiddelen. De sterkte per verbindingsmiddel volgt uit de theorie van Johansen (§8.2), met de stuiksterkte en het vloeimoment uit §8.3.1, §8.5.1 of §8.7.1 en de axiale sterkte uit §8.3.2 of §8.7.2. Daarna volgen de groep (§8.1.2), de combinatie van afschuiving en trek (§8.3.3, §8.7.3) en de minimale afstanden.</i>
 
 # 1. Uitgangspunten
 
@@ -60,8 +62,6 @@ kleur_ok(b) = if(b ≡ 1; "#047857"; "#b91c1c")
   Hout – staalplaat – hout, dubbelsnedig = 5
 @end
 
-'<i>Element 1 zit aan de kant van de kop, element 2 aan de kant van de punt. Bij een dubbelsnedige verbinding is element 2 het middelste deel, en is het derde deel, waarin de punt zit, gelijk aan element 1.</i>
-
 #if opbouw ≡ 3
     @select plaat "Plaatmateriaal (element 1)"
       OSB/3 (EN 300) = 1
@@ -90,7 +90,7 @@ kleur_ok(b) = if(b ≡ 1; "#047857"; "#b91c1c")
     t_1 = t_s
     #show
 #else
-    @select klasse_1 "Sterkteklasse element 1 (bij dubbelsnedig: beide zijdelen)"
+    @select klasse_1 "Sterkteklasse element 1, aan de kopzijde (bij dubbelsnedig: beide zijdelen)"
       C14 = 1
       C16 = 2
       C18 = 3
@@ -117,7 +117,7 @@ kleur_ok(b) = if(b ≡ 1; "#047857"; "#b91c1c")
     t_2 = t_1
     #show
 #else
-    @select klasse_2 "Sterkteklasse element 2"
+    @select klasse_2 "Sterkteklasse element 2, aan de puntzijde (bij dubbelsnedig: het middendeel)"
       C14 = 1
       C16 = 2
       C18 = 3
@@ -173,8 +173,8 @@ k_mod,h', hout (tabel 3.1)'
 
 @select middel "Verbindingsmiddel"
   Gladde nagel = 1
-  Vierkante of gegroefde nagel = 2
-  Ring- of schroefnagel = 3
+  Vierkante of gegroefde nagel, niet geprofileerd = 2
+  Ring-, schroef- of andere geprofileerde nagel (EN 14592) = 3
   Schroef = 4
 @end
 
@@ -208,7 +208,7 @@ f_u = ?*(N/mm^2)', treksterkte van het draadmateriaal'
     α_s = 90
     γ_M2 = 1.25
     #show
-    #if middel ≡ 1
+    #if middel ≤ 2
         #hide
         l_g = l_v
         f_ax,nk = 0 N/mm^2
@@ -296,9 +296,36 @@ a_4 = ?*(mm)', randafstand'
 @end
 
 α = ?', hoek tussen de kracht en de vezelrichting, in graden (0 tot 90)'
+#hide
+α_n = min(mod(abs(α); 180); 180 - mod(abs(α); 180))
+splijt = bool(rand ≡ 1)*bool(α_n > 0)
+#show
+#if abs(α - α_n) > 0.001
+    '<b style="color:#b91c1c">α ligt buiten 0 tot 90°: gerekend is met de scherpe hoek tussen kracht en vezel, 'α_n'°.</b>
+#end if
 F_v,Ed = ?*(kN)', rekenwaarde van de dwarskracht op de hele verbinding'
 F_ax,Ed = ?*(kN)', rekenwaarde van de trekkracht in de richting van de verbindingsmiddelen'
-#if middel ≡ 1
+#if splijt ≡ 1
+    #if opbouw ≤ 2
+        @select el_90 "Splijten: element dat aan de belaste rand loodrecht op de vezel wordt belast"
+          Element aan de puntzijde (dubbelsnedig: de zijdelen) = 1
+          Het andere element (dubbelsnedig: het middendeel) = 2
+        @end
+    #else
+        #hide
+        el_90 = 1
+        #show
+    #end if
+    h_90 = ?*(mm)', splijten: hoogte loodrecht op de vezel van het belaste houten element'
+    η_in = ?', deel van de kracht loodrecht op de vezel aan de maatgevende zijde van de verbinding (8.3), 0,5 tot 1; 0 = alles aan één zijde'
+#else
+    #hide
+    el_90 = 1
+    h_90 = 0 mm
+    η_in = 0
+    #show
+#end if
+#if middel ≤ 2
     #if F_ax,Ed > 0 kN
         @select ax_lang "De axiale belasting is geheel of gedeeltelijk blijvend of langdurig"
           Nee = 0
@@ -317,55 +344,47 @@ F_ax,Ed = ?*(kN)', rekenwaarde van de trekkracht in de richting van de verbindin
 
 # 5. Stuiksterkte en vloeimoment
 
-'<i>De formules van hoofdstuk 8 rekenen met getallen: d en t in mm, ρ<sub>k</sub> in kg/m³, f<sub>u</sub> in N/mm². Het achtervoegsel r staat voor zo'n getal.</i>
-
 #hide
-α_r = α*pi/180
+α_r = α_n*pi/180
 α_sr = α_s*pi/180
 hout_1 = bool(opbouw ≡ 1) + bool(opbouw ≡ 2) + bool(opbouw ≡ 5)
 hout_2 = bool(opbouw ≤ 4)
-d_r = d_ef/(1 mm)
-t_r1 = t_1/(1 mm)
-ρ_r1 = ρ_1/(1 kg/m^3)
-ρ_r2 = ρ_2/(1 kg/m^3)
-ρ_rpl = ρ_pl/(1 kg/m^3)
-f_ur = f_u/(1 N/mm^2)
 #show
 #if fh_bout ≡ 1
     '<i>Stuiksterkte onder de hoek α met de vezel, naaldhout: (8.31) tot en met (8.33).</i>
-    k_90 = 1.35 + 0.015*d_r', (8.33)'
+    k_90 = 1.35 + 0.015*d_ef/mm', (8.33)'
     #if hout_1 ≡ 1
-        f_h,0,1 = 0.082*(1 - 0.01*d_r)*ρ_r1*N/mm^2', (8.32), element 1'
+        f_h,0,1 = 0.082*(1 - 0.01*d_ef/mm)*ρ_1/(kg/m^3)*N/mm^2', (8.32), element 1'
         f_h,1 = f_h,0,1/(k_90*sin(α_r)^2 + cos(α_r)^2)', (8.31)'
     #end if
     #if hout_2 ≡ 1
-        f_h,0,2 = 0.082*(1 - 0.01*d_r)*ρ_r2*N/mm^2', (8.32), element 2'
+        f_h,0,2 = 0.082*(1 - 0.01*d_ef/mm)*ρ_2/(kg/m^3)*N/mm^2', (8.32), element 2'
         f_h,2 = f_h,0,2/(k_90*sin(α_r)^2 + cos(α_r)^2)', (8.31)'
     #end if
 #else if voorboren ≡ 1
     #if hout_1 ≡ 1
-        f_h,1 = 0.082*(1 - 0.01*d_r)*ρ_r1*N/mm^2', voorgeboord (8.16), element 1'
+        f_h,1 = 0.082*(1 - 0.01*d_ef/mm)*ρ_1/(kg/m^3)*N/mm^2', voorgeboord (8.16), element 1'
     #end if
     #if hout_2 ≡ 1
-        f_h,2 = 0.082*(1 - 0.01*d_r)*ρ_r2*N/mm^2', voorgeboord (8.16), element 2'
+        f_h,2 = 0.082*(1 - 0.01*d_ef/mm)*ρ_2/(kg/m^3)*N/mm^2', voorgeboord (8.16), element 2'
     #end if
 #else
     #if hout_1 ≡ 1
-        f_h,1 = 0.082*ρ_r1*d_r^-0.3*N/mm^2', niet voorgeboord (8.15), element 1'
+        f_h,1 = 0.082*ρ_1/(kg/m^3)*(d_ef/mm)^-0.3*N/mm^2', niet voorgeboord (8.15), element 1'
     #end if
     #if hout_2 ≡ 1
-        f_h,2 = 0.082*ρ_r2*d_r^-0.3*N/mm^2', niet voorgeboord (8.15), element 2'
+        f_h,2 = 0.082*ρ_2/(kg/m^3)*(d_ef/mm)^-0.3*N/mm^2', niet voorgeboord (8.15), element 2'
     #end if
 #end if
 #if opbouw ≡ 3
     #if plaat ≤ 3
-        f_h,1 = 65*d_r^-0.7*t_r1^0.1*N/mm^2', OSB en spaanplaat (8.22)'
+        f_h,1 = 65*(d_ef/mm)^-0.7*(t_1/mm)^0.1*N/mm^2', OSB en spaanplaat (8.22)'
     #else if plaat ≡ 4
-        f_h,1 = 0.11*ρ_rpl*d_r^-0.3*N/mm^2', multiplex (8.20)'
+        f_h,1 = 0.11*ρ_pl/(kg/m^3)*(d_ef/mm)^-0.3*N/mm^2', multiplex (8.20)'
     #else if plaat ≡ 5
-        f_h,1 = 3.9*d_r^-0.6*t_r1^0.7*N/mm^2', gipskartonplaat (NB.8.1)'
+        f_h,1 = 3.9*(d_ef/mm)^-0.6*(t_1/mm)^0.7*N/mm^2', gipskartonplaat (NB.8.1)'
     #else
-        f_h,1 = 7*d_r^-0.7*t_r1^0.9*N/mm^2', gipsvezelplaat, bovengrens (NB.8.2)'
+        f_h,1 = 7*(d_ef/mm)^-0.7*(t_1/mm)^0.9*N/mm^2', gipsvezelplaat, bovengrens (NB.8.2)'
     #end if
 #else if opbouw ≡ 4
     #hide
@@ -386,61 +405,52 @@ f_ur = f_u/(1 N/mm^2)
 #if M_y,in > 0 N*mm
     M_y,Rk = M_y,in', uit de productverklaring'
 #else if middel ≡ 2
-    M_y,Rk = 0.45*f_ur*d_r^2.6*N*mm', vierkante of gegroefde nagel (8.14)'
+    M_y,Rk = 0.45*f_u/(N/mm^2)*(d_ef/mm)^2.6*N*mm', vierkante of gegroefde nagel (8.14)'
 #else if boutregels ≡ 1
-    M_y,Rk = 0.3*f_ur*d_r^2.6*N*mm', (8.30)'
+    M_y,Rk = 0.3*f_u/(N/mm^2)*(d_ef/mm)^2.6*N*mm', (8.30)'
 #else
-    M_y,Rk = 0.3*f_ur*d_r^2.6*N*mm', (8.14)'
+    M_y,Rk = 0.3*f_u/(N/mm^2)*(d_ef/mm)^2.6*N*mm', (8.14)'
 #end if
 
 # 6. Indringdiepte en axiale sterkte
 
-'<i>t<sub>pen</sub> is de lengte in het element aan de puntzijde. Bij een dubbelsnedige verbinding zit de punt in het derde deel; aan de kopzijde telt dan de kleinste van t<sub>1</sub> en t<sub>pen</sub> (§8.3.1.1(1)).</i>
-
 #if opbouw ≡ 2
-    t_pen = min(l_v - t_1 - t_2; t_1)', lengte in het derde deel'
+    t_pen = min(l_v - t_1 - t_2; t_1)', lengte in het derde deel; de zijdelen rekenen met min(t_1; t_pen)'
 #else if opbouw ≡ 4
     t_pen = min(l_v - t_s; t_2)', lengte in element 2'
 #else if opbouw ≡ 5
-    t_pen = min(l_v - t_1 - t_s; t_1)', lengte in het derde deel'
+    t_pen = min(l_v - t_1 - t_s; t_1)', lengte in het derde deel; de zijdelen rekenen met min(t_1; t_pen)'
 #else
     t_pen = min(l_v - t_1; t_2)', lengte in element 2'
 #end if
 #hide
 t_pen = max(t_pen; 0 mm)
 t_elem = if(opbouw ≡ 2; t_1; if(opbouw ≡ 5; t_1; t_2))
-#show
-#hide
 'Johansen-diktes: zijelement of element aan de kopzijde (t_J1) en middendeel of element aan de puntzijde (t_J2).
 t_J1 = if(opbouw ≡ 2; min(t_1; t_pen); if(opbouw ≡ 5; min(t_1; t_pen); if(opbouw ≡ 4; t_pen; t_1)))
 t_J2 = if(opbouw ≡ 2; t_2; t_pen)
 t_J1g = max(t_J1; 0.1 mm)
 t_J2g = max(t_J2; 0.1 mm)
-'Axiaal: volumieke massa aan de puntzijde en aan de kopzijde.
+'Axiaal: volumieke massa aan de puntzijde; aan de kopzijde is dat ρ_1.
 ρ_punt = if(opbouw ≡ 2; ρ_1; if(opbouw ≡ 5; ρ_1; ρ_2))
-ρ_kop = ρ_1
-ρ_rp = ρ_punt/(1 kg/m^3)
-ρ_rk = ρ_kop/(1 kg/m^3)
 kop_staal = bool(opbouw ≡ 4)
 kop_plaat = bool(opbouw ≡ 3)
 #show
 
-#if middel ≡ 1
+#if middel ≤ 2
     '<h6>Gladde nagel (8.24) tot en met (8.26)</h6>
-    '<i>Onder 12d indringdiepte gaat de uittreksterkte omlaag met de factor (t<sub>pen</sub>/4d − 2); onder 8d is er geen (§8.3.2(7)).</i>
-    f_ax,k = 20*10^-6*ρ_rp^2*N/mm^2', (8.25)'
-    f_head,k,n = 70*10^-6*ρ_rk^2*N/mm^2', (8.26)'
+    f_ax,k = 20*10^-6*(ρ_punt/(kg/m^3))^2*N/mm^2', (8.25), puntzijde'
+    f_head,k,n = 70*10^-6*(ρ_1/(kg/m^3))^2*N/mm^2', (8.26), kopzijde'
     #if t_pen ≥ 12*d_v
-        k_pen = 1', t_pen ≥ 12d: geen vermindering'
+        k_pen = 1', t_pen ≥ 12d'
     #else if t_pen ≥ 8*d_v
-        k_pen = t_pen/(4*d_v) - 2', 8d ≤ t_pen < 12d'
+        k_pen = t_pen/(4*d_v) - 2', 8d ≤ t_pen < 12d (§8.3.2(7))'
     #else
-        k_pen = 0', t_pen < 8d: geen uittreksterkte'
+        k_pen = 0', t_pen < 8d: geen uittreksterkte (§8.3.2(7))'
     #end if
     F_ax,a = k_pen*f_ax,k*d_v*t_pen to N', (8.24a) uittrekken aan de puntzijde'
     #if kop_staal ≡ 1
-        '<i>De kop ligt op de staalplaat: alleen uittrekken aan de puntzijde.</i>
-        F_ax,Rk = F_ax,a to N
+        F_ax,Rk = F_ax,a to N', kop op de staalplaat: alleen uittrekken'
     #else if kop_plaat ≡ 1
         F_ax,b = f_head,p*d_h^2 to N', doortrekken van de kop door de plaat'
         F_ax,Rk = min(F_ax,a; F_ax,b) to N
@@ -451,21 +461,19 @@ kop_plaat = bool(opbouw ≡ 3)
     #hide
     F_t,Rk = 10^9 N
     #show
-#else if middel ≤ 3
+#else if middel ≡ 3
     '<h6>Geprofileerde nagel (8.23)</h6>
-    '<i>Alleen het geprofileerde deel draagt axiaal (§8.3.2(2)). Onder 8d gaat de uittreksterkte omlaag met de factor (t<sub>pen</sub>/2d − 3); onder 6d is er geen (§8.3.2(7)).</i>
-    t_pg = min(t_pen; l_g)', geprofileerd deel in het element aan de puntzijde'
+    t_pg = min(t_pen; l_g)', geprofileerd deel in het element aan de puntzijde (§8.3.2(2))'
     #if t_pg ≥ 8*d_v
-        k_pen = 1', geprofileerd deel ≥ 8d: geen vermindering'
+        k_pen = 1', geprofileerd deel ≥ 8d'
     #else if t_pg ≥ 6*d_v
-        k_pen = t_pg/(2*d_v) - 3', 6d ≤ geprofileerd deel < 8d'
+        k_pen = t_pg/(2*d_v) - 3', 6d ≤ geprofileerd deel < 8d (§8.3.2(7))'
     #else
-        k_pen = 0', geprofileerd deel < 6d: geen uittreksterkte'
+        k_pen = 0', geprofileerd deel < 6d: geen uittreksterkte (§8.3.2(7))'
     #end if
     F_ax,a = k_pen*f_ax,nk*d_v*t_pg to N', (8.23a)'
     #if kop_staal ≡ 1
-        '<i>De kop ligt op de staalplaat: alleen uittrekken aan de puntzijde.</i>
-        F_ax,Rk = F_ax,a to N
+        F_ax,Rk = F_ax,a to N', kop op de staalplaat: alleen uittrekken'
     #else if kop_plaat ≡ 1
         F_ax,b = f_head,p*d_h^2 to N', doortrekken van de kop door de plaat'
         F_ax,Rk = min(F_ax,a; F_ax,b) to N
@@ -480,25 +488,24 @@ kop_plaat = bool(opbouw ≡ 3)
     '<h6>Schroef (8.38) tot en met (8.40c)</h6>
     ℓ_ef = min(t_pen; l_g)', schroefdraad in het element aan de puntzijde'
     #hide
-    ℓ_r = max(ℓ_ef/(1 mm); 0.1)
-    d_vr = d_v/(1 mm)
     normschroef = bool(d_v ≥ 6 mm)*bool(d_v ≤ 12 mm)*bool(d_1/d_v ≥ 0.6)*bool(d_1/d_v ≤ 0.75)
     #show
-    #if normschroef ≡ 1
-        f_ax,k = 0.52*d_vr^-0.5*ℓ_r^-0.1*ρ_rp^0.8*N/mm^2', (8.39)'
-        k_d = min(d_vr/8; 1)', (8.40)'
+    #if ℓ_ef < 6*d_v
+        F_ax,a = 0 N', schroefdraad korter dan 6d: geen uittreksterkte (§8.7.2(3))'
+    #else if normschroef ≡ 1
+        f_ax,k = 0.52*(d_v/mm)^-0.5*(ℓ_ef/mm)^-0.1*(ρ_punt/(kg/m^3))^0.8*N/mm^2', (8.39)'
+        k_d = min(d_v/(8 mm); 1)', (8.40)'
         F_ax,a = f_ax,k*d_v*ℓ_ef*k_d/(1.2*cos(α_sr)^2 + sin(α_sr)^2) to N', (8.38) uittrekken'
     #else
         F_ax,a = f_ax,in*d_v*ℓ_ef/(1.2*cos(α_sr)^2 + sin(α_sr)^2)*(ρ_punt/ρ_a)^0.8 to N', (8.40a) uittrekken'
     #end if
     #if kop_staal ≡ 1
-        '<i>De kop ligt op de staalplaat: geen doortrekken.</i>
-        F_ax,Rk = F_ax,a to N
+        F_ax,Rk = F_ax,a to N', kop op de staalplaat: geen doortrekken'
     #else if kop_plaat ≡ 1
         F_ax,b = f_head,p*d_h^2 to N', doortrekken van de kop door de plaat'
         F_ax,Rk = min(F_ax,a; F_ax,b) to N
     #else
-        F_ax,b = f_head,k*d_h^2*(ρ_kop/ρ_a)^0.8 to N', (8.40b) doortrekken van de kop'
+        F_ax,b = f_head,k*d_h^2*(ρ_1/ρ_a)^0.8 to N', (8.40b) doortrekken van de kop'
         F_ax,Rk = min(F_ax,a; F_ax,b) to N
     #end if
     F_t,Rk = f_tens,k to N', staal (8.40c)'
@@ -506,21 +513,20 @@ kop_plaat = bool(opbouw ≡ 3)
 
 # 7. Sterkte op afschuiving per verbindingsmiddel en per snede
 
-'<i>Het koordeffect F<sub>ax,Rk</sub>/4 komt bovenop het Johansen-deel van de mechanismen waarin de stift buigt, tot ten hoogste 15 % (gladde nagel), 25 % (vierkante of gegroefde nagel), 50 % (ring- of schroefnagel) of 100 % (schroef) daarvan (§8.2.2(2)); bij gipsplaat niet (§8.3.1.5(5)). Wordt de stift ook axiaal belast, dan telt voor het koordeffect alleen het deel van de uittreksterkte dat de axiale belasting overlaat (NB bij §8.2.2(5)).</i>
-
 #hide
 p_ax = if(opbouw ≡ 3; if(plaat ≥ 5; 0; 1); 1)*if(middel ≡ 1; 0.15; if(middel ≡ 2; 0.25; if(middel ≡ 3; 0.50; 1)))
+p_proc = 100*p_ax
 n_tot = max(n_1*n_2; 1)
 n_ef,ax = if(middel ≡ 4; n_tot^0.9; n_tot)
 F_ax,Rd0 = min(n_ef,ax*k_mod*F_ax,Rk/γ_M; n_ef,ax*F_t,Rk/γ_M2) to kN
 F_ax,Rk,koord = min(F_ax,Rk; F_t,Rk)
 #show
 #if F_ax,Ed > 0 kN
-    '<i>De axiale belasting gebruikt F<sub>ax,Ed</sub>/F<sub>ax,Rd</sub> van de uittreksterkte van de groep; de rest is beschikbaar voor het koordeffect.</i>
-    F_ax,koord = F_ax,Rk,koord*max(0; 1 - F_ax,Ed/F_ax,Rd0) to N', uittreksterkte voor het koordeffect'
+    F_ax,koord = F_ax,Rk,koord*max(0; 1 - F_ax,Ed/F_ax,Rd0) to N', uittreksterkte na aftrek van de axiale belasting (NB bij §8.2.2(5))'
 #else
-    F_ax,koord = F_ax,Rk,koord to N', geen axiale belasting: de volle uittreksterkte'
+    F_ax,koord = F_ax,Rk,koord to N', uittreksterkte voor het koordeffect'
 #end if
+'<i>Koordeffect F<sub>ax,koord</sub>/4, ten hoogste 'p_proc' % van het Johansen-deel (§8.2.2(2), §8.3.1.5(5)).</i>
 
 #hide
 k_1(x) = x + min(F_ax,koord/4; p_ax*x)
@@ -614,15 +620,14 @@ n_s', aantal sneden per verbindingsmiddel'
         k_ef', tabel 8.1, lineair geïnterpoleerd'
     #end if
     n_ef = n_1^k_ef', meewerkend aantal per rij (8.17)'
-    '<i>De component van de kracht evenwijdig aan de rijen moet binnen de sterkte met het meewerkende aantal blijven, de hele kracht binnen de sterkte van alle verbindingsmiddelen (§8.1.2(4) en (5)).</i>
     F_v,Rd,0 = n_2*n_ef*n_s*F_v,Rd to kN', evenwijdig aan de rijen'
     F_v,Rd,t = n_2*n_1*n_s*F_v,Rd to kN', alle verbindingsmiddelen'
-    UC_v,0 = F_v,Ed*cos(α_r)/F_v,Rd,0', component evenwijdig aan de rijen'
+    UC_v,0 = F_v,Ed*cos(α_r)/F_v,Rd,0', component evenwijdig aan de rijen (§8.1.2(5))'
     UC_v,t = F_v,Ed/F_v,Rd,t', de hele kracht'
     UC_v = max(UC_v,0; UC_v,t)', afschuiving'
 #else
     n_ef,0 = min(n_1; n_1^0.9*(a_1/(13*d_v))^0.25)', meewerkend aantal per rij evenwijdig aan de vezel (8.34)'
-    n_ef = n_ef,0 + (n_1 - n_ef,0)*α/90', lineair naar n loodrecht op de vezel (8.35)'
+    n_ef = n_ef,0 + (n_1 - n_ef,0)*α_n/90', lineair naar n loodrecht op de vezel (8.35)'
     F_v,Rd,t = n_2*n_ef*n_s*F_v,Rd to kN', groep'
     UC_v = F_v,Ed/F_v,Rd,t', afschuiving'
 #end if
@@ -636,7 +641,7 @@ n_s', aantal sneden per verbindingsmiddel'
     #else
         UC_ax = F_ax,Ed/F_ax,Rd', trek'
     #end if
-    #if middel ≡ 1
+    #if middel ≤ 2
         UC_c = UC_ax + UC_v', gladde nagel (8.27)'
     #else
         UC_c = UC_ax^2 + UC_v^2', (8.28)'
@@ -645,6 +650,35 @@ n_s', aantal sneden per verbindingsmiddel'
     #hide
     UC_ax = 0
     UC_c = UC_v
+    #show
+#end if
+
+#if splijt ≡ 1
+    '<h6>Splijten door de kracht loodrecht op de vezel (§8.1.4)</h6>
+    #hide
+    b_90 = if(el_90 ≡ 1; if(opbouw ≡ 2; 2*t_1; if(opbouw ≡ 5; 2*t_1; t_2)); if(opbouw ≡ 2; t_2; t_1))
+    #show
+    b_90', dikte van het element; bij de zijdelen beide samen'
+    h_e = a_4 + (n_2 - 1)*a_2', van de belaste rand tot het verste verbindingsmiddel'
+    #if h_90 > h_e
+        #hide
+        ok_90 = 1
+        η_90 = if(η_in > 0; min(max(η_in; 0.5); 1); 1)
+        #show
+        F_90,Rd = k_mod,h*14*b_90/mm*sqrt(h_e/mm/(1 - h_e/h_90))*N/γ_M to kN', (8.4) naaldhout, w = 1'
+        F_90,Ed = η_90*F_v,Ed*sin(α_r)', (8.3), met het deel η_90 aan de maatgevende zijde'
+        UC_90 = F_90,Ed/F_90,Rd', splijten (8.2)'
+    #else
+        #hide
+        ok_90 = 0
+        UC_90 = 0
+        #show
+        '<b style="color:#b91c1c">Vul de hoogte h van het element in; die moet groter zijn dan h<sub>e</sub>.</b>
+    #end if
+#else
+    #hide
+    ok_90 = 1
+    UC_90 = 0
     #show
 #end if
 
@@ -682,7 +716,7 @@ UC_a1 = max(a1_min/max(a_1; 0.1 mm); a_1/a1_max)
 UC_a2 = if(n_2 > 1; a2_min/max(a_2; 0.1 mm); 0)
 UC_a3 = a3_min/max(a_3; 0.1 mm)
 UC_a4 = a4_min/max(a_4; 0.1 mm)
-pen_min = if(middel ≡ 1; 8; 6)*d_v
+pen_min = if(middel ≤ 2; 8; 6)*d_v
 UC_pen = pen_min/max(t_pen; 0.1 mm)
 'Voorboren: houtdikte (8.18) volgens de nagelregels, en §8.3.1.1(2) voor nagels of §10.4.5 voor schroeven.
 t_min = max(7*d_v; (13*(d_v/(1 mm)) - 30)*(ρ_max/(400 kg/m^3))*mm)
@@ -692,11 +726,12 @@ ok_vb = if(voorboren ≡ 1; 1; if(middel ≡ 4; bool(d_v ≤ 6 mm); bool(ρ_max 
 ok_aantal = if(middel ≤ 3; bool(n_1*n_2 ≥ 2); 1)
 ok_kop = if(opbouw ≡ 3; if(plaat ≤ 4; bool(d_h ≥ 2*d_v); 1); 1)
 ok_fu = if(middel ≤ 3; if(M_y,in > 0 N*mm; 1; bool(f_u ≥ 600 N/mm^2)); 1)
-ok_hoek = if(x_ax ≡ 1; bool(α_s ≥ 30); 1)
+ok_hoek = if(x_ax ≡ 1; bool(min(mod(abs(α_s); 180); 180 - mod(abs(α_s); 180)) ≥ 30); 1)
 ok_t12 = if(x_ax ≡ 1; bool(t_elem ≥ 12*d_v); 1)
+ok_draad = if(x_ax ≡ 1; bool(min(t_pen; l_g) ≥ 6*d_v); 1)
 ok_glad = bool(ax_lang ≡ 0)
 ok_mat = bool(k_mod > 0)
-ok_det = bool(UC_a1 ≤ 1)*bool(UC_a2 ≤ 1)*bool(UC_a3 ≤ 1)*bool(UC_a4 ≤ 1)*bool(UC_pen ≤ 1)*ok_t18*ok_vb*ok_aantal*ok_kop*ok_fu*ok_hoek*ok_t12*ok_glad*ok_mat
+ok_det = bool(UC_a1 ≤ 1)*bool(UC_a2 ≤ 1)*bool(UC_a3 ≤ 1)*bool(UC_a4 ≤ 1)*bool(UC_pen ≤ 1)*ok_t18*ok_vb*ok_aantal*ok_kop*ok_fu*ok_hoek*ok_t12*ok_draad*ok_glad*ok_mat
 #show
 
 #if boutregels ≡ 1
@@ -731,6 +766,7 @@ ok_det = bool(UC_a1 ≤ 1)*bool(UC_a2 ≤ 1)*bool(UC_a3 ≤ 1)*bool(UC_a4 ≤ 1)
 #end if
 #if x_ax ≡ 1
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Houtdikte voor tabel 8.6, 12d (§8.7.2(2))</td><td style="padding:3px 8px; text-align:right;">'t_elem'</td><td style="padding:3px 8px; text-align:right;">'12*d_v'</td><td style="padding:3px 8px; color:'kleur_ok(ok_t12)'">'if(ok_t12 ≡ 1; "voldoet"; "voldoet niet")'</td></tr>
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Schroefdraad aan de puntzijde, 6d (§8.7.2(3))</td><td style="padding:3px 8px; text-align:right;">'ℓ_ef'</td><td style="padding:3px 8px; text-align:right;">'6*d_v'</td><td style="padding:3px 8px; color:'kleur_ok(ok_draad)'">'if(ok_draad ≡ 1; "voldoet"; "voldoet niet")'</td></tr>
 #end if
 '</table>
 
@@ -759,7 +795,7 @@ ok_det = bool(UC_a1 ≤ 1)*bool(UC_a2 ≤ 1)*bool(UC_a3 ≤ 1)*bool(UC_a4 ≤ 1)
 
 # 10. Samenvatting
 
-UC_max = max(UC_v; UC_ax; UC_c)
+UC_max = max(UC_v; UC_ax; UC_c; UC_90)
 '<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
 '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:4px 8px;">Toets</th><th style="text-align:left; padding:4px 8px;">Norm</th><th style="text-align:right; padding:4px 8px;">UC</th><th style="text-align:left; padding:4px 8px;">Oordeel</th></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Afschuiving</td><td style="padding:4px 8px;">§8.1.2, §8.2</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_v)'">'UC_v'</td><td style="padding:4px 8px; color:'kleur(UC_v)'">'oordeel(UC_v)'</td></tr>
@@ -767,11 +803,20 @@ UC_max = max(UC_v; UC_ax; UC_c)
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Trek</td><td style="padding:4px 8px;">§8.3.2 / §8.7.2</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_ax)'">'UC_ax'</td><td style="padding:4px 8px; color:'kleur(UC_ax)'">'oordeel(UC_ax)'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Afschuiving met trek</td><td style="padding:4px 8px;">(8.27) / (8.28)</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_c)'">'UC_c'</td><td style="padding:4px 8px; color:'kleur(UC_c)'">'oordeel(UC_c)'</td></tr>
 #end if
+#if splijt ≡ 1
+    #if ok_90 ≡ 1
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Splijten</td><td style="padding:4px 8px;">§8.1.4</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_90)'">'UC_90'</td><td style="padding:4px 8px; color:'kleur(UC_90)'">'oordeel(UC_90)'</td></tr>
+    #else
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Splijten</td><td style="padding:4px 8px;">§8.1.4</td><td style="padding:4px 8px; text-align:right;">—</td><td style="padding:4px 8px; color:#b91c1c;">hoogte h ontbreekt</td></tr>
+    #end if
+#end if
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Afstanden en detaillering</td><td style="padding:4px 8px;">tabel 8.2 / 8.4 / 8.6</td><td style="padding:4px 8px; text-align:right;">—</td><td style="padding:4px 8px; color:'kleur_ok(ok_det)'">'if(ok_det ≡ 1; "voldoet"; "voldoet niet")'</td></tr>
 '</table>
 
 #if ok_mat ≡ 0
     '<b style="color:#b91c1c">De verbinding voldoet niet: dit plaatmateriaal mag in klimaatklasse 'klimaat' niet worden toegepast.</b>
+#else if ok_90 ≡ 0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>de verbinding voldoet niet: splijten is niet getoetst, vul de hoogte h in</b></span>
 #else if UC_max ≤ 1.0
     #if ok_det ≡ 1
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de verbinding voldoet</b></span>
@@ -782,7 +827,8 @@ UC_max = max(UC_v; UC_ax; UC_c)
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de verbinding voldoet niet</b></span>
 #end if
 
-'<hr/>
-'<i>Aandachtspunten en vereenvoudigingen:</i>
-'<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Bij een schroef is d<sub>ef</sub> = 1,1 × de kerndiameter aangehouden (§8.7.1(3)). Loopt een gladde schacht minstens 4d door in het element aan de puntzijde, dan mag de schachtdiameter worden gebruikt (§8.7.1(2)); dat is gunstiger.</li><li>De productwaarden (f<sub>ax,k</sub>, f<sub>head,k</sub>, f<sub>tens,k</sub>, M<sub>y,Rk</sub>) komen uit de productverklaring volgens EN 14592 of de ETA.</li><li>Nagels en schroeven in kops hout, splijten door een kracht loodrecht op de vezel (§8.1.4) en blokschuif bij staalplaten (bijlage A) zijn niet getoetst, en de staalplaat zelf evenmin (§8.2.3(2), EN 1993-1-8).</li><li>Een dikke staalplaat vraagt een gatspeling kleiner dan 0,1d (§8.2.3(1)); anders telt de plaat als dun.</li><li>Hout dat nat wordt aangebracht en onder belasting droogt: f<sub>ax,k</sub> en f<sub>head,k</sub> van nagels ×2/3 (§8.3.2(8)); niet verwerkt.</li></ul>
+#hide
+nt_90 = if(bool(rand ≡ 0)*bool(α_n > 0) ≡ 1; "splijten naar de rand tegenover a<sub>4</sub> (§8.1.4), "; "")
+#show
+'<i>Niet getoetst: 'nt_90'verbindingsmiddelen in kops hout, blokschuif en de staalplaat zelf (bijlage A, §8.2.3(2)), de gatspeling onder 0,1d die een dikke staalplaat vraagt (§8.2.3(1)) en de factor 2/3 voor hout dat onder belasting droogt (§8.3.2(8)).</i>
 `;
