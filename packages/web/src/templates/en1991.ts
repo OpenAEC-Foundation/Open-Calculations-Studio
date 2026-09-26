@@ -283,7 +283,7 @@ Wel: referentiehoogte z_n volgens A.4 = 1
 @end
 #hide
 a4 = 0
-z_ref = z
+z_eff = z
 #show
 #if hoger_bw ≡ 1
     h_hoog = ?*(m)', hoogte h_high van het hoge bouwwerk<span class="kolom-2"></span>'
@@ -308,7 +308,7 @@ z_ref = z
         '<i>z<sub>n</sub> &gt; z<sub>e</sub>: gerekend met de stuwdruk op hoogte z<sub>n</sub> (A.4 van de NB).</i>
         #hide
         a4 = 1
-        z_ref = z_n
+        z_eff = z_n
         #show
     #end if
     '<i>A.4 is volgens de NB normatief; h<sub>low</sub> is hier de ingevulde hoogte z. Voor een lager deel van hetzelfde gebouw naast een hoger deel is x = 0.</i><span class="alleen-scherm"></span>
@@ -318,7 +318,7 @@ z_ref = z
 vb0_ruw = if(windgebied ≡ 1; 29.5; if(windgebied ≡ 2; 27.0; 24.5))
 z0_ruw = if(terreincategorie ≡ 1; 0.005; if(terreincategorie ≡ 2; 0.2; 0.5))
 zmin_ruw = if(terreincategorie ≡ 1; 1; if(terreincategorie ≡ 2; 4; 7))
-ze_ruw = max(z_ref/(1*m); zmin_ruw)
+ze_ruw = max(z_eff/(1*m); zmin_ruw)
 verh = ze_ruw/z0_ruw
 K_prob = if(windgebied ≡ 1; 0.2; if(windgebied ≡ 2; 0.234; 0.281))
 t_prob = max(DesignLife; 50)
@@ -1011,7 +1011,7 @@ Zones D en E, zonder die factor = 2
     zb(k) = if(k ≡ 1; min(b_r; h_r); if(k ≡ n_st; h_r; b_r + (k - 1)*h_st))
     zo(k) = if(k ≡ 1; 0; zb(k - 1))
     'Met een hoger bouwwerk in de buurt (A.4) en z_n > z_e: overal de stuwdruk op z_n.
-    zq(k) = if(a4 ≡ 1; max(zb(k); z_ref/(1 m)); zb(k))
+    zq(k) = if(a4 ≡ 1; max(zb(k); z_eff/(1 m)); zb(k))
     Fk(k) = f_cor*cs_cd*(c_D - c_E)*qp_f(zq(k))*b_r*(zb(k) - zo(k))
     F_som = 0
     M_som = 0
