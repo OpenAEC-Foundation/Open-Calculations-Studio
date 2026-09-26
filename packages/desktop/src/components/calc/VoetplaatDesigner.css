@@ -576,3 +576,70 @@
   font-weight: 600;
   color: var(--text, #374151);
 }
+
+/* ── Keuze met pictogrammen (statisch schema) ─────────────────────── */
+
+.vd-iconkeuze {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0 8px;
+  font-size: 11px;
+  border-bottom: 1px solid var(--theme-border-subtle, rgba(0, 0, 0, 0.05));
+  container-type: inline-size;
+}
+
+/* Alle tegels op één rij; past dat niet, dan twee per rij, zodat vier
+ * mogelijkheden een nette 2 × 2 worden in plaats van 3 + 1. */
+.vd-iconkeuze-rij {
+  display: grid;
+  grid-template-columns: repeat(var(--iconkeuze-n, 4), minmax(0, 1fr));
+  gap: 6px;
+}
+
+@container (max-width: 320px) {
+  .vd-iconkeuze-rij {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.vd-iconkeuze-optie {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px 4px 5px;
+  border: 1px solid var(--theme-border-subtle, #d1d5db);
+  border-radius: 6px;
+  background: var(--theme-bg-surface, #fff);
+  color: var(--theme-text-secondary, var(--theme-text-muted, #4b5563));
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.vd-iconkeuze-optie svg {
+  width: 100%;
+  max-width: 64px;
+  height: auto;
+}
+
+.vd-iconkeuze-optie:hover {
+  border-color: var(--theme-accent, #d97706);
+}
+
+.vd-iconkeuze-optie.actief {
+  border-color: var(--theme-accent, #d97706);
+  background: color-mix(in srgb, var(--theme-accent, #d97706) 10%, transparent);
+  color: var(--theme-accent, #d97706);
+  font-weight: 600;
+}
+
+.vd-iconkeuze-optie:focus-visible {
+  outline: 2px solid var(--theme-accent, #d97706);
+  outline-offset: 1px;
+}
