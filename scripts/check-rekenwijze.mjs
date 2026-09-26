@@ -8,9 +8,9 @@
  *     X_XC = …                                  volgens de referentie-uitwerking
  *     X    = if(rekenwijze ≡ 1; X_XC; X_nb)     de gehanteerde waarde
  *
- * en die keuze staat áltijd op de laatste stap vóór de u.c., nooit binnen een
- * tussenformule. Zo blijft de rekengang leesbaar en zie je in één oogopslag
- * waar de twee lezingen uiteenlopen.
+ * en die keuze staat op één regel, de plek waar de twee lezingen uiteenlopen;
+ * een blad kan zo ook een hele toets aan of uit zetten. Zo blijft de rekengang
+ * leesbaar en zie je in één oogopslag waar de verschillen zitten.
  *
  * Wat hier misgaat als niemand kijkt: iemand voegt een referentietak toe en
  * vergeet de schakelaar, waarna die tak wordt uitgerekend, netjes wordt
