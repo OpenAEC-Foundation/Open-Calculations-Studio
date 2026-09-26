@@ -1,0 +1,855 @@
+/*
+ * Rapportpaneel — één scrollend formulier met de invoer van het
+ * constructierapport. Dezelfde tokens en maten als het formulier van de
+ * projectgegevens (ProjectGegevensPanel.css), aangevuld met wat daar niet
+ * bestaat: tekstvakken die meegroeien, bewerkbare tabellen, kaarten voor
+ * belastingklassen, opbouwen en rekenbladen, en het keuzemenu voor
+ * standaardteksten.
+ */
+
+.rapport-panel {
+  height: 100%;
+  overflow-y: auto;
+  padding: 0 32px 48px;
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: var(--font-body);
+}
+
+/* ─── Kop en sprongbalk ───────────────────────────────────────── */
+
+.rapport-kop {
+  max-width: 760px;
+  padding-top: 24px;
+  margin-bottom: 4px;
+}
+
+.rapport-kop h1 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.rapport-kop p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-text-secondary);
+}
+
+/* Blijft bovenaan staan bij het scrollen; secties houden er ruimte voor vrij. */
+.rapport-nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 760px;
+  margin-bottom: 22px;
+  padding: 10px 0;
+  background: var(--theme-bg);
+  border-bottom: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+}
+
+.rapport-nav button {
+  padding: 3px 10px;
+  font-size: 11.5px;
+  color: var(--theme-text-secondary);
+  background: transparent;
+  border: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.2));
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.rapport-nav button:hover {
+  color: var(--theme-accent, #d97706);
+  border-color: var(--theme-accent, #d97706);
+}
+
+/* ─── Secties ─────────────────────────────────────────────────── */
+
+.rapport-groep {
+  max-width: 760px;
+  margin-bottom: 36px;
+  scroll-margin-top: 56px;
+}
+
+.rapport-groep-kop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.rapport-groep-kop h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-accent, #d97706);
+}
+
+.rapport-intro {
+  margin: 0 0 14px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--theme-text-secondary);
+}
+
+/* ─── Koppen uit de opzet: hoofdstuk, paragraaf, blok, subblok ── */
+
+.rapport-knoop {
+  margin-top: 16px;
+}
+
+.rapport-niveau-1 {
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+}
+
+.rapport-niveau-3,
+.rapport-niveau-4 {
+  padding-left: 14px;
+  border-left: 2px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+}
+
+.rapport-kop-rij {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+  margin-bottom: 6px;
+}
+
+.rapport-kopregel {
+  margin: 0;
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
+  color: var(--theme-text);
+}
+
+.rapport-kop-1 .rapport-kopregel {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.rapport-kop-2 .rapport-kopregel {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.rapport-kop-3 .rapport-kopregel {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rapport-kop-4 .rapport-kopregel {
+  font-size: 12px;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.rapport-nummer {
+  margin-right: 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--theme-accent, #d97706);
+}
+
+.rapport-weg {
+  padding: 0 7px;
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--theme-text-secondary);
+  border: 1px dashed var(--theme-border-subtle, rgba(217, 119, 6, 0.3));
+  border-radius: 8px;
+}
+
+.rapport-nieuwe-pagina {
+  margin-left: auto;
+}
+
+.rapport-subkop {
+  margin: 14px 0 6px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--theme-text-secondary);
+}
+
+/* ─── Velden ──────────────────────────────────────────────────── */
+
+.rapport-veld {
+  display: block;
+  min-width: 0;
+  margin-bottom: 12px;
+}
+
+/* Blok en geen flex: een label met <sub> (c_s c_d) moet één regel tekst blijven. */
+.rapport-label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.rapport-invoer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rapport-eenheid {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--theme-text-secondary);
+}
+
+.rapport-panel input[type="text"],
+.rapport-panel select,
+.rapport-panel textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--theme-text);
+  background: var(--theme-bg-lighter);
+  border: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.2));
+  border-radius: 4px;
+}
+
+.rapport-panel input[type="text"]:focus,
+.rapport-panel select:focus,
+.rapport-panel textarea:focus {
+  outline: none;
+  border-color: var(--theme-accent, #d97706);
+}
+
+.rapport-panel input::placeholder,
+.rapport-panel textarea::placeholder {
+  color: var(--theme-text-faint, rgba(0, 0, 0, 0.35));
+}
+
+/* Groeit mee via GroeiVeld; met de hand groter trekken mag ook. */
+.rapport-tekstvak {
+  display: block;
+  line-height: 1.5;
+  resize: vertical;
+  overflow-y: hidden;
+}
+
+/* Velden naast elkaar; in een smal paneel vanzelf onder elkaar. */
+.rapport-rij {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0 16px;
+}
+
+.rapport-hint {
+  display: block;
+  margin-top: 3px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--theme-text-secondary);
+}
+
+p.rapport-hint {
+  margin: 4px 0 12px;
+}
+
+.rapport-vink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--theme-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rapport-vink-sterk {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--theme-text);
+}
+
+.rapport-vink input {
+  margin: 0;
+  accent-color: var(--theme-accent, #d97706);
+  cursor: pointer;
+}
+
+/* ─── Afgeleide waarden: grijs, niet te bewerken ──────────────── */
+
+.rapport-afgeleid {
+  margin: 2px 0 14px;
+  padding: 8px 12px;
+  background: var(--theme-bg-lighter);
+  border-left: 2px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.25));
+  border-radius: 0 4px 4px 0;
+}
+
+.rapport-afgeleid dl {
+  display: grid;
+  grid-template-columns: minmax(150px, max-content) 1fr;
+  gap: 3px 16px;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.rapport-afgeleid dt {
+  color: var(--theme-text-secondary);
+}
+
+.rapport-afgeleid dd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--theme-text-secondary);
+  user-select: text;
+}
+
+.rapport-bron {
+  margin-left: 10px;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-style: italic;
+  color: var(--theme-text-faint, rgba(0, 0, 0, 0.4));
+}
+
+.rapport-afgeleid .rapport-link {
+  margin-top: 6px;
+}
+
+.rapport-link {
+  padding: 0;
+  font-size: 11px;
+  color: var(--theme-accent, #d97706);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* ─── Knoppen ─────────────────────────────────────────────────── */
+
+.rapport-knop {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  color: var(--theme-text);
+  background: transparent;
+  border: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.25));
+  border-radius: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rapport-knop:hover:not(:disabled) {
+  color: var(--theme-accent, #d97706);
+  border-color: var(--theme-accent, #d97706);
+}
+
+.rapport-knop:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.rapport-knop-primair {
+  font-weight: 600;
+  color: var(--theme-btn-primary-text, #fff);
+  background: var(--theme-btn-primary-bg, #d97706);
+  border-color: transparent;
+}
+
+.rapport-knop-primair:hover:not(:disabled) {
+  color: var(--theme-btn-primary-hover-text, #fff);
+  background: var(--theme-btn-primary-hover-bg, #ea580c);
+  border-color: transparent;
+}
+
+.rapport-knoppen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rapport-icoon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--theme-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.rapport-icoon:hover:not(:disabled) {
+  color: var(--theme-accent, #d97706);
+  background: var(--theme-hover, rgba(217, 119, 6, 0.1));
+  border-color: var(--theme-border-subtle, rgba(217, 119, 6, 0.25));
+}
+
+.rapport-icoon:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ─── Bewerkbare tabellen ─────────────────────────────────────── */
+
+.rapport-rijen {
+  margin: 4px 0 14px;
+}
+
+.rapport-tabel {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+}
+
+.rapport-tabel th {
+  padding: 0 3px 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--theme-text-secondary);
+}
+
+.rapport-tabel td {
+  padding: 2px 3px;
+  vertical-align: middle;
+}
+
+.rapport-panel .rapport-tabel input[type="text"],
+.rapport-panel .rapport-tabel select {
+  padding: 4px 6px;
+}
+
+.rapport-tabel th.rapport-getal,
+.rapport-panel .rapport-tabel input.rapport-getal {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rapport-tabel-afgeleid {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--theme-text-secondary);
+}
+
+.rapport-tabel-knoppen {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rapport-tabel-leeg {
+  padding: 8px 3px;
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--theme-text-secondary);
+}
+
+/* Som onder de berekende kolom: rechts, vóór de kolom met knoppen. */
+.rapport-som {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 2px 0 0;
+  padding: 4px 80px 0 3px;
+  font-size: 11.5px;
+  border-top: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.25));
+}
+
+.rapport-som strong {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+/* ─── Kaarten: belastingklassen, opbouwen, rekenbladen ────────── */
+
+.rapport-kaart {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.2));
+  border-radius: 6px;
+}
+
+.rapport-kaart > :last-child {
+  margin-bottom: 0;
+}
+
+.rapport-kaart-kop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rapport-panel .rapport-kaart-kop input[type="text"],
+.rapport-panel .rapport-kaart-kop select {
+  flex: 1;
+  width: auto;
+}
+
+.rapport-kaart-titel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rapport-kaart-voet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin-top: 8px;
+}
+
+.rapport-kaart-voet .rapport-hint {
+  margin: 0;
+}
+
+.rapport-soort {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  color: var(--theme-text-secondary);
+}
+
+.rapport-opbouwgroep {
+  margin-top: 10px;
+}
+
+.rapport-samenvatting {
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--theme-text-secondary);
+}
+
+.rapport-oordeel {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+.rapport-oordeel.goed {
+  color: #15803d;
+  background: rgba(21, 128, 61, 0.12);
+}
+
+.rapport-oordeel.fout {
+  color: var(--theme-danger-color, #b91c1c);
+  background: rgba(185, 28, 28, 0.12);
+}
+
+/* ─── Tekstonderdelen met standaardteksten ────────────────────── */
+
+.rapport-tekstveld {
+  margin: 4px 0 14px;
+}
+
+.rapport-tekst-balk {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.rapport-tekst-balk .rapport-kop-rij {
+  margin-bottom: 0;
+}
+
+.rapport-tekst-knoppen {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.rapport-tekst-knoppen .rapport-knop {
+  margin-top: 0;
+}
+
+.rapport-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  width: 360px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--theme-surface, var(--theme-bg));
+  border: 1px solid var(--theme-border, rgba(217, 119, 6, 0.25));
+  border-radius: 6px;
+  box-shadow: var(--theme-popover-shadow, 0 8px 24px rgba(0, 0, 0, 0.18));
+}
+
+.rapport-menu-groep {
+  padding: 6px 8px 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-accent, #d97706);
+}
+
+.rapport-menu-regel {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.rapport-menu-item {
+  display: block;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  font-size: 12px;
+  text-align: left;
+  color: var(--theme-text);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rapport-menu-item:hover:not(:disabled) {
+  background: var(--theme-hover, rgba(217, 119, 6, 0.1));
+}
+
+.rapport-menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.rapport-menu-label {
+  display: block;
+  font-weight: 500;
+}
+
+.rapport-menu-uittreksel {
+  display: block;
+  overflow: hidden;
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-text-secondary);
+}
+
+.rapport-menu-leeg {
+  padding: 6px 8px;
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--theme-text-secondary);
+}
+
+.rapport-menu-scheiding {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--theme-border-subtle, rgba(217, 119, 6, 0.2));
+}
+
+.rapport-bewaar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.rapport-panel .rapport-bewaar input[type="text"] {
+  flex: 1;
+  width: auto;
+}
+
+.rapport-bewaar .rapport-knop {
+  margin-top: 0;
+}
+
+.rapport-melding {
+  display: block;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--theme-accent, #d97706);
+}
+
+.rapport-invulvelden {
+  margin-top: 22px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--theme-border-subtle, rgba(217, 119, 6, 0.25));
+}
+
+.rapport-invulvelden-lijst {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 2px 0 4px;
+}
+
+.rapport-invulvelden code {
+  padding: 1px 6px;
+  font-size: 10.5px;
+  color: var(--theme-text-secondary);
+  background: var(--theme-bg-lighter);
+  border-radius: 3px;
+  cursor: help;
+}
+
+/* ─── Bijlagen ────────────────────────────────────────────────── */
+
+.rapport-bijlagen {
+  list-style: none;
+  margin: 0 0 6px;
+}
+
+.rapport-bijlagen li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.rapport-panel .rapport-bijlagen input[type="text"] {
+  flex: 1;
+  width: auto;
+}
+
+.rapport-letter {
+  flex-shrink: 0;
+  width: 22px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--theme-accent, #d97706);
+}
+
+.rapport-vast {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--theme-text-secondary);
+}
+
+/* ─── Bureau ──────────────────────────────────────────────────── */
+
+.rapport-melding-blok {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  background: var(--theme-accent-soft, rgba(217, 119, 6, 0.08));
+  border: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.25));
+  border-radius: 4px;
+}
+
+.rapport-melding-blok.rustig {
+  color: var(--theme-text-secondary);
+  background: transparent;
+}
+
+.rapport-bureau {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.rapport-bureau dl {
+  display: grid;
+  flex: 1;
+  grid-template-columns: max-content 1fr;
+  gap: 3px 16px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.rapport-bureau dt {
+  color: var(--theme-text-secondary);
+}
+
+.rapport-bureau ul {
+  list-style: none;
+}
+
+.rapport-beeld {
+  max-width: 180px;
+  max-height: 64px;
+  padding: 3px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.25));
+  border-radius: 3px;
+}
+
+.rapport-voetbeeld {
+  display: block;
+  width: 100%;
+  max-height: 56px;
+  margin-top: 10px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.25));
+  border-radius: 3px;
+}
+
+.rapport-kleuren {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.rapport-kleur {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--theme-text-secondary);
+}
+
+.rapport-staal {
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+.rapport-lettertype {
+  display: block;
+  margin-top: 2px;
+}
+
+/* ─── Voet ────────────────────────────────────────────────────── */
+
+.rapport-voet {
+  max-width: 760px;
+  margin: 28px 0 0;
+  padding-top: 14px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--theme-text-secondary);
+  border-top: 1px solid var(--theme-border-subtle, rgba(217, 119, 6, 0.15));
+}
