@@ -9,6 +9,9 @@ import {
   ec5Knik,
   ec5Doorbuiging,
   ec5HoutenBalk,
+  ec5Wringing,
+  ec5TapseLigger,
+  ec5Uitkeping,
 } from './templates/eurocode5';
 import {
   vandepitteSchuifspanning,
@@ -436,6 +439,9 @@ const normbladen: Record<string, string> = {
   'ec5-knik': ec5Knik,
   'ec5-doorbuiging': ec5Doorbuiging,
   'ec5-houten-balk': ec5HoutenBalk,
+  'ec5-wringing': ec5Wringing,
+  'ec5-tapse-ligger': ec5TapseLigger,
+  'ec5-uitkeping': ec5Uitkeping,
   'vdp-schuifspanning': vandepitteSchuifspanning,
   'vdp-doorbuiging': vandepitteDoorbuiging,
   'vdp-knikken': vandepitteKnikken,
