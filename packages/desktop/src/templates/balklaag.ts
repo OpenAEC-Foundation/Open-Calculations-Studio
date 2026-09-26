@@ -318,6 +318,86 @@ d_up = max(max(c_u/(1 mm^4); abs(c_ue)/(1 mm^4)); 0.001)
 d_o2 = d_L/d_tot
 #show
 
+# 4c. Rekenmodel van de ligger
+
+'<i>De ligger bestaat uit veld 1 met overspanning L<sub>th</sub> en eventueel een
+'tweede deel: het overstek (schema 2) of veld 2 (schema 3). Elk
+'belastinggeval in §7 is een set van hoogstens vier lasten: een verdeelde last
+'op veld 1 en op het tweede deel, een puntlast midden in veld 1 en een op het
+'tweede deel (midden in veld 2, of op het uiteinde van het overstek).</i>
+
+'<i>Bij twee velden volgt het steunmoment M<sub>B</sub> uit de
+'drie-momentenvergelijking. Voor een gelijkmatige last w<sub>1</sub> op veld 1
+'en w<sub>2</sub> op veld 2 is M<sub>B</sub> = (w<sub>1</sub>·L<sub>1</sub>³ +
+'w<sub>2</sub>·L<sub>2</sub>³) / (8·(L<sub>1</sub> + L<sub>2</sub>)), voor een
+'puntlast P midden in veld 1 M<sub>B</sub> = 3·P·L<sub>1</sub>² /
+'(16·(L<sub>1</sub> + L<sub>2</sub>)). Bij een overstek volgt het uit het
+'evenwicht van de kraag. Met M<sub>B</sub> bekend is elk veld een ligger op twee
+'steunpunten met een inklemmend eindmoment; reacties, moment, dwarskracht en
+'zakking volgen dan uit het evenwicht en de vormfuncties hieronder. Nagerekend
+'tegen een onafhankelijke numerieke balkberekening.</i>
+
+#hide
+'Lengtes in m, verdeelde lasten in kN/m en puntlasten in kN, als kaal getal:
+'momenten komen dan in kNm en dwarskrachten in kN. Ondergrens op het eerste
+'veld: bij het allereerste renderen staan de invoervelden nog op nul, en zonder
+'ondergrens deelt alles hieronder door nul.
+r_L1 = max(L_th/(1 m); 0.001)', eerste veld'
+r_a = if(schema ≡ 2; a_over/(1 m); 0)', overstek'
+r_L2 = if(schema ≡ 3; L_veld2/(1 m); 0)', tweede veld'
+r_tot = r_L1 + r_a + r_L2', totale lengte'
+EI_n = max(E_mean*I_y/(1 kN*m^2); 0.001)', buigstijfheid in kNm²'
+
+'Steunmoment M_B, positief bij trek aan de bovenzijde.
+Mb(w1; w2; P1; P2) = if(schema ≡ 3; (w1*r_L1^3 + w2*r_L2^3)/(8*(r_L1 + r_L2)) + 3*(P1*r_L1^2 + P2*r_L2^2)/(16*(r_L1 + r_L2)); if(schema ≡ 2; w2*r_a^2/2 + P2*r_a; 0))
+'Oplegreactie aan het begin van veld 1 en aan het eind van veld 2.
+Ra(w1; P1; Ms) = w1*r_L1/2 + P1/2 - Ms/r_L1
+Rc(w2; P2; Ms) = if(r_L2 > 0; w2*r_L2/2 + P2/2 - Ms/max(r_L2; 0.001); 0)
+'Moment en dwarskracht in veld 1 op afstand x van de eerste oplegging, en op
+'het tweede deel op afstand t van het uiteinde.
+m1(x; w1; P1; Ms) = Ra(w1; P1; Ms)*x - w1*x^2/2 - P1*max(0; x - r_L1/2)
+v1(x; w1; P1; Ms) = Ra(w1; P1; Ms) - w1*x - P1*bool(x > r_L1/2)
+m2(t; w2; P2; Ms) = if(r_a > 0; -w2*t^2/2 - P2*t; Rc(w2; P2; Ms)*t - w2*t^2/2 - P2*max(0; t - r_L2/2))
+v2(t; w2; P2; Ms) = if(r_a > 0; w2*t + P2; w2*t + P2*bool(t > r_L2/2) - Rc(w2; P2; Ms))
+'Idem op afstand x van het begin van de ligger.
+Mx(x; w1; w2; P1; P2; Ms) = if(x ≤ r_L1; m1(x; w1; P1; Ms); m2(r_tot - x; w2; P2; Ms))
+Vx(x; w1; w2; P1; P2; Ms) = if(x ≤ r_L1; v1(x; w1; P1; Ms); v2(r_tot - x; w2; P2; Ms))
+
+'Grootste veldmoment. De top ligt waar de dwarskracht nul wordt: links of
+'rechts van de puntlast in het midden, of zonder verdeelde last onder de
+'puntlast zelf. Negatief telt als nul — dan heeft het veld geen veldmoment.
+xt(R; w; lo; hi; c) = if(w > 0; min(max(R/w; lo); hi); c)
+x1a(w1; P1; Ms) = xt(Ra(w1; P1; Ms); w1; 0; r_L1/2; r_L1/2)
+x1b(w1; P1; Ms) = xt(Ra(w1; P1; Ms) - P1; w1; r_L1/2; r_L1; r_L1/2)
+x1t(w1; P1; Ms) = if(m1(x1a(w1; P1; Ms); w1; P1; Ms) ≥ m1(x1b(w1; P1; Ms); w1; P1; Ms); x1a(w1; P1; Ms); x1b(w1; P1; Ms))
+Mv1(w1; P1; Ms) = max(0; m1(x1t(w1; P1; Ms); w1; P1; Ms))
+t2a(w2; P2; Ms) = xt(Rc(w2; P2; Ms); w2; 0; r_L2/2; r_L2/2)
+t2b(w2; P2; Ms) = xt(Rc(w2; P2; Ms) - P2; w2; r_L2/2; r_L2; r_L2/2)
+t2t(w2; P2; Ms) = if(m2(t2a(w2; P2; Ms); w2; P2; Ms) ≥ m2(t2b(w2; P2; Ms); w2; P2; Ms); t2a(w2; P2; Ms); t2b(w2; P2; Ms))
+Mv2(w2; P2; Ms) = if(r_L2 > 0; max(0; m2(t2t(w2; P2; Ms); w2; P2; Ms)); 0)
+'Grootste dwarskracht: de lijn daalt binnen elk veld, dus de uitersten liggen
+'aan de randen van de velden.
+Vmx(w1; w2; P1; P2; Ms) = max(abs(v1(0; w1; P1; Ms)); abs(v1(r_L1; w1; P1; Ms)); abs(v2(r_tot - r_L1; w2; P2; Ms)); abs(v2(0; w2; P2; Ms)))
+
+'Zakking van een veld met lengte L onder een verdeelde last w, een puntlast P
+'in het midden en een inklemmend moment aan het eind; t gemeten vanaf de
+'scharnierende oplegging.
+upd(t; L) = if(t ≤ L/2; t*(3*L^2 - 4*t^2)/48; (L - t)*(3*L^2 - 4*(L - t)^2)/48)
+uvd(t; L; w; P; Ms) = w*t*(L^3 - 2*L*t^2 + t^3)/24 + P*upd(t; L) - Ms*t*(L^2 - t^2)/(6*L)
+'Hoekverdraaiing van veld 1 bij de tweede oplegging; positief draait het
+'overstek omlaag.
+tvd(w1; P1; Ms) = Ms*r_L1/3 - w1*r_L1^3/24 - P1*r_L1^2/16
+'Zakking van het overstek op afstand z van de oplegging: de starre rotatie
+'vanuit het veld plus de eigen doorbuiging van de kraag.
+uod(z; w1; w2; P1; P2; Ms) = tvd(w1; P1; Ms)*z + w2*z^2*(6*r_a^2 - 4*r_a*z + z^2)/24 + P2*z^2*(3*r_a - z)/6
+'Zakking in mm op afstand x van het begin, omlaag positief.
+Ux(x; w1; w2; P1; P2; Ms) = 1000/EI_n*if(x ≤ r_L1; uvd(x; r_L1; w1; P1; Ms); if(r_a > 0; uod(x - r_L1; w1; w2; P1; P2; Ms); uvd(r_tot - x; max(r_L2; 0.001); w2; P2; Ms)))
+'Zakking midden in elk veld en op het uiteinde van het overstek, in mm.
+Um1(w1; P1; Ms) = 1000/EI_n*(5*w1*r_L1^4/384 + P1*r_L1^3/48 - Ms*r_L1^2/16)
+Um2(w2; P2; Ms) = if(r_L2 > 0; 1000/EI_n*(5*w2*r_L2^4/384 + P2*r_L2^3/48 - Ms*r_L2^2/16); 0)
+Ue(w1; w2; P1; P2; Ms) = if(r_a > 0; 1000/EI_n*uod(r_a; w1; w2; P1; P2; Ms); 0)
+#show
+
 # 5. Belastingsgeval 1 — Permanent
 
 '<i>De belaste breedte hangt af van de soort ligger: bij een balk in een
@@ -584,6 +664,242 @@ s_stap = (sx3 - sx1)/14', pijlafstand in de lastbanden
 '<i>Permanent en veranderlijk staan apart omdat ze met verschillende partiële
 'factoren de UGT-combinatie in gaan (1,20 tegen 1,50) en in de BGT-combinaties
 'elk hun eigen ψ-factor krijgen.</i>'
+
+# 7. Belastinggevallen
+
+'<i>De lasten per balk gaan in afzonderlijke belastinggevallen de berekening
+'in, elk met zijn karakteristieke waarde:
+'<ul>
+'<li><b>BG1</b> — permanent P<sub>g,k</sub> op alle velden en het overstek;</li>
+'<li><b>BG2</b> — veranderlijk q<sub>q,k</sub> op veld 1, bij een overstek ook op het overstek;</li>
+'<li><b>BG3</b> — veranderlijk q<sub>q,k</sub> op veld 2 (alleen bij twee velden);</li>
+'<li><b>BG4</b> — puntlast F<sub>Q,k</sub> midden in veld 1; bij een overstek ook op het uiteinde, de maatgevende van de twee;</li>
+'<li><b>BG5</b> — puntlast F<sub>Q,k</sub> midden in veld 2 (alleen bij twee velden).</li>
+'</ul>
+'Bij twee velden staat de veranderlijke last per veld apart
+'(schaakbordbelasting). Een belast buurveld trekt het veld via het steunmoment
+'omhoog; blijft het buurveld onbelast, dan worden het veldmoment en de
+'doorbuiging van het veld groter dan onder volle belasting. De permanente last
+'gaat altijd met één factor over alle velden: volgens de NB bij tabel NB.4 —
+'A1.2(B) hoeft het onderscheid tussen gunstig en ongunstig alleen voor het
+'totaal van een soort belasting te worden gemaakt.</i>
+
+'<i>Per geval de kenmerkende waarden en de M-, V- en u-lijn, op de lengteschaal
+'van het statische schema. Het moment staat aan de trekzijde (een veldmoment
+'onder de as), de dwarskracht positief boven de as, de zakking omlaag
+'positief. Elke lijn heeft zijn eigen hoogteschaal.</i>
+
+#hide
+'Lasten als kaal getal in kN/m en kN.
+g_n = P_g,k/(1 kN/m)
+q_n = q_q,k/(1 kN/m)
+F_n = F_Q,k/(1 kN)
+s2 = bool(schema ≡ 2)
+s3 = bool(schema ≡ 3)
+'Bij een overstek staat de puntlast van BG4 midden in het veld of op het
+'uiteinde. Getekend wordt de stand met het grootste moment: F·a tegen F·L/4.
+e4 = s2*bool(a_over > L_th/4)
+'De lastset van geval k: verdeelde last op veld 1 en op het tweede deel,
+'puntlast midden in veld 1 en op het tweede deel.
+bw1(k) = if(k ≡ 1; g_n; if(k ≡ 2; q_n; 0))
+bw2(k) = if(k ≡ 1; g_n; if(k ≡ 2; q_n*s2; if(k ≡ 3; q_n*s3; 0)))
+bP1(k) = if(k ≡ 4; F_n*(1 - e4); 0)
+bP2(k) = if(k ≡ 4; F_n*e4; if(k ≡ 5; F_n*s3; 0))
+'BG3 en BG5 bestaan alleen bij twee velden.
+bg_aan(k) = if(k ≡ 3; s3; if(k ≡ 5; s3; 1))
+'Steunmoment per geval.
+mb_1 = Mb(bw1(1); bw2(1); bP1(1); bP2(1))
+mb_2 = Mb(bw1(2); bw2(2); bP1(2); bP2(2))
+mb_3 = Mb(bw1(3); bw2(3); bP1(3); bP2(3))
+mb_4 = Mb(bw1(4); bw2(4); bP1(4); bP2(4))
+mb_5 = Mb(bw1(5); bw2(5); bP1(5); bP2(5))
+mB_bg(k) = if(k ≡ 1; mb_1; if(k ≡ 2; mb_2; if(k ≡ 3; mb_3; if(k ≡ 4; mb_4; mb_5))))
+'Bemonstering langs de ligger. Voor M en V 26 punten per veld, met een dubbel
+'punt onder de puntlast in het midden, zodat de sprong in de dwarskracht
+'verticaal staat; voor de zakking 17 punten per veld.
+sa(i) = r_L1*((i - bool(i > 12))/24 + bool(i ≡ 13)*10^-6)
+sb(i) = r_L1 + (r_tot - r_L1)*((i - bool(i > 12))/24 + bool(i ≡ 13)*10^-6 + bool(i ≡ 0)*10^-6)
+su(i) = r_L1*i/16
+sv(i) = r_L1 + (r_tot - r_L1)*i/16
+r_twee = bool(r_tot > r_L1*1.0001)
+'Lengteschaal van het statische schema (§6b).
+lX(x) = sx1 + (sx3 - sx1)*x/r_tot
+'Plaats van de puntlast op het tweede deel: midden in veld 2 of het uiteinde.
+r_xP2 = if(s2 ≡ 1; r_tot; r_L1 + r_L2/2)
+#show
+
+#for k = 1 : 5
+#if bg_aan(k) ≡ 1
+    #if k ≡ 1
+        '<h6>BG1 — permanent: P<sub>g,k</sub> = 'P_g,k' kN/m op alle velden</h6>
+    #else if k ≡ 2
+        '<h6>BG2 — veranderlijk: q<sub>q,k</sub> = 'q_q,k' kN/m op veld 1'if(s2 ≡ 1; " en het overstek"; "")'</h6>
+    #else if k ≡ 3
+        '<h6>BG3 — veranderlijk: q<sub>q,k</sub> = 'q_q,k' kN/m op veld 2</h6>
+    #else if k ≡ 4
+        '<h6>BG4 — puntlast: F<sub>Q,k</sub> = 'F_Q,k' kN 'if(e4 ≡ 1; "op het uiteinde van het overstek"; "midden in veld 1")'</h6>
+    #else
+        '<h6>BG5 — puntlast: F<sub>Q,k</sub> = 'F_Q,k' kN midden in veld 2</h6>
+    #end if
+    #hide
+    b_w1 = bw1(k)
+    b_w2 = bw2(k)
+    b_P1 = bP1(k)
+    b_P2 = bP2(k)
+    b_m = mB_bg(k)
+    M_veld1 = Mv1(b_w1; b_P1; b_m)*kN*m
+    M_steun = b_m*kN*m
+    M_veld2 = Mv2(b_w2; b_P2; b_m)*kN*m
+    V_max = Vmx(b_w1; b_w2; b_P1; b_P2; b_m)*kN
+    u_veld1 = Um1(b_w1; b_P1; b_m)*mm
+    u_veld2 = Um2(b_w2; b_P2; b_m)*mm
+    u_eind = Ue(b_w1; b_w2; b_P1; b_P2; b_m)*mm
+    #show
+    M_veld1', grootste veldmoment in veld 1'
+    #if s2 + s3 ≥ 1
+        M_steun', steunmoment, trek aan de bovenzijde'
+    #end if
+    #if s3 ≡ 1
+        M_veld2', grootste veldmoment in veld 2'
+    #end if
+    V_max', grootste dwarskracht'
+    u_veld1', zakking midden in veld 1'
+    #if s3 ≡ 1
+        u_veld2', zakking midden in veld 2'
+    #end if
+    #if s2 ≡ 1
+        u_eind', zakking van het uiteinde van het overstek'
+    #end if
+    #if k ≡ 4 and s2 ≡ 1
+        '<i>De puntlast staat ook op de andere plaats (midden in het veld of op het
+        'uiteinde); §8 neemt per grootheid de ongunstigste van de twee.</i>
+    #end if
+    #hide
+    'Hoogteschalen van de drie lijnen van dit geval.
+    b_Mv1 = M_veld1/(1 kN*m)
+    b_Mv2 = M_veld2/(1 kN*m)
+    b_Mp = max(b_Mv1; b_Mv2; 0)
+    b_Mn = max(b_m; 0)
+    b_sM = 36/max(b_Mp + b_Mn; 0.00001)
+    b_yM = 30 + b_Mn*b_sM
+    b_va = v1(0; b_w1; b_P1; b_m)
+    b_vb = v1(r_L1; b_w1; b_P1; b_m)
+    b_vc = v2(r_tot - r_L1; b_w2; b_P2; b_m)
+    b_vd = v2(0; b_w2; b_P2; b_m)
+    b_Vp = max(b_va; b_vc*r_twee; 0)
+    b_Vn = max(-b_vb; -b_vd*r_twee; 0)
+    b_sV = 36/max(b_Vp + b_Vn; 0.00001)
+    b_yV = b_yM + b_Mp*b_sM + 26 + b_Vp*b_sV
+    b_up = 0
+    b_un = 0
+    #for i = 0 : 16
+    b_u1 = Ux(su(i); b_w1; b_w2; b_P1; b_P2; b_m)
+    b_u2 = Ux(sv(i); b_w1; b_w2; b_P1; b_P2; b_m)
+    b_up = max(b_up; b_u1; b_u2*r_twee)
+    b_un = max(b_un; -b_u1; -b_u2*r_twee)
+    #loop
+    b_sU = 28/max(b_up + b_un; 0.00001)
+    b_yU = b_yV + b_Vn*b_sV + 26 + b_un*b_sU
+    b_H = b_yU + b_up*b_sU + 22
+    b_u1m = Um1(b_w1; b_P1; b_m)
+    b_u2m = Um2(b_w2; b_P2; b_m)
+    b_ue = Ue(b_w1; b_w2; b_P1; b_P2; b_m)
+    b_x1 = x1t(b_w1; b_P1; b_m)
+    b_x2 = r_tot - t2t(b_w2; b_P2; b_m)
+    b_kleur = if(k ≡ 1; "#475569"; if(k ≤ 3; "#B45309"; "#B91C1C"))
+    #show
+    '<svg viewbox="0 0 480 'b_H'" xmlns="http://www.w3.org/2000/svg" style="font-size:10px; width:100%; max-height:'b_H + 10'px;">
+    '  <!-- de belasting van dit geval: een balk boven de belaste velden, een pijl voor de puntlast -->
+    #if b_w1 > 0
+        '  <rect x="'lX(0)'" y="6" width="'lX(r_L1) - lX(0)'" height="5" style="fill:'b_kleur'; opacity:0.6"/>
+    #end if
+    #if b_w2*r_twee > 0
+        '  <rect x="'lX(r_L1)'" y="6" width="'lX(r_tot) - lX(r_L1)'" height="5" style="fill:'b_kleur'; opacity:0.6"/>
+    #end if
+    #if b_P1 > 0
+        '  <polygon points="'lX(r_L1/2)','17' 'lX(r_L1/2) - 4.5','5' 'lX(r_L1/2) + 4.5','5'" style="fill:'b_kleur'"/>
+    #end if
+    #if b_P2 > 0
+        '  <polygon points="'lX(r_xP2)','17' 'lX(r_xP2) - 4.5','5' 'lX(r_xP2) + 4.5','5'" style="fill:'b_kleur'"/>
+    #end if
+    '  <!-- opleggingen: stippellijnen door de drie lijnen -->
+    '  <line x1="'lX(0)'" y1="20" x2="'lX(0)'" y2="'b_H - 14'" style="stroke:#d1d5db; stroke-width:0.8; stroke-dasharray:3 3"/>
+    '  <line x1="'lX(r_L1)'" y1="20" x2="'lX(r_L1)'" y2="'b_H - 14'" style="stroke:#d1d5db; stroke-width:0.8; stroke-dasharray:3 3"/>
+    #if s3 ≡ 1
+        '  <line x1="'lX(r_tot)'" y1="20" x2="'lX(r_tot)'" y2="'b_H - 14'" style="stroke:#d1d5db; stroke-width:0.8; stroke-dasharray:3 3"/>
+    #end if
+    '  <!-- M-lijn, aan de trekzijde -->
+    '  <polygon points="'lX(0)','b_yM'
+    #for i = 0 : 25
+    ' 'lX(sa(i))','b_yM + b_sM*Mx(sa(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+    #loop
+    #if r_twee ≡ 1
+        #for i = 0 : 25
+        ' 'lX(sb(i))','b_yM + b_sM*Mx(sb(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+        #loop
+    #end if
+    ' 'lX(r_tot)','b_yM'" style="fill:rgba(239,68,68,0.20); stroke:#dc2626; stroke-width:1.4; stroke-linejoin:round"/>
+    '  <line x1="'lX(0) - 6'" y1="'b_yM'" x2="'lX(r_tot) + 6'" y2="'b_yM'" style="stroke:#374151; stroke-width:1"/>
+    '  <text x="8" y="'b_yM + 4'" style="fill:#dc2626; font-weight:700">M [kNm]</text>
+    #if b_Mv1 > 0.00001
+        '  <text x="'lX(b_x1)'" y="'b_yM + b_sM*b_Mv1 + 11'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_Mv1'</text>
+    #end if
+    #if b_Mn > 0.00001
+        '  <text x="'lX(r_L1)'" y="'b_yM - b_sM*b_Mn - 4'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'-b_Mn'</text>
+    #end if
+    #if b_Mv2 > 0.00001
+        '  <text x="'lX(b_x2)'" y="'b_yM + b_sM*b_Mv2 + 11'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_Mv2'</text>
+    #end if
+    '  <!-- V-lijn -->
+    '  <polygon points="'lX(0)','b_yV'
+    #for i = 0 : 25
+    ' 'lX(sa(i))','b_yV - b_sV*Vx(sa(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+    #loop
+    #if r_twee ≡ 1
+        #for i = 0 : 25
+        ' 'lX(sb(i))','b_yV - b_sV*Vx(sb(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+        #loop
+    #end if
+    ' 'lX(r_tot)','b_yV'" style="fill:rgba(59,130,246,0.18); stroke:#2563eb; stroke-width:1.4; stroke-linejoin:round"/>
+    '  <line x1="'lX(0) - 6'" y1="'b_yV'" x2="'lX(r_tot) + 6'" y2="'b_yV'" style="stroke:#374151; stroke-width:1"/>
+    '  <text x="8" y="'b_yV + 4'" style="fill:#2563eb; font-weight:700">V [kN]</text>
+    '  <text x="'lX(0) + 3'" y="'b_yV - b_sV*b_va + if(b_va < 0; 11; -4)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_va'</text>
+    '  <text x="'lX(r_L1) - 3'" y="'b_yV - b_sV*b_vb + if(b_vb < 0; 11; -4)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_vb'</text>
+    #if r_twee ≡ 1
+        '  <text x="'lX(r_L1) + 3'" y="'b_yV - b_sV*b_vc + if(b_vc < 0; 11; -4)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_vc'</text>
+    #end if
+    #if s3 ≡ 1
+        '  <text x="'lX(r_tot) - 3'" y="'b_yV - b_sV*b_vd + if(b_vd < 0; 11; -4)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_vd'</text>
+    #end if
+    '  <!-- zakkingslijn, omlaag positief -->
+    '  <polyline points="
+    #for i = 0 : 16
+    ' 'lX(su(i))','b_yU + b_sU*Ux(su(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+    #loop
+    #if r_twee ≡ 1
+        #for i = 1 : 16
+        ' 'lX(sv(i))','b_yU + b_sU*Ux(sv(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+        #loop
+    #end if
+    '" style="fill:none; stroke:#2563eb; stroke-width:1.8; stroke-linejoin:round"/>
+    '  <line x1="'lX(0) - 6'" y1="'b_yU'" x2="'lX(r_tot) + 6'" y2="'b_yU'" style="stroke:#9ca3af; stroke-width:1; stroke-dasharray:4 3"/>
+    '  <text x="8" y="'b_yU + 4'" style="fill:#2563eb; font-weight:700">u [mm]</text>
+    '  <text x="'lX(r_L1/2)'" y="'b_yU + b_sU*b_u1m + if(b_u1m < 0; -5; 12)'" text-anchor="middle" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_u1m'</text>
+    #if s3 ≡ 1
+        '  <text x="'lX(r_L1 + r_L2/2)'" y="'b_yU + b_sU*b_u2m + if(b_u2m < 0; -5; 12)'" text-anchor="middle" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_u2m'</text>
+    #end if
+    #if s2 ≡ 1
+        '  <text x="'lX(r_tot) - 3'" y="'b_yU + b_sU*b_ue + if(b_ue < 0; -5; 12)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_ue'</text>
+    #end if
+    '  <!-- opleggingen onder de zakkingslijn -->
+    '  <polygon points="'lX(0)','b_yU' 'lX(0) - 5','b_yU + 8' 'lX(0) + 5','b_yU + 8'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    '  <polygon points="'lX(r_L1)','b_yU' 'lX(r_L1) - 5','b_yU + 8' 'lX(r_L1) + 5','b_yU + 8'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    #if s3 ≡ 1
+        '  <polygon points="'lX(r_tot)','b_yU' 'lX(r_tot) - 5','b_yU + 8' 'lX(r_tot) + 5','b_yU + 8'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    #end if
+    '</svg>'
+#end if
+#loop
 
 # 9. Toetsing BGT — doorbuiging (§7.2)
 
