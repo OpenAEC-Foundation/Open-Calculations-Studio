@@ -1,68 +1,11 @@
-import { useMemo, type ReactNode } from "react";
-import { parse, evaluate, render, defaultStyles } from "@ifc-calc/core";
+import { useMemo } from "react";
 import { useProjectStore, type Exemplaar } from "../../store/projectStore";
 import { projectScope } from "../../store/projectGegevens";
-import { ExemplaarContext } from "../../store/actiefBlad";
 import { usePrintStore } from "../../store/printStore";
-import { designerVoor } from "./designerKeuze";
-import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
-import { leesResultaat, ucTekst, type Resultaat } from "./bladResultaat";
+import { ucTekst, type Resultaat } from "./bladResultaat";
+import { rekenBladDoor, zorgVoorKernstijlen } from "./bladDoorrekenen";
+import { Oordeel, PrintBlad } from "./PrintBlad";
 import "./PrintDocument.css";
-
-let stijlenGeplaatst = false;
-/** De opmaak van de rekenbladen staat in de core; die moet ook bij het printen mee. */
-function zorgVoorKernstijlen() {
-  if (stijlenGeplaatst || typeof document === "undefined") return;
-  const el = document.createElement("style");
-  el.textContent = defaultStyles;
-  el.dataset.ifcCalc = "core-styles";
-  document.head.appendChild(el);
-  stijlenGeplaatst = true;
-}
-
-/** Het oordeel als klein label: groen, rood of neutraal. */
-export function Oordeel({ r }: { r: Resultaat }) {
-  if (r.voldoet === null) return <span className="print-oordeel neutraal">—</span>;
-  return (
-    <span className={`print-oordeel ${r.voldoet ? "goed" : "fout"}`}>
-      {r.voldoet ? "voldoet" : "voldoet niet"}
-    </span>
-  );
-}
-
-/** Eén rekenblad in de uitdraai: de kop, het parametrische beeld, dan de uitwerking. */
-export function PrintBlad({ ex, html, nummer, resultaat, projectregel }: {
-  ex: Exemplaar; html: string; nummer: number; resultaat: Resultaat; projectregel?: ReactNode;
-}) {
-  // Het beeld tekent zichzelf uit de waarden van dít exemplaar, niet uit het
-  // blad dat toevallig openstaat. `alleenLezen` houdt tegen dat het afdrukken
-  // standaardwaarden aanvult of iets anders aan het project verandert.
-  const beeld = designerVoor(ex.source);
-  return (
-    <section className="print-blad">
-      <header className="print-blad-kop">
-        <span className="print-blad-nr">{nummer}</span>
-        <span className="print-blad-titel">
-          <span className="print-blad-naam">{ex.naam}</span>
-          {resultaat.norm && <span className="print-blad-norm">{resultaat.norm}</span>}
-        </span>
-        <span className="print-blad-uitkomst">
-          {resultaat.uc !== null && <span className="print-blad-uc">UC {ucTekst(resultaat.uc)}</span>}
-          <Oordeel r={resultaat} />
-        </span>
-      </header>
-      {projectregel}
-      {beeld && (
-        <div className="print-beeld">
-          <ExemplaarContext.Provider value={{ exemplaar: ex, alleenLezen: true }}>
-            {beeld}
-          </ExemplaarContext.Provider>
-        </div>
-      )}
-      <div className="ifc-calc" dangerouslySetInnerHTML={{ __html: html }} />
-    </section>
-  );
-}
 
 /** Wat er op het voorblad en in de uitdraai staat. */
 export interface Uitdraai {
@@ -98,21 +41,7 @@ export function useUitdraai(): Uitdraai {
     const scope = projectScope(gegevens);
     // Een selectie met alleen verdwenen bladen valt terug op het hele project.
     const gekozen = selectie ? exemplaren.filter((e) => selectie.includes(e.id)) : exemplaren;
-    return (gekozen.length ? gekozen : exemplaren).map((ex) => {
-      let html: string;
-      let resultaat: Resultaat = { titel: ex.naam, norm: "", uc: null, voldoet: null };
-      try {
-        const opties = { includes: calcpadIncludes, imageUrls: calcpadImageUrls };
-        const nodes = evaluate(parse(ex.source, opties), ex.waarden, scope);
-        html = render(nodes);
-        resultaat = leesResultaat(nodes, ex.naam);
-      } catch (err) {
-        html = `<p class="calc-text" style="color:#b91c1c">Dit blad kon niet worden doorgerekend: ${
-          (err as Error).message
-        }</p>`;
-      }
-      return { ex, html, resultaat };
-    });
+    return (gekozen.length ? gekozen : exemplaren).map((ex) => ({ ex, ...rekenBladDoor(ex, scope) }));
   }, [exemplaren, gegevens, selectie]);
 
   const kop: Array<[string, string | undefined]> = [
