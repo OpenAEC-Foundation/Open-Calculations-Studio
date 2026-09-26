@@ -109,8 +109,13 @@ const SCHEMA_OPTIES = SCHEMA.map((x) => ({ ...x, icoon: <SchemaIcoon soort={x.so
 const LIGGER: { v: number; label: string }[] = [
   { v: 1, label: "Balk in een balklaag" }, { v: 2, label: "Onderslag (belaste breedte)" },
 ];
+/** Grens voor de eindstand w_fin; de NB noemt 0,004 × L, strenger mag. */
 const GRENS: { v: number; label: string }[] = [
   { v: 0.004, label: "0,004 × L" }, { v: 0.003, label: "0,003 × L" }, { v: 0.002, label: "0,002 × L" },
+];
+/** Grens voor de bijkomende doorbuiging w_bij: 0,003 × L, bij een brosse afwerking 0,002 × L. */
+const GRENS_BIJ: { v: number; label: string }[] = [
+  { v: 0.003, label: "0,003 × L" }, { v: 0.002, label: "0,002 × L (brosse afwerking)" },
 ];
 
 /*
@@ -145,14 +150,22 @@ function UcChip({ naam, uc, extra }: { naam: string; uc: number; extra?: string 
  * evaluator (rekensheet) en de designer nooit op verschillende defaults
  * uitkomen. Zonder seed valt de evaluator terug op de eerste @select-optie en
  * '0' voor `?`-velden — die wijken af van wat het beeld toont.
+ *
+ * F_k = 3 kN is de puntlast bij categorie A (vloeren) volgens NB tabel 6.2 bij
+ * EN 1991-1-1, naast q_k = 1,75 kN/m² (+ 0,8 voor verplaatsbare wanden).
+ *
+ * g_bl en a_steun beginnen op 0: de seed vult ook bestaande bladen aan zodra
+ * het beeld opent, en een andere startwaarde zou hun uitkomst stil veranderen.
+ * g_bl = 0 betekent dat het gewicht van de gedragen balken al in G_k zit;
+ * a_steun = 0 valt terug op a_opl.
  */
 const DEFAULTS: Record<string, number> = {
   profiel: 10, b_zelf: 63, h_zelf: 211, sterkteklasse: 2, duurklasse: 2, klimaat: 1,
-  schema: 1, ligger: 1, a_over: 800, L_veld2: 3000, b_sparing: 2400, l_staart: 1800, b_ond: 2.5,
+  schema: 1, ligger: 1, a_over: 800, L_veld2: 3000, a_steun: 0, b_sparing: 2400, l_staart: 1800, b_ond: 2.5,
   L_d: 5000, a_opl: 50, hoh: 450, t_vloer: 25,
   E_beschot: 7000, b_vloer: 5,
-  G_k: 0.5, Q_k: 2.55, F_k: 2, belastingcat: 1,
-  "ψ_0_zelf": 0.5, "ψ_2_zelf": 0.3, controleer: 1, grensfactor: 0.004,
+  G_k: 0.5, Q_k: 2.55, F_k: 3, g_bl: 0, belastingcat: 1,
+  "ψ_0_zelf": 0.5, "ψ_2_zelf": 0.3, controleer: 1, grensfactor: 0.004, grens_bij: 0.003,
   controleer_trilling: 1, "ζ": 0.01, a_tril: 1.0, b_tril: 120,
 };
 
@@ -260,6 +273,7 @@ export default function BalklaagDesigner() {
   const bOnd = d("b_ond");
   const aOver = d("a_over");
   const LVeld2 = d("L_veld2");
+  const aSteun = d("a_steun");
   const bSparing = d("b_sparing");
   const lStaart = d("l_staart");
   const Ld = d("L_d");
@@ -271,6 +285,7 @@ export default function BalklaagDesigner() {
   const gk = d("G_k");
   const qk = d("Q_k");
   const Fk = d("F_k");
+  const gBl = d("g_bl");
   const cat = Math.round(d("belastingcat"));
   const tril = Math.round(d("controleer_trilling"));
   const zeta = d("ζ");
@@ -280,6 +295,7 @@ export default function BalklaagDesigner() {
   const psi2zelf = d("ψ_2_zelf");
   const controleer = Math.round(d("controleer"));
   const grens = d("grensfactor");
+  const grensBij = d("grens_bij");
   const { b, h } = prof;
   // Theoretische overspanning van veld 1: bij een raveelbalk de breedte van de sparing.
   const Lth = schema === 4 ? bSparing + aOpl : Ld + aOpl;
@@ -304,8 +320,26 @@ export default function BalklaagDesigner() {
   const MyEd = uitBlad("M_y_Ed"), VzEd = uitBlad("V_z_Ed");
   const wfin = uitBlad("w_fin"), wlim = uitBlad("w_lim");
   const wfin2 = uitBlad("w_fin_2"), wlim2 = uitBlad("w_lim_2");
+  const wbij = uitBlad("w_bij"), wlimBij = uitBlad("w_lim_bij");
   const ucBuig = uitBlad("UC_buiging"), ucAfsch = uitBlad("UC_afsch");
   const ucDoor = uitBlad("UC_doorbuiging"), ucTril = uitBlad("UC_trilling"), f1 = uitBlad("f_1");
+  // De doorbuiging toetst de eindstand én de bijkomende doorbuiging; de chip
+  // toont de grootste. Een ouder blad kent alleen de eindstand.
+  const ucBij = uitBlad("UC_bij");
+  const ucDoorMax = Number.isFinite(ucBij) ? Math.max(ucDoor, ucBij) : ucDoor;
+  // Oplegdruk, kip bij het steunmoment en de combinatie met alleen permanente
+  // last (k_mod blijvend); NaN bij een ouder blad, dan een streepje.
+  const ucC90 = uitBlad("UC_c90"), ucKip = uitBlad("UC_kip"), ucG = uitBlad("UC_G");
+  // Bij f₁ ≤ 8 Hz gelden (7.3) en (7.4) niet: de trilling is niet aangetoond.
+  const trilNvt = Number.isFinite(f1) && f1 <= 8;
+  // Trek in een eindoplegging (overstek of twee velden): R_min < 0.
+  const rMin = uitBlad("R_min");
+  // Zoals de slotzin van het blad: voldoet alles behalve f₁ > 8 Hz, dan is de
+  // balklaag niet afgekeurd maar niet aangetoond.
+  const rest = Math.max(
+    ...[ucDoorMax, ucBuig, ucAfsch, ucC90, ucKip, ucG, uitBlad("UC_tril_a"), uitBlad("UC_tril_v")].filter(Number.isFinite),
+  );
+  const nietAangetoond = !ok && trilNvt && tril === 1 && !onderslag && rest <= 1;
   // Buigstijfheid in kNm²: E in N/mm² maal I in mm⁴ geeft N·mm².
   const EI = uitBlad("E_mean") * uitBlad("I_y") * 1e-9;
   const tekenbaar = [Pg, qq, FQ, gG, gQ, kdef, psi2, EI].every(Number.isFinite) && EI > 0;
@@ -456,7 +490,7 @@ export default function BalklaagDesigner() {
         <strong>Parametrisch beeld — balklaag</strong>
         {resultaat && Number.isFinite(ucMax) ? (
           <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
-            UC<sub>max</sub> = {ucMax.toFixed(2)} {ok ? "✓ voldoet" : "✗ voldoet niet"}
+            UC<sub>max</sub> = {ucMax.toFixed(2)} {ok ? "✓ voldoet" : nietAangetoond ? "✗ niet aangetoond (f₁ ≤ 8 Hz)" : "✗ voldoet niet"}
           </span>
         ) : (
           <span className="vd-uc info">—</span>
@@ -500,6 +534,13 @@ export default function BalklaagDesigner() {
             <label>Tweede overspanning (mm)
               <input type="number" step={100} value={LVeld2}
                 onChange={(e) => setVal("L_veld2", parseFloat(e.target.value))} />
+            </label>
+          )}
+          {schema === 3 && kent.steun && (
+            <label title="Opleglengte op het tussensteunpunt; bij balken op een onderslag de breedte van de onderslag. Telt mee in de oplegdruk (§6.1.5).">
+              <span className="vd-help">Opleglengte tussensteunpunt (mm)</span>
+              <input type="number" step={10} value={aSteun}
+                onChange={(e) => setVal("a_steun", parseFloat(e.target.value))} />
             </label>
           )}
           {schema === 4 && (
@@ -590,6 +631,12 @@ export default function BalklaagDesigner() {
           <label>F<sub>k</sub> (kN)
             <input type="number" step={0.5} value={Fk} onChange={(e) => setVal("F_k", parseFloat(e.target.value))} />
           </label>
+          {kent.gedragen && (onderslag || schema === 4) && (
+            <label title="Eigen gewicht van de balken die op deze ligger rusten, per m² vloer; het blad telt het op bij G_k. Bijvoorbeeld 71×221 h.o.h. 600 in C24: ongeveer 0,11 kN/m².">
+              <span className="vd-help">g<sub>bl</sub> gedragen balken (kN/m²)</span>
+              <input type="number" step={0.01} value={gBl} onChange={(e) => setVal("g_bl", parseFloat(e.target.value))} />
+            </label>
+          )}
           <label>Categorie (Tabel NB.2 — A1.1)
             <select value={cat} onChange={(e) => {
               const v = parseInt(e.target.value); setVal("belastingcat", v);
@@ -618,11 +665,18 @@ export default function BalklaagDesigner() {
             waarde={controleer === 1}
             onChange={(v) => setVal("controleer", v ? 1 : 0)}
           />
-          <label>Toelaatbare bijkomende doorbuiging
+          <label>Grens eindstand w<sub>fin</sub>
             <select value={grens} onChange={(e) => setVal("grensfactor", parseFloat(e.target.value))}>
               {GRENS.map((g) => <option key={g.v} value={g.v}>{g.label}</option>)}
             </select>
           </label>
+          {kent.bijkomend && (
+            <label>Grens bijkomende doorbuiging w<sub>bij</sub>
+              <select value={grensBij} onChange={(e) => setVal("grens_bij", parseFloat(e.target.value))}>
+                {GRENS_BIJ.map((g) => <option key={g.v} value={g.v}>{g.label}</option>)}
+              </select>
+            </label>
+          )}
 
           <span className="vd-ctrl-h">Trilling (§7.3.3)</span>
           <JaNee
@@ -873,6 +927,7 @@ export default function BalklaagDesigner() {
               Doorbuiging (BGT){" "}
               <span className="vd-caption-waarde">
                 · w<sub>fin</sub> = {tekst(wfin, 1)} mm, grens {tekst(wlim, 1)} mm
+                {Number.isFinite(wbij) && <> · w<sub>bij</sub> = {tekst(wbij, 1)} mm, grens {tekst(wlimBij, 1)} mm</>}
                 {(schema === 2 || schema === 3) && Number.isFinite(wfin2) && (
                   <> · {schema === 2 ? "uiteinde" : "veld 2"}: {tekst(wfin2, 1)} mm, grens {tekst(wlim2, 1)} mm</>
                 )}
@@ -937,12 +992,19 @@ export default function BalklaagDesigner() {
       <div className="vd-foot">
         <span>Klik op een blauwe maat om die te wijzigen — stroomt direct terug in de rekensheet.</span>
         <span className="vd-live">
-          {controleer === 1 ? <UcChip naam="doorbuiging" uc={ucDoor} /> : <span className="vd-uc-nvt">doorbuiging n.v.t.</span>}
+          {controleer === 1 ? <UcChip naam="doorbuiging" uc={ucDoorMax} /> : <span className="vd-uc-nvt">doorbuiging n.v.t.</span>}
           <UcChip naam="buiging" uc={ucBuig} />
           <UcChip naam="afschuiving" uc={ucAfsch} />
+          {Number.isFinite(ucC90) && <UcChip naam="oplegdruk" uc={ucC90} />}
+          {(schema === 2 || schema === 3) && Number.isFinite(ucKip) && <UcChip naam="kip" uc={ucKip} />}
+          {Number.isFinite(ucG) && <UcChip naam="alleen G" uc={ucG} />}
           {tril === 1 && !onderslag
-            ? <UcChip naam="trilling" uc={ucTril} extra={Number.isFinite(f1) ? `f₁ = ${f1.toFixed(1)} Hz` : undefined} />
+            ? <UcChip naam="trilling" uc={ucTril}
+                extra={Number.isFinite(f1) ? `f₁ = ${f1.toFixed(1)} Hz${trilNvt ? ", niet aangetoond" : ""}` : undefined} />
             : <span className="vd-uc-nvt">trilling n.v.t.</span>}
+          {Number.isFinite(rMin) && rMin < 0 && (
+            <span className="vd-uc-chip bad">trek oplegging {nl(-rMin, 2)} kN</span>
+          )}
         </span>
       </div>
     </div>

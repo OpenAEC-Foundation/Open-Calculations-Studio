@@ -523,6 +523,17 @@ for (const { titel, invoer, geo } of NORMSTAND) {
  * toetsen §2 en §3 tegen de numerieke balk. Hier alleen wat er niet van
  * afhangt: de lasten per balk, de grens van het veld, en bij het lange overstek
  * met F = 3 kN het moment uit de puntlast op het uiteinde (F·a).
+ *
+ * Drie waarden zijn later bewust veranderd, met de hand nagerekend:
+ *   • raveelbalk 2,45 m: UC_max 0,3193 → 0,3395. De oplegdruk (§6.1.5) telt nu
+ *     mee: R = V_z,Ed = 4,45 kN op 71 × (50 + 30) mm geeft σ_c,90,d =
+ *     4450/5680 = 0,7835 N/mm²; k_c,90·f_c,90,d = 1,5 · 0,8·2,5/1,3 = 2,308,
+ *     dus UC 0,3395 — groter dan de buiging (0,3193).
+ *   • raveelbalk 3,05 m in de norm-stand: de afschuiving rekent met k_cr = 0,67
+ *     (§6.1.7(2)). τ_d = 1,5 · 7410/(0,67 · 71 · 221) = 1,057 N/mm² (was 0,7083
+ *     zonder k_cr) en UC_afsch = 1,057/2,462 = 0,4295 (was 0,2878). De
+ *     oplegdruk (7410/5680/2,308 = 0,565) blijft onder de buiging, dus UC_max
+ *     blijft 0,6619.
  */
 const OUD = {
   "overstek 4,05 + 0,80 m": {
@@ -539,11 +550,11 @@ const OUD = {
   },
   "raveelbalk 2,45 m, staart 1,80 m": {
     invoer: { schema: "4", b_sparing: "2400", l_staart: "1800" },
-    waarden: { P_g_k: 0.9863, q_q_k: 1.575, F_Q_k: 2, k_r: 1, u_g_k: 0.6587, u_q_k: 1.052, u_Q_k: 0.8722, w_inst: 1.71, w_qp: 0.9742, w_fin: 2.295, w_lim: 9.8, M_y_Ed: 2.726, V_z_Ed: 4.45, "σ_m_y_d": 4.716, "τ_d": 0.4254, UC_buiging: 0.3193, UC_afsch: 0.1728, UC_doorbuiging: 0.2342, UC_max: 0.3193 },
+    waarden: { P_g_k: 0.9863, q_q_k: 1.575, F_Q_k: 2, k_r: 1, u_g_k: 0.6587, u_q_k: 1.052, u_Q_k: 0.8722, w_inst: 1.71, w_qp: 0.9742, w_fin: 2.295, w_lim: 9.8, M_y_Ed: 2.726, V_z_Ed: 4.45, "σ_m_y_d": 4.716, "τ_d": 0.4254, UC_buiging: 0.3193, UC_afsch: 0.1728, UC_doorbuiging: 0.2342, UC_c90: 0.3395, UC_max: 0.3395 },
   },
   "raveelbalk 3,05 m, staart 2,50 m, norm-stand": {
     invoer: { schema: "4", b_sparing: "3000", l_staart: "2500" }, rekenwijze: 0,
-    waarden: { P_g_k: 1.315, q_q_k: 2.188, F_Q_k: 2, k_r: 1, u_g_k: 2.109, u_q_k: 3.509, u_Q_k: 1.683, w_inst: 5.617, w_qp: 3.161, w_fin: 7.514, w_lim: 12.2, M_y_Ed: 5.65, V_z_Ed: 7.41, "σ_m_y_d": 9.776, "τ_d": 0.7083, UC_buiging: 0.6619, UC_afsch: 0.2878, UC_doorbuiging: 0.6159, UC_max: 0.6619 },
+    waarden: { P_g_k: 1.315, q_q_k: 2.188, F_Q_k: 2, k_r: 1, u_g_k: 2.109, u_q_k: 3.509, u_Q_k: 1.683, w_inst: 5.617, w_qp: 3.161, w_fin: 7.514, w_lim: 12.2, M_y_Ed: 5.65, V_z_Ed: 7.41, "σ_m_y_d": 9.776, "τ_d": 1.057, UC_buiging: 0.6619, UC_afsch: 0.4295, UC_doorbuiging: 0.6159, UC_max: 0.6619 },
   },
 };
 
@@ -621,7 +632,8 @@ console.log("\n5. Trillingstoets bij een onderslag: niet van toepassing, ook als
 {
   const r = reken({ ligger: "2", b_ond: "2.5", controleer_trilling: "1" });
   waar("geen UC_trilling boven nul", !(r.alle.UC_trilling > 0), `UC_trilling = ${toon(r.alle.UC_trilling)}`);
-  gelijk("UC_max zonder trilling", r.alle.UC_max, Math.max(r.alle.UC_buiging, r.alle.UC_afsch, r.alle.UC_doorbuiging));
+  const a = r.alle;
+  gelijk("UC_max zonder trilling", a.UC_max, Math.max(a.UC_buiging, a.UC_afsch, a.UC_c90, a.UC_G, a.UC_doorbuiging, a.UC_bij));
   const html = render(r.nodes);
   waar("het blad zegt waarom", /onderslag niet van toepassing/.test(html));
   const rav = reken({ ligger: "2", schema: "4", b_sparing: "2400", l_staart: "1800", controleer_trilling: "1" });
