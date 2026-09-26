@@ -32,6 +32,7 @@ import { ponsberekening } from "./ponsberekening";
 import { tweepaalsPoer } from "./tweepaalsPoer";
 import { verankeringslengte } from "./verankeringslengte";
 import { opdrijven } from "./opdrijven";
+import { houtenKap } from "./houtenKap";
 import { ligger } from "./ligger";
 import {
   ec5Buiging, ec5Afschuiving, ec5Druk, ec5DrukLoodrecht,
@@ -92,6 +93,7 @@ export const templates: Record<string, string> = {
   "tweepaals-poer": tweepaalsPoer,
   "verankeringslengte": verankeringslengte,
   "opdrijven": opdrijven,
+  "houten-kap": houtenKap,
   "ligger": ligger,
   "calcpad-demo": calcpadDemo,
   ...calcpadSamples,

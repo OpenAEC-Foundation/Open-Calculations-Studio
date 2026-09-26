@@ -8,6 +8,7 @@ import BrandwerendheidDesigner from "./BrandwerendheidDesigner";
 import DwarskrachtDesigner from "./DwarskrachtDesigner";
 import GevelkolomDesigner from "./GevelkolomDesigner";
 import GordingDesigner from "./GordingDesigner";
+import HoutenKapDesigner from "./HoutenKapDesigner";
 import HsbStabiliteitDesigner from "./HsbStabiliteitDesigner";
 import KolomDesigner from "./KolomDesigner";
 import KruipfactorDesigner from "./KruipfactorDesigner";
@@ -46,6 +47,7 @@ const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
   // ruimere kop mag hem niet wegkapen.
   { marker: "Stabiliteit HSB-wanden", beeld: () => <HsbStabiliteitDesigner /> },
   { marker: "Nagel- en schroefverbinding", beeld: () => <NagelSchroefDesigner /> },
+  { marker: "Houten kap", beeld: () => <HoutenKapDesigner /> },
   { marker: "Paaldraagvermogen — NEN 9997-1 art. 7.6.2.3", beeld: () => <PaalDesigner /> },
   { marker: "Stalen gevelkolom", beeld: () => <GevelkolomDesigner /> },
   { marker: "Verticaal windverband", beeld: () => <WindverbandDesigner /> },

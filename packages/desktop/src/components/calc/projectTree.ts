@@ -130,6 +130,7 @@ export const moduleCatalogus: TreeNode[] = [
       { kind: "item", id: "sheet-kolom", label: "Kolom (houten kolom)", templateId: "kolom", status: "gereed" },
       { kind: "item", id: "sheet-balklaag", label: "Balklaag (houten vloerbalken)", templateId: "balklaag", status: "gereed", gepubliceerd: true },
       { kind: "item", id: "sheet-gording", label: "Gording (dakgording)", templateId: "gording", status: "gereed" },
+      { kind: "item", id: "sheet-houten-kap", label: "Houten kap (sporen, spanten, hoekkeper)", templateId: "houten-kap", status: "controleren" },
       { kind: "item", id: "sheet-schijfwerking", label: "Schijfwerking (wandschijf)", templateId: "schijfwerking", status: "controleren" },
       { kind: "item", id: "sheet-hsb-stabiliteit", label: "Stabiliteit HSB-wanden", templateId: "hsb-stabiliteit", status: "controleren" },
       { kind: "item", id: "sheet-nagel-schroef", label: "Nagel- en schroefverbinding", templateId: "nagel-schroef", status: "controleren" },
