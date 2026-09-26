@@ -1,4 +1,4 @@
-import { useDesigner, Dim, Ro, Defs, betonFill, HDim, VDim, fmt, clamp, UitkomstKop } from "./designerKit";
+import { useDesigner, Dim, Ro, Defs, betonFill, HDim, VDim, fmt, clamp, UitkomstKop, JaNee } from "./designerKit";
 import { useBladUitkomst } from "./bladResultaat";
 import { useActiefExemplaar } from "../../store/actiefBlad";
 import "./VoetplaatDesigner.css";
@@ -15,6 +15,10 @@ import "./VoetplaatDesigner.css";
  * toont de maatgevende UC en het oordeel van het blad, de voetregel de UC per
  * toets, en de tekening de drukzone uit dezelfde uitwerking. Het beeld rekent
  * zelf alleen de oppervlakken en het wapeningspercentage uit, voor de tekening.
+ *
+ * Staat de M-κ-lijn aan (mk_lijn), dan tekent het beeld daaronder de punten
+ * scheuren, vloeien en uiterste toestand uit het blad, met rechte lijnen
+ * ertussen; de volledige lijn staat in het blad zelf.
  */
 const MARKER = "Betondoorsnede";
 
@@ -34,12 +38,13 @@ const DIAM = [6, 8, 10, 12, 16, 20, 25, 32];
 // M_Ed_max begint op 0 (= de doorsnede met het grootste moment, geen toeslag
 // uit de verschuivingsregel): de seed vult ook bestaande bladen aan zodra het
 // beeld opent, en een andere startwaarde zou hun uitkomst stil veranderen.
+// Om dezelfde reden staat de M-κ-lijn (mk_lijn) uit.
 const DEFAULTS: Record<string, number> = {
   b_dsn: 200, h_dsn: 300, betonklasse: 30, betonstaal: 2, c_dek: 25,
   n_onder: 2, d_onder: 16, n_midden: 2, d_midden: 8, n_boven: 2, d_boven: 12,
   d_beugel: 8, s_beugel: 150, n_sneden: 2,
   N_Ed: 0, M_Ed: 35, V_Ed: 50, T_Ed: 0, M_Ed_max: 0,
-  N_fr: 0, M_fr: 20, "φ_kr": 2, milieuklasse: 2, belastingduur: 1,
+  N_fr: 0, M_fr: 20, "φ_kr": 2, milieuklasse: 2, belastingduur: 1, mk_lijn: 0,
 };
 
 // Een bestaand blad zonder M_fr is van vóór de frequente combinatie: het heeft
@@ -55,6 +60,58 @@ function UcChip({ naam, uc }: { naam: string; uc: number | undefined }) {
   if (uc === undefined || Number.isNaN(uc)) return null;
   const staat = uc > 1 ? "bad" : uc > 0.9 ? "warn" : "ok";
   return <span className={`vd-uc-chip ${staat}`}>{naam} {Number.isFinite(uc) ? fmt(uc, 2) : "∞"}</span>;
+}
+
+/**
+ * De M-κ-lijn uit het blad, vereenvoudigd tot rechte lijnen tussen de punten
+ * die het blad noemt: bij κ = 0, scheuren (r), vloeien (y) en de uiterste
+ * toestand (u). Blauw zonder normaalkracht, oranje met N_Ed.
+ */
+function MkDiagram({ g, w, h }: { g: Record<string, number>; w: number; h: number }) {
+  type Punt = { k: number; m: number; naam: string };
+  const lijn = (s: "0" | "N"): Punt[] | null => {
+    const ku = g[`κ_u_${s}`], Mu = g[`M_u_${s}`];
+    if (ku === undefined || Mu === undefined) return null;
+    const pts: Punt[] = [{ k: 0, m: s === "N" ? (g.M_0_N ?? 0) : 0, naam: "" }];
+    for (const naam of ["r", "y"]) {
+      const k = g[`κ_${naam}_${s}`], m = g[`M_${naam}_${s}`];
+      if (k !== undefined && m !== undefined) pts.push({ k, m, naam });
+    }
+    pts.push({ k: ku, m: Mu, naam: "u" });
+    return pts;
+  };
+  const lijnen = ([["0", "#2563eb"], ["N", "#d97706"]] as const)
+    .map(([s, kleur]) => ({ s, kleur, pts: lijn(s) }))
+    .filter((l): l is { s: "0" | "N"; kleur: "#2563eb" | "#d97706"; pts: Punt[] } => l.pts !== null);
+  if (lijnen.length === 0) {
+    return <div className="gd-note" style={{ padding: 12 }}>De M-κ-lijn verschijnt zodra het blad hem heeft uitgerekend.</div>;
+  }
+  const alle = lijnen.flatMap((l) => l.pts);
+  const kmax = Math.max(...alle.map((p) => p.k), 1e-9);
+  const mmax = Math.max(...alle.map((p) => p.m), 0) * 1.1 || 1;
+  const mmin = Math.min(...alle.map((p) => p.m), 0);
+  const x0 = 54, x1 = w - 16, y0 = h - 30, y1 = 12;
+  const X = (k: number) => x0 + ((x1 - x0) * k) / kmax;
+  const Y = (m: number) => y0 - ((y0 - y1) * (m - mmin)) / (mmax - mmin);
+  return (
+    <svg width={w} height={h} className="vd-svg">
+      <line x1={x0} y1={Y(0)} x2={x1} y2={Y(0)} stroke="#6b7280" strokeWidth={1} />
+      <line x1={x0} y1={y1} x2={x0} y2={y0} stroke="#6b7280" strokeWidth={1} />
+      <text x={x1} y={Y(0) + 14} textAnchor="end" fontSize={10} fill="#374151">κ [1/m] tot {fmt(kmax, 4)}</text>
+      <text x={x0 + 4} y={y1 + 8} fontSize={10} fill="#374151">M [kNm] tot {fmt(mmax / 1.1, 1)}</text>
+      {lijnen.map(({ s, kleur, pts }) => (
+        <g key={s}>
+          <polyline points={pts.map((p) => `${X(p.k)},${Y(p.m)}`).join(" ")} fill="none" stroke={kleur} strokeWidth={1.8} />
+          {pts.filter((p) => p.naam).map((p) => (
+            <g key={p.naam}>
+              <circle cx={X(p.k)} cy={Y(p.m)} r={3} fill={kleur} />
+              <text x={X(p.k) + 4} y={Y(p.m) - 4} fontSize={10} fill={kleur}>{p.naam}</text>
+            </g>
+          ))}
+        </g>
+      ))}
+    </svg>
+  );
 }
 
 export default function BetondoorsnedeDesigner() {
@@ -79,6 +136,7 @@ export default function BetondoorsnedeDesigner() {
   const NEd = d("N_Ed"), MEd = d("M_Ed"), VEd = d("V_Ed"), TEd = d("T_Ed"), MEdMax = d("M_Ed_max");
   const Nfr = d("N_fr"), Mfr = d("M_fr"), phi = d("φ_kr");
   const milieu = Math.round(d("milieuklasse")), duur = Math.round(d("belastingduur"));
+  const mk = Math.round(d("mk_lijn")) === 1;
 
   // Geometrie van de wapening — alleen oppervlakken, voor de tekening en de notitie.
   const A = (n: number, dia: number) => (n * Math.PI * dia * dia) / 4;
@@ -93,7 +151,11 @@ export default function BetondoorsnedeDesigner() {
 
   // ── layout ────────────────────────────────────────────────────────────────
   const capH = 24;
-  const W = box.w, H = Math.max(260, box.h - capH);
+  // Met de M-κ-lijn aan krijgt de doorsnede ruim de helft van de hoogte.
+  const Htot = Math.max(260, box.h - capH);
+  const W = box.w;
+  const H = mk ? Math.max(220, Math.round((Htot - capH - 14) * 0.58)) : Htot;
+  const Hm = mk ? Math.max(170, Htot - capH - 14 - H) : 0;
   const mL = 78, mR = 130, mT = 44, mB = 52;
   const s = clamp(Math.min((W - mL - mR) / b, (H - mT - mB) / h), 0.02, 3);
   const cx = mL + (W - mL - mR) / 2, cy = mT + (H - mT - mB) / 2;
@@ -223,6 +285,10 @@ export default function BetondoorsnedeDesigner() {
           </label>
           {g.w_k !== undefined && <span className="gd-note">w<sub>k</sub> = {fmt(g.w_k, 3)} mm
             {g.σ_s !== undefined && <> bij σ<sub>s</sub> = {fmt(g.σ_s)} N/mm²</>}.</span>}
+          <span className="vd-ctrl-h">M-κ-lijn</span>
+          <JaNee label="Berekenen (informatief)" waarde={mk} onChange={(v) => set("mk_lijn", v ? 1 : 0)} />
+          {mk && g.M_u_0 !== undefined && <span className="gd-note">M<sub>u</sub> = {fmt(g.M_u_0, 1)} kNm
+            {g.M_u_N !== undefined && <>, met N<sub>Ed</sub> {fmt(g.M_u_N, 1)} kNm</>}; telt niet mee in het oordeel.</span>}
         </div>
 
         <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
@@ -269,6 +335,14 @@ export default function BetondoorsnedeDesigner() {
                 <Ro text={`x=${fmt(xu)}`} x={x0 - 64} y={naY} kleur="#b91c1c" title="drukzonehoogte x_u uit het blad (UGT)" />}
             </div>
           </div>
+          {mk && (
+            <div className="vd-canvas">
+              <div className="vd-caption">M-κ-lijn (vereenvoudigd)</div>
+              <div className="vd-stage" style={{ width: W, height: Hm, background: "transparent", border: "none", borderRadius: 0 }}>
+                <MkDiagram g={g} w={W} h={Hm} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

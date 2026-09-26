@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import BalklaagDesigner from "./BalklaagDesigner";
 import BetondoorsnedeDesigner from "./BetondoorsnedeDesigner";
 import BetonkolomDesigner from "./BetonkolomDesigner";
+import BetonplaatDesigner from "./BetonplaatDesigner";
 import BoutDesigner from "./BoutDesigner";
 import BrandwerendheidDesigner from "./BrandwerendheidDesigner";
 import DwarskrachtDesigner from "./DwarskrachtDesigner";
@@ -71,6 +72,7 @@ const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
   { marker: "Betondoorsnede", beeld: () => <BetondoorsnedeDesigner /> },
   { marker: "Betonkolom", beeld: () => <BetonkolomDesigner /> },
   { marker: "Ponsberekening", beeld: () => <PonsDesigner /> },
+  { marker: "Betonplaat en console", beeld: () => <BetonplaatDesigner /> },
   { marker: "Tweepaals poer", beeld: () => <TweepaalsPoerDesigner /> },
   { marker: "Verankeringslengte", beeld: () => <VerankeringslengteDesigner /> },
   { marker: "Opdrijven en drijvend lichaam", beeld: () => <OpdrijvenDesigner /> },

@@ -28,6 +28,12 @@
  * de BGT zonder frequente belasting, de spiegeling van het moment en de
  * beginwaarden van het beeld.
  *
+ * De M-κ-lijn (mk_lijn = 1, informatief) staat apart onderaan: een vezelmodel
+ * (4000 vezels, halveren op de rek of de kromming) en een handberekening van
+ * scheuren, vloeien en de uiterste toestand. Met de lijn aan moeten alle
+ * andere uitkomsten en het oordeel gelijk blijven; de sets hierboven rekenen
+ * zonder de lijn, zoals een bestaand blad na "Bladen bijwerken".
+ *
  * Draaien:  node scripts/check-betondoorsnede.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
@@ -35,6 +41,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { laadTemplate, reken, toets, afronden } from "./lib/refcheck.mjs";
+import * as kern from "../packages/core/dist/index.js";
 
 const tpl = laadTemplate("betondoorsnede.ts");
 // laadTemplate knipt vanaf de eerste backtick in het bestand: staat er een in
@@ -50,7 +57,7 @@ const STANDAARD = {
   n_onder: 2, d_onder: 16, n_midden: 2, d_midden: 8, n_boven: 2, d_boven: 12,
   d_beugel: 8, s_beugel: 150, n_sneden: 2,
   N_Ed: 0, M_Ed: 35, V_Ed: 50, T_Ed: 0, M_Ed_max: 0,
-  N_fr: 0, M_fr: 20, "φ_kr": 2, milieuklasse: 2, belastingduur: 1,
+  N_fr: 0, M_fr: 20, "φ_kr": 2, milieuklasse: 2, belastingduur: 1, mk_lijn: 0,
 };
 const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 0 };
 
@@ -749,6 +756,145 @@ for (const [naam, invoer] of [
   const ok = /er valt niets te toetsen/.test(got.text) && oordeel?.voldoet === false && got.values.UC_max === undefined && !/NaN/.test(got.text);
   if (!ok) fouten++;
   console.log(`  ${ok ? "OK    " : "FOUT  "} melding, "voldoet niet", geen UC_max en geen NaN`);
+}
+
+// ── M-κ-lijn (mk_lijn = 1): vezelmodel en handberekening ─────────────────────
+/*
+ * Handberekening, standaardgeval zonder normaalkracht (trek onder, gedrukt boven);
+ * lagen vanaf de gedrukte rand: 2Ø16 op 259 (402,1 mm²), 2Ø8 op 149 (100,5), 2Ø12 op 39 (226,2).
+ *
+ * Ongescheurd, ideële doorsnede met α_e = 200 000/32 837 = 6,091 (verdrongen beton verwaarloosd):
+ *   A_i = 60 000 + 6,091·728,8 = 64 439 mm²;
+ *   y_i = (200·300²/2 + 6,091·(402,1·259 + 100,5·149 + 226,2·39))/64 439 = 151,8 mm;
+ *   I_i = 200·300³/12 + 60 000·1,76² + 6,091·(402,1·107,2² + 100,5·2,76² + 226,2·112,8²) = 4,959·10⁸ mm⁴
+ *   → EI = 32 837·4,959·10⁸ = 16 280 kNm².
+ *   Scheuren: κ_r = (2,896/32 837)/(300 − 151,8) = 5,950·10⁻⁷ /mm = 5,950·10⁻⁴ /m;
+ *   M_r = EI·κ_r = 9,689 kNm.
+ * Vloeien van de onderste laag (ε_yd = 434,8/200 000 = 2,174 ‰), parabool (3.17) met ε_c2 = 2 ‰:
+ *   drukzone x = 88,42 mm → κ_y = 2,174·10⁻³/(259 − 88,42) = 1,2745·10⁻⁵ /mm = 0,01274 /m;
+ *   ε_c = κ·x = 1,127 ‰, η = 0,5635 → F_c = 20·200·88,42·(η − η²/3) = 161,9 kN,
+ *   aangrijpend op x·(1 − (2η/3 − η²/4)/(η − η²/3)) = 31,18 mm van de rand;
+ *   boven σ = 200 000·κ·(88,42 − 39) = 126,0 N/mm², midden −154,4 N/mm²;
+ *   evenwicht 161,9 + 28,5 − 15,5 − 174,8 = 0 kN.
+ *   M_y = 161,9·118,82 + 28,50·111 − 15,52·1 + 174,8·109 = 41,44 kNm.
+ * Uiterste toestand, ε_cu2 = 3,5 ‰ (spil B): de parabool-rechthoek geeft F_c = (17/21)·f_cd·b·x
+ *   op (99/238)·x van de rand. Onder en midden vloeien, boven elastisch:
+ *   3238·x + 226,2·700·(x − 39)/x = 434,8·502,7 → 3238·x² − 60 210·x − 6 175 000 = 0 → x = 53,95 mm;
+ *   κ_u = 3,5·10⁻³/53,95 = 0,06488 /m; σ_boven = 700·14,95/53,95 = 193,9 N/mm²;
+ *   M_u = 174,7·(150 − 22,44) + 43,87·111 + 174,8·109 − 43,71·1 = 46,16 kNm
+ *   (het spanningsblok van §5 gaf 46,27 kNm).
+ */
+{
+  console.log("\nM-κ-lijn: vezelmodel, handberekening en een blad dat verder niet verandert");
+  /** Vezelmodel: parabool-rechthoek over 4000 vezels, staal bilineair; halveren op de kromming. */
+  const mkVezel = (v) => {
+    const b = v.b_dsn, h = v.h_dsn, c = v.c_dek, fck = v.betonklasse;
+    const fcd = fck / 1.5, fyd = 500 / 1.15, ES = 200000;
+    const fctm = 0.3 * fck ** (2 / 3), Ecm = 22000 * ((fck + 8) / 10) ** 0.3;
+    const opp = (n, dia) => (n * Math.PI * dia * dia) / 4;
+    const ao = h - c - v.d_beugel - v.d_onder / 2, ab = c + v.d_beugel + v.d_boven / 2, am = (ao + ab) / 2;
+    const tk = (x) => (x < 0 ? -1 : x > 0 ? 1 : 0);
+    const sU = tk(v.M_Ed) || tk(v.M_Ed_max) || (v.M_fr < 0 ? -1 : 1);
+    // De getrokken laag eerst, diepten vanaf de gedrukte rand.
+    const lagen = sU > 0
+      ? [{ A: opp(v.n_onder, v.d_onder), p: ao }, { A: opp(v.n_midden, v.d_midden), p: am }, { A: opp(v.n_boven, v.d_boven), p: ab }]
+      : [{ A: opp(v.n_boven, v.d_boven), p: h - ab }, { A: opp(v.n_midden, v.d_midden), p: h - am }, { A: opp(v.n_onder, v.d_onder), p: h - ao }];
+    const nf = 4000, dy = h / nf, ec2 = 0.002, ecu2 = 0.0035, eyd = fyd / ES;
+    const sc = (e) => (e <= 0 ? 0 : e < ec2 ? fcd * (1 - (1 - e / ec2) ** 2) : fcd);
+    const ss = (e) => Math.max(-fyd, Math.min(fyd, ES * e));
+    const NM = (et, k) => {
+      let N = 0, M = 0;
+      for (let j = 0; j < nf; j++) { const y = (j + 0.5) * dy, F = sc(et - k * y) * b * dy; N += F; M += F * (h / 2 - y); }
+      for (const L of lagen) { const F = L.A * ss(et - k * L.p); N += F; M += F * (h / 2 - L.p); }
+      return { N, M };
+    };
+    const halveer = (f, lo, hi) => {
+      const flo = f(lo);
+      for (let i = 0; i < 100; i++) { const m = (lo + hi) / 2; if ((f(m) < 0) === (flo < 0)) lo = m; else hi = m; }
+      return (lo + hi) / 2;
+    };
+    // Ongescheurd met vezels: beton E_cm op trek en druk, staal E_s.
+    let EA = 0, ESy = 0, EIo = 0;
+    for (let j = 0; j < nf; j++) { const y = (j + 0.5) * dy, E = Ecm * b * dy; EA += E; ESy += E * y; EIo += E * y * y; }
+    for (const L of lagen) { EA += ES * L.A; ESy += ES * L.A * L.p; EIo += ES * L.A * L.p * L.p; }
+    const yi = ESy / EA, EI = EIo - EA * yi * yi;
+    const Atot = lagen.reduce((s, L) => s + L.A, 0);
+    const py = lagen.find((L) => L.A > 0).p;
+    const punten = (N) => {
+      const r = {};
+      let ku = halveer((k) => NM(ecu2, k).N - N, 1e-9, 1), eu = ecu2;
+      if (ecu2 - ku * h > 0) { ku = halveer((k) => NM(ec2 + (3 * k * h) / 7, k).N - N, 1e-9, (7 * ec2) / (4 * h)); eu = ec2 + (3 * ku * h) / 7; }
+      r.ku = ku; r.Mu = NM(eu, ku).M;
+      r.vl = eu - ku * py <= -eyd;
+      if (r.vl) { r.ky = halveer((k) => NM(k * py - eyd, k).N - N, 1e-12, ku); r.My = NM(r.ky * py - eyd, r.ky).M; }
+      const ei = N / EA;
+      r.rok = ei + fctm / Ecm > 0;
+      r.kr = Math.max((ei + fctm / Ecm) / (h - yi), 0);
+      r.M0 = N * (h / 2 - yi);
+      r.Mr = r.M0 + EI * r.kr;
+      return r;
+    };
+    return { EI, yi, Nmax: fcd * b * h + Atot * Math.min(ES * ec2, fyd), Nmin: -Atot * fyd, punten };
+  };
+  const MK_SETS = [
+    {
+      naam: "standaard, met N_Ed = 400 kN",
+      invoer: { N_Ed: 400 },
+      handwerk: {
+        EI_I: "16280", y_i: "151.8", κ_r_0: "0.000595", M_r_0: "9.689", κ_y_0: "0.01274", M_y_0: "41.44",
+        κ_u_0: "0.06488", M_u_0: "46.16",
+      },
+    },
+    { naam: "trek N_Ed = −100 kN: scheurt eerder, grotere κ_u", invoer: { N_Ed: -100 } },
+    { naam: "grote druk N_Ed = 1200 kN: spil C, de wapening vloeit niet", invoer: { N_Ed: 1200 } },
+    { naam: "negatief moment: gedrukt aan de onderzijde", invoer: { M_Ed: -30, M_fr: -15 } },
+    { naam: "alleen onderwapening", invoer: { n_boven: 0, n_midden: 0, n_onder: 3, d_onder: 20, M_Ed: 70, M_fr: 40 } },
+    {
+      naam: "hoge balk C45/55 met druk en wringing",
+      invoer: { b_dsn: 350, h_dsn: 700, betonklasse: 45, n_onder: 4, d_onder: 25, n_midden: 2, d_midden: 12, n_boven: 3, d_boven: 16, d_beugel: 10, s_beugel: 200, N_Ed: 600, M_Ed: 380, V_Ed: 220, T_Ed: 1.5, N_fr: 400, M_fr: 220, "φ_kr": 1.6 },
+    },
+  ];
+  const ruimMk = (x) => ({ waarde: s4(x), tol: Math.max(Math.abs(x) * 0.0015, 1e-9) });
+  for (const set of MK_SETS) {
+    const v = { ...STANDAARD, ...set.invoer, mk_lijn: 1 };
+    const naar = (o) => Object.fromEntries(Object.entries(o).map(([k, x]) => [k, String(x)]));
+    const got = reken(tpl, naar(v), PROJECT);
+    const zonder = reken(tpl, naar({ ...v, mk_lijn: 0 }), PROJECT);
+    const m = mkVezel(v);
+    const p0 = m.punten(0);
+    const uit = {
+      EI_I: ruimMk(m.EI / 1e9), y_i: ruimMk(m.yi), M_r_0: ruimMk(p0.Mr / 1e6), κ_r_0: ruimMk(p0.kr * 1000),
+      M_u_0: ruimMk(p0.Mu / 1e6), κ_u_0: ruimMk(p0.ku * 1000),
+    };
+    if (p0.vl) Object.assign(uit, { M_y_0: ruimMk(p0.My / 1e6), κ_y_0: ruimMk(p0.ky * 1000) });
+    const metN = v.N_Ed !== 0 && v.N_Ed * 1e3 > 0.999 * m.Nmin && v.N_Ed * 1e3 < 0.999 * m.Nmax;
+    let pN = null;
+    if (metN) {
+      pN = m.punten(v.N_Ed * 1e3);
+      Object.assign(uit, { M_0_N: { waarde: s4(pN.M0 / 1e6), tol: Math.max(Math.abs(pN.M0 / 1e6) * 0.0015, 1e-3) }, M_u_N: ruimMk(pN.Mu / 1e6), κ_u_N: ruimMk(pN.ku * 1000) });
+      if (pN.rok) Object.assign(uit, { M_r_N: ruimMk(pN.Mr / 1e6), κ_r_N: ruimMk(pN.kr * 1000) });
+      if (pN.vl) Object.assign(uit, { M_y_N: ruimMk(pN.My / 1e6), κ_y_N: ruimMk(pN.ky * 1000) });
+    }
+    fouten += toets(`M-κ ${set.naam} — vezelmodel`, got, uit);
+    if (set.handwerk) fouten += toets(`M-κ ${set.naam} — handberekening`, got, set.handwerk);
+    // Zonder vloeien vóór de uiterste toestand toont het blad geen vloeipunt.
+    const vloeiOk = (p0.vl === (got.values.M_y_0 !== undefined)) && (!metN || pN.vl === (got.values.M_y_N !== undefined));
+    // De lijn is informatief: alle andere uitkomsten en het oordeel blijven gelijk.
+    const anders = Object.keys(zonder.values).filter((k) => zonder.values[k] !== got.values[k]);
+    const oordeel = slotzin(got.text)?.zin === slotzin(zonder.text)?.zin;
+    // Geen NaN of foutmelding, en in de tekening alleen getallen.
+    const svg = kern.process(tpl, naar(v), undefined, PROJECT);
+    const tekeningen = svg.match(/<svg[\s\S]*?<\/svg>/g) || [];
+    const attrs = tekeningen.flatMap((t) => [...t.matchAll(/\s(x|y|x1|y1|x2|y2|cx|cy|r|width|height)="([^"]*)"/g)].map((a) => a[2]));
+    const schoon = !/NaN|Error|Undefined|niet gedefinieerd/.test(got.text) && tekeningen.length > 0 &&
+      attrs.every((a) => /^\s*-?[\d.]+(e[-+]?\d+)?(em|ex|px|pt|mm|%)?\s*$/i.test(a));
+    for (const [ok, wat] of [[vloeiOk, "vloeipunt alleen als de wapening vóór de uiterste toestand vloeit"],
+      [anders.length === 0, `overige uitkomsten gelijk${anders.length ? `, anders: ${anders.slice(0, 5).join(", ")}` : ""}`],
+      [oordeel, "oordeel gelijk"], [schoon, `geen NaN of fout, tekening met ${attrs.length} getallen`]]) {
+      console.log(`  ${ok ? "OK    " : "FOUT  "} ${wat}`);
+      if (!ok) fouten++;
+    }
+  }
 }
 
 // ── De beginwaarden van het beeld zijn de standaardinvoer van dit script ─────
