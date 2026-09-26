@@ -13,6 +13,7 @@ import KolomDesigner from "./KolomDesigner";
 import KruipfactorDesigner from "./KruipfactorDesigner";
 import LasDesigner from "./LasDesigner";
 import MetselwerkwandDesigner from "./MetselwerkwandDesigner";
+import MetselwerkLoodrechtDesigner from "./MetselwerkLoodrechtDesigner";
 import MomentverbindingDesigner from "./MomentverbindingDesigner";
 import NagelSchroefDesigner from "./NagelSchroefDesigner";
 import OplegMetselwerkDesigner from "./OplegMetselwerkDesigner";
@@ -52,6 +53,7 @@ const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
   { marker: "Spuwer", beeld: () => <SpuwerDesigner /> },
   { marker: "Kruipfactor", beeld: () => <KruipfactorDesigner /> },
   { marker: "Dragende metselwerkwand", beeld: () => <MetselwerkwandDesigner /> },
+  { marker: "Metselwerk loodrecht belast", beeld: () => <MetselwerkLoodrechtDesigner /> },
   { marker: "Oplegging op metselwerk", beeld: () => <OplegMetselwerkDesigner /> },
   { marker: "Schijfwerking", beeld: () => <SchijfwerkingDesigner /> },
   { marker: "Gording", beeld: () => <GordingDesigner /> },
