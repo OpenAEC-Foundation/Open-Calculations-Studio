@@ -49,6 +49,7 @@ import {
   ec3Knik,
   ec3Doorbuiging,
   ec3StalenLigger,
+  ec3Onderflens,
 } from './templates/en1993';
 import {
   en1996Druksterkte,
@@ -471,6 +472,7 @@ const normbladen: Record<string, string> = {
   'ec3-knik': ec3Knik,
   'ec3-doorbuiging': ec3Doorbuiging,
   'ec3-stalen-ligger': ec3StalenLigger,
+  'ec3-onderflens': ec3Onderflens,
   'en1996-druksterkte': en1996Druksterkte,
   'en1996-drukwand': en1996Drukwand,
   'en1996-afschuiving': en1996Afschuiving,

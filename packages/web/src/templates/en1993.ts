@@ -1310,6 +1310,161 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
 `;
 
 // ---------------------------------------------------------------------------
+// 12. Onderflensbuiging — lokale buiging van de onderflens (T-stuk, aanname)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lokale buiging van de onderflens onder een wiel- of hanglast. Aanname: elke
+ * flenshelft als de flens van een equivalent T-stuk volgens NEN-EN 1993-1-8
+ * §6.2.4, zonder wrikkrachten (tabel 6.2), met de effectieve lengten van
+ * tabel 6.4 (niet-verstijfde kolomflens) en m en e uit figuur 6.8.
+ */
+export const ec3Onderflens = `# Onderflensbuiging onder een wiel- of hanglast — EN 1993-1-8 §6.2.4 (T-stuk)
+
+'Lokale buiging van de onderflens van een gewalst I- of H-profiel onder een wiellast of een opgehangen last bij de flensrand, zoals een looprail met een loopkat of een takel aan een balkklem.
+
+'<i>Aanname: elke flenshelft werkt als de flens van een equivalent T-stuk op trek (NEN-EN 1993-1-8 §6.2.4), met het wiel op de plaats van de bout. De flensrand ligt vrij, dus er zijn geen wrikkrachten: de flens vloeit langs de wortel van het lijf en draagt per flenshelft M<sub>pl,Rd</sub>/m (tabel 6.2, zonder wrikkrachten). ℓ<sub>eff</sub> volgt uit tabel 6.4 voor een niet-verstijfde kolomflens, m en e uit figuur 6.8. De langsspanning uit de buiging van de ligger verlaagt het plastisch moment met de factor 1 − (σ<sub>f,Ed</sub>/f<sub>yd</sub>)², aan de veilige kant. De eigen regeling voor kraanbanen (NEN-EN 1993-6) is niet overgenomen.</i>
+
+## Staalsoort
+
+@select staalsoort "Staalsoort (tabel 3.1, t <= 40 mm)"
+S235 — f_y=235, f_u=360 = 235
+S275 — f_y=275, f_u=430 = 275
+S355 — f_y=355, f_u=490 = 355
+S450 — f_y=440, f_u=550 = 440
+@end
+
+f_y = staalsoort * 1 N/mm^2
+gamma_M0 = 1.00
+
+## Profielgegevens
+
+@select profiel "Profiel"
+IPE 300 = 300
+IPE 200 = 200
+IPE 240 = 240
+IPE 270 = 270
+IPE 330 = 330
+IPE 360 = 360
+IPE 400 = 400
+IPE 450 = 450
+IPE 500 = 500
+IPE 550 = 550
+IPE 600 = 600
+HEA 200 = 1200
+HEA 300 = 1300
+HEB 200 = 2200
+HEB 300 = 2300
+@end
+
+#hide
+// id | h | b | t_w | t_f | r (mm)
+profielen = [200; 240; 270; 300; 330; 360; 400; 450; 500; 550; 600; 1200; 1300; 2200; 2300 |200; 240; 270; 300; 330; 360; 400; 450; 500; 550; 600; 190; 290; 200; 300 |100; 120; 135; 150; 160; 170; 180; 190; 200; 210; 220; 200; 300; 200; 300 |5.6; 6.2; 6.6; 7.1; 7.5; 8; 8.6; 9.4; 10.2; 11.1; 12; 6.5; 8.5; 9; 11 |8.5; 9.8; 10.2; 10.7; 11.5; 12.7; 13.5; 14.6; 16; 17.2; 19; 10; 14; 15; 19 |12; 15; 15; 15; 18; 18; 21; 21; 21; 24; 24; 18; 27; 18; 27]
+h_p = hlookup(profielen; profiel; 1; 2) * mm
+b_p = hlookup(profielen; profiel; 1; 3) * mm
+t_w = hlookup(profielen; profiel; 1; 4) * mm
+t_f = hlookup(profielen; profiel; 1; 5) * mm
+r = hlookup(profielen; profiel; 1; 6) * mm
+#show
+'<table style="border-collapse:collapse; font-size:0.95em; margin:2px 0 6px 0;">
+'<tr><td style="padding:3px 8px;">h = 'h_p' mm</td><td style="padding:3px 8px;">b = 'b_p' mm</td><td style="padding:3px 8px;">t<sub>w</sub> = 't_w' mm</td><td style="padding:3px 8px;">t<sub>f</sub> = 't_f' mm</td><td style="padding:3px 8px;">r = 'r' mm</td></tr>
+'</table>
+
+## Belasting en plaats
+
+F_zEd = 10 kN', wiellast of hanglast op één flenshelft, rekenwaarde (met de dynamische factor)'
+n_w = 10 mm', afstand van het aangrijpingspunt van de last tot de rand van de flens'
+sigma_fEd = 50 N/mm^2', langsspanning in het hart van de onderflens uit de buiging van de ligger ter plaatse'
+
+@select wielen "Wielen achter elkaar op dezelfde flenshelft"
+Eén wiel = 1
+Twee wielen op een onderlinge afstand p = 2
+@end
+
+#if wielen == 2
+p_w = 200 mm', hart-op-hartafstand van de wielen'
+#end if
+
+@select plaats "Plaats van de last"
+Ver van het liggereinde = 1
+Bij een onverstijfd liggereinde = 2
+@end
+
+#if plaats == 2
+e_1 = 80 mm', afstand van het voorste wiel tot het liggereinde'
+#end if
+
+## 1. Maten van het T-stuk (figuur 6.8)
+
+m_f = (b_p - t_w) / 2 - 0.8 * r - n_w to mm', van de last tot 0,8·r uit het lijf'
+e_f = n_w to mm', van de last tot de flensrand'
+
+#if m_f ≤ 0 mm
+'<b style="color:#b91c1c">m ≤ 0: de last staat binnen 0,8·r van het lijf. Daar geldt het T-stuk niet; dit blad toetst de flens dan niet.</b>
+#else
+
+## 2. Effectieve lengte (tabel 6.4, niet-verstijfde kolomflens)
+
+#if plaats == 1
+l_cp = 2 * pi * m_f to mm', ronde patronen, afzonderlijke rij'
+l_nc = 4 * m_f + 1.25 * e_f to mm', niet-ronde patronen, afzonderlijke rij'
+#else
+l_cp = min(2 * pi * m_f; pi * m_f + 2 * e_1) to mm', ronde patronen, eindrij'
+l_nc = min(4 * m_f + 1.25 * e_f; 2 * m_f + 0.625 * e_f + e_1) to mm', niet-ronde patronen, eindrij'
+#end if
+l_eff = min(l_cp; l_nc) to mm', bezwijkvorm 1: ℓ_eff,nc, ten hoogste ℓ_eff,cp'
+
+#if wielen == 2
+'Twee wielen als groep: elk wiel is een buitenste rij van de groep (tabel 6.4, rij als deel van een groep); aan de kant van een onverstijfd liggereinde met e<sub>1</sub>, aan de andere kant zonder.
+#if plaats == 1
+l_cpg = 2 * (pi * m_f + p_w) to mm', ronde patronen, de groep'
+l_ncg = 2 * (2 * m_f + 0.625 * e_f + 0.5 * p_w) to mm', niet-ronde patronen, de groep'
+#else
+l_cpg = pi * m_f + p_w + min(pi * m_f + p_w; 2 * e_1 + p_w) to mm', ronde patronen, de groep'
+l_ncg = 2 * m_f + 0.625 * e_f + 0.5 * p_w + min(2 * m_f + 0.625 * e_f + 0.5 * p_w; e_1 + 0.5 * p_w) to mm', niet-ronde patronen, de groep'
+#end if
+l_effg = min(l_cpg; l_ncg) to mm', Σℓ_eff van de groep'
+#end if
+
+## 3. Weerstand van de flens (tabel 6.2, zonder wrikkrachten)
+
+k_sigma = 1 - (sigma_fEd / (f_y / gamma_M0))^2', vermindering voor de langsspanning (aanname, aan de veilige kant)'
+M_plRd = 0.25 * l_eff * t_f^2 * f_y / gamma_M0 to kN*m', plastisch moment van de flens over ℓ_eff'
+F_fRd = max(k_sigma; 0) * M_plRd / m_f to kN', weerstand van één flenshelft onder één wiel'
+
+#if wielen == 2
+F_gRd = max(k_sigma; 0) * 0.25 * l_effg * t_f^2 * f_y / (gamma_M0 * m_f) to kN', weerstand onder de twee wielen samen'
+#end if
+
+## Unity check
+
+UC_flens = F_zEd / F_fRd
+#if wielen == 2
+UC_groep = 2 * F_zEd / F_gRd
+#else
+#hide
+UC_groep = 0
+#show
+#end if
+#hide
+UC_max = max(UC_flens; UC_groep)
+#show
+#end if
+
+'Buiten dit blad: het lijf, de toetsing van de ligger als geheel (buiging, dwarskracht, kip), de dynamische factoren en vermoeiing.
+
+#if m_f ≤ 0 mm
+'<b>Maatgevende UC = ∞</b><span style="color: red"> → <b>voldoet niet</b>: m ≤ 0, het T-stuk-model geldt niet.</span>
+#else if k_sigma ≤ 0
+'<b>Maatgevende UC = ∞</b><span style="color: red"> → <b>voldoet niet</b>: de langsspanning is niet kleiner dan f<sub>y</sub>/γ<sub>M0</sub>, de flens heeft geen reserve voor dwarsbuiging.</span>
+#else if UC_max ≤ 1
+'<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
+#else
+'<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
+#end if
+`;
+
+// ---------------------------------------------------------------------------
 // Export bundel
 // ---------------------------------------------------------------------------
 
@@ -1368,5 +1523,10 @@ export const ec3Formules: { id: string; label: string; template: string }[] = [
     id: 'ec3-stalen-ligger',
     label: 'EC3: Volledige stalen ligger toetsing',
     template: ec3StalenLigger,
+  },
+  {
+    id: 'ec3-onderflens',
+    label: 'EC3: Onderflensbuiging onder een wiel- of hanglast (T-stuk)',
+    template: ec3Onderflens,
   },
 ];

@@ -10,7 +10,9 @@
  *      1/λ̄² van 6.3.2.3), de doorsnedeklasse (tabel 5.2 met α en ψ), buiging
  *      met normaalkracht (6.2.9.1 of 6.42), de volledige liggertoets (met
  *      kipsteunen per veld volgens NB.NB.4.3 en buiging met dwarskracht volgens
- *      6.2.8) en de doorbuiging met w_bij. Het blad moet daar op vier cijfers
+ *      6.2.8), de doorbuiging met w_bij en de onderflensbuiging (flens van een
+ *      T-stuk zonder wrikkrachten, ℓ_eff uit tabel 6.4 van NEN-EN 1993-1-8,
+ *      ook voor twee wielen als groep). Het blad moet daar op vier cijfers
  *      mee kloppen.
  *   2. Getallen van een handberekening, als commentaar bij de set.
  *
@@ -230,6 +232,39 @@ function ligger(v) {
   };
   if (Mcr !== null) Object.assign(uit, { M_cr: ruim(Mcr / 1e6), lambda_LT: ruim(lam) });
   if (MV !== null) Object.assign(uit, { M_x0: ruim(MV / 1e6), M_VRd: ruim(MVRd / 1e6), UC_MV: ruim(UC.mv) });
+  return uit;
+}
+
+// ── Onderflensbuiging (ec3Onderflens) ───────────────────────────────────────
+/**
+ * Flens van een T-stuk zonder wrikkrachten: F = k·0,25·ℓ_eff·t_f²·f_y/m per
+ * flenshelft, ℓ_eff uit tabel 6.4 (niet-verstijfde kolomflens) met e_1 naar het
+ * liggereinde (ver weg: ∞). Maten in mm, f_y en σ in N/mm², F in kN.
+ */
+function onderflens(v) {
+  const { b, tw, tf, r, fy, F, n, sigma, wielen, p } = v;
+  const e1 = v.e1 ?? Infinity;
+  const m = (b - tw) / 2 - 0.8 * r - n, e = n;
+  const lcp = Math.min(2 * Math.PI * m, Math.PI * m + 2 * e1);
+  const lnc = Math.min(4 * m + 1.25 * e, 2 * m + 0.625 * e + e1);
+  const l = Math.min(lcp, lnc);
+  const k = 1 - (sigma / fy) ** 2;
+  const Mpl = 0.25 * l * tf * tf * fy;
+  const Ff = (k * Mpl) / m;
+  let UC = (F * 1e3) / Ff;
+  const uit = { m_f: ruim(m), l_cp: ruim(lcp), l_nc: ruim(lnc), l_eff: ruim(l), k_sigma: ruim(k),
+    M_plRd: ruim(Mpl / 1e6), F_fRd: ruim(Ff / 1e3), UC_flens: ruim(UC) };
+  if (wielen === 2) {
+    // Elk wiel is een buitenste rij van de groep: het ene met e_1, het andere zonder.
+    const rij = (a) => [Math.min(Math.PI * m + p, 2 * a + p), Math.min(2 * m + 0.625 * e + 0.5 * p, a + 0.5 * p)];
+    const [c1, n1] = rij(e1), [c2, n2] = rij(Infinity);
+    const lg = Math.min(c1 + c2, n1 + n2);
+    const Fg = (k * 0.25 * lg * tf * tf * fy) / m;
+    Object.assign(uit, { l_cpg: ruim(c1 + c2), l_ncg: ruim(n1 + n2), l_effg: ruim(lg), F_gRd: ruim(Fg / 1e3),
+      UC_groep: ruim((2 * F * 1e3) / Fg) });
+    UC = Math.max(UC, (2 * F * 1e3) / Fg);
+  }
+  uit.UC_max = ruim(UC);
   return uit;
 }
 
@@ -534,6 +569,46 @@ const SETS = [
     blad: "ec3StalenLigger", invoer: { profiel: 600 }, vervang: { L: "2500 mm" },
     narekening: ligger({ profiel: 600, staalsoort: 235, aangrijping: 1, grens_bij: 0.003, L: 2500 }),
     melding: /gelden hier niet \(NB\.NB\.1\(2\)\)/,
+  },
+  // Onderflensbuiging
+  {
+    naam: "Onderflens 1 — standaard: IPE 300 S235, één wiel ver van het liggereinde",
+    blad: "ec3Onderflens", invoer: {},
+    narekening: onderflens({ b: 150, tw: 7.1, tf: 10.7, r: 15, fy: 235, F: 10, n: 10, sigma: 50, wielen: 1 }),
+    // Met de hand: m = (150 − 7,1)/2 − 0,8·15 − 10 = 49,45 mm; ℓ_cp = 2π·49,45 = 310,7 mm, ℓ_nc =
+    // 4·49,45 + 1,25·10 = 210,3 mm → ℓ_eff = 210,3 mm. M_pl = 0,25·210,3·10,7²·235 = 1,415 kNm;
+    // k = 1 − (50/235)² = 0,9547 → F_f,Rd = 0,9547·1,4145e6/49,45 = 27,31 kN → UC = 0,3662.
+    handwerk: { m_f: "49.45", l_eff: "210.3", M_plRd: "1.415", k_sigma: "0.9547", F_fRd: "27.31", UC_flens: "0.3662" },
+  },
+  {
+    naam: "Onderflens 2 — HEB 200 S355, twee wielen bij een onverstijfd liggereinde: de groep beslist",
+    blad: "ec3Onderflens", invoer: { profiel: 2200, staalsoort: 355, wielen: 2, plaats: 2 },
+    vervang: { F_zEd: "40 kN", n_w: "15 mm", sigma_fEd: "100 N/mm^2", p_w: "150 mm", e_1: "60 mm" },
+    narekening: onderflens({ b: 200, tw: 9, tf: 15, r: 18, fy: 355, F: 40, n: 15, sigma: 100, wielen: 2, p: 150, e1: 60 }),
+    // Met de hand: m = 95,5 − 14,4 − 15 = 66,1 mm. Eindrij: ℓ_cp = min(415,3; 207,7 + 120) = 327,7 mm,
+    // ℓ_nc = min(283,2; 132,2 + 9,4 + 60) = 201,6 mm; k = 1 − (100/355)² = 0,9207 → F_f,Rd =
+    // 0,9207·4,025e6/66,1 = 56,06 kN, UC 0,7135. Groep: de rij aan het einde ℓ_cp = min(357,7; 270)
+    // = 270, ℓ_nc = min(216,6; 135) = 135; de andere rij 357,7 en 216,6 → Σℓ_eff = min(627,7; 351,6)
+    // = 351,6 mm → 97,78 kN voor beide wielen → UC = 80/97,78 = 0,8181.
+    handwerk: { l_eff: "201.6", F_fRd: "56.06", UC_flens: "0.7135", l_effg: "351.6", F_gRd: "97.78", UC_groep: "0.8181" },
+  },
+  {
+    naam: "Onderflens 3 — IPE 200 S235, twee wielen van 20 kN ver van het einde: voldoet niet",
+    blad: "ec3Onderflens", invoer: { profiel: 200, wielen: 2 }, vervang: { F_zEd: "20 kN" },
+    narekening: onderflens({ b: 100, tw: 5.6, tf: 8.5, r: 12, fy: 235, F: 20, n: 10, sigma: 50, wielen: 2, p: 200 }),
+    // Met de hand: m = 47,2 − 9,6 − 10 = 27,6 mm; ℓ_eff = min(173,4; 122,9) = 122,9 mm; M_pl =
+    // 0,25·122,9·8,5²·235 = 0,5217 kNm → F_f,Rd = 0,9547·0,5217e6/27,6 = 18,05 kN → UC = 1,108.
+    handwerk: { l_eff: "122.9", F_fRd: "18.05", UC_flens: "1.108" },
+  },
+  {
+    naam: "Onderflens 4 — IPE 300 met σ_f,Ed = 240 N/mm² > f_y: geen reserve voor dwarsbuiging",
+    blad: "ec3Onderflens", invoer: {}, vervang: { sigma_fEd: "240 N/mm^2" },
+    melding: /de flens heeft geen reserve voor dwarsbuiging/,
+  },
+  {
+    naam: "Onderflens 5 — last op 80 mm van de flensrand: m ≤ 0, buiten het model",
+    blad: "ec3Onderflens", invoer: {}, vervang: { n_w: "80 mm" },
+    melding: /het T-stuk-model geldt niet/,
   },
 ];
 

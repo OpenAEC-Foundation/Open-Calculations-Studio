@@ -37,6 +37,7 @@ import { opdrijven } from "./opdrijven";
 import { houtenKap } from "./houtenKap";
 import { ligger } from "./ligger";
 import { portaalSpant } from "./portaalSpant";
+import { hekwerk } from "./hekwerk";
 import {
   ec5Buiging, ec5Afschuiving, ec5Druk, ec5DrukLoodrecht,
   ec5Knik, ec5Doorbuiging, ec5HoutenBalk,
@@ -56,6 +57,7 @@ import {
 import {
   ec3Materiaal, ec3Classificatie, ec3Trek, ec3Druk, ec3Buiging,
   ec3Dwarskracht, ec3BuigingNormaalkracht, ec3Kip, ec3Knik, ec3Doorbuiging, ec3StalenLigger,
+  ec3Onderflens,
 } from "./en1993";
 import {
   en1996Druksterkte, en1996Drukwand, en1996Afschuiving, en1996Slankheid,
@@ -102,6 +104,7 @@ export const templates: Record<string, string> = {
   "houten-kap": houtenKap,
   "ligger": ligger,
   "portaal-spant": portaalSpant,
+  "hekwerk": hekwerk,
   "calcpad-demo": calcpadDemo,
   ...calcpadSamples,
   "paaldraagvermogen": paaldraagvermogen,
@@ -145,6 +148,7 @@ export const templates: Record<string, string> = {
   "ec3-knik": ec3Knik,
   "ec3-doorbuiging": ec3Doorbuiging,
   "ec3-stalen-ligger": ec3StalenLigger,
+  "ec3-onderflens": ec3Onderflens,
   "en1996-druksterkte": en1996Druksterkte,
   "en1996-drukwand": en1996Drukwand,
   "en1996-afschuiving": en1996Afschuiving,
