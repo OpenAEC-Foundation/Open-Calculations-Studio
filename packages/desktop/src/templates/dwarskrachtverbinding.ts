@@ -15,9 +15,11 @@
  *     boutlijnen (3.9);
  *   • het liggerlijf op afschuiving over de laslengte (EN 1993-1-1 6.2.6);
  *   • de twee hoeklassen op het lijf (§4.5.3.3), met §4.5.1(2) en §4.5.2(2);
- *   • het scharniergedrag: de plaat blijft binnen de flenzen, (6.32) van
+ *   • het scharniergedrag: de plaat blijft boven de onderflens, (6.32) van
  *     §6.4.2(2) voor de kopplaat of de kolomflens, en de rotatie van het
- *     liggereinde tot de onderflens tegen de kolom komt.
+ *     liggereinde tot de onderflens tegen de kolom komt;
+ *   • de passing van de sluitringen (ISO 7089): vrij van de afronding van de
+ *     kolom (t_w,c/2 + r_c) en van de las op het liggerlijf (t_w/2 + a√2).
  *
  * Aannames, alle aan de veilige kant:
  *   • draad in het afschuifvlak (A_s);
@@ -25,18 +27,25 @@
  *     de plaat;
  *   • in de kolomflens is alleen de onderste rij een eindbout, met e_1
  *     oneindig (de kolom loopt door); de overige rijen zijn binnenste bouten;
- *   • de las en het liggerlijf tellen alleen over het rechte deel van het lijf,
- *     l_w = min(h_p; h − 2t_f − 2r);
+ *   • de las en het liggerlijf tellen alleen over het deel van de plaat dat
+ *     op het rechte lijf ligt, tussen t_f + r en h − t_f − r;
  *   • de rotatie van het liggereinde is de bovengrens bij een symmetrische
- *     belasting, V·L²/(8EI); het draaipunt ligt aan de onderrand van de plaat,
- *     die midden op de liggerhoogte zit (zoals in het beeld).
+ *     belasting, V·L²/(8EI); het draaipunt ligt aan de onderrand van de plaat.
+ *
+ * De plaat zit op z_kp onder de bovenkant van de ligger. Een z_kp kleiner dan
+ * t_f (ook 0, zoals in een blad van vóór dit veld) telt als een plaat tegen
+ * de bovenflens: de hoogste stand, met de grootste h_e en het kortste rechte
+ * lijfdeel, dus de veilige kant. Zonder overspanning L_b is de rotatie niet
+ * getoetst en voldoet de verbinding niet.
  *
  * Materiaal: tabel 3.1 van NEN-EN 1993-1-1 met A1 (EN 10025-2, t ≤ 40 mm),
  * S355 f_u = 490 N/mm², zoals en1993.ts en de boutberekening. Kopplaat, ligger
  * en kolom hebben dezelfde staalsoort.
  *
- * De keuze "hartlijn" (versprongen of in lijn) is alleen voor de tekening: de
- * netto doorsnede en de blokschuif tellen per boutlijn alle n gaten.
+ * De keuze "hartlijn" (versprongen of in lijn) is alleen voor de tekening: het
+ * blad rekent met dezelfde w en e_2 in elke rij, en zegt dat bij "versprongen"
+ * ook op papier. De netto doorsnede en de blokschuif tellen per boutlijn alle
+ * n gaten.
  *
  * Niet gerekend: de stijfheidsklasse met S_j,ini (§5.2.2.5). Het scharnier
  * steunt op de detaillering (§5.2.2.1(2)): een dunne plaat die aan (6.32)
@@ -122,6 +131,7 @@ p_kp = ?*(mm)', steek<span class="kolom-4"></span>'
 w_kp = ?*(mm)', bouten h.o.h.<span class="kolom-4"></span>'
 t_kp = ?*(mm)', dikte plaat<span class="kolom-4"></span>'
 b_kp = ?*(mm)', breedte plaat<span class="kolom-4"></span>'
+z_kp = ?*(mm)', bovenkant ligger tot bovenkant plaat<span class="kolom-4"></span>'
 a_las = ?*(mm)', keeldikte las<span class="alleen-scherm"> liggerlijf op plaat</span><span class="kolom-4"></span>'
 V_Ed = ?*(kN)', dwarskracht<span class="kolom-4"></span>'
 L_b = ?*(m)', overspanning ligger<span class="alleen-scherm">, voor de rotatie van het liggereinde</span><span class="kolom-4"></span>'
@@ -130,7 +140,9 @@ L_b = ?*(m)', overspanning ligger<span class="alleen-scherm">, voor de rotatie v
 'Profieltabel uit profielen.ts: id | h (mm) | b (mm) | t_w (mm) | t_f (mm) | r (mm) | A (cm²) | I_y (cm⁴) | W_el,y (cm³) | W_pl,y (cm³) | i_y (cm) | A_v,z (cm²) | I_z (cm⁴) | W_el,z (cm³) | W_pl,z (cm³) | i_z (cm) | I_t (cm⁴) | I_w (cm⁶)
 profielen = [4; 5; 6; 7; 8; 9; 10; 14; 16; 18; 20; 21; 22; 23; 24; 25; 26; 27 |152; 171; 190; 210; 230; 250; 290; 160; 200; 240; 300; 200; 240; 270; 300; 330; 360; 400 |160; 180; 200; 220; 240; 260; 300; 160; 200; 240; 300; 100; 120; 135; 150; 160; 170; 180 |6; 6; 6.5; 7; 7.5; 7.5; 8.5; 8; 9; 10; 11; 5.6; 6.2; 6.6; 7.1; 7.5; 8; 8.6 |9; 9.5; 10; 11; 12; 12.5; 14; 13; 15; 17; 19; 8.5; 9.8; 10.2; 10.7; 11.5; 12.7; 13.5 |15; 15; 18; 18; 21; 24; 27; 15; 18; 21; 27; 12; 15; 15; 15; 18; 18; 21 |38.77; 45.25; 53.83; 64.34; 76.84; 86.82; 112.5; 54.25; 78.08; 106; 149.1; 28.48; 39.12; 45.95; 53.81; 62.61; 72.73; 84.46 |1673; 2510; 3692; 5410; 7763; 10450; 18260; 2492; 5696; 11260; 25170; 1943; 3892; 5790; 8356; 11770; 16270; 23130 |220.1; 293.6; 388.6; 515.2; 675.1; 836.4; 1260; 311.5; 569.6; 938.3; 1678; 194.3; 324.3; 428.9; 557.1; 713.1; 903.6; 1156 |245.1; 324.9; 429.5; 568.5; 744.6; 919.8; 1383; 354; 642.5; 1053; 1869; 220.6; 366.6; 484; 628.4; 804.3; 1019; 1307 |6.57; 7.45; 8.28; 9.17; 10.05; 10.97; 12.74; 6.78; 8.54; 10.31; 12.99; 8.26; 9.97; 11.23; 12.46; 13.71; 14.95; 16.55 |13.21; 14.47; 18.08; 20.67; 25.18; 28.76; 37.28; 17.59; 24.83; 33.23; 47.43; 14; 19.14; 22.14; 25.68; 30.81; 35.14; 42.69 |615.6; 924.6; 1336; 1955; 2769; 3668; 6310; 889.2; 2003; 3923; 8563; 142.4; 283.6; 419.9; 603.8; 788.1; 1043; 1318 |76.95; 102.7; 133.6; 177.7; 230.7; 282.1; 420.6; 111.2; 200.3; 326.9; 570.9; 28.47; 47.27; 62.2; 80.5; 98.52; 122.8; 146.4 |117.6; 156.5; 203.8; 270.6; 351.7; 430.2; 641.2; 170; 305.8; 498.4; 870.1; 44.61; 73.92; 96.95; 125.2; 153.7; 191.1; 229 |3.98; 4.52; 4.98; 5.51; 6; 6.5; 7.49; 4.05; 5.07; 6.08; 7.58; 2.24; 2.69; 3.02; 3.35; 3.55; 3.79; 3.95 |12.19; 14.8; 20.98; 28.46; 41.55; 52.37; 85.17; 31.24; 59.28; 102.7; 185; 6.98; 12.88; 15.94; 20.12; 28.15; 37.32; 51.08 |31410; 60210; 108000; 193300; 328500; 516400; 1200000; 47940; 171100; 486900; 1688000; 12990; 37390; 70580; 125900; 199100; 313600; 490000]
 b_c = hlookup(profielen; kolomprofiel; 1; 3)*mm
+t_wc = hlookup(profielen; kolomprofiel; 1; 4)*mm
 t_fc = hlookup(profielen; kolomprofiel; 1; 5)*mm
+r_c = hlookup(profielen; kolomprofiel; 1; 6)*mm
 h_b = hlookup(profielen; liggerprofiel; 1; 2)*mm
 t_wb = hlookup(profielen; liggerprofiel; 1; 4)*mm
 t_fb = hlookup(profielen; liggerprofiel; 1; 5)*mm
@@ -143,6 +155,8 @@ fub_ = if(boutkwaliteit ≡ 46; 400; if(boutkwaliteit ≡ 56; 500; if(boutkwalit
 'Gatdiameter bij normale gatspeling (EN 1090-2) en spanningsoppervlak (ISO 898-1).
 d0_ = if(boutmaat ≡ 12; 13; if(boutmaat ≡ 16; 18; if(boutmaat ≡ 20; 22; 26)))
 As_ = if(boutmaat ≡ 12; 84.3; if(boutmaat ≡ 16; 157; if(boutmaat ≡ 20; 245; 353)))
+'Buitendiameter van de sluitring (ISO 7089, ook EN 14399-6).
+ds_ = if(boutmaat ≡ 12; 24; if(boutmaat ≡ 16; 30; if(boutmaat ≡ 20; 37; 44)))
 f_y = staalsoort*N/mm^2
 f_u = fu_*N/mm^2
 β_w = bw_
@@ -151,6 +165,7 @@ f_ub = fub_*N/mm^2
 d = boutmaat*mm
 d_0 = d0_*mm
 A_s = As_*mm^2
+d_s = ds_*mm
 γ_M0 = 1.0
 γ_M2 = 1.25
 E = 210000*N/mm^2
@@ -177,8 +192,10 @@ ok_kp = 1
 ok_las = 1
 ok_duct = 1
 ok_pas = 1
+ok_ring = 1
+ok_rot = 1
 #show
-'Ligger: h = 'h_b', t<sub>w</sub> = 't_wb', t<sub>f</sub> = 't_fb', r = 'r_b' mm, I<sub>y</sub> = 'I_y,b' cm⁴. Kolomflens: b = 'b_c', t<sub>f</sub> = 't_fc' mm. Staal: f<sub>y</sub> = 'f_y', f<sub>u</sub> = 'f_u' N/mm², β<sub>w</sub> = 'β_w'. Bouten M'boutmaat': d<sub>0</sub> = 'd_0' mm, A<sub>s</sub> = 'A_s' mm², f<sub>ub</sub> = 'f_ub' N/mm², α<sub>v</sub> = 'α_v'. γ<sub>M0</sub> = 'γ_M0', γ<sub>M2</sub> = 'γ_M2'.
+'Ligger: h = 'h_b', t<sub>w</sub> = 't_wb', t<sub>f</sub> = 't_fb', r = 'r_b' mm, I<sub>y</sub> = 'I_y,b' cm⁴. Kolom: b = 'b_c', t<sub>f</sub> = 't_fc', t<sub>w</sub> = 't_wc', r = 'r_c' mm. Staal: f<sub>y</sub> = 'f_y', f<sub>u</sub> = 'f_u' N/mm², β<sub>w</sub> = 'β_w'. Bouten M'boutmaat': d<sub>0</sub> = 'd_0' mm, A<sub>s</sub> = 'A_s' mm², f<sub>ub</sub> = 'f_ub' N/mm², α<sub>v</sub> = 'α_v'. γ<sub>M0</sub> = 'γ_M0', γ<sub>M2</sub> = 'γ_M2'.
 
 # 3. Maatvoering
 
@@ -187,12 +204,20 @@ d_w = h_b - 2*t_fb - 2*r_b', recht deel van het lijf<span class="alleen-scherm">
 h_p', plaathoogte<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
 d_w', recht lijfdeel<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
 #if verbindingsvorm ≡ 1
-    l_w = min(h_p; d_w)', laslengte op het rechte lijfdeel<span class="alleen-scherm"></span>'
+    z_p = max(z_kp; t_fb)', bovenkant ligger tot bovenkant plaat, ten minste t<sub>f</sub><span class="alleen-scherm"></span>'
+    l_w = max(min(z_p + h_p; h_b - t_fb - r_b) - max(z_p; t_fb + r_b); 0 mm)', laslengte: het deel van de plaat op het rechte lijf<span class="alleen-scherm"></span>'
     e_2 = (b_p - p_2)/2', rand kopplaat<span class="alleen-scherm"></span>'
     e_2,c = (b_c - p_2)/2', rand kolomflens<span class="alleen-scherm"></span>'
+    z_p', bovenkant plaat<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     l_w', laslengte<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     e_2', rand kopplaat<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     e_2,c', rand kolomflens<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+    #if z_kp < t_fb
+        '<i>z<sub>kp</sub> &lt; t<sub>f</sub>: gerekend met de plaat tegen de bovenflens (veilige kant voor rotatie en laslengte).</i>
+    #end if
+    #if hartlijn ≡ 1
+        '<i>Versprongen getekend; gerekend met w = 'p_2' mm en e<sub>2</sub> = 'e_2' mm in elke rij.</i>
+    #end if
     #hide
     e_min = 1.2*d_0
     p_1,min = 2.2*d_0
@@ -208,13 +233,26 @@ d_w', recht lijfdeel<span class="alleen-afdruk"></span><span class="kolom-3"></s
         #show
         'Tabel 3.3: e<sub>1</sub>, e<sub>2</sub>, e<sub>2,c</sub> ≥ 1,2d<sub>0</sub> = 'e_min' mm; p<sub>1</sub> ≥ 2,2d<sub>0</sub> = 'p_1,min' mm; w ≥ 2,4d<sub>0</sub> = 'p_2,min' mm<span style="color: red"> → 'tekort' afstand(en) te klein: tabel 3.4 geldt niet</span>
     #end if
-    #if h_p > h_b - 2*t_fb
+    #if z_p + h_p > h_b - t_fb
         #hide
         ok_plaat = 0
         #show
-        '<b style="color:#b91c1c">De kopplaat reikt tot de flenzen (h<sub>p</sub> > h − 2t<sub>f</sub>): de onderflens steunt dan direct op de plaat en het liggereinde kan niet draaien.</b>
-    #else if h_p > d_w
-        '<i>De plaat is hoger dan het rechte lijfdeel; las en liggerlijf tellen alleen over d<sub>w</sub>.</i><span class="alleen-scherm"></span>
+        '<b style="color:#b91c1c">De kopplaat reikt tot de onderflens (z + h<sub>p</sub> > h − t<sub>f</sub>): de onderflens steunt dan direct op de plaat en het liggereinde kan niet draaien.</b>
+    #else if l_w < h_p
+        '<i>De plaat loopt door tot in de afronding van het lijf; las en liggerlijf tellen alleen over het rechte deel, l<sub>w</sub> = 'l_w' mm.</i><span class="alleen-scherm"></span>
+    #end if
+    #hide
+    c_s = p_2/2 - d_s/2
+    c_c = t_wc/2 + r_c
+    c_kp = t_wb/2 + sqrt(2)*a
+    #show
+    #if c_s ≥ max(c_c; c_kp)
+        'Sluitring Ø'd_s' mm: w/2 − d<sub>s</sub>/2 = 'c_s' mm ≥ t<sub>w,c</sub>/2 + r<sub>c</sub> = 'c_c' mm (afronding kolom) en ≥ t<sub>w</sub>/2 + a√2 = 'c_kp' mm (las)<span style="color: green"> → ligt vrij</span>
+    #else
+        #hide
+        ok_ring = 0
+        #show
+        'Sluitring Ø'd_s' mm: w/2 − d<sub>s</sub>/2 = 'c_s' mm, nodig ≥ t<sub>w,c</sub>/2 + r<sub>c</sub> = 'c_c' mm (afronding kolom) en ≥ t<sub>w</sub>/2 + a√2 = 'c_kp' mm (las)<span style="color: red"> → de sluitring ligt niet vrij: kies een grotere w</span>
     #end if
 #else
     #if h_p ≤ d_w
@@ -382,16 +420,23 @@ t_max', (6.32)<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     'Ductiliteit: t<sub>min</sub> > t<sub>max</sub><span style="color: red"> → voldoet niet</span><span class="alleen-scherm">: kies een dunnere plaat of een grotere bout</span>
 #end if
 #if ok_plaat ≡ 1
-    h_e = (h_b - h_p)/2', onderrand plaat tot onderkant ligger<span class="alleen-scherm"></span>'
+    h_e = h_b - z_p - h_p', onderrand plaat tot onderkant ligger<span class="alleen-scherm"></span>'
     φ_Rd = t_p/h_e', draaiing tot de onderflens de kolom raakt<span class="alleen-scherm"></span>'
     h_e', onderrand plaat tot onderkant ligger<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     φ_Rd', t<sub>p</sub>/h<sub>e</sub><span class="alleen-afdruk"></span><span class="kolom-2"></span>'
-    φ_Ed = V_Ed*L_b^2/(8*E*I_y,b)', liggereinde<span class="alleen-scherm">, bovengrens bij een symmetrische belasting</span>'
-    UC_φ = φ_Ed/φ_Rd', rotatie'
-    #if UC_φ ≤ 1.0
-        '<span class="oordeel" style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
+    #if L_b ≤ 0 m
+        #hide
+        ok_rot = 0
+        #show
+        '<b style="color:#b91c1c">Rotatie niet getoetst: vul de overspanning L<sub>b</sub> van de ligger in.</b>
     #else
-        '<span class="oordeel" style="color: red"> > 1,0 → <b>voldoet niet</b></span>
+        φ_Ed = V_Ed*L_b^2/(8*E*I_y,b)', liggereinde<span class="alleen-scherm">, bovengrens bij een symmetrische belasting</span>'
+        UC_φ = φ_Ed/φ_Rd', rotatie'
+        #if UC_φ ≤ 1.0
+            '<span class="oordeel" style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
+        #else
+            '<span class="oordeel" style="color: red"> > 1,0 → <b>voldoet niet</b></span>
+        #end if
     #end if
 #end if
 
@@ -409,7 +454,11 @@ t_max', (6.32)<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     #if ok_maat ≡ 0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar 'tekort' afstand(en) onder het minimum van tabel 3.3 → <b>de verbinding voldoet niet</b></span>
     #else if ok_plaat ≡ 0
-        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar de kopplaat reikt tot de flenzen en kan niet draaien → <b>de verbinding voldoet niet</b></span>
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar de kopplaat reikt tot de onderflens en kan niet draaien → <b>de verbinding voldoet niet</b></span>
+    #else if ok_ring ≡ 0
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar de sluitring ligt op de afronding van de kolom of op de las → <b>de verbinding voldoet niet</b></span>
+    #else if ok_rot ≡ 0
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar de rotatie is niet getoetst: de overspanning L<sub>b</sub> ontbreekt → <b>de verbinding voldoet niet</b></span>
     #else if ok_r ≡ 0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar een weerstand is ≤ 0 → <b>de verbinding voldoet niet</b></span>
     #else if ok_las ≡ 0

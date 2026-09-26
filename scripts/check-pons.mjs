@@ -13,7 +13,10 @@
  *      een ronde randkolom als vierkant met dezelfde omtrek, een
  *      excentriciteit naar de rand (niet getoetst), een nuttige hoogte ≤ 0,
  *      ontbrekende of onvolledige ponswapening, α onder 45°, ponswapening in
- *      een plaat dunner dan 200 mm, een negatieve V_Ed en ρ_l begrensd op 0,02.
+ *      een plaat dunner dan 200 mm, een negatieve V_Ed, ρ_l begrensd op 0,02,
+ *      v_Rd,cs begrensd op k_max·v_Rd,c (k_max = 1,6 volgens de NB), met en
+ *      zonder ponswapening boven die grens, en staven en omtrekken die geen
+ *      heel getal zijn.
  *   3. Dezelfde invoer als het normblad ec2Pons (en1992.ts) met β volgens
  *      figuur 6.21N moet dezelfde omtrekken, spanningen en UC's geven.
  *   4. Een onafhankelijke uitwerking in JavaScript over een raster van keuzes
@@ -188,24 +191,30 @@ function uitwerking(w) {
   let UCw = r.UC_pons;
   if (r.UC_pons > 1) {
     const fywdef = Math.min(250 + 0.25 * d, 500 / 1.15);
-    r.f_ywd_ef = fywdef;
+    // (6.52): v_Rd,cs ≤ k_max·v_Rd,c, k_max = 1,6 volgens de NB.
+    const vRdcsMax = 1.6 * vRdc;
+    Object.assign(r, { f_ywd_ef: fywdef, v_Rd_cs_max: vRdcsMax });
     if (ponswap === 0) {
-      r.A_sw_nodig = ((vEd - 0.75 * vRdc) * u1 * 0.75 * d) / (1.5 * fywdef);
+      // Boven k_max·v_Rd,c helpt ponswapening niet: dan geen benodigde A_sw.
+      if (vEd <= vRdcsMax) r.A_sw_nodig = ((vEd - 0.75 * vRdc) * u1 * 0.75 * d) / (1.5 * fywdef);
     } else {
-      const nsw = n("n_sw"), nom = n("n_om"), sr = n("s_r"), dsw = n("d_sw"), a1 = n("a_sw"), alfa = n("hoek_pons");
+      // Staven en omtrekken tellen als hele getallen, naar beneden afgerond.
+      const nsw = Math.floor(n("n_sw")), nom = Math.floor(n("n_om"));
+      const sr = n("s_r"), dsw = n("d_sw"), a1 = n("a_sw"), alfa = n("hoek_pons");
       if (nsw < 1 || nom < 1 || sr <= 0 || dsw <= 0 || a1 <= 0 || alfa < 45 || alfa > 90) {
         return { r, oordeel: "niet getoetst", geenUC: true };
       }
       const sa = Math.sin((alfa * Math.PI) / 180), ca = Math.cos((alfa * Math.PI) / 180);
       const Asw = (nsw * Math.PI * dsw ** 2) / 4;
-      const vRdcs = 0.75 * vRdc + (1.5 * (d / sr) * Asw * fywdef * sa) / (u1 * d);
+      const vRds = (1.5 * (d / sr) * Asw * fywdef * sa) / (u1 * d);
+      const vRdcs = Math.min(0.75 * vRdc + vRds, vRdcsMax);
       const uout = (beta * V) / (vRdc * d);
       // u_out,ef terugzoeken op de omtrekfunctie.
       let lo = 0, hi = 1e6;
       for (let i = 0; i < 200; i++) { const m = (lo + hi) / 2; if (uA(m) < uout) lo = m; else hi = m; }
       const aOut = lo, an = a1 + (nom - 1) * sr, st = u1 / nsw;
       Object.assign(r, {
-        A_sw: Asw, v_Rd_s: vRdcs - 0.75 * vRdc, v_Rd_cs: vRdcs, UC_cs: vEd / vRdcs, u_out_ef: uout, a_out: aOut, a_n: an,
+        A_sw: Asw, v_Rd_s: vRds, v_Rd_cs: vRdcs, UC_cs: vEd / vRdcs, u_out_ef: uout, a_out: aOut, a_n: an,
         UC_uit: (aOut - 1.5 * d) / an, UC_n: 2 / nom, UC_sr: sr / (0.75 * d), UC_a: a1 / (0.5 * d), UC_h: 200 / h,
         s_t: st, UC_st: st / (1.5 * d),
       });
@@ -305,7 +314,8 @@ const HAND = [
     // u_0 = min(300 + 3·204; 300 + 2·300) = 900 · v_Ed,0 = 364 515/(900·204) = 1,985
     // v_Rd,max = 0,4·0,528·20 = 4,224 · UC = 0,4700
     // f_ywd,ef = 250 + 0,25·204 = 301 ≤ 434,8 · A_sw = 8·50,27 = 402,1 mm²
-    // v_Rd,cs = 0,75·0,6453 + 1,5·(204/150)·402,1·301/(2181,8·204)·1 = 0,4840 + 0,5548 = 1,039 · UC = 0,7884
+    // v_Rd,cs = 0,75·0,6453 + 1,5·(204/150)·402,1·301/(2181,8·204)·1 = 0,4840 + 0,5548 = 1,039
+    //   > k_max·v_Rd,c = 1,6·0,6453 = 1,032 (NB) → v_Rd,cs = 1,032 · UC = 0,8190/1,032 = 0,7932
     // u_out,ef = 364 515/(0,6453·204) = 2769 · a_out = (2769 − 600 − 300)/π = 594,9
     // a_n = 100 + 2·150 = 400 ≥ 594,9 − 1,5·204 = 288,9 → UC = 0,722
     // s_r = 150 ≤ 0,75·204 = 153 → 0,9804 · a = 100 ≤ 0,5·204 = 102 → 0,9804 · 2 omtrekken → 2/3
@@ -318,8 +328,8 @@ const HAND = [
       u_1: "2182", u_1_red: "1882", k_β: "0.45", W_1: "882500", β: "1.215", v_Ed: "0.8190",
       k: "1.990", v_min: "0.5382", v_Rd_c: "0.6453", UC_pons: "1.269",
       u_0: "900", v_Ed_0: "1.985", v_Rd_max: "4.224", UC_vRd_max: "0.4700",
-      f_ywd_ef: "301", A_sw: "402.1", v_Rd_s: "0.5548", v_Rd_cs: "1.039", UC_cs: "0.7884", u_out_ef: "2769", a_out: "594.9",
-      a_n: "400", UC_uit: "0.722", UC_n: "0.6667", UC_sr: "0.9804", UC_a: "0.9804", UC_h: "0.8", s_t: "272.7", UC_st: "0.8912",
+      f_ywd_ef: "301", v_Rd_cs_max: "1.032", A_sw: "402.1", v_Rd_s: "0.5548", v_Rd_cs: "1.032", UC_cs: "0.7932", u_out_ef: "2769", a_out: "594.9",
+      a_n: "400", UC_uit: "0.722", UC_n: "0.6667", UC_sr: "0.9804", UC_a: "0.9804", UC_h: "0.8000", s_t: "272.7", UC_st: "0.8912",
       A_sw_min: "23.90", UC_min: "0.4755", UC_max: "0.9804",
     },
     oordeel: "voldoet",
@@ -389,9 +399,10 @@ const HAND = [
     invoer: { V_Ed: 400, ponswap: 1, d_sw: 10, n_sw: 14, n_om: 6, s_r: 100, a_sw: 80, hoek_pons: 90 },
     // s_t = 3273,5/14 = 233,8 ≤ 1,5·165 = 247,5 → 0,9447
     // a_n = 80 + 5·100 = 580 > 2d = 330: u(580) = 1200 + 2π·580 = 4844 → s_t = 4844/14 = 346,0 > 2d = 330 → 1,05
-    // v_Rd,cs = 0,75·0,6641 + 1,5·(165/100)·1099,6·291,3/(3273,5·165) = 0,4981 + 1,467 = 1,966 → 0,8517/1,966 = 0,4333
+    // v_Rd,cs = 0,75·0,6641 + 1,5·(165/100)·1099,6·291,3/(3273,5·165) = 0,4981 + 1,467 = 1,966
+    //   > k_max·v_Rd,c = 1,6·0,6641 = 1,063 → v_Rd,cs = 1,063 · UC = 0,8517/1,063 = 0,8015
     // (9.11) met de grootste s_t, die op de buitenste omtrek: 0,08·√45/500·100·346,0/1,5 = 24,76 mm² ≤ 78,54 → 0,3152
-    verwacht: { s_t: "233.8", UC_st: "0.9447", a_n: "580", s_t_uit: "346.0", UC_st_uit: "1.05", v_Rd_cs: "1.966", UC_cs: "0.4333",
+    verwacht: { s_t: "233.8", UC_st: "0.9447", a_n: "580", s_t_uit: "346.0", UC_st_uit: "1.05", v_Rd_s: "1.467", v_Rd_cs: "1.063", UC_cs: "0.8015",
       A_sw_min: "24.76", UC_min: "0.3152", UC_max: "1.05" },
     oordeel: "voldoet niet",
   },
@@ -427,6 +438,49 @@ const HAND = [
     oordeel: "voldoet",
   },
   {
+    naam: "Grensgeval — V_Ed = 520 kN zonder ponswapening: v_Ed > k_max·v_Rd,c, dus ook met ponswapening niet (NB bij 6.4.5(1))",
+    invoer: { V_Ed: 520 },
+    // v_Ed = 1,15·520 000/(3273,5·165) = 1,1072 · v_Rd,c = v_min = 0,6641 → UC = 1,667 > k_max = 1,6
+    // k_max·v_Rd,c = 1,6·0,6641 = 1,063 < v_Ed: geen benodigde A_sw, ponswapening helpt niet
+    verwacht: { v_Ed: "1.107", UC_pons: "1.667", v_Rd_cs_max: "1.063", UC_max: "1.667" },
+    zonder: ["A_sw_nodig"],
+    oordeel: "voldoet niet",
+    melding: /ook met ponswapening voldoet de plaat niet[\s\S]*ook met ponswapening niet/,
+  },
+  {
+    naam: "Grensgeval — V_Ed = 520 kN met vier omtrekken van 16Ø10: zonder k_max zou het blad ‘voldoet’ zeggen",
+    invoer: { V_Ed: 520, ponswap: 1, d_sw: 10, n_sw: 16, n_om: 4, s_r: 120, a_sw: 80, hoek_pons: 90 },
+    // A_sw = 16·78,54 = 1256,6 · f_ywd,ef = 291,25
+    // v_Rd,s = 1,5·1256,6·291,25/(120·3273,5) = 1,398 · 0,75·0,6641 + 1,398 = 1,896 > 1,063 → v_Rd,cs = 1,063
+    // UC_cs = 1,1072/1,0625 = 1,042 (zonder de grens: 1,1072/1,896 = 0,584)
+    // u_out,ef = 598 000/(0,6641·165) = 5458 · a_out = (5458 − 1200)/(2π) = 677,6 · a_n = 80 + 3·120 = 440
+    // UC_uit = (677,6 − 247,5)/440 = 0,9775 · s_r = 120/123,75 = 0,9697 · a = 80/82,5 = 0,9697 · h = 200/200 = 1,0
+    // s_t = 3273,5/16 = 204,6 → 0,8266 · buitenste omtrek 1200 + 2π·440 = 3964,6 → s_t = 247,8 → /330 = 0,7509
+    // (9.11): 0,08·√45/500·120·247,8/1,5 = 21,28 mm² → 0,2709 · v_Ed,0 = 598 000/(1200·165) = 3,020 → 0,5116
+    verwacht: {
+      v_Rd_s: "1.398", v_Rd_cs: "1.063", UC_cs: "1.042", u_out_ef: "5458", a_out: "677.6", a_n: "440", UC_uit: "0.9775",
+      UC_sr: "0.9697", UC_a: "0.9697", UC_h: "1.000", UC_st: "0.8266", s_t_uit: "247.8", UC_st_uit: "0.7509",
+      A_sw_min: "21.28", UC_min: "0.2709", UC_vRd_max: "0.5116", UC_max: "1.042",
+    },
+    oordeel: "voldoet niet",
+    melding: /ook met ponswapening niet/,
+  },
+  {
+    naam: "Grensgeval — 14,6 staven per omtrek en 3,5 omtrekken: het blad rekent met 14 en 3",
+    invoer: { V_Ed: 400, ponswap: 1, d_sw: 10, n_sw: 14.6, n_om: 3.5, s_r: 100, a_sw: 80, hoek_pons: 90 },
+    // A_sw = 14·78,54 = 1099,6 · a_n = 80 + 2·100 = 280 · UC_n = 2/3
+    // v_Rd,cs = 0,4981 + 1,467 = 1,966 > 1,063 → 1,063 · UC = 0,8517/1,063 = 0,8015
+    // u_out,ef = 460 000/(0,6641·165) = 4198 · a_out = (4198 − 1200)/(2π) = 477,2 → UC_uit = (477,2 − 247,5)/280 = 0,8202
+    // s_t = 3273,5/14 = 233,8 → 0,9447 · a_n = 280 ≤ 2d = 330 · (9.11): 0,08·√45/500·100·233,8/1,5 = 16,73 → 0,2130
+    // UC_h = 200/200 = 1,0 is de grootste
+    verwacht: {
+      A_sw: "1100", v_Rd_cs: "1.063", UC_cs: "0.8015", a_n: "280", UC_n: "0.6667", a_out: "477.2", UC_uit: "0.8202",
+      s_t: "233.8", UC_st: "0.9447", A_sw_min: "16.73", UC_min: "0.2130", UC_max: "1.000",
+    },
+    oordeel: "voldoet",
+    melding: /hele staven en omtrekken, naar beneden afgerond: 14 staven per omtrek, 3 omtrekken/,
+  },
+  {
     naam: "Grensgeval — zware wapening: ρ_l begrensd op 0,02",
     invoer: { h_plaat: 300, d_wapy: 25, s_wapy: 75, d_wapz: 25, s_wapz: 75 },
     // d_y = 262,5 · d_z = 237,5 · ρ_ly = 490,9/(75·262,5) = 0,02493 · ρ_lz = 0,02756 → √ = 0,0262 → 0,02
@@ -443,6 +497,11 @@ for (const set of HAND) {
     const ok = set.melding.test(got.text);
     if (!ok) fouten++;
     console.log(`  ${ok ? "OK    " : "FOUT  "} melding    ${set.melding.source}`);
+  }
+  for (const naam of set.zonder ?? []) {
+    const ok = got.values[naam] === undefined;
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} ${naam.padEnd(10)} ${ok ? "niet in het blad" : `staat er toch: ${got.values[naam]}`}`);
   }
   schoon(got);
 }
@@ -512,6 +571,16 @@ for (const set of LEEG) {
   }
 }
 
+{
+  console.log("\nRand- en hoekkolom — het blad noemt de randwapening, die het niet toetst (9.4.2, 9.3.1.4)");
+  for (const plaats of [1, 2, 3]) {
+    const staat = /randwapening \(9\.3\.1\.4\)/.test(blad({ plaats }).text);
+    const ok = staat === (plaats > 1);
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} ${["midden", "rand", "hoek"][plaats - 1].padEnd(6)} ${staat ? "genoemd" : "niet genoemd"}`);
+  }
+}
+
 // ── 3. Gelijk aan het normblad ec2Pons ───────────────────────────────────────
 {
   const bron = readFileSync(join(hier, "../packages/desktop/src/templates/en1992.ts"), "utf8");
@@ -553,10 +622,15 @@ for (const set of LEEG) {
     eerstelaag: 2, c_dek: 30, d_sw: 10, n_sw: 16, n_om: 3, s_r: 120, a_sw: 70, hoek_pons: 90, beta_hand: 1.3,
   };
   const EXC = [[0, 0], [80, 0], [0, 60], [80, 60], [-40, 30], [40, -30]];
-  let sets = 0, fout0 = fouten;
+  let sets = 0, begrensd = 0, onbegrensd = 0, teZwaar = 0, fout0 = fouten;
   for (const vorm of [1, 2]) for (const plaats of [1, 2, 3]) for (const bk of [2, 0, 1])
-    for (const ponswap of [0, 1]) for (const V of [150, 420]) for (const [ey, ez] of bk === 0 ? EXC : [[0, 0]]) {
-      const w = { ...BASIS, vorm, plaats, beta_keuze: bk, ponswap, V_Ed: V, e_y: ey, e_z: ez, hoek_pons: ponswap && V > 400 && ey === 0 ? 60 : 90 };
+    // sw: 0 geen ponswapening, 1 zwaar (16Ø10), 2 licht (12Ø6: v_Rd,cs blijft onder k_max·v_Rd,c).
+    for (const sw of [0, 1, 2]) for (const V of [150, 420, 600]) for (const [ey, ez] of bk === 0 ? EXC : [[0, 0]]) {
+      const ponswap = sw ? 1 : 0;
+      const w = {
+        ...BASIS, vorm, plaats, beta_keuze: bk, ponswap, V_Ed: V, e_y: ey, e_z: ez, hoek_pons: ponswap && V > 400 && ey === 0 ? 60 : 90,
+        ...(sw === 2 ? { d_sw: 6, n_sw: 12 } : {}),
+      };
       const got = reken(tpl, w, {});
       const { r, oordeel: wil, geenUC } = uitwerking(w);
       sets++;
@@ -564,12 +638,21 @@ for (const set of LEEG) {
       const log = console.log;
       const regels = [];
       console.log = (x) => regels.push(x);
-      let f = vierCijfers(`raster ${JSON.stringify({ vorm, plaats, bk, ponswap, V, ey, ez })}`, got, r);
+      let f = vierCijfers(`raster ${JSON.stringify({ vorm, plaats, bk, sw, V, ey, ez })}`, got, r);
       console.log = log;
       const ons = slotzin(got);
       if (ons !== wil) f++;
       if (geenUC && got.values.UC_max !== undefined) f++;
+      // Wat de narekening niet heeft, hoort ook niet in het blad te staan.
+      for (const k of ["A_sw_nodig", "v_Rd_cs_max", "UC_cs"]) {
+        if (got.values[k] !== undefined && r[k] === undefined) {
+          f++;
+          regels.push(`  FOUT   ${k} staat in het blad (${got.values[k]}), niet in de narekening`);
+        }
+      }
       if (/\bNaN\b|Infinity|Error|Undefined symbol/.test(got.text)) f++;
+      if (r.v_Rd_cs !== undefined) r.v_Rd_cs === r.v_Rd_cs_max ? begrensd++ : onbegrensd++;
+      if (r.UC_pons > 1.6) teZwaar++;
       if (f) {
         fouten += f;
         for (const x of regels) if (!/^\s+OK/.test(x)) console.log(x);
@@ -577,6 +660,7 @@ for (const set of LEEG) {
       }
     }
   console.log(`\nOnafhankelijke uitwerking: ${sets} sets over vorm, plaats, β, ponswapening, belasting en excentriciteit — ${fouten - fout0 === 0 ? "alle waarden binnen de vier afgedrukte cijfers, slotzin gelijk" : `${fouten - fout0} afwijking(en)`}`);
+  console.log(`  met ponswapening: ${onbegrensd} onder de grens k_max·v_Rd,c en ${begrensd} erop begrensd; ${teZwaar} sets met v_Ed > k_max·v_Rd,c`);
 }
 
 afronden(fouten, "Ponsberekening");

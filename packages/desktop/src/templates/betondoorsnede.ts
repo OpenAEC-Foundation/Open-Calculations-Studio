@@ -12,24 +12,33 @@
  *   Bij druk is het moment ten minste N_Ed·e_0 met e_0 = max(h/30; 20 mm)
  *   (6.1(4)), in de richting van M_Ed; bij M_Ed = 0 naar beide kanten, want
  *   bij ongelijke wapening is de ene kant zwakker. Verdrongen beton is
- *   verwaarloosd;
+ *   verwaarloosd. Het moment voor de langswapening is M_Ed plus de
+ *   verschuiving |V_Ed|·a_l (9.2.1.3(2), hetzelfde als ΔF_td (6.18)), ten
+ *   hoogste M_Ed,max (6.2.3(7)). M_Ed,max = 0 betekent: dit is de doorsnede
+ *   met het grootste moment, dus geen toeslag, zoals het blad vóór deze regel
+ *   rekende;
  * - dwarskracht (§6.2): V_Rd,c (6.2a/b), V_Rd,s (6.8) en V_Rd,max (6.9) met
  *   cot θ zo groot als (6.7N) en de drukdiagonalen toelaten;
  * - wringing (§6.3.2), alleen bij T_Ed ≠ 0: (6.31) of anders (6.29), de
  *   beugelsnede voor dwarskracht plus wringing en de langswapening (6.28). Die
  *   langswapening gaat naar rato van de omtrek af van de lagen bij de buiging;
  *   de vermindering in de drukzone (6.3.2(3)) is niet benut;
- * - wapeningsregels: A_s,min (9.1N), A_s,max, ρ_w,min (9.5N), s_l,max (9.6N)
- *   en s_t,max (9.8N), bij wringing ook 9.2.3(3);
- * - scheurwijdte (§7.3.4) onder de quasi-blijvende combinatie: gescheurde
- *   doorsnede met α = E_s/E_c,eff, (7.8)–(7.11) of (7.14), w_max uit tabel
- *   7.1N. Voor XD en XS 0,2 mm en geen vergroting met c_nom/c_min,dur: de
- *   veilige kant van de NB.
+ * - wapeningsregels: A_s,min volgens de NB bij 9.2.1.1(1), de kleinste van
+ *   A_s,min1 (het scheurmoment bij de excentriciteit van M en N) en
+ *   A_s,min2 (1,25 × de nodige wapening), beide als enkelvoudig gewapende
+ *   doorsnede met het spanningsblok (§6.1); A_s,max, ρ_w,min (9.5N), s_l,max
+ *   en s_t,max volgens de NB bij 9.2.2(6) en (8); bij wringing ook 9.2.3(3)
+ *   en (4);
+ * - scheurwijdte (§7.3.4) onder de frequente combinatie (NB bij 7.3.1(5),
+ *   geamendeerde tabel 7.1N): gescheurde doorsnede met α = E_s/E_c,eff,
+ *   (7.8)–(7.11) met de bovengrens van s_r,max, of (7.14). Zonder de
+ *   vergroting van w_max met k_x: de veilige kant.
  *
  * Een positief moment geeft trek onderin, een negatief bovenin: de berekening
- * spiegelt de lagen. De scheurwijdte kiest de trekzijde van M_qp zelf; bij
+ * spiegelt de lagen. De scheurwijdte kiest de trekzijde van M_fr zelf; bij
  * trek met een kleine excentriciteit is dat de zijde waar de resultante ligt
- * ten opzichte van het zwaartepunt van de wapening.
+ * ten opzichte van het zwaartepunt van de wapening. N_fr = M_fr = 0 betekent:
+ * geen BGT-toets; het blad meldt dat.
  *
  * Op papier is het blad beknopter dan op het scherm (PrintDocument.css): een
  * tussenresultaat staat op het scherm als formule (alleen-scherm) en op
@@ -42,7 +51,7 @@
 
 export const betondoorsnede = `"Betondoorsnede — EN 1992-1-1 §6.1, §6.2, §6.3 en §7.3.4
 
-'<i>Rechthoekige gewapende doorsnede met drie wapeningslagen en gesloten beugels. Getoetst: buiging met normaalkracht (§6.1), dwarskracht en wringing (§6.2 en §6.3), de wapeningsregels van §9.2 en in de BGT de scheurwijdte (§7.3.4) onder de quasi-blijvende combinatie. Een positief moment geeft trek onderin; een normaalkracht is positief bij druk.</i><span class="alleen-scherm"></span>
+'<i>Rechthoekige gewapende doorsnede met drie wapeningslagen en gesloten beugels. Getoetst: buiging met normaalkracht (§6.1), dwarskracht en wringing (§6.2 en §6.3), de wapeningsregels van §9.2 en in de BGT de scheurwijdte (§7.3.4) onder de frequente combinatie (NB). Een positief moment geeft trek onderin; een normaalkracht is positief bij druk.</i><span class="alleen-scherm"></span>
 
 # 1. Doorsnede en materiaal
 
@@ -123,8 +132,9 @@ N_Ed = ?*(kN)', UGT, druk +<span class="kolom-4"></span>'
 M_Ed = ?*(kN*m)', + trek onder<span class="kolom-4"></span>'
 V_Ed = ?*(kN)'<span class="kolom-4"></span>'
 T_Ed = ?*(kN*m)'<span class="kolom-4"></span>'
-N_qp = ?*(kN)', BGT, quasi-blijvend<span class="kolom-4"></span>'
-M_qp = ?*(kN*m)'<span class="kolom-4"></span>'
+M_Ed,max = ?*(kN*m)', grootste in de ligger; 0 = deze doorsnede<span class="kolom-4"></span>'
+N_fr = ?*(kN)', BGT, frequent (NB)<span class="kolom-4"></span>'
+M_fr = ?*(kN*m)'<span class="kolom-4"></span>'
 φ_kr = ?', kruip φ(∞,t<sub>0</sub>)<span class="kolom-4"></span>'
 
 @select milieuklasse "Milieuklasse (tabel 7.1N)"
@@ -143,8 +153,8 @@ M_qp = ?*(kN*m)'<span class="kolom-4"></span>'
     '<b>Maatgevende UC = —</b><span style="color: red"> → <b>voldoet niet</b></span>
 #else
     #hide
-    'Trekzijde bij de UGT: die van M_Ed; bij M_Ed = 0 die van M_qp.
-    s_U = if(M_Ed < 0 kN*m; -1; if(M_Ed > 0 kN*m; 1; if(M_qp < 0 kN*m; -1; 1)))
+    'Trekzijde bij de UGT: die van M_Ed; bij M_Ed = 0 die van M_Ed,max (de verschoven momentenlijn), anders die van M_fr.
+    s_U = if(M_Ed < 0 kN*m; -1; if(M_Ed > 0 kN*m; 1; if(M_Ed,max < 0 kN*m; -1; if(M_Ed,max > 0 kN*m; 1; if(M_fr < 0 kN*m; -1; 1)))))
     A_sl = if(s_U > 0; A_s,o; A_s,b)
     d = if(s_U > 0; a_o; h - a_b)
     T_ = abs(T_Ed)/(1 kN*m)
@@ -204,17 +214,27 @@ M_qp = ?*(kN*m)'<span class="kolom-4"></span>'
             UC_V = UC_631', alleen minimumwapening nodig (6.3.2(5))'
             #hide
             A_sl,T = 0 mm^2
+            bw = 0
             #show
         #else
             UC_V = (abs(V_Ed)/(z*f_yd*cot_θ*n_sneden) + abs(T_Ed)/(2*A_k*f_yd*cot_θ))/(pi/4*d_beugel^2/s_beugel)', één snede: (6.8) plus wringing'
             A_sl,T = abs(T_Ed)*u_k*cot_θ/(2*A_k*f_yd) to mm^2', langswapening voor wringing (6.28)'
+            #hide
+            bw = 1
+            #show
         #end if
     #else
         UC_Vmax = abs(V_Ed)/V_Rd,max', drukdiagonalen (6.9)'
         #if abs(V_Ed) ≤ V_Rd,c and V_Rd,c > 0 kN
             UC_V = abs(V_Ed)/V_Rd,c', geen rekenkundige dwarskrachtwapening nodig (6.2.1(4))'
+            #hide
+            bw = 0
+            #show
         #else
             UC_V = abs(V_Ed)/V_Rd,s', beugels (6.8)'
+            #hide
+            bw = if(abs(V_Ed) > 0 kN; 1; 0)
+            #show
         #end if
         #hide
         A_sl,T = 0 mm^2
@@ -282,6 +302,16 @@ M_qp = ?*(kN*m)'<span class="kolom-4"></span>'
     M_Rd,t = MR(x2_; h_ - a1_; h_ - am_; h_ - a2_)*N*mm to kN*m
     M_Rd,min = max(-M_Rd,t; 0 kN*m)
     #show
+    #if M_Ed,max ≡ 0 kN*m
+        M_Ed,v = abs(M_Ed)', M<sub>Ed,max</sub> = 0: de doorsnede met het grootste moment, dus geen toeslag voor ΔF<sub>td</sub> (6.2.3(7))'
+    #else
+        #if bw ≡ 1
+            a_l = z*cot_θ/2', (9.2): ΔF<sub>td</sub> = 0,5·V<sub>Ed</sub>·cot θ (6.18)<span class="kolom-2"></span>'
+        #else
+            a_l = d', zonder rekenkundige dwarskrachtwapening (6.2.2(5))<span class="kolom-2"></span>'
+        #end if
+        M_Ed,v = min(abs(M_Ed) + abs(V_Ed)*a_l; max(abs(M_Ed,max); abs(M_Ed))) to kN*m', verschoven momentenlijn (9.2.1.3(2)), ten hoogste M<sub>Ed,max</sub> (6.2.3(7))'
+    #end if
     #if N_Ed > 0 kN
         N_Rd,max = η*f_cd*b*h + (A_s1 + A_sm + A_s2)*min(E_s*ε_c3; f_yd) to kN', geheel gedrukt, spil C (figuur 6.1)<span class="alleen-scherm"></span>'
         N_Rd,max', η·f<sub>cd</sub>·b·h + ΣA<sub>s</sub>·min(E<sub>s</sub>·ε<sub>c3</sub>; f<sub>yd</sub>), spil C (figuur 6.1)<span class="alleen-afdruk"></span>'
@@ -306,7 +336,7 @@ M_qp = ?*(kN*m)'<span class="kolom-4"></span>'
         #hide
         UC_M = UC_N
         #show
-    #else if A_s1 + A_sm + A_s2 ≤ 0 mm^2 and N_Ed ≤ 0 kN and abs(M_Ed) > 0 kN*m
+    #else if A_s1 + A_sm + A_s2 ≤ 0 mm^2 and N_Ed ≤ 0 kN and M_Ed,v > 0 kN*m
         '<b style="color:#b91c1c">Na aftrek van de langswapening voor wringing blijft er voor de buiging geen wapening over.</b>
         #hide
         UC_M = 1/0
@@ -349,24 +379,67 @@ M_qp = ?*(kN*m)'<span class="kolom-4"></span>'
                 UC_M = 1/0
                 #show
                 UC_M
-            #else
+            #else if M_Ed,v ≡ 0 kN*m
                 M_Rd,t', de andere kant op, gedrukt aan de zijde van laag 1<span class="kolom-2"></span>'
                 UC_M = M_e0/min(M_Rd; M_Rd,t)', de zwakste kant'
+            #else
+                M_Rd,t', de andere kant op, gedrukt aan de zijde van laag 1<span class="kolom-2"></span>'
+                UC_M = max(max(M_Ed,v; M_e0)/M_Rd; M_e0/M_Rd,t)', M<sub>Ed,v</sub> naar de trekzijde, N<sub>Ed</sub>·e<sub>0</sub> ook de andere kant op'
             #end if
-        #else if M_Rd,min > max(abs(M_Ed); M_e0)
+        #else if M_Rd,min > max(M_Ed,v; M_e0)
             M_Rd,min', <b style="color:#b91c1c">het kleinste moment in de richting van M<sub>Ed</sub> dat bij deze normaalkracht evenwicht geeft</b>'
-            UC_M = M_Rd,min/max(abs(M_Ed); M_e0)
+            UC_M = M_Rd,min/max(M_Ed,v; M_e0)
         #else if N_Ed > 0 kN
-            UC_M = max(abs(M_Ed); M_e0)/M_Rd', M<sub>Ed</sub> ten minste N<sub>Ed</sub>·e<sub>0</sub>'
+            UC_M = max(M_Ed,v; M_e0)/M_Rd', M<sub>Ed,v</sub> ten minste N<sub>Ed</sub>·e<sub>0</sub>'
         #else
-            UC_M = abs(M_Ed)/M_Rd
+            UC_M = M_Ed,v/M_Rd
         #end if
     #end if
 
     # 6. Wapeningsregels (§9.2)
 
-    A_s,min = max(0.26*f_ctm/f_yk; 0.0013)*b*d to mm^2', (9.1N)'
-    UC_As,min = A_s,min/A_sl', trekzijde<span class="kolom-2"></span>'
+    #hide
+    'A_s,min volgens de NB bij 9.2.1.1(1): de kleinste van A_s,min1 en A_s,min2. Beide als de trekwapening
+    'die een enkelvoudig gewapende doorsnede met het spanningsblok (§6.1) nodig heeft; boven μ_l vloeit het
+    'staal niet meer en neemt drukwapening op a_2 het meerdere op. Kaal in N en mm, m om het zwaartepunt
+    '(≥ 0, in de richting van de trekzijde), n druk positief.
+    'M_E,min en N_E,min: het paar met de excentriciteit e = m/|n| van M_Ed,v en N_Ed waarbij de rand
+    'net scheurt, M/W − N/A_c = f_ctm. Met D = m − n·h/6 (h/6 = W/A_c): M = W·f_ctm·m/D en N = W·f_ctm·n/D;
+    'zonder normaalkracht M = W·f_ctm. Bij druk en D ≤ 0 ligt de resultante in de kern en scheurt niets.
+    W_ = b_*h_^2/6
+    fctm_ = f_ctm/(N/mm^2)
+    mv_ = M_Ed,v/(N*mm)
+    D_ = mv_ - N_*h_/6
+    ξ_l = ε_cu3/(ε_cu3 + fyd_/200000)
+    μ_l = λ*ξ_l*(1 - λ*ξ_l/2)
+    ms(m; n) = m + n*(a1_ - h_/2)
+    Fc(m; n) = η*fcd_*b_*a1_*(1 - sqrt(1 - 2*min(ms(m; n)/(η*fcd_*b_*a1_^2); μ_l)))
+    An(m; n) = if(ms(m; n) ≤ 0; (m - n*(h_/2 - a2_))/((a1_ - a2_)*fyd_); max((Fc(m; n) + max(ms(m; n) - μ_l*η*fcd_*b_*a1_^2; 0)/(a1_ - a2_) - n)/fyd_; 0))
+    #show
+    #if N_Ed > 0 kN and D_ ≤ 0
+        '<i>De resultante van M<sub>Ed,v</sub> en N<sub>Ed</sub> ligt in de kern (e ≤ h/6): de doorsnede scheurt niet, A<sub>s,min1</sub> = 0.</i>
+        #hide
+        A_s,min1 = 0 mm^2
+        #show
+    #else
+        #hide
+        M_E,min = if(N_Ed ≡ 0 kN; W_*fctm_; W_*fctm_*mv_/D_)*N*mm to kN*m
+        N_E,min = if(N_Ed ≡ 0 kN; 0; W_*fctm_*N_/D_)*N to kN
+        A_s,min1 = An(M_E,min/(N*mm); N_E,min/N)*mm^2
+        #show
+        M_E,min', W·f<sub>ctm</sub> bij de excentriciteit van M<sub>Ed,v</sub> en N<sub>Ed</sub><span class="kolom-4"></span>'
+        N_E,min'<span class="kolom-4"></span>'
+        A_s,min1', volgens 6.1<span class="kolom-4"></span>'
+    #end if
+    #hide
+    A_s,min2 = 1.25*An(mv_; N_)*mm^2
+    #show
+    A_s,min2', 1,25 × nodig in de UGT<span class="kolom-4"></span>'
+    A_s,min = min(A_s,min1; A_s,min2)', NB bij 9.2.1.1(1)<span class="kolom-2"></span>'
+    #hide
+    UC_As,min = uc(A_s,min; A_sl)
+    #show
+    UC_As,min', A<sub>s,min</sub>/A<sub>sl</sub>, trekzijde<span class="kolom-2"></span>'
     UC_As,max = A_s,tot/(0.04*b*h)', 9.2.1.1(3)'
     #hide
     ρ_w = A_sw/(s_beugel*b)
@@ -375,118 +448,147 @@ M_qp = ?*(kN*m)'<span class="kolom-4"></span>'
     ρ_w', A<sub>sw</sub>/(s·b)<span class="kolom-4"></span>'
     ρ_w,min', (9.5N)<span class="kolom-4"></span>'
     UC_ρw = ρ_w,min/ρ_w'<span class="kolom-2"></span>'
-    #if T_ > 0
-        s_l,max = min(0.75*d; 2*(b + h)/8; b; h)', (9.6N) en 9.2.3(3)<span class="alleen-scherm"></span>'
-        s_l,max', min(0,75·d; u/8; b; h), (9.6N) en 9.2.3(3)<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
+    #if bw ≡ 1 and T_ > 0
+        s_l,max = min(0.75*d; 300 mm; 2*(b + h)/8; b; h)', NB bij 9.2.2(6); u/8, b en h (9.2.3(3))<span class="kolom-2"></span>'
+    #else if T_ > 0
+        s_l,max = min(300 mm; 2*(b + h)/8; b; h)', zonder rekenkundige wapening (NB bij 9.2.2(6)); u/8, b en h (9.2.3(3))<span class="kolom-2"></span>'
+    #else if bw ≡ 1
+        s_l,max = min(0.75*d; 300 mm)', NB bij 9.2.2(6)<span class="kolom-2"></span>'
     #else
-        s_l,max = 0.75*d', (9.6N)<span class="kolom-2"></span>'
+        s_l,max = 300 mm', zonder rekenkundige dwarskrachtwapening (NB bij 9.2.2(6))<span class="kolom-2"></span>'
     #end if
     UC_sl = s_beugel/s_l,max'<span class="kolom-2"></span>'
     #hide
     s_t = (b - 2*c - d_beugel)/(n_sneden - 1)
-    s_t,max = min(0.75*d; 600 mm)
+    s_t,max = if(abs(V_Ed) ≤ 0.5*V_Rd,max; 500 mm; min(0.75*d; 500 mm))
     #show
     s_t', afstand van de sneden<span class="kolom-4"></span>'
-    s_t,max', (9.8N)<span class="kolom-4"></span>'
+    s_t,max', NB bij 9.2.2(8)<span class="kolom-4"></span>'
     UC_st = s_t/s_t,max'<span class="kolom-2"></span>'
+    #if T_ > 0
+        #hide
+        s_T = max(if(n_midden ≥ 2; (a_o - a_b)/2; a_o - a_b); if(n_onder ≥ 2; (b_i - d_onder)/(n_onder - 1); 0 mm); if(n_boven ≥ 2; (b_i - d_boven)/(n_boven - 1); 0 mm))
+        #show
+        #if n_onder ≥ 2 and n_boven ≥ 2
+            s_T', grootste h.o.h. van de langsstaven langs de beugel<span class="kolom-2"></span>'
+            UC_sl,T = s_T/(350 mm)', wringing, 9.2.3(4)<span class="kolom-2"></span>'
+        #else
+            '<b style="color:#b91c1c">Bij wringing hoort in elke hoek een langsstaaf (9.2.3(4)); onder of boven liggen er minder dan twee.</b>
+            #hide
+            UC_sl,T = 1/0
+            #show
+            UC_sl,T
+        #end if
+    #else
+        #hide
+        UC_sl,T = 0
+        #show
+    #end if
 
     # 7. Scheurwijdte (§7.3.4)
 
-    #hide
-    'Trekzijde bij de BGT: die van M_qp. Bij trek (N_qp < 0) de zijde waar de resultante ligt ten opzichte
-    'van het zwaartepunt van de wapening: bij een kleine excentriciteit is dat de andere zijde dan die van M_qp.
-    y_s = if(A_s,tot > 0 mm^2; (A_s,o*(a_o - h/2) + A_s,m*(a_m - h/2) + A_s,b*(a_b - h/2))/A_s,tot; 0 mm)
-    s_Q = if(N_qp < 0 kN; if(M_qp/abs(N_qp) ≥ y_s; 1; -1); if(M_qp < 0 kN*m; -1; if(M_qp > 0 kN*m; 1; s_U)))
-    A_s,qp = if(s_Q > 0; A_s,o; A_s,b)
-    A_Q2 = if(s_Q > 0; A_s,b; A_s,o)
-    d_qp = if(s_Q > 0; a_o; h - a_b)
-    a_Qm = if(s_Q > 0; a_m; h - a_m)
-    a_Q2 = if(s_Q > 0; a_b; h - a_o)
-    Ø_qp = if(s_Q > 0; d_onder; d_boven)
-    n_Q = if(s_Q > 0; n_onder; n_boven)
-    k_t = if(belastingduur ≡ 1; 0.4; 0.6)
-    φ_t = if(belastingduur ≡ 1; φ_kr; 0)
-    α_e = E_s/E_cm
-    α_L = α_e*(1 + φ_t)
-    #show
-    E_cm', tabel 3.1<span class="kolom-3"></span>'
-    α_e', E<sub>s</sub>/E<sub>cm</sub><span class="kolom-3"></span>'
-    α_L', E<sub>s</sub>/E<sub>c,eff</sub>, E<sub>c,eff</sub> = E<sub>cm</sub>/(1 + φ) bij langdurend<span class="kolom-3"></span>'
-    #hide
-    'Gescheurde doorsnede, lineair elastisch, beton zonder trek: zoek x met N·S1(x) = M·S0(x),
-    'S0 en S1 de nulde en eerste orde van de spanningsverdeling per eenheid van de spanningsgradiënt.
-    B1_ = A_s,qp/mm^2
-    Bm_ = A_s,m/mm^2
-    B2_ = A_Q2/mm^2
-    q1_ = d_qp/mm
-    qm_ = a_Qm/mm
-    q2_ = a_Q2/mm
-    Nq_ = N_qp/N
-    Mq_ = s_Q*M_qp/(N*mm)
-    xc(x) = min(max(x; 0); h_)
-    S0(x) = b_*(x*xc(x) - xc(x)^2/2) + α_L*(B1_*(x - q1_) + Bm_*(x - qm_) + B2_*(x - q2_))
-    S1(x) = b_*(x*h_/2*xc(x) - (x + h_/2)*xc(x)^2/2 + xc(x)^3/3) + α_L*(B1_*(x - q1_)*(h_/2 - q1_) + Bm_*(x - qm_)*(h_/2 - qm_) + B2_*(x - q2_)*(h_/2 - q2_))
-    ΣαA = α_L*(B1_ + Bm_ + B2_)
-    x_0 = (sqrt(ΣαA^2 + 2*b_*α_L*(B1_*q1_ + Bm_*qm_ + B2_*q2_)) - ΣαA)/b_
-    g(x) = Nq_*S1(x) - Mq_*S0(x)
-    x_L = if(Nq_ < 0; -1000*h_; x_0)
-    x_R = if(Nq_ > 0; h_; x_0)
-    #for i = 1 : 56
-        x_M = (x_L + x_R)/2
-        g_M = g(x_M)
-        x_L = if(g_M > 0; x_M; x_L)
-        x_R = if(g_M > 0; x_R; x_M)
-    #loop
-    x_q = (x_L + x_R)/2
-    k_q = if(abs(Mq_) > 0; Mq_/S1(x_q); if(Nq_ ≡ 0; 0; Nq_/S0(x_q)))
-    x_qp = x_q*mm
-    σ_s = α_L*k_q*(q1_ - x_q)*N/mm^2
-    #show
-    #if σ_s ≤ 0 N/mm^2
-        '<i>Geen trek in de wapening onder de quasi-blijvende combinatie: geen scheuren.</i>
+    #if N_fr ≡ 0 kN and M_fr ≡ 0 kN*m
+        '<i>Geen frequente belasting ingevuld (N<sub>fr</sub> = M<sub>fr</sub> = 0): de scheurwijdte is niet getoetst.</i>
         #hide
         UC_w = 0
         #show
     #else
-        'Trek aan de 'if(s_Q > 0; "onderzijde"; "bovenzijde")': 'n_Q'Ø'Ø_qp', d<sub>qp</sub> = 'd_qp' mm.
-        #if x_qp > 0 mm
-            x_qp', gescheurde doorsnede<span class="kolom-3"></span>'
-        #else
-            '<i>De doorsnede is geheel getrokken.</i><span class="kolom-3"></span>
-        #end if
-        σ_s', aan de trekzijde<span class="kolom-3"></span>'
         #hide
-        c_l = c + d_beugel
-        s_Ø = if(n_Q > 1; (b - 2*c_l - Ø_qp)/(n_Q - 1); b)
-        k_2 = if(x_qp > 0 mm; 0.5; (h - 2*x_qp)/(2*(h - x_qp)))
+        'Trekzijde bij de BGT: die van M_fr. Bij trek (N_fr < 0) de zijde waar de resultante ligt ten opzichte
+        'van het zwaartepunt van de wapening: bij een kleine excentriciteit is dat de andere zijde dan die van M_fr.
+        y_s = if(A_s,tot > 0 mm^2; (A_s,o*(a_o - h/2) + A_s,m*(a_m - h/2) + A_s,b*(a_b - h/2))/A_s,tot; 0 mm)
+        s_Q = if(N_fr < 0 kN; if(M_fr/abs(N_fr) ≥ y_s; 1; -1); if(M_fr < 0 kN*m; -1; if(M_fr > 0 kN*m; 1; s_U)))
+        A_s,fr = if(s_Q > 0; A_s,o; A_s,b)
+        A_Q2 = if(s_Q > 0; A_s,b; A_s,o)
+        d_fr = if(s_Q > 0; a_o; h - a_b)
+        a_Qm = if(s_Q > 0; a_m; h - a_m)
+        a_Q2 = if(s_Q > 0; a_b; h - a_o)
+        Ø_fr = if(s_Q > 0; d_onder; d_boven)
+        n_Q = if(s_Q > 0; n_onder; n_boven)
+        k_t = if(belastingduur ≡ 1; 0.4; 0.6)
+        φ_t = if(belastingduur ≡ 1; φ_kr; 0)
+        α_e = E_s/E_cm
+        α_L = α_e*(1 + φ_t)
         #show
-        k_t', 0,4 langdurend, 0,6 kort<span class="kolom-3"></span>'
-        #if x_qp > 0 mm
-            h_c,ef = min(2.5*(h - d_qp); (h - x_qp)/3; h/2)', figuur 7.1<span class="alleen-scherm"></span>'
-            h_c,ef', min(2,5·(h − d<sub>qp</sub>); (h − x<sub>qp</sub>)/3; h/2), figuur 7.1<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
-        #else
-            h_c,ef = min(2.5*(h - d_qp); h/2)', figuur 7.1, geheel getrokken<span class="kolom-2"></span>'
-            k_2', (7.13)<span class="kolom-2"></span>'
-        #end if
-        ρ_p,eff = A_s,qp/(b*h_c,ef)', (7.10)<span class="kolom-2"></span>'
-        #if s_Ø ≤ 5*(c_l + Ø_qp/2)
-            s_r,max = 3.4*c_l + 0.8*k_2*0.425*Ø_qp/ρ_p,eff', (7.11), c<sub>l</sub> = c + Ø<sub>bgl</sub>'
-        #else
-            s_r,max = 1.3*(h - max(x_qp; 0 mm))', (7.14): staven verder dan 5(c + Ø/2) uit elkaar'
-        #end if
-        Δε_sm = max((σ_s - k_t*f_ctm/ρ_p,eff*(1 + α_e*ρ_p,eff))/E_s; 0.6*σ_s/E_s)', ε<sub>sm</sub> − ε<sub>cm</sub> (7.9)<span class="alleen-scherm"></span>'
-        Δε_sm', ε<sub>sm</sub> − ε<sub>cm</sub> (7.9)<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
-        w_k = s_r,max*Δε_sm to mm', (7.8)'
+        E_cm', tabel 3.1<span class="kolom-3"></span>'
+        α_e', E<sub>s</sub>/E<sub>cm</sub><span class="kolom-3"></span>'
+        α_L', E<sub>s</sub>/E<sub>c,eff</sub>, E<sub>c,eff</sub> = E<sub>cm</sub>/(1 + φ) bij langdurend<span class="kolom-3"></span>'
         #hide
-        w_max = if(milieuklasse ≡ 1; 0.4; if(milieuklasse ≡ 2; 0.3; 0.2))*mm
+        'Gescheurde doorsnede, lineair elastisch, beton zonder trek: zoek x met N·S1(x) = M·S0(x),
+        'S0 en S1 de nulde en eerste orde van de spanningsverdeling per eenheid van de spanningsgradiënt.
+        B1_ = A_s,fr/mm^2
+        Bm_ = A_s,m/mm^2
+        B2_ = A_Q2/mm^2
+        q1_ = d_fr/mm
+        qm_ = a_Qm/mm
+        q2_ = a_Q2/mm
+        Nq_ = N_fr/N
+        Mq_ = s_Q*M_fr/(N*mm)
+        xc(x) = min(max(x; 0); h_)
+        S0(x) = b_*(x*xc(x) - xc(x)^2/2) + α_L*(B1_*(x - q1_) + Bm_*(x - qm_) + B2_*(x - q2_))
+        S1(x) = b_*(x*h_/2*xc(x) - (x + h_/2)*xc(x)^2/2 + xc(x)^3/3) + α_L*(B1_*(x - q1_)*(h_/2 - q1_) + Bm_*(x - qm_)*(h_/2 - qm_) + B2_*(x - q2_)*(h_/2 - q2_))
+        ΣαA = α_L*(B1_ + Bm_ + B2_)
+        x_0 = (sqrt(ΣαA^2 + 2*b_*α_L*(B1_*q1_ + Bm_*qm_ + B2_*q2_)) - ΣαA)/b_
+        g(x) = Nq_*S1(x) - Mq_*S0(x)
+        x_L = if(Nq_ < 0; -1000*h_; x_0)
+        x_R = if(Nq_ > 0; h_; x_0)
+        #for i = 1 : 56
+            x_M = (x_L + x_R)/2
+            g_M = g(x_M)
+            x_L = if(g_M > 0; x_M; x_L)
+            x_R = if(g_M > 0; x_R; x_M)
+        #loop
+        x_q = (x_L + x_R)/2
+        k_q = if(abs(Mq_) > 0; Mq_/S1(x_q); if(Nq_ ≡ 0; 0; Nq_/S0(x_q)))
+        x_fr = x_q*mm
+        σ_s = α_L*k_q*(q1_ - x_q)*N/mm^2
         #show
-        w_max', tabel 7.1N; XD en XS 0,2 mm (veilige kant van de NB)<span class="kolom-2"></span>'
-        UC_w = w_k/w_max'<span class="kolom-2"></span>'
+        #if σ_s ≤ 0 N/mm^2
+            '<i>Geen trek in de wapening onder de frequente combinatie: geen scheuren.</i>
+            #hide
+            UC_w = 0
+            #show
+        #else
+            'Trek aan de 'if(s_Q > 0; "onderzijde"; "bovenzijde")': 'n_Q'Ø'Ø_fr', d<sub>fr</sub> = 'd_fr' mm.
+            #if x_fr > 0 mm
+                x_fr', gescheurde doorsnede<span class="kolom-3"></span>'
+            #else
+                '<i>De doorsnede is geheel getrokken.</i><span class="kolom-3"></span>
+            #end if
+            σ_s', aan de trekzijde<span class="kolom-3"></span>'
+            #hide
+            c_l = c + d_beugel
+            s_Ø = if(n_Q > 1; (b - 2*c_l - Ø_fr)/(n_Q - 1); b)
+            k_2 = if(x_fr > 0 mm; 0.5; (h - 2*x_fr)/(2*(h - x_fr)))
+            #show
+            k_t', 0,4 langdurend, 0,6 kort<span class="kolom-3"></span>'
+            #if x_fr > 0 mm
+                h_c,ef = min(2.5*(h - d_fr); (h - x_fr)/3; h/2)', figuur 7.1<span class="alleen-scherm"></span>'
+                h_c,ef', min(2,5·(h − d<sub>fr</sub>); (h − x<sub>fr</sub>)/3; h/2), figuur 7.1<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
+            #else
+                h_c,ef = min(2.5*(h - d_fr); h/2)', figuur 7.1, geheel getrokken<span class="kolom-2"></span>'
+                k_2', (7.13)<span class="kolom-2"></span>'
+            #end if
+            ρ_p,eff = A_s,fr/(b*h_c,ef)', (7.10)<span class="kolom-2"></span>'
+            #if s_Ø ≤ 5*(c_l + Ø_fr/2)
+                s_r,max = min(3.4*c_l + 0.8*k_2*0.425*Ø_fr/ρ_p,eff; max(50 - 0.8*betonklasse; 15)*Ø_fr)', (7.11), c<sub>l</sub> = c + Ø<sub>bgl</sub>, ten hoogste max(50 − 0,8·f<sub>ck</sub>; 15)·Ø (NB)'
+            #else
+                s_r,max = 1.3*(h - max(x_fr; 0 mm))', (7.14): staven verder dan 5(c + Ø/2) uit elkaar'
+            #end if
+            Δε_sm = max((σ_s - k_t*f_ctm/ρ_p,eff*(1 + α_e*ρ_p,eff))/E_s; 0.6*σ_s/E_s)', ε<sub>sm</sub> − ε<sub>cm</sub> (7.9)<span class="alleen-scherm"></span>'
+            Δε_sm', ε<sub>sm</sub> − ε<sub>cm</sub> (7.9)<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
+            w_k = s_r,max*Δε_sm to mm', (7.8)'
+            #hide
+            w_max = if(milieuklasse ≡ 1; 0.4; if(milieuklasse ≡ 2; 0.3; 0.2))*mm
+            #show
+            w_max', geamendeerde tabel 7.1N (NB), zonder k<sub>x</sub><span class="kolom-2"></span>'
+            UC_w = w_k/w_max'<span class="kolom-2"></span>'
+        #end if
     #end if
 
     # 8. Samenvatting
 
-    UC_max = max(UC_N; UC_M; UC_V; UC_Vmax; UC_Tl; UC_As,min; UC_As,max; UC_ρw; UC_sl; UC_st; UC_w)'<span class="alleen-scherm"></span>'
+    UC_max = max(UC_N; UC_M; UC_V; UC_Vmax; UC_Tl; UC_As,min; UC_As,max; UC_ρw; UC_sl; UC_st; UC_sl,T; UC_w)'<span class="alleen-scherm"></span>'
     UC_max', grootste van de toetsen hierboven<span class="alleen-afdruk"></span>'
     #if UC_max ≤ 1
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>

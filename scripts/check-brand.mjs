@@ -15,6 +15,13 @@
  *   3. Voor het standaardgeval, de grensgevallen, de negatief ingevulde
  *      belasting en enkele andere sets de getallen van een handberekening.
  *
+ * Daarnaast: κ_1 < 1 alleen met een beton- of staalplaatbetonvloer aan de
+ * vierde zijde, en een blad zonder die keuze (bijgewerkt van een oudere
+ * versie) rekent met κ_1 = 1; in klasse 4 de knikweerstand bij 20 °C met
+ * A_eff; bij μ_0 > 1 de weerstand bij θ_a,t als UC (in klasse 4 de grootste
+ * van μ_0 en θ_a,t/350); en een blad zonder
+ * belasting of lengte krijgt "niet te bepalen → voldoet niet".
+ *
  * De profielgegevens staan hieronder los overgenomen uit de profieltabel,
  * zodat ook de matrix in het blad wordt gecontroleerd. Daarnaast: de
  * beginwaarden van het beeld zijn de standaardinvoer van dit script, en het
@@ -33,7 +40,7 @@ const tpl = laadTemplate("brandwerendheid.ts");
 
 // ── Standaardinvoer (= DEFAULTS van het beeld) ──────────────────────────────
 const STANDAARD = {
-  profiel: 5, staalsoort: 235, werking: 1, eis_min: 60, verhitting: 4, schema: 1,
+  profiel: 5, staalsoort: 235, werking: 1, eis_min: 60, verhitting: 4, schema: 1, vloer: 0,
   bron_fi: 1, M_Ed: 50, N_Ed: 500, η_fi: 0.7, M_fi: 35, N_fi: 350,
   L_kip: 5, C_1: 1.13, C_2: -0.45, L_fi: 3,
   bekleed: 1, beklvorm: 1, beklmateriaal: 1, d_p: 18, lambda_p: 0.2, rho_p: 800, c_p: 1700,
@@ -50,6 +57,7 @@ const PROFIEL = {
   16: { naam: "HEB 200", h: 200, b: 200, tw: 9, tf: 15, r: 18, A: 78.08, Iy: 5696, Iz: 2003, Wel: 569.6, Wpl: 642.5, It: 59.28, Iw: 171.1 },
   22: { naam: "IPE 240", h: 240, b: 120, tw: 6.2, tf: 9.8, r: 15, A: 39.12, Iy: 3892, Iz: 283.6, Wel: 324.3, Wpl: 366.6, It: 12.88, Iw: 37.39 },
   24: { naam: "IPE 300", h: 300, b: 150, tw: 7.1, tf: 10.7, r: 15, A: 53.81, Iy: 8356, Iz: 603.8, Wel: 557.1, Wpl: 628.4, It: 20.12, Iw: 125.9 },
+  25: { naam: "IPE 330", h: 330, b: 160, tw: 7.5, tf: 11.5, r: 18, A: 62.61, Iy: 11770, Iz: 788.1, Wel: 713.1, Wpl: 804.3, It: 28.15, Iw: 199.1 },
   27: { naam: "IPE 400", h: 400, b: 180, tw: 8.6, tf: 13.5, r: 21, A: 84.46, Iy: 23130, Iz: 1318, Wel: 1156, Wpl: 1307, It: 51.08, Iw: 490.0 },
 };
 
@@ -133,6 +141,10 @@ function uitwerking(v) {
     ? v.η_fi * (buiging ? v.M_Ed * 1e6 : v.N_Ed * 1e3)
     : buiging ? v.M_fi * 1e6 : v.N_fi * 1e3);
   uit.Efi = Efi;
+  // Zonder belasting, of bij kip of knik zonder lengte, is er geen UC.
+  uit.onvolledig = !(Efi > 0) ||
+    (v.werking === 2 && !(v.L_kip > 0 && v.C_1 > 0)) ||
+    (v.werking === 3 && !(v.L_fi > 0));
 
   // Doorsnedeklasse bij brand (§4.2.2 met tabel 5.2 van EN 1993-1-1)
   let klasse = 1;
@@ -155,12 +167,30 @@ function uitwerking(v) {
     const Φ = 0.5 * (1 + α * λθ + λθ * λθ);
     return 1 / (Φ + Math.sqrt(Φ * Φ - λθ * λθ));
   };
-  if (klasse === 4) {
+  if (klasse === 4 && v.werking === 3) {
+    // θ_a,cr = 350 °C (§4.2.3.6), mits μ_0 ≤ 1 met de knikweerstand bij 20 °C
+    // en A_eff bij de eigenschappen van 20 °C (NEN-EN 1993-1-5 §4.4, ψ = 1).
+    const ε20 = Math.sqrt(235 / fy);
+    const cw = h - 2 * tf - 2 * r;
+    const λp = cw / tw / (28.4 * ε20 * 2);
+    const ρw = cw / tw <= 42 * ε20 ? 1 : Math.min(1, (λp - 0.22) / (λp * λp));
+    const Aeff = A - (1 - ρw) * cw * tw;
+    const L = v.L_fi * 1000;
+    const Ncrz = (Math.PI ** 2 * E * Iz) / (L * L);
+    λ20 = Math.sqrt((Aeff * fy) / Ncrz);
+    const Rfi0 = χ(20) * Aeff * fy;
+    μ0 = Efi / Rfi0;
+    θcr = μ0 <= 1 ? 350 : 20;
+    uit.kl4 = { Aeff, Ncrz, λz: λ20, χ0: χ(20) };
+    uit.Rfi0 = Rfi0;
+  } else if (klasse === 4) {
     θcr = 350;
   } else if (!instab) {
     let Rfi0;
     if (v.werking === 1) {
-      const κ1 = v.verhitting === 3 ? (v.bekleed === 1 ? 0.85 : 0.7) : 1;
+      // Alleen met een beton- of staalplaatbetonvloer aan de vierde zijde; een
+      // blad zonder die keuze rekent met de eerste keuze, κ_1 = 1.
+      const κ1 = v.verhitting === 3 && v.vloer === 1 ? (v.bekleed === 1 ? 0.85 : 0.7) : 1;
       const κ2 = v.schema === 2 ? 0.85 : 1;
       Object.assign(uit, { κ1, κ2 });
       Rfi0 = (Wy * fy) / (κ1 * κ2);
@@ -222,16 +252,21 @@ function uitwerking(v) {
   }
   Object.assign(uit, { θa, θa1, θg: gas(t) });
 
-  // Toetsing
-  const UCθ = θa / θcr;
+  // Toetsing; in klasse 4 bij μ_0 > 1 ook de temperatuur tegen 350 °C.
+  const UCθ = klasse === 4 && μ0 > 1 ? θa / 350 : θa / θcr;
   let UCR = 0;
   if (instab) {
     const Rt = χ(θa) * ky(θa) * R0;
     UCR = Efi / Rt;
     Object.assign(uit, { Rt, UCR });
+  } else if (μ0 > 1 && klasse < 4) {
+    // De weerstand bij θ_a,t: k_y,θ·R_fi,d,0, ook met κ_1·κ_2 (4.10).
+    const Rt = ky(θa) * uit.Rfi0;
+    UCR = Efi / Rt;
+    Object.assign(uit, { RtZonder: Rt, UCR });
   }
   uit.UCθ = UCθ;
-  uit.UCmax = μ0 > 1 ? (instab ? UCR : μ0) : instab ? Math.max(UCθ, UCR) : UCθ;
+  uit.UCmax = μ0 > 1 ? (klasse < 4 ? UCR : Math.max(μ0, UCθ)) : instab ? Math.max(UCθ, UCR) : UCθ;
   return uit;
 }
 
@@ -246,15 +281,21 @@ function verwachtingen(r, v) {
   const uit = { θ_a_t: ruim(r.θa), θ_g_t: ruim(r.θg), θ_a_cr: ruim(r.θcr) };
   const eenheid = v.werking <= 2 ? 1e6 : 1e3;
   uit.E_fi_d = ruim(r.Efi / eenheid);
-  if (r.klasse < 4) {
+  if (r.klasse < 4 || r.kl4) {
     uit.μ_0 = ruim(r.μ0);
     uit.R_fi_d_0 = ruim(r.Rfi0 / eenheid);
   }
+  if (r.kl4) {
+    Object.assign(uit, {
+      A_eff: ruim(r.kl4.Aeff / 1e2), N_cr_z: ruim(r.kl4.Ncrz / 1e3), λ_z: ruim(r.kl4.λz), χ_fi_0: ruim(r.kl4.χ0),
+    });
+  }
+  if (r.RtZonder !== undefined) uit.R_fi_d_t = ruim(r.RtZonder / eenheid);
   if (r.κ1 !== undefined) Object.assign(uit, { κ_1: ruim(r.κ1), κ_2: ruim(r.κ2), W_y: ruim(r.Wy / 1e3) });
   if (r.Mcr !== undefined) Object.assign(uit, { M_cr: ruim(r.Mcr / 1e6), λ_LT: ruim(r.λLT), R_0: ruim(r.R0 / 1e6), M_b_fi_t_Rd: ruim(r.Rt / 1e6) });
   if (r.Ncrz !== undefined) Object.assign(uit, { N_cr_z: ruim(r.Ncrz / 1e3), λ_z: ruim(r.λz), R_0: ruim(r.R0 / 1e3), N_b_fi_t_Rd: ruim(r.Rt / 1e3) });
   if (r.UCR) uit.UC_R = ruim(r.UCR);
-  if (r.μ0 <= 1) uit.UC_θ = ruim(r.UCθ);
+  if (r.μ0 <= 1 || r.kl4) uit.UC_θ = ruim(r.UCθ);
   if (v.bekleed === 0) Object.assign(uit, { A_m_V: ruim(r.AmV), A_b_V: ruim(r.AbV), k_sh: ruim(r.ksh) });
   else uit.A_p_V = ruim(r.ApV);
   return uit;
@@ -302,8 +343,8 @@ const SETS = [
     oordeel: "voldoet niet",
   },
   {
-    naam: "4 — onbekleed, driezijdig met de vloer erop (κ_1 = 0,7), boven een tussensteunpunt (κ_2 = 0,85), R30",
-    invoer: { bekleed: 0, verhitting: 3, schema: 2, eis_min: 30 },
+    naam: "4 — onbekleed, driezijdig met een betonvloer erop (κ_1 = 0,7), boven een tussensteunpunt (κ_2 = 0,85), R30",
+    invoer: { bekleed: 0, verhitting: 3, vloer: 1, schema: 2, eis_min: 30 },
     // Met de hand: A_m = 2·171 + 3·180 − 2·6 = 870 mm → A_m/V = 192,3 1/m;
     // kastwaarde (2·171 + 180)/4525 = 115,4 1/m → k_sh = 0,9·115,4/192,3 = 0,5400.
     // R_fi,d,0 = 76,35/(0,7·0,85) = 128,3 kNm → μ_0 = 0,2728 → θ_a,cr = 678,2 °C.
@@ -334,6 +375,10 @@ const SETS = [
   {
     naam: "9 — ligger met M_Ed = 120 kNm: μ_0 > 1, bezwijkt al bij normale temperatuur",
     invoer: { M_Ed: 120 },
+    // Met de hand: E_fi,d = 0,7·120 = 84 kNm; μ_0 = 84/76,35 = 1,100 > 1. De UC is
+    // de weerstand bij θ_a,t = 529,84 °C (als set 1): k_y,θ = 0,78 − 0,31·0,2984 =
+    // 0,6875 → R_fi,d,t = 0,6875·76,35 = 52,49 kNm → UC = 84/52,49 = 1,600.
+    handwerk: { μ_0: "1.100", R_fi_d_t: "52.49", UC_R: "1.600" },
     oordeel: "voldoet niet",
   },
   {
@@ -393,14 +438,117 @@ const SETS = [
     oordeel: "voldoet niet",
     tkr: 28.5,
   },
+  {
+    naam: "16 — als set 4, maar een andere vloer aan de vierde zijde: κ_1 = 1,0",
+    invoer: { bekleed: 0, verhitting: 3, vloer: 0, schema: 2, eis_min: 30 },
+    // Met de hand: R_fi,d,0 = 76,35/(1,0·0,85) = 89,83 kNm → μ_0 = 35/89,83 =
+    // 0,3896; 0,3896^3,833 = 0,02698; ·0,9674 = 0,02610; 1/0,02610 − 1 = 37,31;
+    // ln = 3,619 → θ_a,cr = 39,19·3,619 + 482 = 623,8 °C. θ_a(30) = 772,8 °C als
+    // set 4 → UC = 772,8/623,8 = 1,239 (met κ_1 = 0,7 was het 1,139).
+    handwerk: { κ_1: "1", R_fi_d_0: "89.83", μ_0: "0.3896", θ_a_cr: "623.8", UC_θ: "1.239" },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "17 — bijgewerkt blad zonder de keuze voor de vierde zijde: de eerste keuze, κ_1 = 1,0",
+    invoer: { bekleed: 0, verhitting: 3, schema: 2, eis_min: 30 },
+    zonder: ["vloer"],
+    handwerk: { κ_1: "1", R_fi_d_0: "89.83", θ_a_cr: "623.8", UC_θ: "1.239" },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "18 — bekleed en driezijdig met een betonvloer (κ_1 = 0,85), M_Ed = 60 kNm",
+    invoer: { verhitting: 3, vloer: 1, M_Ed: 60 },
+    // Met de hand: E_fi,d = 42 kNm; R_fi,d,0 = 76,35/0,85 = 89,83 kNm → μ_0 =
+    // 0,4676 → θ_a,cr = 595,4 °C. Kokervormig driezijdig: A_p/V = (2·171 + 180)/
+    // 4525 = 115,4 1/m → θ_a(60) = 466,8 °C → UC = 0,7841. Met een andere vloer
+    // (κ_1 = 1): μ_0 = 0,5501, θ_a,cr = 569,0 °C, UC = 0,8204.
+    handwerk: { κ_1: "0.85", R_fi_d_0: "89.83", μ_0: "0.4676", θ_a_cr: "595.4", A_p_V: "115.4", θ_a_t: "466.8", UC_θ: "0.7841" },
+  },
+  {
+    naam: "19 — kolom IPE 400 S355 klasse 4, gips 30 mm, N_Ed = 1500 kN: θ_a ≤ 350 °C en μ_0 ≤ 1",
+    invoer: { profiel: 27, staalsoort: 355, werking: 3, N_Ed: 1500, L_fi: 3, d_p: 30 },
+    // Met de hand: bij 20 °C ε = 0,8136; lijf c/t = 331/8,6 = 38,49 > 42ε = 34,17
+    // → λ̄_p = 38,49/(28,4·0,8136·2) = 0,8328; ρ = (0,8328 − 0,22)/0,8328² =
+    // 0,8835 → A_eff = 8446 − 0,1165·331·8,6 = 8114 mm². N_cr,z = π²·210000·
+    // 1318·10⁴/3000² = 3035 kN → λ̄_z = √(8114·355/3035·10³) = 0,9742; α = 0,5289;
+    // Φ = 1,232; χ_fi = 0,5034 → R_fi,d,0 = 0,5034·8114·355 = 1450 kN; E_fi,d =
+    // 1050 kN → μ_0 = 0,7241 ≤ 1 → θ_a,cr = 350 °C. A_p/V = 2·(400 + 180)/8446 =
+    // 137,3 1/m → θ_a(60) = 308,8 °C → UC = 308,8/350 = 0,8824.
+    handwerk: { A_eff: "81.14", λ_z: "0.9742", R_fi_d_0: "1450", μ_0: "0.7241", θ_a_cr: "350", θ_a_t: "308.8", UC_θ: "0.8824" },
+    oordeel: "voldoet",
+  },
+  {
+    naam: "20 — als set 19 met N_Ed = 2500 kN: μ_0 > 1, voldeed eerder met θ_a ≤ 350 °C",
+    invoer: { profiel: 27, staalsoort: 355, werking: 3, N_Ed: 2500, L_fi: 3, d_p: 30 },
+    // Met de hand: E_fi,d = 1750 kN → μ_0 = 1750/1450 = 1,207 > 1 → voldoet niet,
+    // UC = μ_0. Alleen op de temperatuur (308,8 °C ≤ 350 °C) voldeed hij.
+    handwerk: { μ_0: "1.207", θ_a_t: "308.8" },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "20b — als set 20, onbekleed en R30: μ_0 > 1 én θ_a,t > 350 °C, de grootste telt",
+    invoer: { profiel: 27, staalsoort: 355, werking: 3, N_Ed: 2500, L_fi: 3, bekleed: 0, eis_min: 30 },
+    // Met de hand: A_m = 2·400 + 4·180 − 2·8,6 = 1502,8 mm → A_m/V = 177,9 1/m;
+    // kastwaarde 2·(400 + 180)/8446 = 137,3 1/m → k_sh = 0,6947; θ_a(30) = 796,1 °C.
+    // UC = max(μ_0 = 1,207; 796,1/350 = 2,275) = 2,275, gelijk aan de UC van
+    // vóór de toets van μ_0.
+    handwerk: { μ_0: "1.207", k_sh: "0.6947", θ_a_t: "796.1", UC_θ: "2.275" },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "21 — kolom IPE 330 S235: bij brand klasse 4 (42,5ε), bij 20 °C klasse 3, dus A_eff = A",
+    invoer: { profiel: 25, werking: 3, N_Ed: 500, L_fi: 3 },
+    // Met de hand: lijf c/t = (330 − 23 − 36)/7,5 = 36,13 → bij brand /0,85 =
+    // 42,51ε > 42ε, klasse 4; bij 20 °C 36,13 ≤ 42 → ρ = 1, A_eff = 6261 mm².
+    // N_cr,z = π²·210000·788,1·10⁴/3000² = 1815 kN → λ̄_z = 0,9004; Φ = 1,198;
+    // χ_fi = 0,5030 → R_fi,d,0 = 740,0 kN; μ_0 = 350/740,0 = 0,4729. A_p/V =
+    // 2·(330 + 160)/6261 = 156,5 1/m → θ_a(60) = 531,7 °C → UC = 531,7/350 = 1,519.
+    handwerk: { A_eff: "62.61", λ_z: "0.9004", R_fi_d_0: "740.0", μ_0: "0.4729", θ_a_t: "531.7", UC_θ: "1.519" },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "22 — geen belasting (M_Ed = 0): niet te bepalen",
+    invoer: { M_Ed: 0 },
+    // Een leeg veld telt als 0. Eerder: μ_0 = 0,013, θ_a,cr = 1136 °C en "voldoet".
+    onvolledig: "vul de belasting bij brand in",
+  },
+  {
+    naam: "23 — trekstaaf met η_fi leeg (0): niet te bepalen",
+    invoer: { profiel: 1, werking: 4, η_fi: 0, bekleed: 0, eis_min: 30 },
+    onvolledig: "vul de belasting bij brand in",
+  },
+  {
+    naam: "24 — kolom zonder kniklengte (L_fi = 0): niet te bepalen",
+    invoer: { profiel: 16, werking: 3, L_fi: 0 },
+    // Eerder: N_cr,z = ∞, χ_fi = 1 en "voldoet".
+    onvolledig: "vul de kniklengte in",
+  },
+  {
+    naam: "25 — kip zonder kiplengte en zonder belasting: niet te bepalen",
+    invoer: { profiel: 24, werking: 2, M_Ed: 0, L_kip: 0 },
+    onvolledig: "vul de belasting bij brand, de kiplengte en C 1 in",
+  },
 ];
 
 let fouten = 0;
 for (const set of SETS) {
   const v = { ...STANDAARD, ...set.invoer };
+  for (const k of set.zonder ?? []) delete v[k];
   const selectValues = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)]));
   const got = reken(tpl, selectValues);
   const r = uitwerking(v);
+
+  // Zonder belasting of lengte: geen UC, wel een oordeel.
+  if (set.onvolledig !== undefined || r.onvolledig) {
+    const m = got.text.match(/Maatgevende UC niet te bepalen: (.*?) → het profiel voldoet niet/);
+    const ok = set.onvolledig !== undefined && r.onvolledig && m !== null && m[1].trim() === set.onvolledig;
+    if (!ok) fouten++;
+    console.log(`
+${set.naam}`);
+    console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${m ? `"${m[1].trim()}" → voldoet niet` : "een UC"}   verwacht "${set.onvolledig ?? "—"}"`);
+    continue;
+  }
+
   fouten += toets(`${set.naam} — narekening`, got, verwachtingen(r, v));
   if (set.handwerk) fouten += toets(`${set.naam} — handberekening`, got, set.handwerk);
 

@@ -17,7 +17,8 @@ import { spuwer } from "./spuwer";
 import { kruipfactor } from "./kruipfactor";
 import { boutberekening } from "./boutberekening";
 import { permanenteVuurlast } from "./permanenteVuurlast";
-// Visuele modules — invoer en parametrisch beeld, toetsing volgt nog.
+// Modules met parametrisch beeld en toetsing, nog tegen referentiebladen te
+// controleren (status in components/calc/projectTree.ts).
 import { lasberekening } from "./lasberekening";
 import { schoorverbinding } from "./schoorverbinding";
 import { stalenKolom } from "./stalenKolom";

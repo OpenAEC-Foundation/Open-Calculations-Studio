@@ -26,13 +26,17 @@ const STAAL = [{ v: 235, label: "S235" }, { v: 275, label: "S275" }, { v: 355, l
 const KWAL = [{ v: 46, label: "4.6" }, { v: 56, label: "5.6" }, { v: 88, label: "8.8" }, { v: 109, label: "10.9" }];
 const MAAT = [12, 16, 20, 24];
 const GAT: Record<number, number> = { 12: 13, 16: 18, 20: 22, 24: 26 };
+/** Buitendiameter van de sluitring (ISO 7089), zoals het blad. */
+const RING: Record<number, number> = { 12: 24, 16: 30, 20: 37, 24: 44 };
 
 // Een L 50×50×5 S235 met twee bouten M16 – 8.8, alleen trek. Dezelfde waarden
-// als het voorbeeld in scripts/check-schoor.mjs.
+// als het voorbeeld in scripts/check-schoor.mjs. e_2 = 22 (28 mm van de hiel):
+// tabel 3.3 vraagt ten minste 21,6 mm, en de sluitring (Ø30) blijft vrij van de
+// afronding: 50 − 22 − 15 = 13 ≥ t + r_1 = 12 mm.
 const DEFAULTS: Record<string, number> = {
   hoekprofiel: 3, uitvoering: 1, staalsoort: 235, boutkwaliteit: 88, boutmaat: 16,
   krachtsoort: 1, stuikgrens: 1,
-  n_bouten: 2, t_schets: 8, hoek: 35, e_1: 25, p_1: 55, e_2: 25, l_0: 50,
+  n_bouten: 2, t_schets: 8, hoek: 35, e_1: 25, p_1: 55, e_2: 22, l_0: 50,
   b_schets: 170, h_schets: 120, a_las: 5, F_Ed: 40,
 };
 
@@ -97,6 +101,10 @@ export default function SchoorDesigner() {
   // Het gat moet binnen het vlakke deel van het been liggen, net als in het blad: e₂ + d₀/2 ≤ h − t.
   const e2max = prof.h - prof.t - d0 / 2;
   const gatBuiten = d("e_2") > e2max + 0.001;
+  // De sluitring naast het uitstaande been, vrij van de afronding: h − e₂ − d_s/2 ≥ t + r₁.
+  const ring = RING[M] ?? 2 * M;
+  const e2ring = prof.h - ring / 2 - prof.t - prof.r1;
+  const ringOp = !gatBuiten && d("e_2") > e2ring + 0.001;
 
   // ── layout ────────────────────────────────────────────────────────────────
   const capH = 24;
@@ -228,6 +236,9 @@ export default function SchoorDesigner() {
           )}
           {gatBuiten && (
             <span className="gd-note" style={{ color: "#b91c1c" }}>Het gat raakt het uitstaande been: e<sub>2</sub> ≤ {fmt(e2max)} mm nodig bij {prof.naam} en M{M}.</span>
+          )}
+          {ringOp && (
+            <span className="gd-note" style={{ color: "#b91c1c" }}>De sluitring (Ø{fmt(ring)}) ligt op de afronding van het hoekstaal: e<sub>2</sub> ≤ {fmt(e2ring, 1)} mm nodig bij {prof.naam} en M{M}.</span>
           )}
           {buiten && (
             <span className="gd-note" style={{ color: "#b91c1c" }}>De buitenste bout valt buiten de schetsplaat: vergroot de plaat of verklein l<sub>0</sub>, e<sub>1</sub> of p<sub>1</sub>.</span>

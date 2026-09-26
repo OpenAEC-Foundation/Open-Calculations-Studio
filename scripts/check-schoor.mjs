@@ -10,12 +10,14 @@
  *      hoekstaal (6.6) en (3.11) tot (3.13) met tabel 3.8, blokschuif in het
  *      been (3.10), de bouten volgens tabel 3.4 met §3.6.1(10), §3.8 en de
  *      boutgroep van §3.7(1), de schetsplaat op trek over de spreiding onder
- *      30° ((6.6) en (6.7)), blokschuif in de plaat ((3.9) of (3.10)), knik
+ *      30°, bij bout 1 begrensd door alle plaatranden ((6.6) en (6.7)),
+ *      blokschuif in de plaat ((3.9) of (3.10)), knik
  *      van de plaat bij druk (§6.3.1, kromme c), de hoeklassen (4.3), (4.4),
  *      (4.9) en de schuif in de plaat langs de las (6.18), met de afstanden
  *      van tabel 3.3 (ook de kortste afstand tot een schuine vrije rand) en
  *      de eis dat het eind van het hoekstaal niet voorbij een gelaste rand
- *      steekt en dat het gat binnen het vlakke deel van het been ligt.
+ *      steekt, dat het gat binnen het vlakke deel van het been ligt en dat
+ *      de sluitring vrij blijft van de afronding r_1 van het hoekstaal.
  *   2. Voor enkele sets de getallen van een handberekening, met de
  *      tussenstappen in het commentaar. Set 1 is het voorbeeld dat ook de
  *      startwaarden van het beeld zijn.
@@ -45,16 +47,19 @@ const tpl = laadTemplate("schoorverbinding.ts");
 const STANDAARD = {
   hoekprofiel: 3, uitvoering: 1, staalsoort: 235, boutkwaliteit: 88, boutmaat: 16,
   krachtsoort: 1, stuikgrens: 1,
-  n_bouten: 2, t_schets: 8, hoek: 35, e_1: 25, p_1: 55, e_2: 25, l_0: 50,
+  n_bouten: 2, t_schets: 8, hoek: 35, e_1: 25, p_1: 55, e_2: 22, l_0: 50,
   b_schets: 170, h_schets: 120, a_las: 5, F_Ed: 40,
 };
 const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 1 };
 
 /** Gelijkzijdig hoekstaal volgens EN 10056-1: id → beenlengte h, dikte t (mm), A (mm²). */
 const HOEK = {
-  1: { h: 40, t: 4, A: 308 }, 2: { h: 45, t: 5, A: 430 }, 3: { h: 50, t: 5, A: 480 }, 4: { h: 60, t: 6, A: 691 },
-  5: { h: 70, t: 7, A: 940 }, 6: { h: 80, t: 8, A: 1230 }, 7: { h: 90, t: 9, A: 1550 }, 8: { h: 100, t: 10, A: 1920 },
+  1: { h: 40, t: 4, r1: 6, A: 308 }, 2: { h: 45, t: 5, r1: 7, A: 430 }, 3: { h: 50, t: 5, r1: 7, A: 480 },
+  4: { h: 60, t: 6, r1: 8, A: 691 }, 5: { h: 70, t: 7, r1: 9, A: 940 }, 6: { h: 80, t: 8, r1: 10, A: 1230 },
+  7: { h: 90, t: 9, r1: 11, A: 1550 }, 8: { h: 100, t: 10, r1: 12, A: 1920 },
 };
+/** Buitendiameter van de sluitring, ISO 7089. */
+const RING = { 12: 24, 16: 30, 20: 37, 24: 44 };
 /** f_u (tabel 3.1, A1:2014), f_ub (EN 1993-1-8 tabel 3.1), gat (EN 1090-2), A_s (ISO 898-1), β_w (tabel 4.1). */
 const FU = { 235: 360, 275: 430, 355: 490 };
 const FUB = { 46: 400, 56: 500, 88: 800, 109: 1000 };
@@ -66,7 +71,7 @@ const BW = { 235: 0.8, 275: 0.85, 355: 0.9 };
 function uitwerking(invoer) {
   // Een gewist veld leest de rekenkern als 0.
   const v = Object.fromEntries(Object.entries(invoer).map(([k, x]) => [k, x === "" ? 0 : Number(x)]));
-  const { h, t, A } = HOEK[v.hoekprofiel];
+  const { h, t, r1, A } = HOEK[v.hoekprofiel];
   const fy = v.staalsoort, fu = FU[fy], fub = FUB[v.boutkwaliteit];
   const av = v.boutkwaliteit === 109 ? 0.5 : 0.6;
   const d = v.boutmaat, d0 = GAT[d], As = AS[d];
@@ -120,6 +125,8 @@ function uitwerking(invoer) {
 
   // Het gat in het vlakke deel van het been: niet in het uitstaande been.
   const gatOk = v.e_2 + d0 / 2 <= h - t + 0.001;
+  // De sluitring naast het uitstaande been: vrij van de afronding r_1.
+  const ringOk = h - v.e_2 - RING[d] / 2 + 0.001 >= t + r1;
 
   // Bouten: tabel 3.4, §3.6.1(10), §3.7(1); §3.8 bij L_j > 15·d.
   const Lj = (n - 1) * v.p_1;
@@ -150,11 +157,16 @@ function uitwerking(invoer) {
   }
   const UCb = F / Fgroep;
 
-  // Schetsplaat op trek over de spreiding onder 30°, bij bout 1 begrensd door de vrije randen.
+  // Schetsplaat op trek over de spreiding onder 30°, bij bout 1 begrensd door
+  // alle randen van de plaat: loodrecht op de as naar links-boven tot de
+  // bovenrand of de gelaste zijrand, naar rechts-onder tot de rechterrand of
+  // de gelaste onderrand, wat het eerst komt.
   let bw = null, beff = null, Np = null, UCp = 0;
   if (n >= 2) {
     bw = 2 * (n - 1) * v.p_1 * Math.tan(Math.PI / 6);
-    const [r1, r2] = vrijeRand(s1);
+    const x1 = s1 * c, y1 = s1 * s;
+    const r1 = Math.min((v.h_schets - y1) / c, x1 / s);
+    const r2 = Math.min((v.b_schets - x1) / s, y1 / c);
     beff = Math.min(bw / 2, r1) + Math.min(bw / 2, r2);
     Np = Math.min(beff * tp * fy, (0.9 * (beff - d0) * tp * fu) / gM2);
     UCp = F / Np;
@@ -202,7 +214,7 @@ function uitwerking(invoer) {
   const geoOk = v.hoek > 0 && v.hoek < 90 && e1p > 0 && gatOk;
   const UCmax = Math.max(UCt, UCbs, UCb, UCp, UCbsp, UCc, UCw, UCvp);
   return {
-    n, nL, cap, vrij, erand, l0min, okL, gatOk, bLf, Npl, Anet, beta, Nu, UCt, Ant, Anv, Veff2, UCbs, e1p, e2p, Fv, k1L, k1p, ab1, abi, abp,
+    n, nL, cap, vrij, erand, l0min, okL, gatOk, ringOk, bLf, Npl, Anet, beta, Nu, UCt, Ant, Anv, Veff2, UCbs, e1p, e2p, Fv, k1L, k1p, ab1, abi, abp,
     FbL1, FbLi, Fbpn, Fbpi, Fcap, Fb1, Fbn, Fbm, Fgroep, UCb, bw, beff, Np, UCp, Anvp, Antp, Veffp, UCbsp,
     drukOk, lam, chi, Nb, UCc, fvwd, bLw, FwRd, FwEdb, FwEdh, UCw, UCvp, lasOk, tekort, invoerOk, geoOk, UCmax,
   };
@@ -246,24 +258,25 @@ function verwachtingen(r, v) {
 
 const SETS = [
   {
-    naam: "1 — standaard: L 50×50×5 S235, twee bouten M16 – 8.8, alleen trek (startwaarden van het beeld)",
+    naam: "1 — standaard: L 50×50×5 S235, twee bouten M16 – 8.8, e_2 = 22, alleen trek (startwaarden van het beeld)",
     invoer: {},
-    // Met de hand. A = 480 mm², t = 5, d_0 = 18, f_y = 235, f_u = 360, f_ub = 800 N/mm².
+    // Met de hand. A = 480 mm², t = 5, r_1 = 7, d_0 = 18, f_y = 235, f_u = 360, f_ub = 800 N/mm².
+    // Sluitring Ø30: 50 − 22 − 15 = 13 ≥ t + r_1 = 12 mm, vrij van de afronding.
     // Trek: N_pl,Rd = 480·235 = 112,8 kN. A_net = 480 − 18·5 = 390 mm²; p_1/d_0 = 3,056 →
     //   β_2 = 0,4 + 0,3·0,556/2,5 = 0,4667; N_u,Rd = 0,4667·390·360/1,25 = 52,42 kN → UC 0,7631.
-    // Blokschuif (3.10): A_nt = (25 − 9)·5 = 80, A_nv = (25 + 55 − 1,5·18)·5 = 265 mm²;
-    //   V_eff,2,Rd = 0,5·360·80/1,25 + 235·265/√3 = 11,52 + 35,95 = 47,47 kN → UC 0,8426.
-    // Bouten: F_v,Rd = 0,6·800·157/1,25 = 60,29 kN. k_1 = 2,8·25/18 − 1,7 = 2,189 (één rij);
+    // Blokschuif (3.10): A_nt = (22 − 9)·5 = 65, A_nv = (25 + 55 − 1,5·18)·5 = 265 mm²;
+    //   V_eff,2,Rd = 0,5·360·65/1,25 + 235·265/√3 = 9,36 + 35,95 = 45,31 kN → UC 0,8827.
+    // Bouten: F_v,Rd = 0,6·800·157/1,25 = 60,29 kN. k_1 = 2,8·22/18 − 1,7 = 1,722 (één rij);
     //   α_b = 25/54 = 0,4630 (eindbout), 55/54 − 0,25 = 0,7685 (binnenste);
-    //   been: 2,189·0,4630·360·16·5/1,25 = 23,35 kN en 2,189·0,7685·23 040 = 38,76 kN.
+    //   been: 1,722·0,4630·360·16·5/1,25 = 18,37 kN en 1,722·0,7685·23 040 = 30,49 kN.
     //   Plaat: bout 1 op 50 + 25 = 75, bout 2 op 130 mm van het werkpunt; de as verlaat de plaat
     //   bij min(170/cos 35°; 120/sin 35°) = min(207,53; 209,21) → e_1,p = 207,53 − 130 = 77,53 mm.
     //   Loodrecht op de as vanaf bout 2: bovenrand op (120 − 74,56)/cos 35° = 55,47 mm (de linkerrand
     //   ligt op 185,7 mm); aan de andere kant eerst de gelaste onderrand. Loodrecht op de randen zelf:
-    //   e_rand = min(120 − 74,565; 170 − 106,49) = 45,435 mm. l_0,min = max(25/tan 35°; 25·tan 35°) = 35,70 mm. k_1,p = min(6,93; 2,5) = 2,5,
+    //   e_rand = min(120 − 74,565; 170 − 106,49) = 45,435 mm. l_0,min = max(22/tan 35°; 28·tan 35°) = 31,42 mm. k_1,p = min(6,93; 2,5) = 2,5,
     //   α_b,p = min(77,53/54; 1) = 1 → 2,5·360·16·8/1,25 = 92,16 kN; binnenste: 2,5·0,7685·36 864 = 70,83 kN.
-    //   §3.6.1(10): 1,5·360·16·5/1,25 = 34,56 kN. Bout 1: min(23,35; 70,83; 34,56) = 23,35;
-    //   bout 2: min(38,76; 92,16; 34,56) = 34,56. F_v,Rd ≥ beide → groep 57,91 kN → UC 0,6907.
+    //   §3.6.1(10): 1,5·360·16·5/1,25 = 34,56 kN. Bout 1: min(18,37; 70,83; 34,56) = 18,37;
+    //   bout 2: min(30,49; 92,16; 34,56) = 30,49. F_v,Rd ≥ beide → groep 48,87 kN → UC 0,8186.
     // Plaat: b_w = 2·55·tan 30° = 63,51 mm (vrije randen verder weg); N = min(63,51·8·235 = 119,4;
     //   0,9·45,51·8·360/1,25 = 94,37) = 94,37 kN → UC 0,4239.
     //   Blokschuif: A_nv,p = (77,532 + 55 − 27)·8 = 844,3 mm², A_nt,p = (55,47 − 9)·8 = 371,7 mm²;
@@ -271,34 +284,47 @@ const SETS = [
     // Las: f_vw,d = 360/(√3·0,8·1,25) = 207,8 N/mm², F_w,Rd = 1039 N/mm. Onderrand 40·cos 35°/(2·160)
     //   = 102,4 N/mm, zijrand 40·sin 35°/(2·110) = 104,3 N/mm → UC 0,100.
     //   Schuif in de plaat: 32,77 kN/170 mm = 192,7 N/mm tegen 8·235/√3 = 1085 N/mm → UC 0,1776.
-    // Maatgevend de blokschuif in het been: UC 0,8426, voldoet.
+    // Maatgevend de blokschuif in het been: UC 0,8827, voldoet.
     handwerk: {
       N_pl_Rd: "112.8", A_net: "390", β_2: "0.4667", N_u_Rd: "52.42", UC_t: "0.7631",
-      A_nt: "80", A_nv: "265", V_eff_2_Rd: "47.47", UC_bs: "0.8426",
-      F_v_Rd: "60.29", e_1_p: "77.53", e_2_p: "55.47", e_rand: "45.44", k_1_L: "2.189", k_1_p: "2.5", α_b_1: "0.4630", α_b_i: "0.7685",
-      F_b_L_1: "23.35", F_b_L_i: "38.76", F_b_p_n: "92.16", F_b_p_i: "70.83", F_b_cap: "34.56",
-      F_b_1: "23.35", F_b_n: "34.56", F_Rd_groep: "57.91", UC_b: "0.6907",
+      A_nt: "65", A_nv: "265", V_eff_2_Rd: "45.31", UC_bs: "0.8827",
+      F_v_Rd: "60.29", e_1_p: "77.53", e_2_p: "55.47", e_rand: "45.44", k_1_L: "1.722", k_1_p: "2.5", α_b_1: "0.4630", α_b_i: "0.7685",
+      F_b_L_1: "18.37", F_b_L_i: "30.49", F_b_p_n: "92.16", F_b_p_i: "70.83", F_b_cap: "34.56",
+      F_b_1: "18.37", F_b_n: "30.49", F_Rd_groep: "48.87", UC_b: "0.8186",
       b_w: "63.51", N_p_Rd: "94.37", UC_p: "0.4239", A_nv_p: "844.3", A_nt_p: "371.7", V_eff_p_Rd: "168.1", UC_bs_p: "0.2380",
       f_vw_d: "207.8", F_w_Rd: "1039", F_w_Ed_b: "102.4", F_w_Ed_h: "104.3", UC_w: "0.100", UC_v_p: "0.1776",
-      UC_max: "0.8426",
+      UC_max: "0.8827",
     },
   },
   {
-    naam: "1b — idem zonder de begrenzing van §3.6.1(10) voor twee bouten",
-    invoer: { stuikgrens: 0 },
-    // Bout 2: min(38,76; 92,16) = 38,76 kN; groep 23,35 + 38,76 = 62,11 kN → UC 0,644.
-    handwerk: { F_b_n: "38.76", F_Rd_groep: "62.11", UC_b: "0.644", UC_max: "0.8426" },
+    naam: "1b — p_1 = 70: de begrenzing van §3.6.1(10) werkt op bout 2",
+    invoer: { p_1: 70 },
+    // α_b,i = min(70/54 − 0,25; 1) = 1 → been 1,722·23 040 = 39,68 kN, begrensd op 34,56 kN;
+    // plaat: e_1,p = 207,53 − 145 = 62,53 → α_b,p = 1, 92,16 kN. Groep 18,37 + 34,56 = 52,93 kN → UC 0,7557.
+    // Trek: β_2 = 0,4 + 0,3·(3,889 − 2,5)/2,5 = 0,5667 → 0,5667·390·288 = 63,65 kN → UC 0,6285.
+    // Blokschuif: A_nv = (25 + 70 − 27)·5 = 340 mm² → 9,36 + 46,13 = 55,49 kN → UC 0,7208.
+    handwerk: {
+      α_b_i: "1", F_b_L_i: "39.68", F_b_n: "34.56", F_Rd_groep: "52.93", UC_b: "0.7557",
+      β_2: "0.5667", N_u_Rd: "63.65", A_nv: "340", V_eff_2_Rd: "55.49", UC_max: "0.7557",
+    },
   },
   {
-    naam: "2a — grensgeval: F_Ed 47,47 kN, net onder V_eff,2,Rd = 47,475 kN",
-    invoer: { F_Ed: 47.47 },
-    // UC_bs = 47,47/47,4747 = 0,9999: voldoet.
+    naam: "1c — idem zonder de begrenzing van §3.6.1(10) voor twee bouten",
+    invoer: { p_1: 70, stuikgrens: 0 },
+    // Bout 2: min(39,68; 92,16) = 39,68 kN; groep 18,37 + 39,68 = 58,05 kN → UC 0,6891; maatgevend
+    // wordt de blokschuif in het been, 0,7208.
+    handwerk: { F_b_n: "39.68", F_Rd_groep: "58.05", UC_b: "0.6891", UC_max: "0.7208" },
+  },
+  {
+    naam: "2a — grensgeval: F_Ed 45,31 kN, net onder V_eff,2,Rd = 45,315 kN",
+    invoer: { F_Ed: 45.31 },
+    // UC_bs = 45,31/45,3149 = 0,9999: voldoet.
     handwerk: { UC_bs: "0.9999" },
   },
   {
-    naam: "2b — grensgeval: F_Ed 47,48 kN, net boven V_eff,2,Rd",
-    invoer: { F_Ed: 47.48 },
-    // UC_bs = 47,48/47,4747 = 1,0001: voldoet niet.
+    naam: "2b — grensgeval: F_Ed 45,32 kN, net boven V_eff,2,Rd",
+    invoer: { F_Ed: 45.32 },
+    // UC_bs = 45,32/45,3149 = 1,0001: voldoet niet.
     handwerk: { UC_bs: "1.000" },
   },
   {
@@ -314,15 +340,15 @@ const SETS = [
     invoer: { e_2: 21.59 },
   },
   {
-    naam: "4 — één bout (3.11), §3.6.1(10) vanzelf, e_1 40",
-    invoer: { n_bouten: 1, e_1: 40, F_Ed: 30 },
-    // N_u,Rd = 2·(25 − 9)·5·360/1,25 = 46,08 kN. Blokschuif: A_nv = (40 − 9)·5 = 155 mm² →
-    // 11,52 + 235·155/√3 = 11,52 + 21,03 = 32,55 kN → UC 0,9217.
-    // Stuik been: α_b = 40/54 = 0,7407 → 2,189·0,7407·23 040 = 37,36 kN, begrensd op 34,56 kN;
-    // plaat: e_1,p = 207,53 − 90 = 117,5 mm → 92,16 kN. Groep = min(60,29; 34,56) = 34,56 kN → UC 0,8681.
+    naam: "4 — één bout (3.11), §3.6.1(10) vanzelf, e_1 50",
+    invoer: { n_bouten: 1, e_1: 50, F_Ed: 30 },
+    // N_u,Rd = 2·(22 − 9)·5·360/1,25 = 37,44 kN → UC 0,8013. Blokschuif: A_nv = (50 − 9)·5 = 205 mm² →
+    // 9,36 + 235·205/√3 = 9,36 + 27,81 = 37,17 kN → UC 0,8070.
+    // Stuik been: α_b = 50/54 = 0,9259 → 1,722·0,9259·23 040 = 36,74 kN, begrensd op 34,56 kN;
+    // plaat: e_1,p = 207,53 − 100 = 107,5 mm → 92,16 kN. Groep = min(60,29; 34,56) = 34,56 kN → UC 0,8681.
     handwerk: {
-      N_u_Rd: "46.08", A_nv: "155", V_eff_2_Rd: "32.55", UC_bs: "0.9217", α_b_1: "0.7407",
-      F_b_L_1: "37.36", F_b_cap: "34.56", e_1_p: "117.5", F_b_1: "34.56", F_Rd_groep: "34.56", UC_b: "0.8681",
+      N_u_Rd: "37.44", UC_t: "0.8013", A_nv: "205", V_eff_2_Rd: "37.17", UC_bs: "0.8070", α_b_1: "0.9259",
+      F_b_L_1: "36.74", F_b_cap: "34.56", e_1_p: "107.5", F_b_1: "34.56", F_Rd_groep: "34.56", UC_b: "0.8681",
     },
   },
   {
@@ -339,12 +365,15 @@ const SETS = [
     // Trek: β_3 = 0,5 + 0,2·(3,182 − 2,5)/2,5 = 0,5545; A_net = 1230 − 22·8 = 1054 mm² →
     //   N_u,Rd = 2·0,5545·1054·360/1,25 = 336,7 kN.
     // Blokschuif been: A_nt = (35 − 11)·8 = 192, A_nv = (35 + 140 − 55)·8 = 960 mm² →
-    //   2·(27,65 + 130,25) = 315,8 kN. Plaat: b_w = 4·70·tan 30° = 161,7 mm →
-    //   min(455,9; 0,9·139,7·12·288 = 434,4) = 434,4 kN. Las: zijrand 200·sin 40°/(2·250) = 257,1 N/mm → UC 0,2474.
+    //   2·(27,65 + 130,25) = 315,8 kN. Plaat: b_w = 4·70·tan 30° = 161,7 mm, de helft 80,83 mm. Bout 1 op
+    //   95 mm (x = 72,77, y = 61,06): naar links-boven eerst de gelaste zijrand op 72,77/sin 40° = 113,2 mm,
+    //   naar rechts-onder de gelaste onderrand op 61,06/cos 40° = 79,72 mm → b_eff = 80,83 + 79,72 = 160,5 mm;
+    //   min(452,8; 0,9·138,5·12·288 = 430,9) = 430,9 kN → UC 0,4641 (over de hele b_w: 434,4 kN).
+    //   Las: zijrand 200·sin 40°/(2·250) = 257,1 N/mm → UC 0,2474.
     handwerk: {
       F_v_Rd: "94.08", F_b_L_1: "122.2", F_b_L_i: "186.8", F_b_p_n: "172.8", F_b_p_i: "140.1",
       F_Rd_groep: "282.2", UC_b: "0.7086", β_3: "0.5545", N_u_Rd: "336.7", V_eff_2_Rd: "315.8",
-      b_w: "161.7", N_p_Rd: "434.4", F_w_Ed_h: "257.1", UC_w: "0.2474", UC_max: "0.7086",
+      b_w: "161.7", b_eff: "160.5", N_p_Rd: "430.9", UC_p: "0.4641", F_w_Ed_h: "257.1", UC_w: "0.2474", UC_max: "0.7086",
     },
   },
   {
@@ -370,20 +399,23 @@ const SETS = [
   { naam: "9 — las a 2,5 < 3 mm (§4.5.2(2))", invoer: { a_las: 2.5 } },
   {
     naam: "10 — las met l_eff < 6·a (§4.5.1(2)): L 40×40×4 met M12, hoek 15°, zijrand 55 mm, a 8",
-    // l_0,min = 20/tan 15° = 74,64 mm → l_0 = 75. Zijrand: 55 − 16 = 39 < 48 mm. De afstanden passen:
+    // e_2 = 17: sluitring Ø24 op 40 − 17 − 12 = 11 ≥ 4 + 6 = 10 mm. l_0,min = 17/tan 15° = 63,44 ≤ 75 mm.
+    // Zijrand: 55 − 16 = 39 < 48 mm. De afstanden passen:
     // buitenste bout op 130 mm, 55 − 33,65 = 21,35 mm onder de bovenrand (≥ 1,2·13 = 15,6).
-    invoer: { hoekprofiel: 1, boutmaat: 12, e_1: 20, p_1: 35, e_2: 20, l_0: 75, hoek: 15, h_schets: 55, a_las: 8 },
+    invoer: { hoekprofiel: 1, boutmaat: 12, e_1: 20, p_1: 35, e_2: 17, l_0: 75, hoek: 15, h_schets: 55, a_las: 8 },
     handwerk: { e_rand: "21.35" },
   },
   { naam: "11 — schetsplaat 100×80: de buitenste bout valt buiten de plaat", invoer: { b_schets: 100, h_schets: 80 } },
   {
-    naam: "12 — vlakke schoor (15°), vier bouten: de spreiding bij bout 1 raakt de bovenrand",
+    naam: "12 — vlakke schoor (15°), vier bouten: de spreiding bij bout 1 raakt de bovenrand en de gelaste onderrand",
     invoer: { hoek: 15, n_bouten: 4, l_0: 100, b_schets: 330, h_schets: 105, t_schets: 10 },
     // Bout 1 op 125 mm: y = 32,35 → bovenrand op (105 − 32,35)/cos 15° = 75,21 mm, de halve
-    // spreiding is 3·55·tan 30° = 95,26 → b_eff = 75,21 + 95,26 = 170,5 mm (onder: eerst de gelaste rand).
+    // spreiding is 3·55·tan 30° = 95,26 mm. Onder komt eerst de gelaste onderrand, op 32,35/cos 15° =
+    // 33,49 mm → b_eff = 75,21 + 33,49 = 108,7 mm (tot de gelaste rand begrensd, veilige kant; alleen
+    // tot de vrije randen zou het 170,5 mm zijn).
     // Buitenste bout op 290 mm: e_2,p = (105 − 75,06)/cos 15° = 31,00 mm; e_1,p = 341,6 − 290 = 51,64 mm.
-    // e_rand = min(105 − 75,06; 330 − 280,12) = 29,94 mm. l_0,min = 25/tan 15° = 93,30 ≤ 100 mm.
-    handwerk: { b_w: "190.5", b_eff: "170.5", e_2_p: "31.00", e_1_p: "51.64", e_rand: "29.94" },
+    // e_rand = min(105 − 75,06; 330 − 280,12) = 29,94 mm. l_0,min = 22/tan 15° = 82,10 ≤ 100 mm.
+    handwerk: { b_w: "190.5", b_eff: "108.7", e_2_p: "31.00", e_1_p: "51.64", e_rand: "29.94" },
   },
   {
     naam: "13 — L 100×100×10 S355, vier bouten M24 – 10.9, zonder begrenzing",
@@ -395,18 +427,18 @@ const SETS = [
   {
     naam: "14 — S275, drie bouten M12 – 5.6 met begrenzing, trek en druk",
     invoer: {
-      hoekprofiel: 1, staalsoort: 275, boutkwaliteit: 56, boutmaat: 12, n_bouten: 3, e_1: 20, p_1: 35, e_2: 20,
+      hoekprofiel: 1, staalsoort: 275, boutkwaliteit: 56, boutmaat: 12, n_bouten: 3, e_1: 20, p_1: 35, e_2: 17,
       l_0: 40, t_schets: 6, b_schets: 200, h_schets: 160, hoek: 45, a_las: 4, F_Ed: 25, krachtsoort: 2,
     },
   },
   // Het eind van het hoekstaal tegen de gelaste randen: l_0,min = max(e_2/tan θ; (h − e_2)·tan θ).
   {
-    naam: "16a — grensgeval l_0 35 mm < l_0,min = 25/tan 35° = 35,70 mm: de vrije rand van het been zakt door de onderrand",
-    invoer: { l_0: 35 },
+    naam: "16a — grensgeval l_0 31 mm < l_0,min = 22/tan 35° = 31,42 mm: de vrije rand van het been zakt door de onderrand",
+    invoer: { l_0: 31 },
   },
-  { naam: "16b — grensgeval l_0 36 mm ≥ l_0,min: past", invoer: { l_0: 36 } },
+  { naam: "16b — grensgeval l_0 32 mm ≥ l_0,min: past", invoer: { l_0: 32 } },
   {
-    naam: "16c — hoek 80°, plaat 100×260: de hiel steekt door de gelaste zijrand (l_0,min = 25·tan 80° = 141,8 mm)",
+    naam: "16c — hoek 80°, plaat 100×260: de hiel steekt door de gelaste zijrand (l_0,min = 28·tan 80° = 158,8 mm)",
     invoer: { hoek: 80, b_schets: 100, h_schets: 260 },
   },
   { naam: "16d — l_0 gewist: het hoekstaal begint in het werkpunt en steekt door de onderrand", invoer: { l_0: "" }, alleenOordeel: true },
@@ -429,21 +461,42 @@ const SETS = [
     // binnenste α_b = min(0,0282 + 1; 1) = 1 → 51,84 kN. Plaat: α_b = 1 → 69,12 kN.
     // F_v,Rd < de stuik → groep 6·15,71 = 94,28 kN → UC 0,6364 (zonder §3.8: 97,11 kN, UC 0,6179).
     // Trek: β_3 = 0,5 + 0,2·(3,846 − 2,5)/2,5 = 0,6077; A_net = 691 − 78 = 613 mm² → 107,28 kN → UC 0,5593.
+    // Plaat: b_w = 2·5·50·tan 30° = 288,7 mm, maar bout 1 (65 mm, x = 53,24, y = 37,28) ligt 53,24/sin 35°
+    // = 92,83 mm van de gelaste zijrand en 37,28/cos 35° = 45,51 mm van de gelaste onderrand →
+    // b_eff = 138,3 mm; min(138,3·8·235 = 260,0; 0,9·125,3·8·288 = 259,9) = 259,9 kN → UC 0,2308.
     handwerk: {
       β_Lf: "0.9708", F_v_Rd: "15.71", F_b_L_1: "33.23", F_b_L_i: "51.84", F_b_p_n: "69.12",
       F_Rd_groep: "94.28", UC_b: "0.6364", β_3: "0.6077", N_u_Rd: "107.3", UC_t: "0.5593", UC_max: "0.6364",
+      b_w: "288.7", b_eff: "138.3", N_p_Rd: "259.9", UC_p: "0.2308",
     },
   },
   // Het gat moet binnen het vlakke deel van het been liggen: e_2 + d_0/2 ≤ h − t. L 50×50×5 met M20:
   // h − t = 45 mm, d_0/2 = 11 mm → e_2 ≤ 34 mm.
   {
-    naam: "19a — grensgeval: L 50×50×5 met M20, e_2 34 mm: het gat raakt het uitstaande been net niet",
+    naam: "19a — grensgeval: L 50×50×5 met M20, e_2 34 mm: het gat raakt het uitstaande been net niet, maar de sluitring (Ø37) ligt op de afronding",
     invoer: { boutmaat: 20, e_1: 30, p_1: 60, e_2: 34, l_0: 60 },
     // A_net = 480 − 22·5 = 370 mm²; β_2 = 0,4 + 0,3·(2,727 − 2,5)/2,5 = 0,4273 → N_u,Rd = 45,53 kN → UC 0,8785.
     handwerk: { A_net: "370", β_2: "0.4273", N_u_Rd: "45.53", UC_t: "0.8785", UC_max: "0.8785" },
   },
   { naam: "19b — L 50×50×5 met M20, e_2 34,5 mm: het gat snijdt het uitstaande been", invoer: { boutmaat: 20, e_1: 30, p_1: 60, e_2: 34.5, l_0: 60 } },
   { naam: "19c — L 40×40×4 met M24, e_2 32 mm: het gat steekt buiten de hiel", invoer: { hoekprofiel: 1, boutmaat: 24, e_1: 35, p_1: 70, e_2: 32, l_0: 60, b_schets: 300, h_schets: 250, F_Ed: 20 } },
+  // De sluitring naast het uitstaande been, vrij van de afronding: h − e_2 − d_s/2 ≥ t + r_1. L 50×50×5
+  // met M16 (Ø30): 50 − e_2 − 15 ≥ 12 → e_2 ≤ 23 mm; tabel 3.3 vraagt e_2 ≥ 21,6 mm.
+  {
+    naam: "19d — grensgeval sluitring: L 50×50×5 met M16, e_2 23 mm: 50 − 23 − 15 = 12 mm = t + r_1",
+    invoer: { e_2: 23 },
+    tekst: /Sluitring Ø30 mm: h − e 2 − d s \/2 = 12 mm ≥ t \+ r 1 = 12 mm → vrij van de afronding/,
+  },
+  {
+    naam: "19e — grensgeval sluitring: e_2 23,1 mm, de sluitring ligt op de afronding",
+    invoer: { e_2: 23.1 },
+    tekst: /De sluitring \(Ø30 mm\) ligt op de afronding van het hoekstaal/,
+  },
+  {
+    naam: "20 — aantal bouten 2,4: het blad rekent met 2 en zegt dat",
+    invoer: { n_bouten: 2.4 },
+    tekst: /Het aantal bouten is geen geheel getal: gerekend met n = 2\./,
+  },
   // Gewiste velden ('') leest de kern als 0; een negatieve kracht is geen grootte. Het oordeel
   // moet dan "niet te bepalen … voldoet niet" zijn, nooit "voldoet".
   { naam: "15a — e_2 gewist", invoer: { e_2: "" }, alleenOordeel: true },
@@ -466,6 +519,11 @@ for (const set of SETS) {
     fouten += toets(`${set.naam} — narekening`, got, { ...verwachtingen(r, v), UC_max: ruim(r.UCmax) }, {}, afgeleid);
   } else console.log(`\n${set.naam}`);
   if (set.handwerk) fouten += toets(`${set.naam} — handberekening`, got, set.handwerk, {}, afgeleid);
+  if (set.tekst) {
+    const gezien = set.tekst.test(got.text);
+    if (!gezien) fouten++;
+    console.log(`  ${gezien ? "OK    " : "FOUT  "} tekst      ${set.tekst.source}`);
+  }
 
   // Het oordeel in de slotzin, en wat de rapportkop daaruit leest (bladResultaat.leesResultaat).
   let ok;
@@ -476,6 +534,7 @@ for (const set of SETS) {
   if (!r.invoerOk) gemeld(/niet te bepalen/, "invoer ontbreekt");
   else if (!r.geoOk) gemeld(/valt buiten de schetsplaat/, "boutrij buiten de plaat of gat buiten het been");
   else if (!r.okL) gemeld(/steekt voorbij een gelaste rand/, "hoekstaal steekt voorbij een gelaste rand");
+  else if (!r.ringOk) gemeld(/sluitring ligt op de afronding van het hoekstaal/, "sluitring op de afronding van het hoekstaal");
   else if (r.tekort) gemeld(/buiten tabel 3\.3/, `${r.tekort} afstand(en) buiten tabel 3.3`);
   else if (!r.lasOk) gemeld(/de las voldoet niet aan §4\.5\.1\(2\) of §4\.5\.2\(2\)/, "las te klein of te kort");
   else if (!r.drukOk) gemeld(/op druk niet getoetst/, "druk met één bout");
@@ -487,7 +546,7 @@ for (const set of SETS) {
   if (!ok) fouten++;
   const zin = slot.slice(0, 240);
   const kop = !/voldoe[nt] niet/.test(zin) && /voldoe[nt]/.test(zin);
-  const kopOk = kop === (r.invoerOk && r.geoOk && r.okL && !r.tekort && r.lasOk && r.drukOk && r.UCmax <= 1);
+  const kopOk = kop === (r.invoerOk && r.geoOk && r.okL && r.ringOk && !r.tekort && r.lasOk && r.drukOk && r.UCmax <= 1);
   if (!kopOk) fouten++;
   console.log(`  ${kopOk ? "OK    " : "FOUT  "} rapportkop leest ${kop ? "voldoet" : "voldoet niet"}`);
 }
@@ -505,10 +564,10 @@ for (const set of SETS) {
   const P = await import(pathToFileURL(join(hier, "../packages/desktop/src/components/calc/profielen.ts")).href);
   const mis = Object.entries(HOEK).filter(([id, p]) => {
     const q = P.HOEKSTALEN[id];
-    return !q || q.h !== p.h || q.t !== p.t || Math.abs(q.A - p.A) > 1e-9;
+    return !q || q.h !== p.h || q.t !== p.t || q.r1 !== p.r1 || Math.abs(q.A - p.A) > 1e-9;
   });
   if (mis.length) fouten++;
-  console.log(`  ${mis.length ? "FOUT  " : "OK    "} h, t en A van ${Object.keys(HOEK).length} hoekstalen gelijk aan profielen.ts${mis.length ? `; verschil bij id ${mis.map(([id]) => id).join(", ")}` : ""}`);
+  console.log(`  ${mis.length ? "FOUT  " : "OK    "} h, t, r_1 en A van ${Object.keys(HOEK).length} hoekstalen gelijk aan profielen.ts${mis.length ? `; verschil bij id ${mis.map(([id]) => id).join(", ")}` : ""}`);
 }
 
 afronden(fouten, "Schoorverbinding");

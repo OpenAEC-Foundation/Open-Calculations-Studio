@@ -61,9 +61,8 @@ export type TreeNode =
  * Vijf categorieën — Algemeen, Staal, Beton, Hout, Metselwerk — elk met de
  * modules die erbij horen. Binnen een categorie eerst de constructiedelen
  * (kolom, ligger, wand), daarna de verbindingen en tot slot de losse toetsen.
- *
- * Een `▫` achter het label betekent: invoer en parametrisch beeld zijn er, de
- * toetsing moet nog worden uitgewerkt.
+ * Hoe ver een module is, staat in `status` (zie `ModuleStatus`), niet in de
+ * indeling.
  *
  * Voor nu hardcoded; later vervangen door dynamische projectstaat (persisted
  * per project file).
@@ -92,25 +91,16 @@ export const moduleCatalogus: TreeNode[] = [
       // voorbeeld met de doorsnede hard ingetypt — geen profielkeuze, geen
       // parametrisch beeld. De echte toetsing staat als "Volledige toetsing
       // stalen ligger" in de bibliotheek hieronder.
+      { kind: "item", id: "sheet-stalen-kolom", label: "Stalen kolom", templateId: "stalen-kolom", status: "controleren" },
       { kind: "item", id: "sheet-stalen-gevelkolom", label: "Stalen gevelkolom (wind + N)", templateId: "stalen-gevelkolom", status: "controleren" },
       { kind: "item", id: "sheet-verticaal-windverband", label: "Verticaal windverband", templateId: "verticaal-windverband", status: "controleren" },
       { kind: "item", id: "sheet-voetplaatverbinding", label: "Voetplaatverbinding (kolomvoet)", templateId: "voetplaatverbinding", status: "controleren" },
+      { kind: "item", id: "sheet-momentverbinding", label: "Momentverbinding", templateId: "momentverbinding", status: "controleren" },
+      { kind: "item", id: "sheet-dwarskrachtverbinding", label: "Dwarskrachtverbinding", templateId: "dwarskrachtverbinding", status: "controleren" },
+      { kind: "item", id: "sheet-schoorverbinding", label: "Schoorverbinding", templateId: "schoorverbinding", status: "controleren" },
       { kind: "item", id: "sheet-boutberekening", label: "Boutberekening", templateId: "boutberekening", status: "gereed" },
-      {
-        kind: "category",
-        id: "cat-staal-concept",
-        label: "Nog uit te werken",
-        defaultExpanded: true,
-        count: 6,
-        children: [
-          { kind: "item", id: "sheet-stalen-kolom", label: "Stalen kolom", templateId: "stalen-kolom", status: "concept" },
-          { kind: "item", id: "sheet-momentverbinding", label: "Momentverbinding", templateId: "momentverbinding", status: "concept" },
-          { kind: "item", id: "sheet-dwarskrachtverbinding", label: "Dwarskrachtverbinding", templateId: "dwarskrachtverbinding", status: "concept" },
-          { kind: "item", id: "sheet-schoorverbinding", label: "Schoorverbinding", templateId: "schoorverbinding", status: "concept" },
-          { kind: "item", id: "sheet-lasberekening", label: "Lasberekening", templateId: "lasberekening", status: "concept" },
-          { kind: "item", id: "sheet-brandwerendheid", label: "Brandwerendheid", templateId: "brandwerendheid", status: "concept" },
-        ],
-      },
+      { kind: "item", id: "sheet-lasberekening", label: "Lasberekening", templateId: "lasberekening", status: "controleren" },
+      { kind: "item", id: "sheet-brandwerendheid", label: "Brandwerendheid", templateId: "brandwerendheid", status: "controleren" },
     ],
   },
   {
@@ -120,21 +110,12 @@ export const moduleCatalogus: TreeNode[] = [
     defaultExpanded: true,
     count: 6,
     children: [
-      { kind: "item", id: "sheet-kruipfactor", label: "Kruipfactor", templateId: "kruipfactor", status: "gereed" },
+      { kind: "item", id: "sheet-betonkolom", label: "Betonkolom", templateId: "betonkolom", status: "controleren" },
+      { kind: "item", id: "sheet-tweepaals-poer", label: "Tweepaals poer", templateId: "tweepaals-poer", status: "controleren" },
+      { kind: "item", id: "sheet-betondoorsnede", label: "Betondoorsnede", templateId: "betondoorsnede", status: "controleren" },
+      { kind: "item", id: "sheet-ponsberekening", label: "Pons", templateId: "ponsberekening", status: "controleren" },
       { kind: "item", id: "sheet-verankeringslengte", label: "Verankeringslengte", templateId: "verankeringslengte", status: "gereed" },
-      {
-        kind: "category",
-        id: "cat-beton-concept",
-        label: "Nog uit te werken",
-        defaultExpanded: true,
-        count: 4,
-        children: [
-          { kind: "item", id: "sheet-betondoorsnede", label: "Betondoorsnede", templateId: "betondoorsnede", status: "concept" },
-          { kind: "item", id: "sheet-betonkolom", label: "Betonkolom", templateId: "betonkolom", status: "concept" },
-          { kind: "item", id: "sheet-ponsberekening", label: "Pons", templateId: "ponsberekening", status: "concept" },
-          { kind: "item", id: "sheet-tweepaals-poer", label: "Tweepaals poer", templateId: "tweepaals-poer", status: "concept" },
-        ],
-      },
+      { kind: "item", id: "sheet-kruipfactor", label: "Kruipfactor", templateId: "kruipfactor", status: "gereed" },
     ],
   },
   {

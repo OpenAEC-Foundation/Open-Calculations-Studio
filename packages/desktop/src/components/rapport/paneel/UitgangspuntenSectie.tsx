@@ -14,7 +14,7 @@ import {
   normVoorBouwjaar,
   ontwerpSupervisie,
 } from "../../../rapport/normwaarden";
-import { kFiVoor } from "../../../store/projectGegevens";
+import { kFiVoor, projectWaarde } from "../../../store/projectGegevens";
 import { useProjectStore } from "../../../store/projectStore";
 import RijenTabel, { type Kolom } from "./RijenTabel";
 import TekstVeld from "./TekstVeld";
@@ -74,7 +74,7 @@ export default function UitgangspuntenSectie() {
 
   const cc = klasse(gegevens.CC, 2);
   const rc = klasse(gegevens.RC, 2);
-  const jaren = getal(gegevens.DesignLife);
+  const jaren = getal(projectWaarde(gegevens, "DesignLife"));
   const bouwjaar = getal(u.bestaand.bouwjaar);
 
   return (
