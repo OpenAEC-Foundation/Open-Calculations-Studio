@@ -61,30 +61,18 @@ uitleg in [ifc-export.md](ifc-export.md):
    is nog geen manier om het te vullen. Vraagt een viewer-component.
 5. **Geometrie.** Bestaat niet in dit programma en zou nieuwe invoer vragen.
 
-## 3. Balklaag en Gording rekenen het eigen gewicht verschillend
+## 3. Balklaag en Gording rekenen het eigen gewicht verschillend — opgelost
 
 | | |
 |---|---|
 | Modules | `templates/balklaag.ts`, `templates/gording.ts` |
 | Vastgelegd | 26-08-2026 |
+| Opgelost | 26-09-2026 |
 
-Beide zijn gecalibreerd op de referentie-uitwerking, maar met een andere uitkomst van
-dezelfde discussie:
-
-```
-balklaag:  A · ρ_mean(EN 338) · 9,81      (keuzelijst biedt 550 kg/m³ aan)
-gording:   A · 5,5 kN/m³                   (= 550 kg/m³ · g = 10, hardcoded)
-```
-
-In één en hetzelfde project krijgt de vloer dus de normconforme dichtheid en
-het dak die van de referentie-uitwerking. Dat is niet uit te leggen op een rapport waar beide
-bladen in staan.
-
-**Waarom later:** de keuze zelf is niet vrij — zie punt 8 van
-[afwijkingen-referentie.md](afwijkingen-referentie.md), waar vastligt dat de
-norm voorgaat. Wat wél werk is: gording dezelfde keuzelijst geven, de
-controlescripts op de referentiestand zetten, en nagaan of de andere
-houtmodules (kolom, schijfwerking) hetzelfde probleem hebben.
+Beide bladen kiezen het eigen gewicht nu via de projectinstelling
+`rekenwijze` (register punt 8): de referentiestand rekent A · 550 kg/m³ ·
+10 m/s², de norm-stand A · ρ_mean(EN 338) · 9,81 m/s². In één project rekenen
+vloer en dak dus met dezelfde dichtheid.
 
 ---
 
