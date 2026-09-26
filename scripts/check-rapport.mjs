@@ -12,6 +12,9 @@
  *                   norm uit het bouwjaar, belastingcategorieën, sneeuw 0,56 en
  *                   q_p tegen de referentiewaarden van scripts/check-gording.mjs
  *   opbouw.ts       sommen van vlak- en gevelopbouwen, afgerond zoals de referentie
+ *   standaardteksten.ts, opzet.ts
+ *                   standaardteksten per tekst-id, nummering met weglaten van lege
+ *                   onderdelen, inhoudsopgave en bijlagen
  *
  * Node 24 laadt de .ts-bestanden rechtstreeks (typen worden weggestreept), dus
  * er is geen build nodig. Daarom importeert src/rapport/ waarden alleen binnen
@@ -29,6 +32,8 @@ import {
   windLabel, windQp,
 } from "../packages/desktop/src/rapport/normwaarden.ts";
 import { gevelOpbouw, leesVulling, vlakOpbouw, vullingTekst } from "../packages/desktop/src/rapport/opbouw.ts";
+import { STANDAARD_IN_NIEUW_RAPPORT, STANDAARD_TEKSTEN, standaardTeksten } from "../packages/desktop/src/rapport/standaardteksten.ts";
+import { bijlagen, bouwOpzet, inhoudsopgave, OPZET, TEKST_IDS } from "../packages/desktop/src/rapport/opzet.ts";
 
 let fouten = 0;
 let aantal = 0;
@@ -399,6 +404,122 @@ kop("opbouw.ts");
   gelijk("vulling lezen", ["90%", "90", "0,9", "", "12,5 %"].map(leesVulling), [0.9, 0.9, 0.9, 1, 0.125]);
   gelijk("vulling tonen", [vullingTekst(0.9), vullingTekst(0.125), vullingTekst(1)], ["90%", "12,5%", "100%"]);
   gelijk("gevel: onvolledige laag telt als 0", gevelOpbouw([{ naam: "x", p: "2", h: "", vulling: "" }]).som, 0);
+}
+
+// ── standaardteksten.ts en opzet.ts ─────────────────────────────────────────
+kop("standaardteksten.ts");
+{
+  const IDS = [
+    "inleiding", "projectomschrijving", "rol", "bestaand-verticaal", "bestaand-stabiliteit",
+    "bestaand-fundatie", "bestaand-beoordeling", "wijziging", "belendingen", "uitvoering-bestaand",
+    "uitvoering-verbouw", "uitvoering-nieuwbouw", "trillingen", "vervormingen", "montage",
+    "rekenprogrammatuur", "temperatuur", "aardbeving", "sneeuw", "regenwater",
+  ];
+  gelijk("tekst-ids in de opzet", [...TEKST_IDS], IDS);
+  gelijk("varianten voor precies de tekst-ids", Object.keys(STANDAARD_TEKSTEN).sort(), [...IDS].sort());
+  for (const id of IDS) {
+    const varianten = STANDAARD_TEKSTEN[id];
+    toets(`${id}: minstens één variant, elk met label en tekst`, varianten.length > 0
+      && varianten.every((v) => v.label.trim() !== "" && v.tekst.trim() !== ""));
+  }
+  const nieuw = standaardTeksten();
+  gelijk("nieuw rapport: welke teksten", Object.keys(nieuw), [...STANDAARD_IN_NIEUW_RAPPORT]);
+  gelijk("nieuw rapport: welke teksten (spec)", Object.keys(nieuw).sort(), [
+    "inleiding", "projectomschrijving", "rol", "trillingen", "vervormingen", "montage",
+    "rekenprogrammatuur", "temperatuur", "aardbeving", "sneeuw", "regenwater",
+  ].sort());
+  gelijk("nieuw rapport: eerste variant", nieuw.trillingen, STANDAARD_TEKSTEN.trillingen[0].tekst);
+  gelijk("rol: openingszin van 2.2", nieuw.rol, "{adviseur} heeft opdracht voor het constructieadvies voor dit project.");
+  gelijk("regenwater: standaard", nieuw.regenwater, "Niet van toepassing");
+  toets("rekenprogrammatuur noemt OpenAEC Calc", STANDAARD_TEKSTEN.rekenprogrammatuur.every((v) => v.tekst.includes("OpenAEC Calc")));
+
+  // Alleen bekende invulvelden: een tikfout in een meegeleverde tekst zou
+  // letterlijk ("{adviseru}") in elk rapport komen.
+  const w = Object.fromEntries(INVULVELDEN.map((v) => [v, "x"]));
+  const alle = Object.values(STANDAARD_TEKSTEN).flat();
+  const rest = alle.map((v) => vulIn(v.tekst, w)).filter((t) => /\{[A-Za-z]+\}/.test(t));
+  gelijk("alleen bekende invulvelden", rest, []);
+}
+
+kop("opzet.ts — standaardrapport zonder bladen");
+{
+  const r = standaardRapport(VANDAAG, standaardTeksten());
+  const knopen = bouwOpzet(r, []);
+  gelijk("hoofdstukken", knopen.map((k) => `${k.nummer} ${k.titel}`), [
+    "1 Inleiding", "2 Projectgegevens", "3 Constructie", "4 Uitgangspunten", "5 Belastingen", "6 Berekeningen",
+  ]);
+  gelijk("inhoudsopgave", inhoudsopgave(knopen).map((i) => `${i.nummer} ${i.titel}`), [
+    "1 Inleiding",
+    "2 Projectgegevens", "2.1 Projectomschrijving", "2.2 Rol binnen het project en bereik rapport",
+    "3 Constructie", "3.1 Toelichting constructie", "3.2 Aandachtspunten bij uitvoering",
+    "4 Uitgangspunten", "4.1 Constructieve uitgangspunten bouwwerk", "4.2 Bouwconstructies bij brand",
+    "4.3 Toegepaste materialen", "4.4 Conservering staalconstructie",
+    "4.5 Belastingfactoren en belastingcombinaties", "4.6 Trillingen",
+    "4.7 Vervormingen en horizontale verplaatsingen", "4.8 Montage en bouwfase",
+    "4.9 Toegepaste rekenprogrammatuur", "4.10 Temperatuursinvloeden", "4.11 Aardbevingen",
+    "5 Belastingen", "5.1 Sneeuwbelastingen(Q)", "5.2 Windbelastingen(Q)", "5.3 Regenwateraccumulatie(Q)",
+    "5.4 Overige veranderlijke belastingen(Q)",
+    "6 Berekeningen",
+  ]);
+  gelijk("inhoudsopgave: niveaus", inhoudsopgave(knopen).slice(0, 3).map((i) => i.niveau), [1, 1, 2]);
+  gelijk("lege blokken in 3.1 en 3.2 vallen weg", knopen[2].kinderen.map((k) => k.kinderen.length), [0, 0]);
+  gelijk("nieuwe pagina's", knopen.map((k) => k.nieuwePagina), [true, false, true, true, true, true]);
+  gelijk("inspringen", knopen.map((k) => k.inspringen ?? 0), [0, 0, 0, 1, 1, 0]);
+  gelijk("geen bijlagen", bijlagen(r, []), []);
+}
+
+kop("opzet.ts — weglaten en terugkomen");
+{
+  const r = standaardRapport(VANDAAG, standaardTeksten());
+  r.teksten["bestaand-stabiliteit"] = "De stabiliteit wordt verzorgd door de gemetselde bouwmuren.";
+  r.teksten.belendingen = "   ";
+  r.teksten["uitvoering-nieuwbouw"] = "-Wapening laten controleren.";
+  r.teksten.trillingen = "";
+  r.uitgangspunten.bestaand.opnemen = true;
+  r.belastingen.wanden.push({ soort: "gevel", naam: "Gevel", lagen: [] });
+  r.nieuwePagina = { projectgegevens: true, inleiding: false };
+  const knopen = bouwOpzet(r, []);
+
+  const toelichting = knopen[2].kinderen[0];
+  gelijk("3.1: alleen het gevulde blok", toelichting.kinderen.map((k) => `${k.niveau} ${k.titel}`), ["3 Bestaande situatie"]);
+  gelijk("3.1: alleen het gevulde subblok", toelichting.kinderen[0].kinderen.map((k) => k.titel), ["Stabiliteit"]);
+  gelijk("blokken hebben geen nummer", [toelichting.kinderen[0].nummer, toelichting.kinderen[0].kinderen[0].nummer], ["", ""]);
+  gelijk("3.2: witruimte telt als leeg", knopen[2].kinderen[1].kinderen.map((k) => k.id), ["uitvoering-nieuwbouw"]);
+  const h4 = knopen[3].kinderen.map((k) => `${k.nummer} ${k.id}`);
+  gelijk("4.6 bestaande situatie opgenomen", h4[5], "4.6 bestaand-situatie");
+  gelijk("lege niet-optionele tekst blijft staan", h4[6], "4.7 trillingen");
+  gelijk("hoofdstuk 4 loopt door tot 4.12", h4[h4.length - 1], "4.12 aardbeving");
+  gelijk("5.5 blijvende belastingen met een opbouw", knopen[4].kinderen.map((k) => k.nummer).pop(), "5.5");
+  gelijk("nieuwePagina uit het rapport gaat voor", [knopen[0].nieuwePagina, knopen[1].nieuwePagina], [false, true]);
+  toets("OPZET zelf onaangetast", OPZET[0].nieuwePagina === true && OPZET[1].nieuwePagina === undefined);
+}
+
+kop("opzet.ts — berekeningen en bijlagen");
+{
+  const r = standaardRapport(VANDAAG, standaardTeksten());
+  r.inHoofdstuk = { "ex-a": true };
+  r.bijlagen = ["Constructieoverzicht", "  ", "Sonderingen"];
+  const bladen = [
+    { id: "ex-a", naam: "Houten balklaag dak" },
+    { id: "ex-b", naam: "Stalen ligger" },
+    { id: "ex-c", naam: "Fundering" },
+  ];
+  const knopen = bouwOpzet(r, bladen);
+  const ber = knopen[knopen.length - 1];
+  gelijk("per blad een paragraaf", ber.kinderen.map((k) => `${k.nummer} ${k.titel}`),
+    ["6.1 Houten balklaag dak", "6.2 Stalen ligger", "6.3 Fundering"]);
+  gelijk("bijlagenummers, blad in het hoofdstuk zonder", ber.kinderen.map((k) => k.blad?.bijlage), ["", "A.1", "A.2"]);
+  gelijk("blad: id en naam", ber.kinderen[1].blad, { id: "ex-b", naam: "Stalen ligger", bijlage: "A.1" });
+  toets("inhoudsopgave zonder de paragrafen van Berekeningen",
+    !inhoudsopgave(knopen).some((i) => i.nummer.startsWith("6.")));
+  gelijk("bijlagen", bijlagen(r, bladen), [
+    { letter: "A", titel: "Uitgebreide uitwerking berekeningen" },
+    { letter: "B", titel: "Constructieoverzicht" },
+    { letter: "C", titel: "Sonderingen" },
+  ]);
+  r.inHoofdstuk = { "ex-a": true, "ex-b": true, "ex-c": true };
+  gelijk("alles in het hoofdstuk: geen bijlage A, eigen bijlagen houden hun letter",
+    bijlagen(r, bladen).map((b) => b.letter), ["B", "C"]);
 }
 
 // ── Uitslag ─────────────────────────────────────────────────────────────────
