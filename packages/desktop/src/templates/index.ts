@@ -35,6 +35,7 @@ import { verankeringslengte } from "./verankeringslengte";
 import { opdrijven } from "./opdrijven";
 import { houtenKap } from "./houtenKap";
 import { ligger } from "./ligger";
+import { portaalSpant } from "./portaalSpant";
 import {
   ec5Buiging, ec5Afschuiving, ec5Druk, ec5DrukLoodrecht,
   ec5Knik, ec5Doorbuiging, ec5HoutenBalk,
@@ -98,6 +99,7 @@ export const templates: Record<string, string> = {
   "opdrijven": opdrijven,
   "houten-kap": houtenKap,
   "ligger": ligger,
+  "portaal-spant": portaalSpant,
   "calcpad-demo": calcpadDemo,
   ...calcpadSamples,
   "paaldraagvermogen": paaldraagvermogen,

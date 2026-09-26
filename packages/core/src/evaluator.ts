@@ -4,6 +4,10 @@ import {
   liggerOplossing, liggerReacties, liggerOmhullende, liggerOmhullendeReacties, liggerExtremen,
   liggerInterpoleer, liggerNulpunt, liggerStatus, liggerDelen, liggerVelden, liggerSvgPunten, liggerSamen,
 } from './ligger.js';
+import {
+  raamwerkOplossing, raamwerkReacties, raamwerkVerplaatsingen, raamwerkStatus, raamwerkExtremen,
+  raamwerkInterpoleer, raamwerkSvgPunten, raamwerkVormPunten, raamwerkKnik, raamwerkSamenvatting, raamwerkZakking,
+} from './raamwerk.js';
 
 const math: MathJsInstance = create(all, {});
 
@@ -395,6 +399,87 @@ math.import(
     /** ligger_svg(R; k; x0; sx; y0; sy) → "X,Y X,Y …" voor een polyline of polygon. */
     ligger_svg: function (R: unknown, k: unknown, x0: unknown, sx: unknown, y0: unknown, sy: unknown) {
       return liggerSvgPunten(liggerRijen(R), liggerGetal(k), liggerGetal(x0), liggerGetal(sx), liggerGetal(y0), liggerGetal(sy));
+    },
+  },
+  { override: true },
+);
+
+// ── Raamwerk (packages/core/src/raamwerk.ts) ────────────────────────────────
+// Een vlak raamwerk van knopen en staven met scharnieren en opleggingen,
+// eerste orde opgelost met de verplaatsingsmethode. Kale getallen in m, kN,
+// kN/m, kNm, kNm² (EI) en kN (EA); een grootheid met eenheid wordt omgerekend
+// zoals bij de ligger. Uitkomst per staaf: rijen [staaf, s, x, y, N, V, M, u_x,
+// u_y, w]. Zie raamwerk.ts voor de afspraken.
+
+/**
+ * Rijen van een matrix voor de raamwerkfuncties. Een blad vraagt een uitkomst
+ * vaak vele keren op (per staaf, per toets); een matrix met alleen kale getallen
+ * gaat daarom zonder kopie door, de rest via liggerRijen (eenheden, vectoren).
+ */
+function raamwerkRijen(v: unknown): number[][] {
+  const d = (v as { _data?: unknown })?._data;
+  if (Array.isArray(d) && d.length && d.every((r) => Array.isArray(r) && (r as unknown[]).every((x) => typeof x === 'number'))) {
+    return d as number[][];
+  }
+  return liggerRijen(v);
+}
+
+math.import(
+  {
+    /** raamwerk(kn; st; op; last[; f[; toppen]]) → [staaf, s, x, y, N, V, M, u_x, u_y, w] langs de staven. */
+    raamwerk: function (kn: unknown, st: unknown, op: unknown, last: unknown, f?: unknown, toppen?: unknown) {
+      return liggerMatrix(raamwerkOplossing(
+        raamwerkRijen(kn), raamwerkRijen(st), raamwerkRijen(op), raamwerkRijen(last), liggerVector(f),
+        toppen === undefined ? 0 : liggerGetal(toppen),
+      ));
+    },
+    /** raamwerk_R(kn; st; op; last[; f]) → [knoop, R_x, R_y, M] per oplegging. */
+    raamwerk_R: function (kn: unknown, st: unknown, op: unknown, last: unknown, f?: unknown) {
+      return liggerMatrix(raamwerkReacties(raamwerkRijen(kn), raamwerkRijen(st), raamwerkRijen(op), raamwerkRijen(last), liggerVector(f)));
+    },
+    /** raamwerk_u(kn; st; op; last[; f]) → [knoop, u_x, u_y, φ] per knoop. */
+    raamwerk_u: function (kn: unknown, st: unknown, op: unknown, last: unknown, f?: unknown) {
+      return liggerMatrix(raamwerkVerplaatsingen(raamwerkRijen(kn), raamwerkRijen(st), raamwerkRijen(op), raamwerkRijen(last), liggerVector(f)));
+    },
+    /** raamwerk_acr(kn; st; op; last[; f]) → kritieke belastingsfactor α_cr van de combinatie. */
+    raamwerk_acr: function (kn: unknown, st: unknown, op: unknown, last: unknown, f?: unknown) {
+      return raamwerkKnik(raamwerkRijen(kn), raamwerkRijen(st), raamwerkRijen(op), raamwerkRijen(last), liggerVector(f));
+    },
+    /** raamwerk_status(kn; st; op) → 1 stabiel, -1 beweeglijk, 0 ongeldig. */
+    raamwerk_status: function (kn: unknown, st: unknown, op: unknown) {
+      return raamwerkStatus(raamwerkRijen(kn), raamwerkRijen(st), raamwerkRijen(op));
+    },
+    /** raamwerk_ext(R; staaf; k) → [max; s bij max; min; s bij min] van kolom k (staaf 0: alle staven). */
+    raamwerk_ext: function (R: unknown, staaf: unknown, k: unknown) {
+      return math.matrix(raamwerkExtremen(raamwerkRijen(R), liggerGetal(staaf), liggerGetal(k)));
+    },
+    /** raamwerk_int(R; staaf; k; s) → kolom k van de staaf in s, lineair tussen de rasterpunten. */
+    raamwerk_int: function (R: unknown, staaf: unknown, k: unknown, s: unknown) {
+      return raamwerkInterpoleer(raamwerkRijen(R), liggerGetal(staaf), liggerGetal(k), liggerGetal(s));
+    },
+    /** raamwerk_sam(R; staaf) → [N_min; N_max; V_min; V_max; M_min; M_max; M(0); M(L/4); M(L/2); M(3L/4); M(L); L; w_min; w_max]. */
+    raamwerk_sam: function (R: unknown, staaf: unknown) {
+      return math.matrix(raamwerkSamenvatting(raamwerkRijen(R), liggerGetal(staaf)));
+    },
+    /** raamwerk_zak(R; staaf; x_a; u_a; x_b; u_b) → grootste verticale verplaatsing ten opzichte van de lijn door (x_a, u_a) en (x_b, u_b). */
+    raamwerk_zak: function (R: unknown, staaf: unknown, xa: unknown, ua: unknown, xb: unknown, ub: unknown) {
+      return raamwerkZakking(raamwerkRijen(R), liggerGetal(staaf), liggerGetal(xa), liggerGetal(ua), liggerGetal(xb), liggerGetal(ub));
+    },
+    /** raamwerk_svg(R; staaf; k; x0; y0; schaal; sk) → "X,Y …" voor een polygoon met het verloop van kolom k. */
+    raamwerk_svg: function (R: unknown, staaf: unknown, k: unknown, x0: unknown, y0: unknown, schaal: unknown, sk: unknown) {
+      return raamwerkSvgPunten(raamwerkRijen(R), liggerGetal(staaf), liggerGetal(k), liggerGetal(x0), liggerGetal(y0), liggerGetal(schaal), liggerGetal(sk));
+    },
+    /** raamwerk_vorm(R; staaf; x0; y0; schaal; su) → "X,Y …" voor de verplaatste vorm van de staaf. */
+    raamwerk_vorm: function (R: unknown, staaf: unknown, x0: unknown, y0: unknown, schaal: unknown, su: unknown) {
+      return raamwerkVormPunten(raamwerkRijen(R), liggerGetal(staaf), liggerGetal(x0), liggerGetal(y0), liggerGetal(schaal), liggerGetal(su));
+    },
+    /** raamwerk_max(R1; R2; …) → per punt en per kolom de grootste waarde (zelfde raster). */
+    raamwerk_max: function (...ms: unknown[]) {
+      return liggerMatrix(liggerSamen(1, ...ms.map(liggerRijen)));
+    },
+    /** raamwerk_min(R1; R2; …) → per punt en per kolom de kleinste waarde (zelfde raster). */
+    raamwerk_min: function (...ms: unknown[]) {
+      return liggerMatrix(liggerSamen(-1, ...ms.map(liggerRijen)));
     },
   },
   { override: true },
