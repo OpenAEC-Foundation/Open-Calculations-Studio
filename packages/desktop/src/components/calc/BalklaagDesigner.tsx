@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
 import { useBelastingFactoren, useProjectGetal, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
-import { JaNee } from "./designerKit";
+import { JaNee, IconKeuze, SchemaIcoon, type SchemaSoort } from "./designerKit";
 import {
   KLEUR_M, KLEUR_V, KLEUR_U, Label, Oplegging, LijnLast, PuntLast, KrachtenLijn,
   RaveelPlattegrond, raveelMaten, extremen, randwaarden, nl,
@@ -99,12 +99,13 @@ const CAT: { v: number; label: string; psi0: number; psi1: number; psi2: number 
  * en `templates/balklaag.ts` gebruikt dezelfde — beeld en uitwerking moeten
  * hetzelfde schema doorrekenen.
  */
-const SCHEMA: { v: number; label: string }[] = [
-  { v: 1, label: "Enkelvoudig, op twee steunpunten" },
-  { v: 2, label: "Met overstek aan één zijde" },
-  { v: 3, label: "Op drie steunpunten (twee velden)" },
-  { v: 4, label: "Raveelbalk langs een sparing" },
+const SCHEMA: { v: number; label: string; kort: string; soort: SchemaSoort }[] = [
+  { v: 1, label: "Enkelvoudig, op twee steunpunten", kort: "Enkelvoudig", soort: "enkelvoudig" },
+  { v: 2, label: "Met overstek aan één zijde", kort: "Overstek", soort: "overstek" },
+  { v: 3, label: "Op drie steunpunten (twee velden)", kort: "Twee velden", soort: "tweeveld" },
+  { v: 4, label: "Raveelbalk langs een sparing", kort: "Raveelbalk", soort: "raveel" },
 ];
+const SCHEMA_OPTIES = SCHEMA.map((x) => ({ ...x, icoon: <SchemaIcoon soort={x.soort} /> }));
 const GRENS: { v: number; label: string }[] = [
   { v: 0.004, label: "0,004 × L" }, { v: 0.003, label: "0,003 × L" }, { v: 0.002, label: "0,002 × L" },
 ];
@@ -629,11 +630,8 @@ export default function BalklaagDesigner() {
         <div className="vd-controls vd-compact" style={{ alignSelf: "stretch", overflowY: "auto", minHeight: 0 }}>
           <span className="vd-ctrl-h">Algemeen</span>
           <span className="vd-ctrl-h">Statisch schema</span>
-          <label>Schema
-            <select value={schema} onChange={(e) => setVal("schema", parseInt(e.target.value))}>
-              {SCHEMA.map((x) => <option key={x.v} value={x.v}>{x.label}</option>)}
-            </select>
-          </label>
+          <IconKeuze label="Schema" waarde={schema} opties={SCHEMA_OPTIES}
+            onChange={(v) => setVal("schema", v)} />
           {schema === 2 && (
             <label>Overstek a (mm)
               <input type="number" step={50} value={aOver}

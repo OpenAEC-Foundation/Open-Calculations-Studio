@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useProjectStore } from "../../store/projectStore";
 import { useActiefExemplaar, useAlleenLezen, useProjectGetal } from "../../store/actiefBlad";
 import { ucTekst, type BladUitkomst } from "./bladResultaat";
@@ -365,5 +365,110 @@ export function JaNee({
         <span className="vd-toggle-stand">{waarde ? "Ja" : "Nee"}</span>
       </span>
     </label>
+  );
+}
+
+/**
+ * Een keuze uit een handvol mogelijkheden, elk met een pictogram.
+ *
+ * Voor keuzes die je beter ziet dan leest, zoals het statische schema: alle
+ * mogelijkheden staan naast elkaar, één klik kiest, en de gekozen tegel is op
+ * afstand te herkennen. De volledige omschrijving staat in de tooltip.
+ */
+export function IconKeuze<T extends number | string>({
+  label,
+  waarde,
+  opties,
+  onChange,
+}: {
+  label: string;
+  waarde: T;
+  opties: { v: T; label: string; kort: string; icoon: ReactNode }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="vd-iconkeuze">
+      <span className="vd-iconkeuze-label">{label}</span>
+      <div
+        className="vd-iconkeuze-rij"
+        role="radiogroup"
+        aria-label={label}
+        style={{ "--iconkeuze-n": opties.length } as CSSProperties}
+      >
+        {opties.map((o) => (
+          <button
+            key={String(o.v)}
+            type="button"
+            role="radio"
+            aria-checked={o.v === waarde}
+            className={`vd-iconkeuze-optie${o.v === waarde ? " actief" : ""}`}
+            title={o.label}
+            onClick={() => onChange(o.v)}
+          >
+            {o.icoon}
+            <span>{o.kort}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export type SchemaSoort = "enkelvoudig" | "overstek" | "tweeveld" | "raveel";
+
+/**
+ * Pictogram van een statisch schema, zoals in een tabellenboek: de ligger met
+ * zijn opleggingen en de verdeelde belasting erboven. De raveelbalk staat in
+ * bovenaanzicht, want die herken je aan de sparing en niet aan de ligger.
+ * Alles in currentColor, zodat het pictogram de tekstkleur van de tegel volgt.
+ */
+export function SchemaIcoon({ soort }: { soort: SchemaSoort }) {
+  const y = 12;
+  const scharnier = (x: number) => (
+    <g key={`s${x}`}>
+      <path d={`M${x} ${y + 1} l-4 7 h8 z`} fill="none" />
+      <path d={`M${x - 6} ${y + 9} h12 M${x - 5} ${y + 12} l2 -3 M${x - 1} ${y + 12} l2 -3 M${x + 3} ${y + 12} l2 -3`} strokeWidth={0.9} />
+    </g>
+  );
+  const rol = (x: number) => (
+    <g key={`r${x}`}>
+      <path d={`M${x} ${y + 1} l-4 7 h8 z`} fill="none" />
+      <path d={`M${x - 6} ${y + 11} h12`} />
+    </g>
+  );
+  const last = (x0: number, x1: number) => {
+    const pijlen: string[] = [];
+    for (let x = x0; x <= x1 + 0.1; x += (x1 - x0) / 6) pijlen.push(`M${x.toFixed(1)} 3 v4.5`);
+    return <path d={`M${x0} 3 H${x1} ${pijlen.join(" ")}`} strokeWidth={0.9} opacity={0.55} />;
+  };
+
+  let inhoud: ReactNode;
+  if (soort === "raveel") {
+    inhoud = (
+      <>
+        {/* sparing met kruis, daaronder de raveelbalk en de staartbalken */}
+        <path d="M14 3 L50 12 M50 3 L14 12" strokeWidth={0.8} strokeDasharray="2 1.5" opacity={0.6} />
+        <path d="M14 1 V29 M50 1 V29" strokeWidth={1.8} />
+        <path d="M14 12.5 H50" strokeWidth={2.6} />
+        <path d="M23 13 V29 M32 13 V29 M41 13 V29" strokeWidth={1.1} />
+      </>
+    );
+  } else {
+    const steunen =
+      soort === "enkelvoudig" ? [scharnier(10), rol(54)]
+      : soort === "overstek" ? [scharnier(10), rol(40)]
+      : [scharnier(10), rol(32), rol(54)];
+    inhoud = (
+      <>
+        {last(6, 58)}
+        <path d={`M6 ${y} H58`} strokeWidth={2.2} />
+        {steunen}
+      </>
+    );
+  }
+  return (
+    <svg viewBox="0 0 64 30" width={64} height={30} fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {inhoud}
+    </svg>
   );
 }
