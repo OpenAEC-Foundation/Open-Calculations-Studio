@@ -1,6 +1,11 @@
 import { useRef } from "react";
 import DocumentSectie from "./paneel/DocumentSectie";
 import HoofdstukTeksten from "./paneel/HoofdstukTeksten";
+import UitgangspuntenSectie from "./paneel/UitgangspuntenSectie";
+import BelastingenSectie from "./paneel/BelastingenSectie";
+import BerekeningenSectie from "./paneel/BerekeningenSectie";
+import BijlagenSectie from "./paneel/BijlagenSectie";
+import BureauSectie from "./paneel/BureauSectie";
 import RevisieSectie from "./paneel/RevisieSectie";
 import { OpzetBron } from "./paneel/velden";
 import "./RapportPanel.css";
@@ -22,6 +27,11 @@ const SECTIES: readonly [id: string, label: string][] = [
   ["document", "Document"],
   ["revisies", "Revisies"],
   ["teksten", "Hoofdstukken 1–3"],
+  ["uitgangspunten", "Uitgangspunten"],
+  ["belastingen", "Belastingen"],
+  ["berekeningen", "Berekeningen"],
+  ["bijlagen", "Bijlagen"],
+  ["bureau", "Bureau"],
 ];
 
 export default function RapportPanel() {
@@ -55,6 +65,11 @@ export default function RapportPanel() {
         <DocumentSectie />
         <RevisieSectie />
         <HoofdstukTeksten />
+        <UitgangspuntenSectie />
+        <BelastingenSectie />
+        <BerekeningenSectie />
+        <BijlagenSectie />
+        <BureauSectie />
       </OpzetBron>
 
       <p className="rapport-voet">
