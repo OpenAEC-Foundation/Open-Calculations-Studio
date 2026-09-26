@@ -478,4 +478,51 @@ for (const schema of ["1", "2", "3", "4"]) {
   }
 }
 
+// ── 7. De lijnen van het beeld ────────────────────────────────────────────
+
+/**
+ * Het parametrische beeld tekent zijn lijnen met balklaagLijnen.ts, met de
+ * lasten en factoren uit het blad. Die statica hoort gelijk te zijn aan die
+ * van het blad; hier tegen dezelfde numerieke balk. Node leest TypeScript pas
+ * vanaf versie 22.6 zonder hulpmiddel; op een oudere versie slaan we dit over.
+ */
+let lijnenModule = null;
+try {
+  lijnenModule = await import("../packages/desktop/src/components/calc/balklaagLijnen.ts");
+} catch {
+  console.log("\n7. Lijnen van het beeld — overgeslagen: deze Node-versie leest geen TypeScript");
+}
+if (lijnenModule) {
+  const { belastinggevallen, lijnen, steunmoment, ugtCombinaties } = lijnenModule;
+  for (const { titel, geo, r, lasten } of uitkomsten) {
+    console.log(`\n7. Lijnen van het beeld — ${titel}`);
+    const ligger = { schema: geo.schema, L1: geo.L1, a: geo.a ?? 0, L2: geo.L2 ?? 0, EI: EI_71x221 };
+    const bg = belastinggevallen(ligger, lasten);
+    const tot = geo.L1 + (geo.a ?? 0) + (geo.L2 ?? 0);
+    let grootste = 0;
+    for (const k of [1, 2, 3, 4, 5]) {
+      const num = balkNumeriek({ ...geo, EI: EI_71x221, ...bg[k] });
+      const l = lijnen(ligger, bg[k]);
+      for (let i = 1; i < 40; i++) {
+        const x = (tot * i) / 40 + 1e-7;
+        grootste = Math.max(grootste, Math.abs(l.M(x) - num.M(x)), Math.abs(l.V(x) - num.V(x)));
+      }
+      // De zakking van de numerieke balk is bekend in de knopen: midden in elk veld en op het uiteinde.
+      const knopen = [geo.L1 / 2, ...(geo.schema === 3 ? [geo.L1 + geo.L2 / 2] : []), ...(geo.schema === 2 ? [tot] : [])];
+      for (const x of knopen) grootste = Math.max(grootste, Math.abs(l.u(x) - num.u(x)));
+      if (geo.schema === 3 || geo.schema === 2) grootste = Math.max(grootste, Math.abs(steunmoment(ligger, bg[k]) - num.steun));
+    }
+    waar("M, V en u van BG1 … BG5 gelijk aan de numerieke balk", grootste < 1e-6, `grootste verschil ${grootste.toExponential(2)}`);
+    // De grootste waarde van de omhullende in veld 1 is het veldmoment van UGT veld 1 of van de puntlast.
+    const combis = ugtCombinaties(bg, γG, γQ).map((s) => lijnen(ligger, s));
+    let piek = 0;
+    for (let i = 0; i <= 4000; i++) {
+      const x = (geo.L1 * i) / 4000;
+      piek = Math.max(piek, ...combis.slice(0, 3).map((c) => c.M(x)));
+    }
+    const [mVeld1] = getallenUit(r.ingevuld.M_y_Ed);
+    gelijk("omhullende veld 1 (verdeelde last) = M_Ed veld 1", piek, mVeld1);
+  }
+}
+
 afronden(fouten, "Balklaag — belastinggevallen en combinaties");
