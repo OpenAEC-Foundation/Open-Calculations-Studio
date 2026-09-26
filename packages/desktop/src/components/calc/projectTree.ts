@@ -73,11 +73,12 @@ export const moduleCatalogus: TreeNode[] = [
     id: "cat-algemeen",
     label: "Algemeen",
     defaultExpanded: true,
-    count: 3,
+    count: 4,
     children: [
       { kind: "item", id: "sheet-spuwer", label: "Spuwer (noodoverlaat)", templateId: "spuwer", status: "gereed", gepubliceerd: true },
       { kind: "item", id: "sheet-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen", status: "controleren" },
       { kind: "item", id: "sheet-permanente-vuurlast", label: "Permanente vuurlast (NEN 6090)", templateId: "permanente-vuurlast", status: "controleren" },
+      { kind: "item", id: "sheet-opdrijven", label: "Opdrijven en drijvend lichaam", templateId: "opdrijven", status: "controleren" },
     ],
   },
   {
@@ -138,9 +139,10 @@ export const moduleCatalogus: TreeNode[] = [
     id: "cat-metselwerk",
     label: "Metselwerk",
     defaultExpanded: true,
-    count: 2,
+    count: 3,
     children: [
       { kind: "item", id: "sheet-metselwerkwand", label: "Dragende metselwerkwand", templateId: "metselwerkwand", status: "controleren" },
+      { kind: "item", id: "sheet-metselwerk-loodrecht", label: "Metselwerk loodrecht belast", templateId: "metselwerk-loodrecht", status: "controleren" },
       { kind: "item", id: "sheet-opleg-metselwerk", label: "Oplegging op metselwerk", templateId: "opleg-metselwerk", status: "controleren" },
     ],
   },

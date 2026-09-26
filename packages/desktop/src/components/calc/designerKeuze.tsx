@@ -16,6 +16,7 @@ import MetselwerkwandDesigner from "./MetselwerkwandDesigner";
 import MomentverbindingDesigner from "./MomentverbindingDesigner";
 import NagelSchroefDesigner from "./NagelSchroefDesigner";
 import OplegMetselwerkDesigner from "./OplegMetselwerkDesigner";
+import OpdrijvenDesigner from "./OpdrijvenDesigner";
 import PaalDesigner from "./PaalDesigner";
 import PonsDesigner from "./PonsDesigner";
 import SchijfwerkingDesigner from "./SchijfwerkingDesigner";
@@ -67,6 +68,7 @@ const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
   { marker: "Ponsberekening", beeld: () => <PonsDesigner /> },
   { marker: "Tweepaals poer", beeld: () => <TweepaalsPoerDesigner /> },
   { marker: "Verankeringslengte", beeld: () => <VerankeringslengteDesigner /> },
+  { marker: "Opdrijven en drijvend lichaam", beeld: () => <OpdrijvenDesigner /> },
 ];
 
 /** Het beeld dat bij deze bladtekst hoort, of null als er geen is. */
