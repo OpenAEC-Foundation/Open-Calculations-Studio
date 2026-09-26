@@ -13,6 +13,11 @@
  *   E  oplegdruk §6.1.5
  *   F  de getallen die het parametrisch beeld van het blad leest
  *   G  zonder dubbele buiging stuurt 6.12 de keuze van de combinatie niet
+ *   H  schuin dak, opwaarts met γ_G·G (combinatie 6): G werkt op de zwakke as
+ *      ongunstig, dus ook 1,2·G + 1,5·W opwaarts
+ *   I  plat dak, winddruk in zone I (combinatie 7), ook in de BGT, en de
+ *      netto opwaartse doorbuiging
+ *   J  c_pe bij zuiging niet negatief of niet ingevuld: melding op het blad
  *
  * Draaien:  node scripts/check-gording-aanvullend.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -132,6 +137,11 @@ const NODIG = ["UC_611", "UC_612", "UC_afsch", "UC_c90", "UC_kip", "UC_wy", "UC_
 const ontbreekt = NODIG.filter((n) => d1.values[n] === undefined);
 eis(`beeld: ${NODIG.join(", ")} staan op het blad` + (ontbreekt.length ? ` — ontbreekt: ${ontbreekt.join(", ")}` : ""),
   ontbreekt.length === 0);
+// UC_w_op staat alleen op het blad bij een netto opwaartse doorbuiging. Op
+// document1 is die 0,02 mm, dus daar toetsen we de naam niet; document7 heeft
+// w_op,y = 9,84 − 6,88 = 2,96 mm.
+eis("beeld: UC_w_op staat op het blad bij netto opwaartse doorbuiging (document7)",
+  d7.values.UC_w_op !== undefined);
 const zelf = reken(tpl, { ...BASIS, windbron: "1" }, PROJECT);
 eis("beeld: q_p staat op het blad als het blad hem berekent", zelf.values.q_p !== undefined);
 
@@ -144,5 +154,68 @@ eis("beeld: q_p staat op het blad als het blad hem berekent", zelf.values.q_p !=
 //   6.11 = 12,64/16,62 = 0,76 (combinatie 2 met de puntlast: 6,03 kNm → 0,41)
 geval("G — document7 zonder dubbele buiging: 6.11 uit combinatie 4",
   { h_v: "6000", dubbele: "0" }, PROJECT, { UC_611: "0.76" });
+
+// ── H. Schuin dak: opwaarts met γ_G·G (combinatie 6) ─────────────────────────
+// Het onderscheid gunstig/ongunstig geldt voor het hele eigen gewicht (NEN-EN
+// 1990 NB, onder tabel NB.4). Op een steil dak werkt G op de zwakke as
+// ongunstig, dus naast 0,9·G + 1,5·W (combinatie 5) ook 1,2·G + 1,5·W.
+// 96×296 C24, L_th = 4500 + 75 = 4575, nok 6000 (α = 53,13°: cos 0,6, sin 0,8),
+// hoh = 7500/4 = 1875, pannen 0,5 kN/m², q_∥ = 0, doorbuiging uit.
+// Windgebied I, terreincategorie 0, z = 9 m:
+//   c_r = 0,1617·ln(9/0,005) = 1,2122, v_m = 35,76, I_v = 0,1334 → q_p = 1,545 kN/m²
+//   g_eig = 28416 mm²·5,5 = 0,1563 kN/m
+//   q_gy = 1,875·0,5·0,6 + 0,1563·0,6 = 0,6563 kN/m → M_gy = 0,6563·4,575²/8 = 1,717 kNm
+//   q_gz = (7,5·0,5·0,8 + 3·0,1563·0,8)/3 = 1,1250 kN/m → M_gz = 2,943 kNm
+//   c_pe = −1,5: P_w,op = −1,7·1,545 = −2,627 → q_w,op = −4,926 kN/m → M_w,op = −12,89 kNm
+//   W_y = 96·296²/6 = 1 401 856 mm³, W_z = 296·96²/6 = 454 656 mm³
+//   f_m,y,d = 0,9·24/1,3 = 16,62; f_m,z,d = 16,62·(150/96)^0,2 = 18,17
+//   5: M_y = 0,9·1,717 − 1,5·12,89 = −17,79; M_z = 0,9·2,943 = 2,649
+//      6.11 = 12,69/16,62 + 0,7·5,827/18,17 = 0,764 + 0,225 = 0,988
+//   6: M_y = 1,2·1,717 − 1,5·12,89 = −17,27; M_z = 1,2·2,943 = 3,532
+//      6.11 = 12,32/16,62 + 0,7·7,769/18,17 = 0,742 + 0,299 = 1,041
+// Zonder combinatie 6 stond hier 0,988 en "voldoet".
+const hInvoer = { profiel: "8", L_dag: "4500", h_v: "6000", g_pannen: "0.5", q_par: "0",
+  windbron: "1", c_pe_zuig: "-1.5", controleer: "0" };
+const hProject = { ...PROJECT, windgebied: 1, terreincategorie: 1 };
+const h = geval("H — schuin dak, 1,2·G + 1,5·W opwaarts (combinatie 6)", hInvoer, hProject,
+  { q_p: "1.545", M_gy: "1.717", M_gz: "2.943", M_w_op: "-12.89", UC_611: "1.04", UC_max: "1.04" });
+eis("H: combinatie 6 is maatgevend voor 6.11", /Maatgevend is combinatie 6/.test(h.text));
+// Norm-stand: g_eig = 28416 mm²·420·9,81 = 0,1171 kN/m → M_gy = 1,655, M_gz = 2,861
+//   6: M_y = 1,2·1,655 − 1,5·12,89 = −17,35; M_z = 3,434
+//      6.11 = 12,37/16,62 + 0,7·7,552/18,17 = 0,745 + 0,291 = 1,036
+const hn = geval("H — idem, norm-stand", hInvoer, { ...hProject, rekenwijze: 0 }, { UC_611: "1.036" });
+eis("H: norm-stand ook combinatie 6", /Maatgevend is combinatie 6/.test(hn.text));
+
+// ── I. Plat dak: winddruk in zone I (combinatie 7) ───────────────────────────
+// Tabel NB.7 – 7.2, zone I: c_pe = +0,2, met c_pi = −0,3 (§7.2.9(6)). Geval C,
+// maar een gording midden op het dak (zone I, zuiging c_pe = −0,2):
+//   P_w,dr = 0,5·1,421 = 0,7105 kN/m² → q_w,dr = 1,875·0,7105 = 1,332 kN/m
+//   M_w,dr = 1,332·3,575²/8 = 2,128 kNm; M_y,d = 1,2·0,871 + 1,5·2,128 = 4,238 kNm
+//   6.11 = (4,238e6/454589)/16,62 = 9,322/16,62 = 0,561
+//   (combinatie 2 met de puntlast: 0,493; die stond hiervoor als maatgevend)
+// BGT: EI = 11000·44 549 755 = 4,900e11 N·mm², 5/384·L⁴/EI = 0,01302·333,3 mm per N/mm
+//   u_w,dr = 4,340·1,332 = 5,782 mm > u_s = 4,557 en u_Q = 3,885 mm
+//   w_fin,y = 1,6·2,367 + 5,782 = 9,569 mm → UC = 9,569/14,30 = 0,669 (was 0,584)
+// Opwaarts: P_w,op = (−0,2 − 0,2)·1,421 = −0,5684 → u_w,op = 4,340·−1,0658 = −4,626 mm
+//   w_op,y = −(2,367 − 4,626) = 2,259 mm → UC = 2,259/14,30 = 0,158
+const i = geval("I — plat dak, 1,2·G + 1,5·W druk in zone I (combinatie 7)",
+  { dakType: "1", profiel: "3", L_dag: "3500", l_h: "7500", g_pannen: "0.25",
+    windbron: "1", z_wind: "6", c_pe_zuig: "-0.2" },
+  { ...PROJECT, windgebied: 1, terreincategorie: 1 },
+  { P_w_dr: "0.7105", q_w_dr: "1.332", M_w_dr: "2.128", u_w_dr: "5.782", u_var_y: "5.782",
+    w_fin_y: "9.569", UC_wy: "0.669", UC_611: "0.561", w_op_y: "2.259", UC_w_op: "0.158" });
+eis("I: combinatie 7 is maatgevend voor 6.11", /Maatgevend is combinatie 7/.test(i.text));
+eis("schuin dak: geen combinatie 7 en geen druk in zone I",
+  !/W druk, zone I/.test(d1.text) && d1.values.P_w_dr === undefined);
+
+// ── J. c_pe bij zuiging niet negatief ────────────────────────────────────────
+// Een lege invoer rekent als 0; dan werkt opwaarts alleen c_pi. Dat mag in
+// sommige zones (tabel NB.10 – 7.4a bij 45°), maar het blad moet het melden.
+const MELDING = /c pe bij zuiging is niet negatief/;
+eis("J: c_pe = 0 geeft een melding", MELDING.test(reken(tpl, { ...BASIS, c_pe_zuig: "0" }, PROJECT).text));
+const zonder = { ...BASIS };
+delete zonder.c_pe_zuig;
+eis("J: c_pe niet ingevuld geeft een melding", MELDING.test(reken(tpl, zonder, PROJECT).text));
+eis("J: c_pe = −0,7 geeft geen melding", !MELDING.test(d1.text));
 
 afronden(fouten, "Gording (aanvullend)");

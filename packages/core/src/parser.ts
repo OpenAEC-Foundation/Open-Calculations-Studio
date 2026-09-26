@@ -482,11 +482,21 @@ function foldIdentifierDots(source: string): string {
 /**
  * CalcPAD lets every expression carry a trailing display-format hint
  * (`:F2` = fixed-point 2 decimals, `:N0`, `:G`, `:E3`, `:P`). It's a
- * display directive, not part of the math — strip everywhere.
+ * display directive, not part of the math — strip it from expressions.
  *
  *   `Z_0:F2`         →  `Z_0`           (bare display)
  *   `Cs.Cd = 1:F2`   →  `Cs.Cd = 1`     (assignment value)
  *   `ψ_0,wind = 0.0:F2`  →  `ψ_0,wind = 0.0`
+ *   `'b = 'x:F2' mm` →  `'b = 'x' mm`   (ingevoegde expressie in tekst)
+ *
+ * Alleen in rekendelen. Liep het knippen over de hele regel, dan verdween in
+ * tekst elke dubbele punt met een losse F, N, G, E of P erachter:
+ * "'Glijden: F/(v·L)" werd "'Glijden/(v·L)" en "per m¹: g = b·h·ρ" werd
+ * "per m¹ = b·h·ρ". Daarom blijven ongemoeid: tekst en toelichting (via
+ * alleenInCode), tekenreeksen tussen dubbele aanhalingstekens (ook de titel
+ * `"…`), de inhoud van een `@svg`-blok (die kent alleen `{{naam}}`) en het
+ * bereik van een lus of oplosser (`#for i = 1 : n`, `$Root{… @ x = 0 : N }`),
+ * waar de dubbele punt een bereik is en geen formaat.
  */
 function stripFormatSpecs(source: string): string {
   // Match `:F2`, `:N0`, `:G`, `:E3`, `:P0` where preceded by digit/letter/`)`
@@ -494,10 +504,43 @@ function stripFormatSpecs(source: string): string {
   // Whitespace around `:` must stay WITHIN the line ([^\S\n], not \s) —
   // otherwise a prose line ending in `:` swallows the next statement when it
   // happens to start with one of F/N/G/E/P (e.g. `n = N_Ed/N_plRd`).
-  return source.replace(
-    /(?<=[\p{L}\p{N}_)])[^\S\n]*:[^\S\n]*[FNGEPfngep]\d*(?=[^\S\n]|$|[,;)+\-*/'])/gmu,
-    '',
-  );
+  const FORMAAT = /(?<=[\p{L}\p{N}_)])[^\S\n]*:[^\S\n]*[FNGEPfngep]\d*(?=[^\S\n]|$|[,;)+\-*/'])/gmu;
+  // Staat de dubbele punt in het bereik `var = van : tot` van een #for of
+  // van een `@` in een $-blok, dan is het geen formaataanduiding.
+  const IN_BEREIK = /(?:^\s*#for|@)\s*[\p{L}_][\p{L}\p{N}_]*\s*=[^{}@]*$/u;
+  const knip = (code: string): string =>
+    code.replace(FORMAAT, (spec: string, plek: number, geheel: string) =>
+      IN_BEREIK.test(geheel.slice(0, plek)) ? spec : '',
+    );
+  const buitenTekenreeksen = (code: string): string =>
+    code.indexOf('"') === -1
+      ? knip(code)
+      : code.split('"').map((stuk, i) => (i % 2 === 1 ? stuk : knip(stuk))).join('"');
+
+  // Een `@svg`-blok gaat in zijn geheel ongemoeid door; de rest per aaneengesloten
+  // stuk door alleenInCode, zodat die zijn eigen `@select`-toestand houdt.
+  const uit: string[] = [];
+  let stuk: string[] = [];
+  let inSvg = false;
+  const spoel = () => {
+    if (stuk.length > 0) uit.push(alleenInCode(stuk.join('\n'), buitenTekenreeksen));
+    stuk = [];
+  };
+  for (const regel of source.split('\n')) {
+    const t = regel.trim();
+    if (inSvg) {
+      uit.push(regel);
+      if (/^@end\b/.test(t)) inSvg = false;
+    } else if (/^@svg\s*$/.test(t)) {
+      spoel();
+      uit.push(regel);
+      inSvg = true;
+    } else {
+      stuk.push(regel);
+    }
+  }
+  spoel();
+  return uit.join('\n');
 }
 
 /**

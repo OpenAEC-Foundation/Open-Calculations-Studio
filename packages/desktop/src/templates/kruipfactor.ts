@@ -36,7 +36,7 @@
  * Variabelenamen komen exact overeen met KruipfactorDesigner.tsx.
  */
 
-export const kruipfactor = `"Kruipfactor — φ(∞,t₀) volgens NEN-EN 1992-1-1 bijlage B
+export const kruipfactor = `"Kruipfactor — φ(t;t₀) volgens NEN-EN 1992-1-1 bijlage B
 
 # 1. Invoer
 

@@ -121,6 +121,9 @@ export default function SchijfwerkingDesigner() {
   const fmt = (v: number, dec: number) => v.toFixed(dec).replace(".", ",");
   const g = uitkomst?.getallen ?? {};
   const w = (naam: string, dec: number) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));
+  // Anker, glijden en plaat toont het blad alleen als hun capaciteit is
+  // ingevuld; anders zijn ze niet getoetst (en zegt de slotzin dat ook).
+  const open = (naam: string) => (g[naam] !== undefined ? fmt(g[naam], 2) : uitkomst ? "niet getoetst" : "—");
 
   // ── klikbare maat/kracht-chips ────────────────────────────────────────────
   function Dim(props: { name: string; value: number; x: number; y: number; step?: number; factor?: number; unit?: string; label?: string }) {
@@ -145,8 +148,8 @@ export default function SchijfwerkingDesigner() {
       </div>
     );
   }
-  function Force(props: { name: string; value: number; x: number; y: number; label: string; step?: number; id?: string }) {
-    const { name, value, x, y, label, step = 1 } = props;
+  function Force(props: { name: string; value: number; x: number; y: number; label: string; step?: number; id?: string; title?: string }) {
+    const { name, value, x, y, label, step = 1, title } = props;
     const editId = props.id ?? name;                     // los van `name`: zo kunnen twee chips
     const isEd = editing === editId;                     // dezelfde waarde tonen zonder elkaars focus te stelen
     return (
@@ -160,7 +163,7 @@ export default function SchijfwerkingDesigner() {
               if (e.key === "Escape") setEditing(null);
             }} />
         ) : (
-          <button className="vd-force-num" title={`${label} — klik om te wijzigen`} onClick={() => setEditing(editId)}>
+          <button className="vd-force-num" title={`${title ?? label} — klik om te wijzigen`} onClick={() => setEditing(editId)}>
             {label}={Number.isInteger(value) ? value : value.toFixed(1)}<small>kN</small>
           </button>
         )}
@@ -222,6 +225,14 @@ export default function SchijfwerkingDesigner() {
   // vanaf de wandrand gemeten kwam hij uit op de buitenkant van de kopstijl.
   const hohA = studXs.length > 3 ? studXs[1] : 0;
   const hohB = studXs.length > 3 ? studXs[2] : Math.min(hoh, b);
+  // Een restpaneel smaller dan h/4 telt in het blad niet mee (9.2.4.2(2)); het
+  // beeld toont het grijs, zoals het beeld van de HSB-stabiliteit. Een blad uit
+  // een oudere versie (eigen kopie van de rekentekst) rekende met de hele
+  // wandlengte; dan tekent het beeld het restpaneel gewoon mee.
+  const perPaneel = source.includes("b_rest");
+  const nPlaat = bi > 0 ? Math.floor(b / bi) : 0;
+  const restPaneel = b - nPlaat * bi;
+  const restTeltNiet = perPaneel && bi > 0 && restPaneel > 1 && restPaneel < h / 4;
   const px = (mm: number) => xW0 + mm * s;
   // Linkerkant van een stijl. De tussenstijlen staan op hun hartlijn; de
   // kopstijlen liggen met hun buitenkant gelijk met de wandrand. Op de rand
@@ -320,6 +331,14 @@ export default function SchijfwerkingDesigner() {
                     regels en de kopstijlen. Doorschijnend, zodat het raamwerk
                     erachter zichtbaar blijft. */}
                 <rect x={xW0} y={yE0} width={Wpx} height={Hpx} fill="#dbe4f5" fillOpacity={0.55} />
+                {restTeltNiet && (
+                  <>
+                    <rect x={px(nPlaat * bi)} y={yE0} width={Math.max(0, xW1 - px(nPlaat * bi))} height={Hpx} fill="#9ca3af" fillOpacity={0.45} />
+                    <text x={(px(nPlaat * bi) + xW1) / 2} y={(yE0 + yE1) / 2} textAnchor="middle" dominantBaseline="middle"
+                      transform={`rotate(-90 ${(px(nPlaat * bi) + xW1) / 2} ${(yE0 + yE1) / 2})`}
+                      style={{ fontSize: 10, fill: "#374151" }}>telt niet mee (&lt; h/4)</text>
+                  </>
+                )}
                 {/* beplatingsvoegen (dashed) */}
                 {boardXs.map((mm, i) => (
                   <line key={i} x1={px(mm)} y1={yE0} x2={px(mm)} y2={yE1} stroke="#1d4ed8" strokeWidth={1} strokeDasharray="6 4" />
@@ -380,8 +399,11 @@ export default function SchijfwerkingDesigner() {
               <Dim name="hoh" value={hoh} x={(px(hohA) + px(hohB)) / 2} y={yE1 - regelPx - 20} step={10} label="hoh" unit=" mm" />
               <Dim name="h" value={h} x={xW1 + 42} y={(yE0 + yE1) / 2} step={0.1} factor={0.001} label="h" unit=" m" />
               <Dim name="b" value={b} x={(xW0 + xW1) / 2} y={ySec1 + 20} step={0.1} factor={0.001} label="b" unit=" m" />
-              <Force name="F1" value={F1} x={xW0 + 12} y={yE0 - 40} label="F1" />
-              <Force name="F2" value={F2} x={xW1 - 12} y={yE0 - 40} label="F2" />
+              {/* F1 en F2 zijn rekenwaarden (6.10b): het blad telt ze op bij F_i,t,Ed. */}
+              <Force name="F1" value={F1} x={xW0 + 12} y={yE0 - 40} label="F1,Ed"
+                title="rekenwaarde (6.10b) van de verticale last op eindstijl A" />
+              <Force name="F2" value={F2} x={xW1 - 12} y={yE0 - 40} label="F2,Ed"
+                title="rekenwaarde (6.10b) van de verticale last op eindstijl B" />
               <Force name="F_ivEd" id="F_ivEd@top" value={F_ivEd} x={xW1 + 66} y={yE0 - 8} label="Fi,v,Ed" />
               <Force name="F_ivEd" id="F_ivEd@bot" value={F_ivEd} x={xW0 - 52} y={yE1 - 18} label="Fi,v,Ed" />
             </div>
@@ -393,7 +415,8 @@ export default function SchijfwerkingDesigner() {
         <span>Klik op een blauwe maat of rode kracht om die te wijzigen — stroomt direct terug in de rekensheet.</span>
         <span className="vd-live">
           c<sub>i</sub> = {w("c_i", 2)} · F<sub>i,v,Rd</sub> = {w("F_ivRd", 1)} kN · sterkte {g.UC_sterkte !== undefined ? fmt(g.UC_sterkte, 2) : uitkomst ? "∞" : "—"} ·
-          h.o.h. {w("UC_hoh", 2)} · druk⊥ {detail === 1 ? w("UC_druk90", 2) : "n.v.t. (stijl doorlopend)"} · plooi {w("UC_plooi", 2)} · stijl {w("UC_stijl", 2)}
+          h.o.h. {w("UC_hoh", 2)} · druk⊥ {detail === 1 ? w("UC_druk90", 2) : "n.v.t. (stijl doorlopend)"} · plooi {w("UC_plooi", 2)} · stijl {w("UC_stijl", 2)} ·
+          anker {open("UC_anker")} · glijden {open("UC_glijden")} · plaat {open("UC_plaat")}
         </span>
       </div>
     </div>

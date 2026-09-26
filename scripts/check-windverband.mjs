@@ -10,9 +10,12 @@
  *      3 ≤ α_cr < 10 (5.2.2(5)B), trek op de bruto en de netto doorsnede —
  *      strip volgens (6.7), hoekprofiel aan één been volgens (3.11) tot (3.13)
  *      met tabel 3.8 —, de blokschuif (3.9) of (3.10), knik van een enkele
- *      diagonaal met de effectieve slankheid van BB.1.2, de benodigde
- *      keelvlakte van een las (4.4) en de horizontale verplaatsing.
+ *      diagonaal met de effectieve slankheid van BB.1.2, de twee flankelassen
+ *      van een gelaste aansluiting (4.2) tot (4.4) en (4.9) en de horizontale
+ *      verplaatsing.
  *   2. Voor enkele sets de getallen van een handberekening.
+ *   3. Voor een ontbrekende, nul of gewiste maat ('') het oordeel: een toets
+ *      die niet uit te rekenen is, blijft "niet getoetst", nooit "voldoet".
  *
  * De profielgegevens staan hieronder los overgenomen uit EN 10056-1, zodat ook
  * de matrix in het blad wordt gecontroleerd.
@@ -33,16 +36,16 @@ const STANDAARD = {
 };
 const PROJECT = { CC: 2, K_FI: 1 };
 
-/** id → soort (1 strip, 2 hoek), b, t (mm), A (mm²), I_y, I_v (mm⁴). */
+/** id → soort (1 strip, 2 hoek), b, t (mm), A (mm²), e (mm), I_y, I_v (mm⁴). */
 const PROFIEL = {
   5: { soort: 1, b: 60, t: 8 },
   11: { soort: 1, b: 100, t: 10 },
   14: { soort: 1, b: 120, t: 12 },
-  18: { soort: 2, b: 50, t: 5, A: 480, Iy: 11.0e4, Iv: 4.54e4 },
-  20: { soort: 2, b: 60, t: 6, A: 691, Iy: 22.8e4, Iv: 9.43e4 },
-  23: { soort: 2, b: 80, t: 8, A: 1230, Iy: 72.2e4, Iv: 29.9e4 },
-  26: { soort: 2, b: 100, t: 10, A: 1920, Iy: 177e4, Iv: 73.0e4 },
-  28: { soort: 2, b: 120, t: 12, A: 2750, Iy: 368e4, Iv: 152e4 },
+  18: { soort: 2, b: 50, t: 5, A: 480, e: 14.0, Iy: 11.0e4, Iv: 4.54e4 },
+  20: { soort: 2, b: 60, t: 6, A: 691, e: 16.9, Iy: 22.8e4, Iv: 9.43e4 },
+  23: { soort: 2, b: 80, t: 8, A: 1230, e: 22.6, Iy: 72.2e4, Iv: 29.9e4 },
+  26: { soort: 2, b: 100, t: 10, A: 1920, e: 28.2, Iy: 177e4, Iv: 73.0e4 },
+  28: { soort: 2, b: 120, t: 12, A: 2750, e: 34.0, Iy: 368e4, Iv: 152e4 },
 };
 for (const p of Object.values(PROFIEL)) if (p.soort === 1) p.A = p.b * p.t;
 
@@ -84,7 +87,10 @@ function uitwerking(v, P) {
   // gaten naast elkaar (3.9): het blok tussen de buitenste rijen of de twee
   // randstroken daarbuiten, met dezelfde afschuifvlakken; een strip met één rij
   // heeft geen blok. Drie of meer bouten → 3. A_nt of A_nv ≤ 0 → niet getoetst.
+  // Zonder gatdiameter zijn de netto doorsnede en de blokschuif niet te toetsen.
+  const gatOk = !(v.aansluiting > 0) || v.d_0 > 0;
   let blokOk = true, Veff = null, UCbs = 0, Anw = null, fvwd = null;
+  let las = 1, UCw = 0, Nlas = null, leff = null, bLw = null, FwEd = null, FwRd = null;
   if (v.aansluiting > 0 && (p.soort === 2 || v.n_d > 1)) {
     const n = Math.min(v.aansluiting, 3);
     const lv = v.e_1 + (n - 1) * v.p_1 - (n - 0.5) * v.d_0;
@@ -96,9 +102,27 @@ function uitwerking(v, P) {
     else Veff = ((p.soort === 2 ? 0.5 : 1) * fu * Ant) / 1.25 + (fy * Anv) / Math.sqrt(3);
     if (Veff !== null) UCbs = N / Veff;
   } else if (v.aansluiting === 0) {
+    // Twee gelijke flankelassen. Een strip verdeelt de kracht gelijk; bij een
+    // hoekprofiel loopt de kracht op e van de hiel, dus de hiellas krijgt
+    // N·(b − e)/b (evenwicht om de werklijn). Zonder a of l_w: niet getoetst (0);
+    // a < 3 mm of l_eff < max(30; 6a): de las mag geen kracht overbrengen (2).
     const bw = { 235: 0.8, 275: 0.85, 355: 0.9 }[fy];
     fvwd = fu / (Math.sqrt(3) * bw * 1.25);
-    Anw = N / fvwd;
+    Nlas = p.soort === 1 ? N / 2 : (N * (p.b - p.e)) / p.b;
+    const a = v.a_w ?? 0, lw = v.l_w ?? 0;
+    if (!(a > 0 && lw > 0)) {
+      las = 0;
+      Anw = Nlas / fvwd;
+    } else {
+      leff = lw - 2 * a;
+      if (a < 3 || leff < Math.max(30, 6 * a)) las = 2;
+      else {
+        bLw = Math.min(1, 1.2 - (0.2 * lw) / (150 * a));
+        FwEd = Nlas / leff;
+        FwRd = bLw * fvwd * a;
+        UCw = FwEd / FwRd;
+      }
+    }
   }
 
   let drukOk = true, UCc = 0, Nb = null, lamEff = null, chi = null;
@@ -117,8 +141,9 @@ function uitwerking(v, P) {
   const u = (v.F_w_k * 1000 * L) / (210000 * p.A * cos * cos);
   const UCt = N / Nt, UCu = u / (h / v.grens_u);
   return {
-    phi, acr, kcr, tweedeOk, H, Fh, N, Npl, Nu, beta, Nt, UCt, blokOk, Veff, UCbs, fvwd, Anw,
-    drukOk, lamEff, chi, Nb, UCc, u, UCu, UCmax: Math.max(UCt, UCc, UCu, UCbs),
+    phi, acr, kcr, tweedeOk, H, Fh, N, Npl, Nu, beta, Nt, UCt, gatOk, blokOk, Veff, UCbs, fvwd, Anw,
+    las, Nlas, leff, bLw, FwEd, FwRd, UCw,
+    drukOk, lamEff, chi, Nb, UCc, u, UCu, UCmax: Math.max(UCt, UCc, UCu, UCbs, UCw),
   };
 }
 
@@ -140,7 +165,11 @@ function verwachtingen(r, v) {
   if (Number.isFinite(r.acr)) uit.α_cr = ruim(r.acr);
   if (r.kcr > 1) uit.k_cr = ruim(r.kcr);
   if (r.Veff !== null) Object.assign(uit, { V_eff_Rd: ruim(r.Veff / 1000), UC_bs: ruim(r.UCbs) });
-  if (r.Anw !== null) Object.assign(uit, { f_vw_d: ruim(r.fvwd), A_w_nodig: ruim(r.Anw) });
+  if (r.fvwd !== null) Object.assign(uit, { f_vw_d: ruim(r.fvwd), N_las: ruim(r.Nlas / 1000) });
+  if (r.Anw !== null) uit.A_w_nodig = ruim(r.Anw);
+  if (r.leff !== null) uit.l_eff = ruim(r.leff);
+  if (r.bLw !== null && r.bLw < 1) uit.β_Lw = ruim(r.bLw);
+  if (r.FwEd !== null) Object.assign(uit, { F_las_Ed: ruim(r.FwEd), F_las_Rd: ruim(r.FwRd), UC_w: ruim(r.UCw) });
   if (r.drukOk) uit.UC_max = ruim(r.UCmax);
   return uit;
 }
@@ -172,15 +201,42 @@ const SETS = [
     invoer: { profile: 23, staalkwaliteit: 355, aansluiting: 3, d_0: 22, p_1: 100, V_Ed: 200, F_w_k: 60 },
   },
   {
-    naam: "4 — L 100×100×10 S235 als enkele diagonaal, gelast: trek en knik",
-    invoer: { verbandtype: 2, profile: 26, aansluiting: 0, b_v: 4, h_v: 3.5, F_w_k: 25 },
+    naam: "4 — L 100×100×10 S235 als enkele diagonaal, gelast met a 4 en l_w 100: trek, knik en las",
+    invoer: { verbandtype: 2, profile: 26, aansluiting: 0, b_v: 4, h_v: 3.5, F_w_k: 25, a_w: 4, l_w: 100 },
     // Met de hand: L_d = √(16 + 12,25) = 5,315 m. i_v = √(73,0/19,2) = 19,50 mm,
     // λ_v = 5315/(19,50·93,9) = 2,903 → λ_eff,v = 0,35 + 0,7·2,903 = 2,382;
     // i_y = 30,36 mm → λ_eff,y = 0,5 + 0,7·1,864 = 1,805. Φ = 3,708 →
     // χ = 1/(3,708 + √(13,750 − 5,674)) = 0,1527; N_b,Rd = 0,1527·1920·235 = 68,9 kN.
-    // Las: N_Ed = 39,87/0,7526 = 52,98 kN; f_vw,d = 360/(√3·0,8·1,25) = 207,8 N/mm²;
-    // Σ a·l_eff ≥ 52 980/207,8 = 254,9 mm².
-    handwerk: { λ_eff: "2.382", χ: "0.1527", N_b_Rd: "68.9", N_Ed: "52.98", f_vw_d: "207.8", A_w_nodig: "254.9" },
+    // Las: N_Ed = 39,87/0,7526 = 52,98 kN; f_vw,d = 360/(√3·0,8·1,25) = 207,8 N/mm².
+    // Hiellas: N_las = 52,98·(100 − 28,2)/100 = 38,04 kN; l_eff = 100 − 2·4 = 92 mm;
+    // F_w,Ed = 38 040/92 = 413,5 N/mm; F_w,Rd = 207,8·4 = 831,4 N/mm → UC_w = 0,497.
+    handwerk: {
+      λ_eff: "2.382", χ: "0.1527", N_b_Rd: "68.9", N_Ed: "52.98", f_vw_d: "207.8",
+      N_las: "38.04", l_eff: "92", F_las_Ed: "413.5", F_las_Rd: "831.4", UC_w: "0.497",
+    },
+  },
+  {
+    naam: "4b — idem zonder a en l_w: las niet getoetst",
+    invoer: { verbandtype: 2, profile: 26, aansluiting: 0, b_v: 4, h_v: 3.5, F_w_k: 25 },
+    // Hiellas: a·l_eff ≥ 38 040/207,85 = 183,0 mm² — dat is wat de hiellas vraagt als
+    // de twee lassen even lang zijn; de som over beide lassen (254,9 mm²) volstaat dan niet.
+    handwerk: { N_las: "38.04", A_w_nodig: "183.0" },
+  },
+  {
+    naam: "4c — strip 100×10 gelast, a 3 en l_w 500 > 150·a: β_Lw (4.9)",
+    invoer: { profile: 11, aansluiting: 0, a_w: 3, l_w: 500 },
+    // N_Ed = 80,86 kN (set 1) → N_las = 40,43 kN per las; l_eff = 500 − 6 = 494 mm;
+    // β_Lw = 1,2 − 0,2·500/450 = 0,9778; F_w,Rd = 0,9778·207,8·3 = 609,7 N/mm;
+    // F_w,Ed = 40 430/494 = 81,84 N/mm → UC_w = 0,134.
+    handwerk: { N_las: "40.43", l_eff: "494", β_Lw: "0.9778", F_las_Rd: "609.7", UC_w: "0.134" },
+  },
+  {
+    naam: "4d — strip 100×10 gelast, a 4 en l_w 36: l_eff 28 < 30 mm (§4.5.1(2))",
+    invoer: { profile: 11, aansluiting: 0, a_w: 4, l_w: 36 },
+  },
+  {
+    naam: "4e — strip 100×10 gelast, a 2,5 < 3 mm (§4.5.2(2))",
+    invoer: { profile: 11, aansluiting: 0, a_w: 2.5, l_w: 100 },
   },
   {
     naam: "5 — L 50×50×5, één bout (3.11), X-kruis",
@@ -245,6 +301,24 @@ const SETS = [
     naam: "12c — strip 100×10, twee gaten naast elkaar met e₂ 8 < d₀/2: blokschuif niet te toetsen",
     invoer: { profile: 11, aansluiting: 3, n_d: 2, e_2: 8 },
   },
+  {
+    naam: "13 — standaard met d₀ 0: gatdiameter ontbreekt",
+    invoer: { d_0: 0 },
+    // Het blad rekent A_net = A en β_2 = 0,7 (p₁/d₀ oneindig) en zou zonder de
+    // vlag 'voldoet' geven (UC_bs 0,753); met d₀ 0 is er niets te toetsen.
+  },
+  // Gewiste velden (''): de kern leest ze als 0 in de eenheid van het veld, net
+  // als de narekening (Number('') = 0). Het oordeel moet dan op "niet getoetst"
+  // blijven staan, nooit op "voldoet".
+  { naam: "14a — gelast, a gewist", invoer: { aansluiting: 0, a_w: "", l_w: 100 } },
+  { naam: "14b — gelast, l_w gewist", invoer: { aansluiting: 0, a_w: 4, l_w: "" } },
+  { naam: "14c — standaard, e₁ gewist", invoer: { e_1: "" } },
+  { naam: "14d — standaard met e₁ 60, e₂ gewist", invoer: { e_1: 60, e_2: "" } },
+  { naam: "14e — standaard, d₀ gewist", invoer: { d_0: "" } },
+  {
+    naam: "14f — strip 100×10, twee gaten naast elkaar, e₁ gewist",
+    invoer: { profile: 11, aansluiting: 3, n_d: 2, e_2: 25, e_1: "" },
+  },
 ];
 
 let fouten = 0;
@@ -264,7 +338,10 @@ for (const set of SETS) {
     console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ${wat}, gemeld als voldoet niet`);
   };
   if (!r.drukOk) gemeld(/de druk bij omkerende wind/, "druk niet op te nemen of niet te toetsen");
+  else if (!r.gatOk) gemeld(/de gatdiameter d\s*0 ontbreekt/, "gatdiameter ontbreekt");
   else if (!r.blokOk) gemeld(/de blokschuif is niet getoetst/, "blokschuif niet getoetst");
+  else if (r.las === 0) gemeld(/de las is niet getoetst/, "las niet getoetst");
+  else if (r.las === 2) gemeld(/de las voldoet niet aan §4\.5\.1\(2\) of §4\.5\.2\(2\)/, "las mag geen kracht overbrengen");
   else if (!r.tweedeOk) gemeld(/tweede-orde-analyse/, "α_cr < 3");
   else {
     const voldoet = /het verband voldoet(?! niet)/.test(got.text);

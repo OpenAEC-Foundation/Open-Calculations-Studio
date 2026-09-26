@@ -14,8 +14,12 @@
  *   F_tot    = 7,33 + 5 = 12,33 kN            druk ⊥ = 12 332/(76 × 184)/2,163 = 0,408
  *   plooi    = 610/12/100 = 0,508            h.o.h. = 150/150 = 1,00
  *   stijl    : L = 2600 − 2 × 76 = 2448, λ_rel,y = 0,782, k_c,y = 0,836 → 0,0726
+ *              (binnenwand, w_k = 0; de gevelwand met windbuiging staat verderop)
  *   UC_max   = 20/37,27 = 0,537: de detailleringsregels (plooi, h.o.h.) tellen
  *              als voldoet/voldoet niet en niet mee in de maatgevende UC.
+ *
+ * Zonder F_a,Rd, v_Rd en f_v,d is de schijf niet volledig getoetst: de slotzin
+ * zegt dat, en de kop van het rapport mag dan geen "voldoet" lezen.
  *
  * Eerder rekende het blad F_i,v,Rd met de hele wandlengte en de c_i van een
  * volle plaat (37,84 kN) en F_i,t,Ed met b (7,22 kN): het restpaneel van 1100
@@ -51,6 +55,21 @@ function zin(naam, got, eisen) {
   console.log(`  ${ok ? "OK    " : "FOUT  "} slotzin   ${s.slice(0, 110) || "(geen)"}   [${naam}]`);
 }
 
+/**
+ * Het oordeel zoals de kop van het rapport het leest: 240 tekens vanaf de
+ * laatste "Maatgevende UC", "voldoet"/"voldoen" zonder "niet" is voldoet
+ * (leesResultaat in packages/desktop/src/components/calc/bladResultaat.ts).
+ * Een blad met open toetsen mag daar geen "voldoet" krijgen.
+ */
+function kop(naam, got, verwacht) {
+  const i = got.text.lastIndexOf("Maatgevende UC");
+  const s = i < 0 ? "" : got.text.slice(i, i + 240);
+  const oordeel = !/voldoe[nt] niet/.test(s) && /voldoe[nt]/.test(s);
+  const ok = oordeel === verwacht;
+  if (!ok) fouten++;
+  console.log(`  ${ok ? "OK    " : "FOUT  "} kop van het rapport: ${oordeel ? "voldoet" : "voldoet niet"}   [${naam}]`);
+}
+
 {
   const got = reken(tpl, BASIS, PROJECT);
   fouten += toets("startwaarden van het beeld", got, {
@@ -59,7 +78,8 @@ function zin(naam, got, eisen) {
     L_cry: "2448", λ_rely: "0.782", k_cy: "0.836", UC_stijl: "0.0726", UC_max: "0.537", N_t: "7.33",
   });
   // Zonder ingevulde capaciteit zijn anker, glijden en plaat niet getoetst, en dat zegt de slotzin.
-  zin("anker, glijden en plaat open", got, [/≤ 1,0 → schijf en eindstijl voldoen/, /apart aantonen/]);
+  zin("anker, glijden en plaat open", got, [/≤ 1,0, maar de schijf is niet volledig getoetst/, /apart aantonen/]);
+  kop("anker, glijden en plaat open", got, false);
 
   // Dezelfde invoer volgens de norm: ×1,2 op F_f,Rd, dagmaat voor plooi, 200 mm
   // bij schroeven, +30 mm contactvlak. Handwerk: 44,72 kN; 534/12/100 = 0,445;
@@ -82,9 +102,30 @@ function zin(naam, got, eisen) {
   fouten += toets("anker, glijden en plaat getoetst", got,
     { N_t: "4.632", UC_anker: "0.463", UC_glijden: "0.556", τ_d: "0.1175", UC_plaat: "0.0336", UC_max: "0.556" });
   zin("alles getoetst", got, [/≤ 1,0 → Schijfwerking voldoet/]);
+  kop("alles getoetst", got, true);
   const zwak = reken(tpl, { ...BASIS, G_k_eind: "3", F_a_Rd: "4", v_Rd: "5", f_v_d: "3.5" }, PROJECT);
   zin("anker te zwak", zwak, [/> 1,0 → Schijfwerking voldoet niet/]);
+  kop("anker te zwak", zwak, false);
 }
+
+// Wind op een gevelwand buigt de eindstijl uit het vlak (6.23)/(6.24); w_k = 0,8 kN/m², CC2.
+//   M_w = 1,5 × 0,8 × 0,305 × 2,448²/8 = 0,2742 kNm; W = 76 × 184²/6 = 428 843 mm³ → σ_m = 0,6393;
+//   f_m,d = 0,9 × 24/1,3 = 16,62 (k_h = 1 bij 184 mm);
+//   UC_y = 0,8819/(0,8356 × 14,54) + 0,6393/16,62 = 0,0726 + 0,0385 = 0,1111;
+//   UC_z = 0,8819/14,54 + 0,7 × 0,0385 = 0,0876.
+// Met w_k = 0 (binnenwand) blijft het 0,0726, zie de startwaarden.
+fouten += toets("gevelwand, w_k = 0,8 kN/m²", reken(tpl, { ...BASIS, w_k: "0.8" }, PROJECT),
+  { M_w: "0.2742", σ_md: "0.6393", f_md: "16.62", UC_stijl: "0.1111" });
+// Zuiging buigt de stijl evengoed: |w_k| telt, M_w = 1,5 × |−0,8| × 0,305 × 2,448²/8 = 0,2742 kNm
+// en UC = 0,1111, als bij druk. Met het teken erin werd UC_stijl kleiner dan zonder wind.
+fouten += toets("gevelwand, zuiging w_k = −0,8 kN/m²", reken(tpl, { ...BASIS, w_k: "-0.8" }, PROJECT),
+  { M_w: "0.2742", σ_md: "0.6393", UC_stijl: "0.1111" });
+// Stijl 38 × 140: k_h = (150/140)^0,2 = 1,014; L = 2600 − 76 = 2524, λ_rel,y = 1,059, k_c,y = 0,645;
+//   σ_c = 12 332/5320 = 2,318; M_w = 0,366 × 2,524²/8 = 0,2915 kNm; σ_m = 0,2915e6/124 133 = 2,348;
+//   f_m,d = 1,014 × 16,62 = 16,85; UC_y = 2,318/(0,645 × 14,54) + 2,348/16,85 = 0,247 + 0,139 = 0,386.
+fouten += toets("gevelwand, stijl 38 × 140", reken(tpl,
+  { ...BASIS, w_k: "0.8", t_stijl: "38", b_stijl: "140", t_regel: "38", b_regel: "140" }, PROJECT),
+  { M_w: "0.2915", f_md: "16.85", UC_stijl: "0.386" });
 
 // Wind van de andere kant: de gedrukte eindstijl krijgt F2 = 15 kN.
 // F_tot = 7,33 + 15 = 22,33 kN → druk ⊥ = 22 332/13 984/2,163 = 0,738.
@@ -140,8 +181,11 @@ fouten += toets("wand 700, volgens de norm", reken(tpl, { ...BASIS, b: "700", F_
 }
 
 // Stijl doorlopend: de toets op druk ⊥ vervalt (UC_druk90 = 0, verborgen); de sterkte blijft maatgevend.
+// De eindstijl loopt dan over de hele hoogte door: L = h = 2600 (eerder 2448, de lengte tussen de regels).
+//   λ_rel,y = 2600/(184/√12)/π × √(21/7400) = 0,830; k = 0,5 × (1 + 0,2 × 0,530 + 0,689) = 0,897;
+//   k_c,y = 1/(0,897 + √(0,897² − 0,830²)) = 0,807; UC = 0,8819/(0,807 × 14,54) = 0,0752.
 fouten += toets("stijl doorlopend", reken(tpl, { ...BASIS, detail_AC: "2" }, PROJECT),
-  { UC_max: "0.537" });
+  { UC_max: "0.537", L_cry: "2600", λ_rely: "0.830", k_cy: "0.807", UC_stijl: "0.0752" });
 
 // Verbindingsmiddelen op 200 mm: de sterkte-UC blijft onder 1, maar de
 // detaillering niet (200/150 = 1,33), en dat moet de slotzin zeggen.

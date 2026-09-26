@@ -49,6 +49,10 @@
  *   • De minimale-excentriciteitstoets rekent met ρ_2 = 1,00 maar behoudt de
  *     verticale randsteuning (set 7: h_ef2 = ρ_4·h = 1000, niet h = 2800), en
  *     wordt overgeslagen zodra de eerste toets al niet voldoet (sets 3, 4, 9).
+ *     De maatgevende UC kan dan te laag uitvallen (set 9: 1,04 in plaats van
+ *     1,74); het oordeel blijft "voldoet niet". De norm-stand voert de toets
+ *     altijd uit, behalve bij trek (register: "Metselwerkwand — de
+ *     minimale-excentriciteitstoets vervalt na een eerste afkeur").
  *     Loopt de eerste toets wél, dan draait deze ook als e_m groter is dan
  *     e_m2: dat is niet tegen een referentie vastgesteld, maar de veilige kant.
  *   • N_Rd = min(N_Rd,t; N_Rd,b; N_Rd,m); UC = N_Ed/N_Rd.
@@ -68,6 +72,8 @@
  *     referentiesets hebben A = 0,12 m².
  *   • De minimale-excentriciteitstoets rekent met max(N_Ed; N_Ed,max): de NB bij
  *     5.5.1.1(5) vraagt de grootste normaalkracht, dus nooit minder dan N_Ed.
+ *   • ρ_3 volgens (5.7) is niet kleiner dan 0,3. Dat grijpt pas in bij n = 3
+ *     met L_v < 0,2·h; geen referentieset komt daar.
  *
  * Variabelenamen komen exact overeen met MetselwerkwandDesigner.tsx.
  */
@@ -185,12 +191,12 @@ e_grens = 0.25*t_w', grens waarboven de inklemming vervalt (§5.5.1.2(11)(i))'
 'Beton (optie 1-2) → 0,75; hout (optie 3-4) → 1,00. Een vloer aan één zijde met
 'een te korte oplegging (optie 5-6) klemt niet in → 1,00.
 rho_2 = if(ondersteuning ≤ 2; if(e_t0 > e_grens; 1.0; 0.75); 1.0)
-rho_3 = if(h_w ≤ 3.5*L_v; rho_2/(1 + (rho_2*h_w/(3*L_v))^2); 1.5*L_v/h_w)
+rho_3 = if(h_w ≤ 3.5*L_v; rho_2/(1 + (rho_2*h_w/(3*L_v))^2); max(1.5*L_v/h_w; 0.3))
 rho_4 = if(h_w ≤ 1.15*L_v; rho_2/(1 + (rho_2*h_w/L_v)^2); 0.5*L_v/h_w)
 rho_n = if(n_eff ≡ 3; rho_3; if(n_eff ≡ 4; rho_4; rho_2))
 'Idem met ρ₂ = 1,00 — voor de minimale-excentriciteitstoets vervalt de gunstige
 'inklemming boven/onder, maar de verticale randsteuning blijft staan.
-rho_3m = if(h_w ≤ 3.5*L_v; 1/(1 + (h_w/(3*L_v))^2); 1.5*L_v/h_w)
+rho_3m = if(h_w ≤ 3.5*L_v; 1/(1 + (h_w/(3*L_v))^2); max(1.5*L_v/h_w; 0.3))
 rho_4m = if(h_w ≤ 1.15*L_v; 1/(1 + (h_w/L_v)^2); 0.5*L_v/h_w)
 rho_nm = if(n_eff ≡ 3; rho_3m; if(n_eff ≡ 4; rho_4m; 1.0))
 #show
@@ -306,7 +312,7 @@ N_Rd = min(N_Rdt; N_Rdb; N_Rdm)', maatgevende capaciteit'
 h_ef2 = rho_nm*h_w', effectieve hoogte met rho_2 = 1,00 (5.2)'
 e_m2 = max(10*mm; h_ef2/300)', constante minimale excentriciteit'
 
-#if UC_1 ≤ 1.0
+#if UC_1 ≤ 1.0 or (rekenwijze ≡ 0 and N_Ed ≥ 0 kN)
     lam_2 = h_ef2/t_ef
     UC_lam2 = lam_2/27
     #if lam_2 ≤ 27
@@ -345,9 +351,11 @@ e_m2 = max(10*mm; h_ef2/300)', constante minimale excentriciteit'
     #end if
     UC_lam2m = UC_lam2
 #else
-    'Niet uitgevoerd: de wand voldoet al niet op de werkelijke excentriciteit.
+    'Niet uitgevoerd: de wand voldoet al niet op de eerste toets.
+    #hide
     UC_2 = 0
     UC_lam2m = 0
+    #show
 #end if
 
 # 10. Samenvatting

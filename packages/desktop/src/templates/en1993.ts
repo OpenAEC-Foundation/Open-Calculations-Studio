@@ -8,7 +8,12 @@
  * Partiele factoren conform Nederlandse Nationale Bijlage:
  *   gamma_M0 = 1,00   gamma_M1 = 1,00   gamma_M2 = 1,25
  *
- * scripts/check-en1993.mjs rekent de knik-, kip-, klasse- en liggerbladen na.
+ * Tabel 3.1 van de A1:2014-versie: S355 volgens EN 10025-2 (t ≤ 40 mm) heeft
+ * f_u = 490 N/mm²; 510 N/mm² geldt alleen voor buisprofielen (EN 10210-1 en
+ * EN 10219-1).
+ *
+ * Elk toetsblad sluit af met de slotzin "Maatgevende UC = …", die de rapportkop
+ * als oordeel leest. scripts/check-en1993.mjs rekent de toetsbladen na.
  */
 
 // ---------------------------------------------------------------------------
@@ -220,9 +225,9 @@ N_tRd = min(N_plRd; N_uRd) to kN
 UC_trek = N_Ed / N_tRd
 
 #if UC_trek ≤ 1
-'<span style="color: green">UC ≤ 1,0 → <b>voldoet</b></span>
+'<b>Maatgevende UC = 'UC_trek'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
-'<span style="color: red">UC > 1,0 → <b>voldoet niet</b></span>
+'<b>Maatgevende UC = 'UC_trek'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -276,9 +281,9 @@ N_cRd = A_eff * f_y / gamma_M0 to kN', (6.11), klasse 4'
 UC_druk = N_Ed / N_cRd
 
 #if UC_druk ≤ 1
-'<span style="color: green">UC ≤ 1,0 → <b>voldoet</b></span>
+'<b>Maatgevende UC = 'UC_druk'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
-'<span style="color: red">UC > 1,0 → <b>voldoet niet</b></span>
+'<b>Maatgevende UC = 'UC_druk'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -343,9 +348,9 @@ M_cRd = W_ely * f_y / gamma_M0 to kN*m
 UC_buiging = M_Ed / M_cRd
 
 #if UC_buiging ≤ 1
-'<span style="color: green">UC ≤ 1,0 → <b>voldoet</b></span>
+'<b>Maatgevende UC = 'UC_buiging'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
-'<span style="color: red">UC > 1,0 → <b>voldoet niet</b></span>
+'<b>Maatgevende UC = 'UC_buiging'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -398,18 +403,24 @@ V_Ed = q_d * L / 2 to kN
 
 V_plRd = A_v * (f_y / sqrt(3)) / gamma_M0 to kN
 
+#hide
+epsilon = sqrt(235 / f_y * 1 N/mm^2)
+#show
+'Plooi door afschuiving (6.2.6(6)): h<sub>w</sub>/t<sub>w</sub> = 'h_w / t_w' tegen 72ε/η = '72 * epsilon / eta' (6.22).
+
 ## Unity check
 
 UC_dwarskracht = V_Ed / V_plRd
 
-#if UC_dwarskracht ≤ 1
-'<span style="color: green">UC ≤ 1,0 → <b>voldoet</b></span>
-#else
-'<span style="color: red">UC > 1,0 → <b>voldoet niet</b></span>
-#end if
-
 #if UC_dwarskracht > 0.5
 '<b style="color:#b45309">V<sub>Ed</sub> > 0,5·V<sub>pl,Rd</sub>: de interactie met buiging (6.2.8) moet apart worden getoetst.</b>
+#end if
+#if h_w / t_w > 72 * epsilon / eta
+'<b>Maatgevende UC = 'UC_dwarskracht'</b><span style="color: red"> → <b>voldoet niet</b>: h<sub>w</sub>/t<sub>w</sub> > 72ε/η, dus het lijf moet op plooi door afschuiving worden getoetst (NEN-EN 1993-1-5 hoofdstuk 5); dat valt buiten dit blad.</span>
+#else if UC_dwarskracht ≤ 1
+'<b>Maatgevende UC = 'UC_dwarskracht'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
+#else
+'<b>Maatgevende UC = 'UC_dwarskracht'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -511,11 +522,11 @@ UC_MN = N_Ed / N_plRd + M_yEd / M_elyRd + M_zEd / M_elzRd', (6.42)'
 ## Unity check
 
 #if klasse ≡ 4
-'<b style="color:#b91c1c">De doorsnede valt in klasse 4. Daarvoor is een effectieve doorsnede volgens NEN-EN 1993-1-5 nodig, die dit blad niet uitrekent: voldoet niet.</b>
+'<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>voldoet niet</b>: de doorsnede valt in klasse 4. Daarvoor is een effectieve doorsnede volgens NEN-EN 1993-1-5 nodig, die dit blad niet uitrekent.</span>
 #else if UC_MN ≤ 1
-'<span style="color: green">UC ≤ 1,0 → <b>voldoet</b></span>
+'<b>Maatgevende UC = 'UC_MN'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
-'<span style="color: red">UC > 1,0 → <b>voldoet niet</b></span>
+'<b>Maatgevende UC = 'UC_MN'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -581,7 +592,7 @@ W_y', W_pl,y bij klasse 1 en 2, W_el,y bij klasse 3 (6.3.2.1(3))'
 
 ## Systeem
 
-Kiplengte (afstand zijdelingse steunen):
+Kiplengte (lengte tussen de gaffels):
 
 L_cr = 4000 mm
 
@@ -654,11 +665,11 @@ M_bRd = chi_LT * W_y * f_y / gamma_M1 to kN*m
 UC_kip = M_Ed / M_bRd
 
 #if klasse ≡ 4
-'<b style="color:#b91c1c">Klasse 4 valt buiten dit blad: voldoet niet.</b>
+'<b>Maatgevende UC = 'UC_kip'</b><span style="color: red"> → <b>voldoet niet</b>: de doorsnede valt in klasse 4, en die valt buiten dit blad.</span>
 #else if UC_kip ≤ 1
-'<span style="color: green">UC ≤ 1,0 → <b>voldoet</b></span>
+'<b>Maatgevende UC = 'UC_kip'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
-'<span style="color: red">UC > 1,0 → <b>voldoet niet</b></span>
+'<b>Maatgevende UC = 'UC_kip'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -689,7 +700,9 @@ I_y = 83560000 mm^4
 I_z = 6038000 mm^4
 h = 300 mm
 b = 150 mm
+t_w = 7.1 mm
 t_f = 10.7 mm
+r = 15 mm
 
 Traagheidsstralen:
 
@@ -727,17 +740,59 @@ alpha_z = alfa(kr_z)
 #show
 'Kromme <b>'kromme(kr_y)'</b> om de y-as (α = 'alpha_y') en <b>'kromme(kr_z)'</b> om de z-as (α = 'alpha_z'), kolom S235 t/m S420 van tabel 6.2.
 
-## Relatieve slankheid (formule 6.50)
+## Doorsnedeklasse bij zuivere druk (tabel 5.2)
+
+#if doorsnede ≤ 2
+#hide
+epsilon = sqrt(235 / f_y * 1 N/mm^2)
+c_w = h - 2 * t_f - 2 * r
+c_f = (b - t_w - 2 * r) / 2
+lambda_pw = c_w / t_w / (28.4 * epsilon * 2)
+lambda_pf = c_f / t_f / (28.4 * epsilon * sqrt(0.43))
+rho_w = if(c_w / t_w ≤ 42 * epsilon; 1; min(1; (lambda_pw - 0.22) / lambda_pw^2))
+rho_f = if(c_f / t_f ≤ 14 * epsilon; 1; min(1; (lambda_pf - 0.188) / lambda_pf^2))
+#show
+'Lijf: c/t = 'c_w / t_w' tegen 42ε = '42 * epsilon'; flens: c/t = 'c_f / t_f' tegen 14ε = '14 * epsilon'.
+#if min(rho_w; rho_f) < 1
+'Klasse 4: effectieve breedte volgens NEN-EN 1993-1-5 §4.4, ψ = 1 en k<sub>σ</sub> = 4 (lijf) of 0,43 (flens): ρ<sub>w</sub> = 'rho_w', ρ<sub>f</sub> = 'rho_f'.
+#if rho_f ≡ 1
+A_eff = A - (1 - rho_w) * c_w * t_w to mm^2
+#else if rho_w ≡ 1
+A_eff = A - 4 * (1 - rho_f) * c_f * t_f to mm^2
+#else
+A_eff = A - (1 - rho_w) * c_w * t_w - 4 * (1 - rho_f) * c_f * t_f to mm^2
+#end if
+#else
+'Klasse 1, 2 of 3: het bruto oppervlak telt.
+#hide
+A_eff = A
+#show
+#end if
+#else
+@select klasse_druk "Doorsnedeklasse bij zuivere druk"
+Klasse 1, 2 of 3 = 3
+Klasse 4 = 4
+@end
+#if klasse_druk ≡ 4
+A_eff = ?*(mm^2)', effectief oppervlak volgens NEN-EN 1993-1-5 §4.3'
+#else
+#hide
+A_eff = A
+#show
+#end if
+#end if
+
+## Relatieve slankheid (formule 6.50, bij klasse 4 6.51)
 
 lambda1 = pi * sqrt(E / f_y)
 
-Slankheid y-y:
-
+#if A_eff < A
+lambda_bar_y = L_cry / (i_y * lambda1) * sqrt(A_eff / A)
+lambda_bar_z = L_crz / (i_z * lambda1) * sqrt(A_eff / A)
+#else
 lambda_bar_y = L_cry / (i_y * lambda1)
-
-Slankheid z-z:
-
 lambda_bar_z = L_crz / (i_z * lambda1)
+#end if
 
 ## Knikfactoren (formule 6.49)
 
@@ -767,18 +822,24 @@ Knik om de zwakke as (z-z) is maatgevend.
 
 N_Ed = 500 kN
 
-## Knikweerstand (formule 6.47)
+## Knikweerstand (formule 6.47, bij klasse 4 6.48)
 
+#if A_eff < A
+N_bRd = chi * A_eff * f_y / gamma_M1 to kN
+#else
 N_bRd = chi * A * f_y / gamma_M1 to kN
+#end if
 
 ## Unity check
 
 UC_knik = N_Ed / N_bRd
 
-#if UC_knik ≤ 1
-'<span style="color: green">UC ≤ 1,0 → <b>voldoet</b></span>
+#if doorsnede ≥ 5 and A_eff < A
+'<b>Maatgevende UC = 'UC_knik'</b><span style="color: red"> → <b>voldoet niet</b>: de doorsnede valt in klasse 4 en is niet dubbelsymmetrisch; het extra moment ΔM = N<sub>Ed</sub>·e<sub>N</sub> (6.3.1.1(2)) valt buiten dit blad.</span>
+#else if UC_knik ≤ 1
+'<b>Maatgevende UC = 'UC_knik'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
-'<span style="color: red">UC > 1,0 → <b>voldoet niet</b></span>
+'<b>Maatgevende UC = 'UC_knik'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -839,10 +900,13 @@ w_bij_lim = grens_bij * L to mm
 UC_w_max = w_max / w_max_lim
 UC_w_bij = w_bij / w_bij_lim
 
-#if max(UC_w_max; UC_w_bij) ≤ 1
-'<span style="color: green">UC ≤ 1,0 → <b>voldoet</b></span>
+#hide
+UC_max = max(UC_w_max; UC_w_bij)
+#show
+#if UC_max ≤ 1
+'<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
-'<span style="color: red">UC > 1,0 → <b>voldoet niet</b></span>
+'<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
 #end if
 `;
 
@@ -918,7 +982,7 @@ I_w = I_z * (h_p - t_f)^2 / 4 to cm^6', welvingsconstante, benadering voor I-pro
 ## Systeem en belasting
 
 L = 6000 mm', overspanning'
-L_kip = 6000 mm', afstand tussen de zijdelingse steunen van de gedrukte flens'
+n_st = 0', aantal kipsteunen van de gedrukte flens tussen de gaffels, op gelijke afstand'
 q_d = 25 kN/m', gelijkmatig verdeelde belasting, rekenwaarde (UGT)'
 g_k = 7 kN/m', blijvend, karakteristiek (BGT)'
 q_k = 10 kN/m', veranderlijk, karakteristiek (BGT)'
@@ -976,33 +1040,70 @@ UC_dwarskracht = V_Ed / V_plRd
 
 #if UC_dwarskracht ≤ 0.5
 'V<sub>Ed</sub> ≤ 0,5·V<sub>pl,Rd</sub>: de buigweerstand hoeft voor de dwarskracht niet te worden verminderd (6.2.8(2)).
+#hide
+UC_MV = 0
+#show
 #else
-'<b style="color:#b45309">V<sub>Ed</sub> > 0,5·V<sub>pl,Rd</sub>: de vermindering volgens 6.2.8(3) is niet uitgewerkt. Toets de doorsnede waar moment en dwarskracht samen groot zijn apart.</b>
+rho_V = (2 * V_Ed / V_plRd - 1)^2', 6.2.8(3), bij de oplegging'
+M_x0 = M_Ed * (1 - (V_plRd / (2 * V_Ed))^2) to kN*m', grootste moment waar V_Ed(x) > 0,5·V_pl,Rd'
+M_VRd = min(max(W_y - rho_V * h_w^2 * t_w / 4; 0 mm^3) * f_y / gamma_M0; M_cRd) to kN*m', (6.30); bij klasse 3 aan de veilige kant'
+UC_MV = M_x0 / M_VRd
 #end if
 
 ---
 
-## 4. Kipstabiliteit (art. 6.3.2.3)
-
-#hide
-C_1 = 1.13
-C_2 = 0.45
-z_g = aangrijping * h_p / 2
-#show
-'Gelijkmatige last, gaffels aan de einden: C<sub>1</sub> = 1,13 en C<sub>2</sub> = 0,45; de last grijpt aan op z<sub>g</sub> = 'z_g' mm van het dwarskrachtcentrum, positief naar de gedrukte flens.
-
-M_cr = C_1 * pi^2 * E * I_z / L_kip^2 * (sqrt(I_w / I_z + L_kip^2 * G * I_t / (pi^2 * E * I_z) + (C_2 * z_g)^2) - C_2 * z_g) to kN*m
-
-lambda_LT = sqrt(W_y * f_y / M_cr)
+## 4. Kipstabiliteit (art. 6.3.2.3, bijlage NB.NB)
 
 #hide
 alpha_LT = if(h_p / b_p ≤ 2; 0.34; 0.49)
 #show
 'Kipkromme 'if(h_p / b_p ≤ 2; "b"; "c")' (tabel 6.5, gewalst I-profiel, h/b = 'h_p / b_p'): α<sub>LT</sub> = 'alpha_LT'; λ̄<sub>LT,0</sub> = 0,4 en β = 0,75 (NB bij 6.3.2.3(1)).
 
+#if n_st < 1
+#hide
+C_1 = 1.13
+C_2 = 0.45
+z_g = aangrijping * h_p / 2
+#show
+'Gelijkmatige last, gaffels aan de einden, geen kipsteunen: C<sub>1</sub> = 1,13 en C<sub>2</sub> = 0,45 (tabel NB.NB.1, geval 2); de last grijpt aan op z<sub>g</sub> = 'z_g' mm van het dwarskrachtcentrum, positief naar de gedrukte flens.
+
+M_cr = C_1 * pi^2 * E * I_z / L^2 * (sqrt(I_w / I_z + L^2 * G * I_t / (pi^2 * E * I_z) + (C_2 * z_g)^2) - C_2 * z_g) to kN*m
+
+lambda_LT = sqrt(W_y * f_y / M_cr)
+
 Phi_LT = 0.5 * (1 + alpha_LT * (lambda_LT - 0.4) + 0.75 * lambda_LT^2)
 
 chi_LT = min(1; 1 / lambda_LT^2; 1 / (Phi_LT + sqrt(Phi_LT^2 - 0.75 * lambda_LT^2)))', (6.57)'
+#else
+#hide
+N_v = floor(n_st) + 1
+#show
+L_st = L / N_v to mm', afstand tussen de kipsteunen'
+'Per veld: L<sub>kip</sub> = (1,4 − 0,8·β)·L<sub>st</sub>, tussen 1,0 en 1,4·L<sub>st</sub>; C<sub>1</sub> = 1,75 − 1,05·β + 0,3·β² ≤ 2,3 en C<sub>2</sub> = 0 (NB.NB.4.3, tabel NB.NB.1 geval 1), met β de verhouding van de eindmomenten van het veld. De kleinste χ<sub>LT</sub> geldt (NB.NB.2); de ligger is symmetrisch.
+#hide
+Mcr(Lk; C1) = C1 * pi^2 * E * I_z / Lk^2 * sqrt(I_w / I_z + Lk^2 * G * I_t / (pi^2 * E * I_z))
+chi_lt(lam) = min(1; 1 / lam^2; 1 / (0.5 * (1 + alpha_LT * (lam - 0.4) + 0.75 * lam^2) + sqrt((0.5 * (1 + alpha_LT * (lam - 0.4) + 0.75 * lam^2))^2 - 0.75 * lam^2)))
+chi_LT = 1
+#show
+'<table style="border-collapse:collapse; font-size:0.95em;">
+'<tr style="border-bottom:1.5px solid #374151;"><th style="padding:3px 8px;">Veld</th><th style="padding:3px 8px; text-align:right;">β</th><th style="padding:3px 8px; text-align:right;">L<sub>kip</sub> (mm)</th><th style="padding:3px 8px; text-align:right;">C<sub>1</sub></th><th style="padding:3px 8px; text-align:right;">M<sub>cr</sub> (kNm)</th><th style="padding:3px 8px; text-align:right;">λ̄<sub>LT</sub></th><th style="padding:3px 8px; text-align:right;">χ<sub>LT</sub></th></tr>
+#for i = 1 : ceil(N_v / 2)
+#hide
+m_a = (i - 1) * (N_v - i + 1)
+m_b = i * (N_v - i)
+beta_v = min(m_a; m_b) / max(m_a; m_b)
+L_kip_v = min(max(1.4 - 0.8 * beta_v; 1); 1.4) * L_st to mm
+C_1v = min(1.75 - 1.05 * beta_v + 0.3 * beta_v^2; 2.3)
+M_cr_v = Mcr(L_kip_v; C_1v) to kN*m
+lambda_v = sqrt(W_y * f_y / M_cr_v)
+chi_v = chi_lt(lambda_v)
+chi_LT = min(chi_LT; chi_v)
+#show
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">'i'</td><td style="padding:3px 8px; text-align:right;">'beta_v'</td><td style="padding:3px 8px; text-align:right;">'L_kip_v'</td><td style="padding:3px 8px; text-align:right;">'C_1v'</td><td style="padding:3px 8px; text-align:right;">'M_cr_v'</td><td style="padding:3px 8px; text-align:right;">'lambda_v'</td><td style="padding:3px 8px; text-align:right;">'chi_v'</td></tr>
+#loop
+'</table>
+chi_LT', kleinste waarde van de velden'
+#end if
 
 M_bRd = chi_LT * W_y * f_y / gamma_M1 to kN*m', (6.55)'
 
@@ -1029,7 +1130,7 @@ UC_w_bij = w_bij / (grens_bij * L)
 ## Samenvatting
 
 #hide
-UC_max = max(UC_buiging; UC_dwarskracht; UC_kip; UC_w_max; UC_w_bij)
+UC_max = max(UC_buiging; UC_dwarskracht; UC_MV; UC_kip; UC_w_max; UC_w_bij)
 kleur(u) = if(u > 1; "#b91c1c"; if(u > 0.9; "#b45309"; "#047857"))
 oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
 #show
@@ -1037,7 +1138,10 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
 '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:4px 8px;">Toets</th><th style="text-align:left; padding:4px 8px;">Norm</th><th style="text-align:right; padding:4px 8px;">UC</th><th style="text-align:left; padding:4px 8px;">Oordeel</th></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Buiging</td><td style="padding:4px 8px;">§6.2.5</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_buiging)'">'UC_buiging'</td><td style="padding:4px 8px; color:'kleur(UC_buiging)'">'oordeel(UC_buiging)'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Dwarskracht</td><td style="padding:4px 8px;">§6.2.6</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_dwarskracht)'">'UC_dwarskracht'</td><td style="padding:4px 8px; color:'kleur(UC_dwarskracht)'">'oordeel(UC_dwarskracht)'</td></tr>
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Kip</td><td style="padding:4px 8px;">§6.3.2.3</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_kip)'">'UC_kip'</td><td style="padding:4px 8px; color:'kleur(UC_kip)'">'oordeel(UC_kip)'</td></tr>
+#if UC_dwarskracht > 0.5
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Buiging met dwarskracht</td><td style="padding:4px 8px;">§6.2.8</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_MV)'">'UC_MV'</td><td style="padding:4px 8px; color:'kleur(UC_MV)'">'oordeel(UC_MV)'</td></tr>
+#end if
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Kip</td><td style="padding:4px 8px;">§6.3.2.3, NB.NB</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_kip)'">'UC_kip'</td><td style="padding:4px 8px; color:'kleur(UC_kip)'">'oordeel(UC_kip)'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Doorbuiging w<sub>max</sub> / w<sub>bij</sub></td><td style="padding:4px 8px;">§7.2</td><td style="padding:4px 8px; text-align:right; color:'kleur(max(UC_w_max; UC_w_bij))'">'UC_w_max' / 'UC_w_bij'</td><td style="padding:4px 8px; color:'kleur(max(UC_w_max; UC_w_bij))'">'oordeel(max(UC_w_max; UC_w_bij))'</td></tr>
 '</table>
 

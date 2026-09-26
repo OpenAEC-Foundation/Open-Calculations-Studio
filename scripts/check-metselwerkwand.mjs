@@ -11,7 +11,9 @@
  * afhandelt: een resultante buiten de doorsnede (Φ = 0, UC = ∞), een moment
  * zonder normaalkracht, trek, een vloer aan één zijde met een te korte
  * oplegging (§5.5.1.2(11)), het teken van M_mEd in de lage-belastingstak, een
- * penant kleiner dan 0,1 m² ((6.3)) en een N_Ed,max kleiner dan N_Ed.
+ * penant kleiner dan 0,1 m² ((6.3)), een N_Ed,max kleiner dan N_Ed en de
+ * ondergrens 0,3 van ρ_3 in (5.7). In de norm-stand loopt de
+ * minimale-excentriciteitstoets ook na een eerste afkeur.
  *
  * Draaien:  node scripts/check-metselwerkwand.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -57,7 +59,7 @@ const REFERENTIES = [
     invoer: { steensoort: "1", f_b: "18", morteltype: "2", f_m: "12.5" },
     verwacht: { f_k: "9.00", f_d: "5.29", UC_1: "0.52", UC_2: "0.87" } },
   { blad: "metselwerkwand-9 — CC3, M5", invoer: { f_m: "5" }, project: { CC: 3 },
-    verwacht: { f_k: "4.51", gam_M: "1.70", UC_1: "1.04" } },
+    verwacht: { f_k: "4.51", gam_M: "1.70", UC_1: "1.04", UC_max: "1.04" } },
   { blad: "metselwerkwand-10 — M = 10/5/7, e_t > 0,25·t", invoer: SET_10,
     verwacht: { rho_2: "1.00", h_ef: "2800", Phi_it: "0.063", Phi_ib: "0.313", Phi_m: "0.075",
                 N_Rd: "26.39", UC_1: "7.58" } },
@@ -127,6 +129,19 @@ const GEVALLEN = [
   { naam: "N_Ed,max kleiner dan N_Ed — toets met N_Ed",
     invoer: { N_Ed_max: "140" },
     verwacht: { N_mx: "200", N_Rdm2: VIER_CIJFERS("151.07"), UC_2: "1.32" }, voldoet: false, tekst: /N Ed,max is kleiner dan N Ed/ },
+
+  // ρ_3 volgens (5.7) is niet kleiner dan 0,3. Basisset met n = 3 en L_v = 500
+  // (< 15·t = 1800, dus n blijft 3): h = 2800 > 3,5·500 → 1,5·500/2800 = 0,268
+  // → ρ_3 = 0,3, h_ef = 840 (was 750). e_init = 1,87, e_mk = 0,05·t = 6,
+  // A_1 = 0,9, λ_F = 7·√(1/700) = 0,2646, u = 0,2016/0,6715 = 0,300,
+  // Φ_m = 0,9·e^(−0,045) = 0,860, N_Rd = 0,860·120 000·3,493/1000 = 360,6
+  // → UC_1 = 0,55. Tweede toets: h_ef2 = 840, e_mk2 = 10, A_1 = 0,833,
+  // u = 0,2016/0,6325 = 0,319, Φ_m2 = 0,833·e^(−0,0508) = 0,792,
+  // N_Rd,m2 = 332,0 → UC_2 = 0,60.
+  { naam: "n = 3 met L_v < 0,2·h — ρ_3 niet kleiner dan 0,3",
+    invoer: { n_rand: "3", L_v: "500" },
+    verwacht: { n_eff: "3", rho_n: "0.300", h_ef: "840", Phi_m: "0.860", UC_1: "0.55",
+                h_ef2: "840", Phi_m2: "0.792", UC_2: "0.60" }, voldoet: true },
 ];
 
 /** De slotzin van het blad: "Maatgevende UC = … → … voldoet (niet)". */
@@ -160,17 +175,30 @@ for (const g of GEVALLEN) {
 // ── Norm-stand ────────────────────────────────────────────────────────────
 // In de referentiesets is f_m = 15 ≤ 2·f_b: de norm-stand verandert niets.
 // Met baksteen fb 5 + M15 grijpt f_m ≤ 2·f_b wel in (register punt 14).
+//
+// De referentie slaat de minimale-excentriciteitstoets over zodra de eerste
+// toets niet voldoet; de norm-stand voert hem altijd uit. Set 9 (CC3, M5):
+// f_k = 0,6·12^0,65·5^0,25 = 4,512, f_d = 4,512/1,7 = 2,654; h_ef2 = 2800,
+// e_mk2 = max(10; 2800/300) = 10 mm, A_1 = 1 − 20/120 = 0,833,
+// λ_F = 23,33·√(1/700) = 0,882, u = (0,882 − 0,063)/(0,73 − 1,17·10/120) = 1,295,
+// Φ_m2 = 0,833·e^(−0,838) = 0,360, N_Rd,m2 = 0,360·1000·120·2,654/1000 = 114,8 kN
+// → UC_2 = 200/114,8 = 1,74. De referentie geeft als maatgevende UC 1,04.
 const NORM = [
   { naam: "metselwerkwand-1", invoer: {},
     richting: { f_k: "gelijk", N_Rd: "gelijk", UC_1: "gelijk" } },
   { naam: "baksteen fb 5 + M15", invoer: { steensoort: "1", f_b: "5" },
     richting: { f_k: "lager", N_Rd: "lager", UC_1: "hoger" } },
+  { naam: "metselwerkwand-9 — minimale excentriciteit na een eerste afkeur", invoer: { f_m: "5" },
+    project: { CC: 3 }, richting: { UC_1: "gelijk", UC_max: "hoger" },
+    waarden: { N_Rdm2: "114.8", UC_2: "1.74", UC_max: "1.74" } },
 ];
 for (const n of NORM) {
   const invoer = { ...BASIS, ...n.invoer };
-  const xc = reken(tpl, invoer, PROJECT);
-  const nb = reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 });
+  const project = { ...PROJECT, ...n.project };
+  const xc = reken(tpl, invoer, project);
+  const nb = reken(tpl, invoer, { ...project, rekenwijze: 0 });
   fouten += toetsNormStand(n.naam, xc, nb, n.richting);
+  if (n.waarden) fouten += toets(`${n.naam} — norm-stand, met de hand`, nb, n.waarden);
 }
 
 afronden(fouten, "Dragende metselwerkwand");

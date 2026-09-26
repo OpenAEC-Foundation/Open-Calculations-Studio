@@ -8,6 +8,9 @@
  * Materiaalwaarden: EN 338 (massief) en EN 14080 (gelamineerd), per blad in
  * één verborgen matrix. k_mod volgt klimaatklasse × belastingduurklasse
  * (tabel 3.1), γ_M het houttype (tabel 2.3 NB).
+ *
+ * Elk toetsblad sluit af met de slotzin "Maatgevende UC = …", die de afdruk
+ * als oordeel leest. Controle: scripts/check-eurocode5.mjs.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,10 +110,10 @@ Unity check:
 
 UC_buiging = sigma_md / f_md
 
-#if UC_buiging < 1
-  Buiging voldoet (UC = {{UC_buiging}}).
+#if UC_buiging ≤ 1
+  '<b>Maatgevende UC = 'UC_buiging'</b><span style="color: green"> ≤ 1,0 → <b>buiging voldoet</b></span>
 #else
-  Buiging voldoet NIET (UC = {{UC_buiging}})!
+  '<b>Maatgevende UC = 'UC_buiging'</b><span style="color: red"> > 1,0 → <b>buiging voldoet niet</b></span>
 #end if
 `;
 
@@ -198,10 +201,10 @@ Unity check:
 
 UC_afschuiving = tau_d / f_vd
 
-#if UC_afschuiving < 1
-  Afschuiving voldoet (UC = {{UC_afschuiving}}).
+#if UC_afschuiving ≤ 1
+  '<b>Maatgevende UC = 'UC_afschuiving'</b><span style="color: green"> ≤ 1,0 → <b>afschuiving voldoet</b></span>
 #else
-  Afschuiving voldoet NIET (UC = {{UC_afschuiving}})!
+  '<b>Maatgevende UC = 'UC_afschuiving'</b><span style="color: red"> > 1,0 → <b>afschuiving voldoet niet</b></span>
 #end if
 `;
 
@@ -280,10 +283,10 @@ Unity check:
 
 UC_druk = sigma_c0d / f_c0d
 
-#if UC_druk < 1
-  Druk evenwijdig voldoet (UC = {{UC_druk}}).
+#if UC_druk ≤ 1
+  '<b>Maatgevende UC = 'UC_druk'</b><span style="color: green"> ≤ 1,0 → <b>druk evenwijdig voldoet</b></span>
 #else
-  Druk evenwijdig voldoet NIET (UC = {{UC_druk}})!
+  '<b>Maatgevende UC = 'UC_druk'</b><span style="color: red"> > 1,0 → <b>druk evenwijdig voldoet niet</b></span>
 #end if
 `;
 
@@ -395,10 +398,10 @@ Unity check:
 
 UC_c90 = sigma_c90d / (k_c90 * f_c90d)
 
-#if UC_c90 < 1
-  Druk loodrecht voldoet (UC = {{UC_c90}}).
+#if UC_c90 ≤ 1
+  '<b>Maatgevende UC = 'UC_c90'</b><span style="color: green"> ≤ 1,0 → <b>druk loodrecht voldoet</b></span>
 #else
-  Druk loodrecht voldoet NIET (UC = {{UC_c90}})!
+  '<b>Maatgevende UC = 'UC_c90'</b><span style="color: red"> > 1,0 → <b>druk loodrecht voldoet niet</b></span>
 #end if
 `;
 
@@ -468,10 +471,6 @@ h = 100 mm
 
 A = b * h to mm^2
 
-Traagheidsmoment om zwakke as:
-
-I_z = h * b^3 / 12 to mm^4
-
 ## Systeem
 
 Kniklengte:
@@ -480,9 +479,9 @@ L_k = 3000 mm
 
 ## Knikberekening (art. 6.3.2)
 
-Slankheid (zwakke as):
+Slankheid om de zwakke as (kleinste afmeting van de doorsnede):
 
-lambda_z = L_k / (b / sqrt(12))
+lambda_z = L_k / (min(b; h) / sqrt(12))
 
 Relatieve slankheid (formule 6.22):
 
@@ -510,14 +509,14 @@ Unity check knik:
 
 UC_knik = sigma_c0d / (k_cz * f_c0d)
 
-#if UC_knik < 1
-  Knik voldoet (UC = {{UC_knik}}).
-#else
-  Knik voldoet NIET (UC = {{UC_knik}})!
+#if lambda_relz < 0.3
+  Relatieve slankheid < 0,3: k_c = 1 (art. 6.3.2(2)).
 #end if
 
-#if lambda_relz < 0.3
-  Opmerking: relatieve slankheid < 0,3; knik niet maatgevend (art. 6.3.2(2)).
+#if UC_knik ≤ 1
+  '<b>Maatgevende UC = 'UC_knik'</b><span style="color: green"> ≤ 1,0 → <b>knik voldoet</b></span>
+#else
+  '<b>Maatgevende UC = 'UC_knik'</b><span style="color: red"> > 1,0 → <b>knik voldoet niet</b></span>
 #end if
 `;
 
@@ -530,32 +529,49 @@ export const ec5Doorbuiging = `# Toetsing Doorbuiging — EN 1995-1-1 §7.2 / §
 
 ## Materiaal
 
-@select houtsoort "Houtsoort / sterkteklasse"
-C18 = 9000
-C24 = 11000
-C30 = 12000
-GL24h = 11500
-GL28h = 12600
-GL32h = 13700
+@select sterkteklasse "Sterkteklasse (EN 338 / EN 14080)"
+C18 = 1
+C24 = 2
+C30 = 3
+GL24h = 4
+GL28h = 5
+GL32h = 6
 @end
 
-Gemiddelde elasticiteitsmodulus E_mean (EN 338):
-
-E_mean = houtsoort * 1 N/mm^2
-
-@select klimaatklasse "Klimaatklasse"
-Klasse 1 (k_def = 0.60) = 0.60
-Klasse 2 (k_def = 0.80) = 0.80
-Klasse 3 (k_def = 2.00) = 2.00
+@select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
+Klasse 1 — droog, binnenklimaat = 1
+Klasse 2 — beschut buitenklimaat = 2
+Klasse 3 — buiten, onbeschermd = 3
 @end
 
-Vervormingsfactor k_def (tabel 3.2):
+@select belastingcat "Belastingcategorie van de veranderlijke belasting (tabel NB.2 — A1.1)"
+A — woon- en verblijfsruimtes = 1
+B — kantoorruimtes = 2
+C — bijeenkomstruimtes = 3
+D — winkelruimtes = 4
+E — opslagruimtes = 5
+F — verkeersruimte, voertuig ≤ 25 kN = 6
+G — verkeersruimte, 25 < voertuig ≤ 160 kN = 7
+H — daken = 8
+Sneeuwbelasting = 9
+Windbelasting = 10
+@end
 
-k_def = klimaatklasse * 1
+#hide
+'Materiaalmatrix: [id | f_m,k | f_v,k | f_c,0,k | f_c,90,k | E_0,mean | E_0,05 | γ_M | gelamineerd]
+materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |18; 21; 23; 24; 28; 32 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |1.3; 1.3; 1.3; 1.25; 1.25; 1.25 |0; 0; 0; 1; 1; 1]
+'ψ-factoren (NEN-EN 1990 tabel NB.2 — A1.1): [categorie | ψ_0 | ψ_1 | ψ_2]
+psi_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 |0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 |0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 |0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
+E_mean = hlookup(materialen; sterkteklasse; 1; 6)*N/mm^2
+k_def = if(klimaatklasse ≡ 1; 0.60; if(klimaatklasse ≡ 2; 0.80; 2.00))
+psi_2 = hlookup(psi_tabel; belastingcat; 1; 4)
+#show
 
-Quasi-blijvende factor psi_2 (NEN-EN 1990, cat. A woning):
+'Gemiddelde elasticiteitsmodulus (EN 338 / EN 14080), kruipfactor (tabel 3.2) en quasi-blijvende factor (NEN-EN 1990 tabel NB.2 — A1.1):
 
-psi_2 = 0.3
+E_mean
+k_def
+psi_2
 
 ## Doorsnede
 
@@ -634,22 +650,30 @@ UC_netfin = w_netfin / w_netfin_lim
 
 UC_fin = w_fin / w_fin_lim
 
-#if UC_inst < 1
+#if UC_inst ≤ 1
   w_inst voldoet ({{w_inst}} mm < {{w_inst_lim}} mm).
 #else
   w_inst voldoet NIET!
 #end if
 
-#if UC_netfin < 1
+#if UC_netfin ≤ 1
   w_net,fin voldoet ({{w_netfin}} mm < {{w_netfin_lim}} mm).
 #else
   w_net,fin voldoet NIET!
 #end if
 
-#if UC_fin < 1
+#if UC_fin ≤ 1
   w_fin voldoet ({{w_fin}} mm < {{w_fin_lim}} mm).
 #else
   w_fin voldoet NIET!
+#end if
+
+UC_max = max(UC_inst; UC_netfin; UC_fin)
+
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>doorbuiging voldoet</b></span>
+#else
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>doorbuiging voldoet niet</b></span>
 #end if
 `;
 
@@ -829,7 +853,7 @@ sigma_md = M_Ed / W_y to N/mm^2
 
 UC_buiging = sigma_md / f_md
 
-#if UC_buiging < 1
+#if UC_buiging ≤ 1
   [OK] Buiging voldoet (UC = {{UC_buiging}}).
 #else
   [NIET OK] Buiging voldoet NIET (UC = {{UC_buiging}})!
@@ -849,7 +873,7 @@ tau_d = 3/2 * V_Ed / (b_ef * h) to N/mm^2
 
 UC_afschuiving = tau_d / f_vd
 
-#if UC_afschuiving < 1
+#if UC_afschuiving ≤ 1
   [OK] Afschuiving voldoet (UC = {{UC_afschuiving}}).
 #else
   [NIET OK] Afschuiving voldoet NIET (UC = {{UC_afschuiving}})!
@@ -877,7 +901,7 @@ sigma_c90d = F_opl / A_ef to N/mm^2
 
 UC_c90 = sigma_c90d / (k_c90 * f_c90d)
 
-#if UC_c90 < 1
+#if UC_c90 ≤ 1
   [OK] Druk loodrecht voldoet (UC = {{UC_c90}}).
 #else
   [NIET OK] Druk loodrecht voldoet NIET (UC = {{UC_c90}})!
@@ -917,7 +941,7 @@ Kipfactor k_crit (formule 6.34):
 
 UC_kip = sigma_md / (k_crit * f_md)
 
-#if UC_kip < 1
+#if UC_kip ≤ 1
   [OK] Kipstabiliteit voldoet (UC = {{UC_kip}}).
 #else
   [NIET OK] Kipstabiliteit voldoet NIET (UC = {{UC_kip}})!
@@ -944,7 +968,7 @@ w_netfin_lim = L / 250 to mm
 
 UC_doorbuiging = w_netfin / w_netfin_lim
 
-#if UC_doorbuiging < 1
+#if UC_doorbuiging ≤ 1
   [OK] Doorbuiging voldoet ({{w_netfin}} mm < {{w_netfin_lim}} mm).
 #else
   [NIET OK] Doorbuiging voldoet NIET!
@@ -954,13 +978,25 @@ UC_doorbuiging = w_netfin / w_netfin_lim
 
 ## Samenvatting
 
-| Toetsing | UC | Resultaat |
-|---|---|---|
-| Buiging (6.1.6) | {{UC_buiging}} | |
-| Afschuiving (6.1.7) | {{UC_afschuiving}} | |
-| Druk loodrecht (6.1.5) | {{UC_c90}} | |
-| Kip (6.3.3) | {{UC_kip}} | |
-| Doorbuiging (7.2) | {{UC_doorbuiging}} | |
+#hide
+UC_max = max(UC_buiging; UC_afschuiving; UC_c90; UC_kip; UC_doorbuiging)
+kleur(u) = if(u > 1; "#b91c1c"; if(u > 0.9; "#b45309"; "#047857"))
+oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
+#show
+'<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
+'<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:4px 8px;">Toets</th><th style="text-align:left; padding:4px 8px;">Norm</th><th style="text-align:right; padding:4px 8px;">UC</th><th style="text-align:left; padding:4px 8px;">Oordeel</th></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Buiging</td><td style="padding:4px 8px;">§6.1.6</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_buiging)'">'UC_buiging'</td><td style="padding:4px 8px; color:'kleur(UC_buiging)'">'oordeel(UC_buiging)'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Afschuiving</td><td style="padding:4px 8px;">§6.1.7</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_afschuiving)'">'UC_afschuiving'</td><td style="padding:4px 8px; color:'kleur(UC_afschuiving)'">'oordeel(UC_afschuiving)'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Druk loodrecht</td><td style="padding:4px 8px;">§6.1.5</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_c90)'">'UC_c90'</td><td style="padding:4px 8px; color:'kleur(UC_c90)'">'oordeel(UC_c90)'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Kip</td><td style="padding:4px 8px;">§6.3.3</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_kip)'">'UC_kip'</td><td style="padding:4px 8px; color:'kleur(UC_kip)'">'oordeel(UC_kip)'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Doorbuiging w<sub>net,fin</sub></td><td style="padding:4px 8px;">§7.2</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_doorbuiging)'">'UC_doorbuiging'</td><td style="padding:4px 8px; color:'kleur(UC_doorbuiging)'">'oordeel(UC_doorbuiging)'</td></tr>
+'</table>
+
+#if UC_max ≤ 1
+'<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de balk voldoet</b></span>
+#else
+'<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de balk voldoet niet</b></span>
+#end if
 
 ## Overzicht
 

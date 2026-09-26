@@ -395,10 +395,21 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
         // Het veld toont wat er is ingetypt; gerekend wordt met een punt. Een
         // komma is hier altijd een decimaalteken: "0,42" is 0,42.
         const invoer = String(selectValues[node.name] ?? node.defaultValue);
-        const raw = invoer.trim().replace(',', '.');
+        // Een leeg veld telt als 0 in de eenheid van het veld, net als een
+        // nieuw '?'-veld. Zonder deze stap werd "" met eenheid " kN": een
+        // eenheid zonder getal, die als 1 kN rekende of verderop NaN en
+        // "unit with undefined value" gaf; zonder eenheid bleef de naam
+        // ongedefinieerd. Het veld zelf blijft leeg (currentValue).
+        const raw = invoer.trim().replace(',', '.') || '0';
         const fullExpr = node.unit ? `${raw} ${node.unit}` : raw;
         try {
-          scope[node.name] = math.evaluate(fullExpr, {});
+          const waarde = math.evaluate(fullExpr, {});
+          // Wat geen getal oplevert (alleen een eenheid of een teken, zoals
+          // "kN" of "-"), gaat naar de afhandeling van een halve invoer.
+          if (waarde === undefined || waarde === null || (isUnit(waarde) && waarde.value === null)) {
+            throw new Error('invoer zonder getal');
+          }
+          scope[node.name] = waarde;
         } catch {
           // Een halve invoer (tijdens het typen "0." of "") telt als getal, en
           // houdt zijn eenheid: zonder eenheid liep elke regel die er verderop

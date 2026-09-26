@@ -10,8 +10,11 @@
  *
  * De negatieve kleef staat vóór de sonderingen: de onderkant van de kleeflagen
  * begrenst ΔL. Bij een avegaarpaal begint traject III met ten hoogste 2 MPa,
- * ook bij handmatige invoer. Boven 12 % variatiecoëfficiënt is het oordeel
- * "niet aangetoond"; de zakking (7.6.4) is niet getoetst.
+ * ook bij handmatige invoer. Boven 12 % variatiecoëfficiënt, en bij een open
+ * stalen buis (paaltype 8, rond: de volle doorsnede veronderstelt een
+ * grondprop), is het oordeel "niet aangetoond"; ook als de UC niet uit te
+ * rekenen is (lege invoer), zodat het blad dan nooit "voldoet" zegt. De
+ * zakking (7.6.4) is niet getoetst.
  *
  * De blokken per sondering (1–6) en per laag met negatieve kleef (1–5) zijn
  * gelijk van opbouw; een wijziging hoort in alle blokken tegelijk. Geen
@@ -286,8 +289,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     R_bcal,1 = A_b*q_bmax,1 to kN', puntdraagvermogen'
     q_cs,1 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_1 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
-    #if ΔL_1 > ΔL_max
+    #if ΔL_1 > ΔL_max and nk ≡ 1
         ΔL_1 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
+    #else if ΔL_1 > ΔL_max
+        ΔL_1 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
     R_scal,1 = O_s*α_s*min(q_cs,1; 15 MPa)*ΔL_1 to kN', schachtwrijving'
     R_ccal,1 = R_bcal,1 + R_scal,1 to kN', maximumdraagkracht bij sondering 1'
@@ -317,8 +322,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     R_bcal,2 = A_b*q_bmax,2 to kN', puntdraagvermogen'
     q_cs,2 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_2 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
-    #if ΔL_2 > ΔL_max
+    #if ΔL_2 > ΔL_max and nk ≡ 1
         ΔL_2 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
+    #else if ΔL_2 > ΔL_max
+        ΔL_2 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
     R_scal,2 = O_s*α_s*min(q_cs,2; 15 MPa)*ΔL_2 to kN', schachtwrijving'
     R_ccal,2 = R_bcal,2 + R_scal,2 to kN', maximumdraagkracht bij sondering 2'
@@ -348,8 +355,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     R_bcal,3 = A_b*q_bmax,3 to kN', puntdraagvermogen'
     q_cs,3 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_3 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
-    #if ΔL_3 > ΔL_max
+    #if ΔL_3 > ΔL_max and nk ≡ 1
         ΔL_3 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
+    #else if ΔL_3 > ΔL_max
+        ΔL_3 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
     R_scal,3 = O_s*α_s*min(q_cs,3; 15 MPa)*ΔL_3 to kN', schachtwrijving'
     R_ccal,3 = R_bcal,3 + R_scal,3 to kN', maximumdraagkracht bij sondering 3'
@@ -379,8 +388,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     R_bcal,4 = A_b*q_bmax,4 to kN', puntdraagvermogen'
     q_cs,4 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_4 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
-    #if ΔL_4 > ΔL_max
+    #if ΔL_4 > ΔL_max and nk ≡ 1
         ΔL_4 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
+    #else if ΔL_4 > ΔL_max
+        ΔL_4 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
     R_scal,4 = O_s*α_s*min(q_cs,4; 15 MPa)*ΔL_4 to kN', schachtwrijving'
     R_ccal,4 = R_bcal,4 + R_scal,4 to kN', maximumdraagkracht bij sondering 4'
@@ -410,8 +421,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     R_bcal,5 = A_b*q_bmax,5 to kN', puntdraagvermogen'
     q_cs,5 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_5 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
-    #if ΔL_5 > ΔL_max
+    #if ΔL_5 > ΔL_max and nk ≡ 1
         ΔL_5 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
+    #else if ΔL_5 > ΔL_max
+        ΔL_5 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
     R_scal,5 = O_s*α_s*min(q_cs,5; 15 MPa)*ΔL_5 to kN', schachtwrijving'
     R_ccal,5 = R_bcal,5 + R_scal,5 to kN', maximumdraagkracht bij sondering 5'
@@ -441,8 +454,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     R_bcal,6 = A_b*q_bmax,6 to kN', puntdraagvermogen'
     q_cs,6 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_6 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
-    #if ΔL_6 > ΔL_max
+    #if ΔL_6 > ΔL_max and nk ≡ 1
         ΔL_6 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
+    #else if ΔL_6 > ΔL_max
+        ΔL_6 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
     R_scal,6 = O_s*α_s*min(q_cs,6; 15 MPa)*ΔL_6 to kN', schachtwrijving'
     R_ccal,6 = R_bcal,6 + R_scal,6 to kN', maximumdraagkracht bij sondering 6'
@@ -567,8 +582,12 @@ pw = max(8; min(40; D_eq/(1 m)*sch*1.5))
     '<b>Maatgevende UC = 'UC'</b><span style="color: red"> > 1,0 → <b>de paal voldoet niet</b></span>
 #else if VC > 0.12
     '<b>Maatgevende UC = 'UC'</b><span style="color: red"> ≤ 1,0, maar de variatiecoëfficiënt is groter dan 12 % → <b>niet aangetoond: deel het terrein op</b></span>
-#else
+#else if paaltype ≡ 8 and vorm ≡ 1
+    '<b>Maatgevende UC = 'UC'</b><span style="color: red"> ≤ 1,0, maar de volle doorsnede van de open buis veronderstelt een grondprop → <b>niet aangetoond</b></span>
+#else if UC ≤ 1.0
     '<b>Maatgevende UC = 'UC'</b><span style="color: green"> ≤ 1,0 → <b>draagvermogen (7.1) voldoet</b></span>; zakking (7.6.4) niet getoetst
+#else
+    '<b>Maatgevende UC = 'UC'</b><span style="color: red"> → <b>niet aangetoond: invoer onvolledig</b></span>
 #end if
 
 '<hr/>

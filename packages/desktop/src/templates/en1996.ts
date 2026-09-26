@@ -421,7 +421,7 @@ n_eff', gesteunde randen: een verticale rand vervalt bij L_v ≥ 15·t (n = 3) o
     #if h_w ≤ 3.5*L_v
         rho_n = rho_2/(1 + (rho_2*h_w/(3*L_v))^2)', ρ_3 (5.6)'
     #else
-        rho_n = 1.5*L_v/h_w', ρ_3 (5.7)'
+        rho_n = max(1.5*L_v/h_w; 0.3)', ρ_3 (5.7), niet kleiner dan 0,3'
     #end if
 #else if n_eff ≡ 4
     #if h_w ≤ 1.15*L_v

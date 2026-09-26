@@ -135,8 +135,9 @@ const ANKEROPZET: Opzet[] = [
 ];
 
 /**
- * Ligging van de voetplaat op het fundatieblok. Bepaalt welke betonranden
- * dichtbij liggen en dus meetellen bij de kegelbreuk-toetsen.
+ * Ligging van de voetplaat op het fundatieblok. Bij een rand dichtbij rekent
+ * het blad zonder spreiding (k_j = 1), en bij getrokken ankers is de
+ * kegelbreuk dan niet volledig getoetst: die moet apart met de randafstanden.
  */
 const POSITIE: { v: number; label: string; randen: number }[] = [
   { v: 1, label: "Midden — geen rand", randen: 0 },
@@ -494,7 +495,7 @@ export default function VoetplaatDesigner() {
           <label>Verankeringsdiepte h<sub>ef</sub>
             <input type="number" step={10} value={h_ef} onChange={(e) => setVal("h_ef", parseFloat(e.target.value))} />
           </label>
-          <label className="gd-chk" title="Normale gatspeling volgens EN 1090-2; anders vergrote gaten">
+          <label className="gd-chk" title="Normale gatspeling volgens EN 1090-2 tabel 11; anders vergrote gaten: de ankers nemen dan geen dwarskracht op, en de randafstand wordt getoetst met de grotere d_0">
             <input type="checkbox" checked={gatspeling === 1} onChange={(e) => setVal("gatspeling", e.target.checked ? 1 : 0)} />
             normale gatspeling
           </label>
@@ -516,7 +517,7 @@ export default function VoetplaatDesigner() {
             <input type="number" step={25} value={h_b} onChange={(e) => setVal("h_b", parseFloat(e.target.value))} />
           </label>
           <label style={{ flexDirection: "column", alignItems: "stretch" }}
-            title="Welke betonranden liggen dicht bij de ankers — bepaalt de kegelbreuk-toetsen">Positie op het fundatieblok
+            title="Bij een rand dichtbij: geen spreiding (k_j = 1) en de kegelbreuk apart toetsen">Ligging op het fundatieblok
             <select style={{ width: "100%" }} value={positie} onChange={(e) => setVal("positie", parseInt(e.target.value))}>
               {POSITIE.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
             </select>

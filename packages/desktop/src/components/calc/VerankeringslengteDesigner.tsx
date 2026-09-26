@@ -275,7 +275,7 @@ export default function VerankeringslengteDesigner() {
 
       <div className="vd-foot">
         <span>Klik op de blauwe dekking om die te wijzigen — stroomt direct terug in de rekensheet.
-          <br />De staaflengte staat op schaal; de stippellijn is de ondergrens l<sub>b,min</sub> uit (8.6).</span>
+          <br />De staaflengte staat op schaal; de stippellijn is de ondergrens l<sub>b,min</sub> uit {druk ? "(8.7)" : "(8.6)"}.</span>
         <span className="vd-live">
           {BETON.find((o) => o.v === fck)?.label} · {STAALSOORT.find((o) => o.v === staal)?.label} · Ø{ds} ·
           c = {fmt(cd)} mm · {goed ? "goede" : "slechte"} aanhechting ·

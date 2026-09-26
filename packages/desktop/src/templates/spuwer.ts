@@ -23,6 +23,9 @@
  *     hogere drempel h_nd verlaagt de u.c. dus niet, wel de waterstand d_hw.
  *   • Tabel NB.1 (i_r per referentieperiode), alle vier geverifieerd:
  *     5 jaar → 0,000027 · 15 jaar → 0,000041 · 50 jaar → 0,00005 · 100 jaar → 0,000056.
+ *     De tabel zelf (NB:2019) geeft 1 jaar 0,0215, 15 jaar 0,0406 en 100 jaar
+ *     0,0561 (×10⁻³ m/s): de referentie interpoleert 5 jaar en rondt af. In de
+ *     UC scheelt dat ten hoogste 0,4 % (15 jaar hoger, 100 jaar 0,1 % lager).
  *
  * De referentie-uitwerking drukt ook een "ronde spuwer bij gelijke d_nd" af:
  * de diameter uit (7.7) die dezelfde waterhoogte geeft. Dit blad laat die weg.
@@ -92,8 +95,8 @@ UC = h_min/h_sp
 # 6. Samenvatting
 
 #if UC ≤ 1.0
-    '<b>u.c. = 'UC'</b><span style="color: green"> ≤ 1.0 → <b>Spuwer voldoet</b></span>
+    '<b>Maatgevende UC = 'UC'</b><span style="color: green"> ≤ 1.0 → <b>Spuwer voldoet</b></span>
 #else
-    '<b>u.c. = 'UC'</b><span style="color: red"> > 1.0 → <b>Spuwer voldoet niet</b></span>
+    '<b>Maatgevende UC = 'UC'</b><span style="color: red"> > 1.0 → <b>Spuwer voldoet niet</b></span>
 #end if
 `;

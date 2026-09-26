@@ -14,6 +14,11 @@
  * - k_r volgens (NB.5.1) alleen binnen 0 < k_r ≤ 1, daarbuiten geen reductie;
  * - combinatie 5: 0,9·G + γ_Q·W opwaarts, met c_pi = +0,2 en c_pe bij zuiging
  *   als invoer, plus kip van de onderrand §6.3.3 en de verankeringskracht;
+ * - combinatie 6 (schuin dak): γ_G·G + γ_Q·W opwaarts, omdat G op de zwakke as
+ *   ongunstig werkt en gunstig/ongunstig voor het hele eigen gewicht geldt;
+ * - combinatie 7 (plat dak): winddruk in zone I, c_pe = +0,2 met c_pi = −0,3,
+ *   ook in de BGT;
+ * - de netto opwaartse doorbuiging in de BGT;
  * - oplegdruk §6.1.5.
  * Splitspunten via rekenwijze: eigen gewicht (register punt 8), 6.10a
  * (punt 10) en de maatgevende combinatie voor 6.11/6.12 (punt 13).
@@ -290,14 +295,34 @@ P_w = (C_pe - C_pi)*q_wind', winddruk op het dakvlak'
 q_wy = hoh*P_w to kN/m
 M_wy = q_wy*L_th^2/8 to kN*m
 u_wy = 5/384*q_wy*L_th^4/(E_mean*I_y) to mm
+#hide
+V_wy = q_wy*L_th/2 to kN
+M_w_dr = 0*kN*m
+u_w_dr = 0*mm
+V_w_dr = 0*kN
+#show
+#if dakType ≡ 1
+    '<h6>Druk in zone I</h6>
+    C_pe_dr = 0.20', tabel NB.7 – 7.2, zone I'
+    P_w_dr = (C_pe_dr - C_pi)*q_wind', netto druk op het dakvlak'
+    q_w_dr = hoh*P_w_dr to kN/m
+    M_w_dr = q_w_dr*L_th^2/8 to kN*m
+    u_w_dr = 5/384*q_w_dr*L_th^4/(E_mean*I_y) to mm
+    #hide
+    V_w_dr = q_w_dr*L_th/2 to kN
+    #show
+#end if
 '<h6>Opwaarts</h6>
 A_ref = hoh*L_th to m^2', belaste oppervlakte voor c_pe'
+#if c_pe_zuig ≥ 0
+    '<i>c<sub>pe</sub> bij zuiging is niet negatief ingevuld: opwaarts werkt dan alleen c<sub>pi</sub>. Controleer de zone.</i>
+#end if
 C_pi_op = 0.20', ongunstigste c_pi bij zuiging, §7.2.9(6)'
 P_w_op = (c_pe_zuig - C_pi_op)*q_wind', netto zuiging op het dakvlak'
 q_w_op = hoh*P_w_op to kN/m
 M_w_op = q_w_op*L_th^2/8 to kN*m
+u_w_op = 5/384*q_w_op*L_th^4/(E_mean*I_y) to mm
 #hide
-V_wy = q_wy*L_th/2 to kN
 V_w_op = q_w_op*L_th/2 to kN
 #show
 
@@ -321,7 +346,11 @@ V_w_op = q_w_op*L_th/2 to kN
 
 #if controleer ≡ 1
     w_lim = grensfactor*L_th
-    u_var_y = max(ud_y; uc_y; u_sy; u_wy)', maatgevende veranderlijke ⊥'
+    #if dakType ≡ 1
+        u_var_y = max(ud_y; uc_y; u_sy; u_w_dr)', maatgevende veranderlijke ⊥, wind als druk in zone I'
+    #else
+        u_var_y = max(ud_y; uc_y; u_sy; u_wy)', maatgevende veranderlijke ⊥'
+    #end if
     w_fin_y = (1 + k_def)*u_gy + u_var_y
     UC_wy = w_fin_y/w_lim
     #if UC_wy ≤ 1.0
@@ -343,11 +372,28 @@ V_w_op = q_w_op*L_th/2 to kN
         UC_wz = 0
         #show
     #end if
+    #hide
+    w_op_0 = -(u_gy + u_w_op)
+    #show
+    #if w_op_0 > 0*mm
+        w_op_y = -(u_gy + u_w_op)', netto opwaarts; eigen gewicht zonder kruip'
+        UC_w_op = w_op_y/w_lim
+        #if UC_w_op ≤ 1.0
+            'UC<sub>w,op</sub> = w<sub>op,y</sub>/w<sub>lim</sub> = 'UC_w_op'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+        #else
+            'UC<sub>w,op</sub> = w<sub>op,y</sub>/w<sub>lim</sub> = 'UC_w_op'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+        #end if
+    #else
+        #hide
+        UC_w_op = 0
+        #show
+    #end if
 #else
     'Doorbuiging wordt niet getoetst.
     #hide
     UC_wy = 0
     UC_wz = 0
+    UC_w_op = 0
     #show
 #end if
 
@@ -387,6 +433,9 @@ f_vd_k = k_mod_k*f_vk/γ_M', afschuiving'
 'Splitspunt 6.10a (register punt 10): de referentie-uitwerking rekent alleen 6.10b.
 w_610a = if(rekenwijze ≡ 1; 0; 1)
 '0: 6.10a · 1: q_k · 2: Q_k · 3: sneeuw · 4: wind · 5: wind opwaarts met 0,9·G
+'6: wind opwaarts met γ_G·G (schuin dak: G werkt op de zwakke as ongunstig; het
+'onderscheid gunstig/ongunstig geldt voor het hele eigen gewicht, tabel NB.4)
+'7: winddruk in zone I (plat dak)
 My_0 = γ_G_a*M_gy
 Mz_0 = γ_G_a*M_gz
 Vz_0 = γ_G_a*V_gy
@@ -411,6 +460,16 @@ My_5 = γ_G_inf*M_gy + γ_Q*M_w_op
 Mz_5 = γ_G_inf*M_gz
 Vz_5 = γ_G_inf*V_gy + γ_Q*V_w_op
 Vy_5 = γ_G_inf*V_gz
+My_6 = γ_G*M_gy + γ_Q*M_w_op
+Mz_6 = γ_G*M_gz
+Vz_6 = γ_G*V_gy + γ_Q*V_w_op
+Vy_6 = γ_G*V_gz
+My_7 = γ_G*M_gy + γ_Q*M_w_dr
+Mz_7 = γ_G*M_gz
+Vz_7 = γ_G*V_gy + γ_Q*V_w_dr
+Vy_7 = γ_G*V_gz
+s_6 = if(dakType ≡ 1; 0; 1)
+s_7 = 1 - s_6
 c_par = if(dubbele ≡ 1; 1; 0)
 'Per combinatie 6.11, 6.12 en 6.13 met de sterkte van haar duurklasse; een
 'combinatie die niet meedoet telt als nul. Een negatief moment (opwaarts) telt
@@ -421,32 +480,38 @@ r611_2 = abs(My_2)/W_y/f_myd_k + c_par*k_m*abs(Mz_2)/W_z/f_mzd_k
 r611_3 = abs(My_3)/W_y/f_myd_k + c_par*k_m*abs(Mz_3)/W_z/f_mzd_k
 r611_4 = abs(My_4)/W_y/f_myd_k + c_par*k_m*abs(Mz_4)/W_z/f_mzd_k
 r611_5 = abs(My_5)/W_y/f_myd_k + c_par*k_m*abs(Mz_5)/W_z/f_mzd_k
+r611_6 = s_6*(abs(My_6)/W_y/f_myd_k + c_par*k_m*abs(Mz_6)/W_z/f_mzd_k)
+r611_7 = s_7*(abs(My_7)/W_y/f_myd_k + c_par*k_m*abs(Mz_7)/W_z/f_mzd_k)
 r612_0 = w_610a*(k_m*abs(My_0)/W_y/f_myd_b + abs(Mz_0)/W_z/f_mzd_b)
 r612_1 = heeft_q*(k_m*abs(My_1)/W_y/f_myd_m + abs(Mz_1)/W_z/f_mzd_m)
 r612_2 = k_m*abs(My_2)/W_y/f_myd_k + abs(Mz_2)/W_z/f_mzd_k
 r612_3 = k_m*abs(My_3)/W_y/f_myd_k + abs(Mz_3)/W_z/f_mzd_k
 r612_4 = k_m*abs(My_4)/W_y/f_myd_k + abs(Mz_4)/W_z/f_mzd_k
 r612_5 = k_m*abs(My_5)/W_y/f_myd_k + abs(Mz_5)/W_z/f_mzd_k
+r612_6 = s_6*(k_m*abs(My_6)/W_y/f_myd_k + abs(Mz_6)/W_z/f_mzd_k)
+r612_7 = s_7*(k_m*abs(My_7)/W_y/f_myd_k + abs(Mz_7)/W_z/f_mzd_k)
 tau_0 = w_610a*1.5*sqrt(Vz_0^2 + Vy_0^2)/A/f_vd_b
 tau_1 = heeft_q*1.5*sqrt(Vz_1^2 + Vy_1^2)/A/f_vd_m
 tau_2 = 1.5*sqrt(Vz_2^2 + Vy_2^2)/A/f_vd_k
 tau_3 = 1.5*sqrt(Vz_3^2 + Vy_3^2)/A/f_vd_k
 tau_4 = 1.5*sqrt(Vz_4^2 + Vy_4^2)/A/f_vd_k
 tau_5 = 1.5*sqrt(Vz_5^2 + Vy_5^2)/A/f_vd_k
+tau_6 = s_6*1.5*sqrt(Vz_6^2 + Vy_6^2)/A/f_vd_k
+tau_7 = s_7*1.5*sqrt(Vz_7^2 + Vy_7^2)/A/f_vd_k
 'Index van de grootste (bij gelijkstand de eerste) en de waarde bij een index.
-imax(a0; a1; a2; a3; a4; a5) = if(a0 ≥ max(a1; a2; a3; a4; a5); 0; if(a1 ≥ max(a2; a3; a4; a5); 1; if(a2 ≥ max(a3; a4; a5); 2; if(a3 ≥ max(a4; a5); 3; if(a4 ≥ a5; 4; 5)))))
-kies(n; a0; a1; a2; a3; a4; a5) = if(n ≡ 0; a0; if(n ≡ 1; a1; if(n ≡ 2; a2; if(n ≡ 3; a3; if(n ≡ 4; a4; a5)))))
+imax(a0; a1; a2; a3; a4; a5; a6; a7) = if(a0 ≥ max(a1; a2; a3; a4; a5; a6; a7); 0; if(a1 ≥ max(a2; a3; a4; a5; a6; a7); 1; if(a2 ≥ max(a3; a4; a5; a6; a7); 2; if(a3 ≥ max(a4; a5; a6; a7); 3; if(a4 ≥ max(a5; a6; a7); 4; if(a5 ≥ max(a6; a7); 5; if(a6 ≥ a7; 6; 7)))))))
+kies(n; a0; a1; a2; a3; a4; a5; a6; a7) = if(n ≡ 0; a0; if(n ≡ 1; a1; if(n ≡ 2; a2; if(n ≡ 3; a3; if(n ≡ 4; a4; if(n ≡ 5; a5; if(n ≡ 6; a6; a7)))))))
 vet(i; n) = if(i ≡ n; 700; 400)
 'Splitspunt keuze van de combinatie (register punt 13): de referentie-uitwerking
 'neemt de combinatie met de hoogste van haar eigen twee waarden en drukt daarvan
 '6.11 en 6.12 af; de norm neemt per formule de ongunstigste combinatie. Zonder
 'dubbele buiging telt 6.12 niet mee in die keuze.
-n_comb_xc = imax(max(r611_0; c_par*r612_0); max(r611_1; c_par*r612_1); max(r611_2; c_par*r612_2); max(r611_3; c_par*r612_3); max(r611_4; c_par*r612_4); max(r611_5; c_par*r612_5))
-n_611_nb = imax(r611_0; r611_1; r611_2; r611_3; r611_4; r611_5)
-n_612_nb = imax(r612_0; r612_1; r612_2; r612_3; r612_4; r612_5)
+n_comb_xc = imax(max(r611_0; c_par*r612_0); max(r611_1; c_par*r612_1); max(r611_2; c_par*r612_2); max(r611_3; c_par*r612_3); max(r611_4; c_par*r612_4); max(r611_5; c_par*r612_5); max(r611_6; c_par*r612_6); max(r611_7; c_par*r612_7))
+n_611_nb = imax(r611_0; r611_1; r611_2; r611_3; r611_4; r611_5; r611_6; r611_7)
+n_612_nb = imax(r612_0; r612_1; r612_2; r612_3; r612_4; r612_5; r612_6; r612_7)
 n_611 = if(rekenwijze ≡ 1; n_comb_xc; n_611_nb)
 n_612 = if(rekenwijze ≡ 1; n_comb_xc; n_612_nb)
-n_τ = imax(tau_0; tau_1; tau_2; tau_3; tau_4; tau_5)
+n_τ = imax(tau_0; tau_1; tau_2; tau_3; tau_4; tau_5; tau_6; tau_7)
 #show
 'Partiële factoren bij CC'CC' (NEN-EN 1990 NB, tabel NB.4/NB.5): 6.10b met γ<sub>G</sub> = 'γ_G' en γ<sub>Q</sub> = 'γ_Q'; gunstig γ<sub>G,inf</sub> = 'γ_G_inf'.
 #if rekenwijze ≡ 0
@@ -464,14 +529,19 @@ n_τ = imax(tau_0; tau_1; tau_2; tau_3; tau_4; tau_5)
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:1px 4px;">3: 'γ_G'·G + 'γ_Q'·S</td><td style="padding:1px 4px; text-align:right;">'k_mod_k'</td><td style="padding:1px 4px; text-align:right;">'My_3'</td><td style="padding:1px 4px; text-align:right;">'Mz_3'</td><td style="padding:1px 4px; text-align:right;">'Vz_3'</td><td style="padding:1px 4px; text-align:right;">'Vy_3'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(3; n_611)';">'r611_3'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(3; n_612)';">'c_par*r612_3'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(3; n_τ)';">'tau_3'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:1px 4px;">4: 'γ_G'·G + 'γ_Q'·W</td><td style="padding:1px 4px; text-align:right;">'k_mod_k'</td><td style="padding:1px 4px; text-align:right;">'My_4'</td><td style="padding:1px 4px; text-align:right;">'Mz_4'</td><td style="padding:1px 4px; text-align:right;">'Vz_4'</td><td style="padding:1px 4px; text-align:right;">'Vy_4'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(4; n_611)';">'r611_4'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(4; n_612)';">'c_par*r612_4'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(4; n_τ)';">'tau_4'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:1px 4px;">5: 'γ_G_inf'·G + 'γ_Q'·W<sub>opwaarts</sub></td><td style="padding:1px 4px; text-align:right;">'k_mod_k'</td><td style="padding:1px 4px; text-align:right;">'My_5'</td><td style="padding:1px 4px; text-align:right;">'Mz_5'</td><td style="padding:1px 4px; text-align:right;">'Vz_5'</td><td style="padding:1px 4px; text-align:right;">'Vy_5'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(5; n_611)';">'r611_5'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(5; n_612)';">'c_par*r612_5'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(5; n_τ)';">'tau_5'</td></tr>
+#if dakType ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:1px 4px;">7: 'γ_G'·G + 'γ_Q'·W<sub>druk, zone I</sub></td><td style="padding:1px 4px; text-align:right;">'k_mod_k'</td><td style="padding:1px 4px; text-align:right;">'My_7'</td><td style="padding:1px 4px; text-align:right;">'Mz_7'</td><td style="padding:1px 4px; text-align:right;">'Vz_7'</td><td style="padding:1px 4px; text-align:right;">'Vy_7'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(7; n_611)';">'r611_7'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(7; n_612)';">'c_par*r612_7'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(7; n_τ)';">'tau_7'</td></tr>
+#else
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:1px 4px;">6: 'γ_G'·G + 'γ_Q'·W<sub>opwaarts</sub></td><td style="padding:1px 4px; text-align:right;">'k_mod_k'</td><td style="padding:1px 4px; text-align:right;">'My_6'</td><td style="padding:1px 4px; text-align:right;">'Mz_6'</td><td style="padding:1px 4px; text-align:right;">'Vz_6'</td><td style="padding:1px 4px; text-align:right;">'Vy_6'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(6; n_611)';">'r611_6'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(6; n_612)';">'c_par*r612_6'</td><td style="padding:1px 4px; text-align:right; font-weight:'vet(6; n_τ)';">'tau_6'</td></tr>
+#end if
 '</table>
 
 '<h6>10.2 Buiging — §6.1.6</h6>
 #hide
-M_y,d = abs(kies(n_611; My_0; My_1; My_2; My_3; My_4; My_5))
-M_z,d = abs(kies(n_611; Mz_0; Mz_1; Mz_2; Mz_3; Mz_4; Mz_5))
-f_m,y,d = kies(n_611; f_myd_b; f_myd_m; f_myd_k; f_myd_k; f_myd_k; f_myd_k)
-f_m,z,d = kies(n_611; f_mzd_b; f_mzd_m; f_mzd_k; f_mzd_k; f_mzd_k; f_mzd_k)
+M_y,d = abs(kies(n_611; My_0; My_1; My_2; My_3; My_4; My_5; My_6; My_7))
+M_z,d = abs(kies(n_611; Mz_0; Mz_1; Mz_2; Mz_3; Mz_4; Mz_5; Mz_6; Mz_7))
+f_m,y,d = kies(n_611; f_myd_b; f_myd_m; f_myd_k; f_myd_k; f_myd_k; f_myd_k; f_myd_k; f_myd_k)
+f_m,z,d = kies(n_611; f_mzd_b; f_mzd_m; f_mzd_k; f_mzd_k; f_mzd_k; f_mzd_k; f_mzd_k; f_mzd_k)
 #show
 'Maatgevend is combinatie 'n_611':
 σ_m,y,d = M_y,d/W_y to N/mm^2
@@ -494,10 +564,10 @@ f_m,z,d = kies(n_611; f_mzd_b; f_mzd_m; f_mzd_k; f_mzd_k; f_mzd_k; f_mzd_k)
 #if dubbele ≡ 1
     #if n_612 ≠ n_611
         #hide
-        M_y,d = abs(kies(n_612; My_0; My_1; My_2; My_3; My_4; My_5))
-        M_z,d = abs(kies(n_612; Mz_0; Mz_1; Mz_2; Mz_3; Mz_4; Mz_5))
-        f_m,y,d = kies(n_612; f_myd_b; f_myd_m; f_myd_k; f_myd_k; f_myd_k; f_myd_k)
-        f_m,z,d = kies(n_612; f_mzd_b; f_mzd_m; f_mzd_k; f_mzd_k; f_mzd_k; f_mzd_k)
+        M_y,d = abs(kies(n_612; My_0; My_1; My_2; My_3; My_4; My_5; My_6; My_7))
+        M_z,d = abs(kies(n_612; Mz_0; Mz_1; Mz_2; Mz_3; Mz_4; Mz_5; Mz_6; Mz_7))
+        f_m,y,d = kies(n_612; f_myd_b; f_myd_m; f_myd_k; f_myd_k; f_myd_k; f_myd_k; f_myd_k; f_myd_k)
+        f_m,z,d = kies(n_612; f_mzd_b; f_mzd_m; f_mzd_k; f_mzd_k; f_mzd_k; f_mzd_k; f_mzd_k; f_mzd_k)
         #show
         'Voor (6.12) is combinatie 'n_612' maatgevend:
         σ_m,y,d = M_y,d/W_y to N/mm^2
@@ -527,9 +597,9 @@ toon_610a = (1 - w_610a)*bool(max(r611_a - UC_611; r612_a - UC_612) > 0)
 
 '<h6>10.3 Afschuiving — §6.1.7 (6.13)</h6>
 #hide
-V_z,d = kies(n_τ; Vz_0; Vz_1; Vz_2; Vz_3; Vz_4; Vz_5)
-V_y,d = kies(n_τ; Vy_0; Vy_1; Vy_2; Vy_3; Vy_4; Vy_5)
-f_v,d = kies(n_τ; f_vd_b; f_vd_m; f_vd_k; f_vd_k; f_vd_k; f_vd_k)
+V_z,d = kies(n_τ; Vz_0; Vz_1; Vz_2; Vz_3; Vz_4; Vz_5; Vz_6; Vz_7)
+V_y,d = kies(n_τ; Vy_0; Vy_1; Vy_2; Vy_3; Vy_4; Vy_5; Vy_6; Vy_7)
+f_v,d = kies(n_τ; f_vd_b; f_vd_m; f_vd_k; f_vd_k; f_vd_k; f_vd_k; f_vd_k; f_vd_k)
 #show
 'Maatgevend is combinatie 'n_τ':
 τ_d = 1.5*sqrt(V_z,d^2 + V_y,d^2)/A to N/mm^2', resultante van beide richtingen'
@@ -554,9 +624,11 @@ c90_2 = max(0*kN; Vz_2)/k_mod_k
 c90_3 = max(0*kN; Vz_3)/k_mod_k
 c90_4 = max(0*kN; Vz_4)/k_mod_k
 c90_5 = max(0*kN; Vz_5)/k_mod_k
-n_c90 = imax(c90_0; c90_1; c90_2; c90_3; c90_4; c90_5)
-F_c,90,d = max(0*kN; kies(n_c90; Vz_0; Vz_1; Vz_2; Vz_3; Vz_4; Vz_5))
-k_mod,c90 = kies(n_c90; k_mod_b; k_mod_m; k_mod_k; k_mod_k; k_mod_k; k_mod_k)
+c90_6 = s_6*max(0*kN; Vz_6)/k_mod_k
+c90_7 = s_7*max(0*kN; Vz_7)/k_mod_k
+n_c90 = imax(c90_0; c90_1; c90_2; c90_3; c90_4; c90_5; c90_6; c90_7)
+F_c,90,d = max(0*kN; kies(n_c90; Vz_0; Vz_1; Vz_2; Vz_3; Vz_4; Vz_5; Vz_6; Vz_7))
+k_mod,c90 = kies(n_c90; k_mod_b; k_mod_m; k_mod_k; k_mod_k; k_mod_k; k_mod_k; k_mod_k; k_mod_k)
 #show
 'Maatgevend is combinatie 'n_c90':
 σ_c,90,d = F_c,90,d/(b_g*l_ef,c90) to N/mm^2
@@ -602,7 +674,7 @@ UC_c90 = σ_c,90,d/(k_c,90*f_c,90,d)
 
 # 11. Samenvatting
 
-UC_max = max(UC_611; UC_612; UC_afsch; UC_c90; UC_kip; UC_wy; UC_wz)
+UC_max = max(UC_611; UC_612; UC_afsch; UC_c90; UC_kip; UC_wy; UC_wz; UC_w_op)
 #if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1.0 → <b>Gording voldoet</b></span>
 #else

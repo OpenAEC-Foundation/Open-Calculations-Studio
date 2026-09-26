@@ -19,6 +19,7 @@
  * Draaien:  node scripts/check-kruipfactor.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
+import { readFileSync } from "node:fs";
 import { laadTemplate, reken, toets, afronden } from "./lib/refcheck.mjs";
 
 const tpl = laadTemplate("kruipfactor.ts");
@@ -87,6 +88,35 @@ for (const ref of REFERENTIES) {
   const meldingOk = meldt === (ref.melding === true);
   if (!meldingOk) fouten++;
   console.log(`  ${meldingOk ? "OK    " : "FOUT  "} melding 'volgens bijlage B hoger': ${meldt ? "ja" : "nee"}`);
+}
+
+// ── Het beeld ─────────────────────────────────────────────────────────────
+// KruipfactorDesigner.tsx rekent niet zelf maar leest zijn getallen uit dit
+// blad, met de tak die de projectinstelling kiest. Elke naam die het beeld
+// opvraagt, moet het blad dus zichtbaar uitrekenen; anders staat er in het
+// paneel een "—". t_0,cor toont het blad alleen in de norm-stand, en alleen
+// daar leest het beeld hem.
+{
+  const beeld = readFileSync(new URL("../packages/desktop/src/components/calc/KruipfactorDesigner.tsx", import.meta.url), "utf8");
+  const namen = [...new Set([...beeld.matchAll(/\b(?:w\(|g\[)"([^"]+)"/g)].map((m) => m[1]))];
+  const alleenNorm = ["t_0_cor"];
+  console.log(`\nKruipfactorDesigner leest ${namen.length} namen uit het blad`);
+  for (const [stand, rekenwijze] of [["referentie", 1], ["norm", 0]]) {
+    const uit = reken(tpl, { ...BASIS, cementklasse: S }, { ...PROJECT, rekenwijze });
+    const nodig = namen.filter((n) => rekenwijze === 0 || !alleenNorm.includes(n));
+    const mist = nodig.filter((n) => !Number.isFinite(uit.values[n]));
+    if (mist.length) fouten++;
+    console.log(`  ${mist.length ? "FOUT  " : "OK    "} ${stand}stand${mist.length ? `: ontbreekt ${mist.join(", ")}` : `: alle ${nodig.length} namen aanwezig`}`);
+    // Het getal in de kop van het beeld is φ(t;t₀) van de gekozen tak. In de
+    // referentiestand heeft de cementklasse geen effect (§1), dus bij klasse S
+    // gelijk aan document1A: 1,617 · 0,998 = 1,614. Het beeld rekende vroeger
+    // zelf en toonde hier de norm-waarde 1,66.
+    if (rekenwijze === 1) {
+      const ok = Math.abs(uit.values["φ_t"] - 1.614) < 5e-4;
+      if (!ok) fouten++;
+      console.log(`  ${ok ? "OK    " : "FOUT  "} klasse S, referentiestand: het beeld toont φ_t = ${uit.values["φ_t"]} (verwacht 1.614, niet 1.66)`);
+    }
+  }
 }
 
 afronden(fouten, "Kruipfactor");

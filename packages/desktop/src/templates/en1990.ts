@@ -15,7 +15,8 @@
  * (tabel NB.2 – A1.1); een vaste ψ = 0 liet Q_k2 eerder stil wegvallen. Waar
  * het ertoe doet zijn beide veranderlijke belastingen om beurten overheersend.
  * Werkt Q_k1 tegen de blijvende belasting in (windzuiging op een licht dak),
- * dan volgt ook de combinatie met γ_G,inf = 0,9 op G_k,inf.
+ * dan volgt ook de combinatie met γ_G,inf = 0,9 op G_k,inf; het overzicht geeft
+ * dan ook de bruikbaarheidscombinaties met G_k,inf en Q_k1 tegen G in.
  * scripts/check-en1990-combinaties.mjs rekent de uitkomsten met de hand na.
  */
 
@@ -432,6 +433,9 @@ psi = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 | 0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 
     E_kar = G_ksup + Q_k2 to kN', karakteristiek (6.14b), in de richting van G'
     E_freq = G_ksup + ψ_1,2*Q_k2 to kN', frequent (6.15b)'
     E_qp = G_ksup + ψ_2,2*Q_k2 to kN', quasi-blijvend (6.16b)'
+    E_kar,inf = G_kinf - Q_k1 to kN', karakteristiek (6.14b), Q_k1 tegen G in; negatief: netto tegen G in'
+    E_freq,inf = G_kinf - ψ_1,1*Q_k1 to kN', frequent (6.15b)'
+    E_qp,inf = G_kinf - ψ_2,1*Q_k1 to kN', quasi-blijvend (6.16b)'
 #end if
 `;
 

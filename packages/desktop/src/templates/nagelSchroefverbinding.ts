@@ -18,9 +18,10 @@
  * volgens §8.2.2(2) en krijgt alleen het deel van de uittreksterkte dat de
  * axiale belasting overlaat (NB bij §8.2.2(5)). Groep volgens §8.1.2 met n_ef
  * uit tabel 8.1 of (8.34)/(8.35); combinatie (8.27)/(8.28); splijten door de
- * kracht loodrecht op de vezel (8.2)–(8.4); minimale afstanden uit tabel 8.2,
- * 8.4 en 8.6 met de buitendiameter (§8.7.1(1)). De hoeken α (kracht) en α_s
- * (schroefas) tellen als de scherpe hoek met de vezel.
+ * kracht loodrecht op de vezel (8.2)–(8.4), bij een onbelaste rand a_4 naar de
+ * rand aan de overkant; minimale afstanden uit tabel 8.2, 8.4 en 8.6 met de
+ * buitendiameter (§8.7.1(1)), met de hoogte h ook tot die overkant. De hoeken
+ * α (kracht) en α_s (schroefas) tellen als de scherpe hoek met de vezel.
  *
  * Geen referentieberekening beschikbaar; scripts/check-nagel-schroef.mjs
  * rekent de uitkomsten onafhankelijk na. Status in de catalogus: controleren.
@@ -298,7 +299,8 @@ a_4 = ?*(mm)', randafstand'
 α = ?', hoek tussen de kracht en de vezelrichting, in graden (0 tot 90)'
 #hide
 α_n = min(mod(abs(α); 180); 180 - mod(abs(α); 180))
-splijt = bool(rand ≡ 1)*bool(α_n > 0)
+'Splijten bij elke kracht onder een hoek: bij een onbelaste rand a_4 ligt de belaste rand aan de overkant.
+splijt = bool(α_n > 0)
 #show
 #if abs(α - α_n) > 0.001
     '<b style="color:#b91c1c">α ligt buiten 0 tot 90°: gerekend is met de scherpe hoek tussen kracht en vezel, 'α_n'°.</b>
@@ -307,7 +309,8 @@ F_v,Ed = ?*(kN)', rekenwaarde van de dwarskracht op de hele verbinding'
 F_ax,Ed = ?*(kN)', rekenwaarde van de trekkracht in de richting van de verbindingsmiddelen'
 #if splijt ≡ 1
     #if opbouw ≤ 2
-        @select el_90 "Splijten: element dat aan de belaste rand loodrecht op de vezel wordt belast"
+        @select el_90 "Splijten: element dat loodrecht op de vezel wordt belast"
+          Het dunste element (dubbelsnedig: de zijdelen samen of het middendeel) = 0
           Element aan de puntzijde (dubbelsnedig: de zijdelen) = 1
           Het andere element (dubbelsnedig: het middendeel) = 2
         @end
@@ -656,13 +659,21 @@ n_s', aantal sneden per verbindingsmiddel'
 #if splijt ≡ 1
     '<h6>Splijten door de kracht loodrecht op de vezel (§8.1.4)</h6>
     #hide
-    b_90 = if(el_90 ≡ 1; if(opbouw ≡ 2; 2*t_1; if(opbouw ≡ 5; 2*t_1; t_2)); if(opbouw ≡ 2; t_2; t_1))
+    'Dikte van het element aan de puntzijde (zijdelen samen) en van het andere element.
+    b_p90 = if(opbouw ≡ 2; 2*t_1; if(opbouw ≡ 5; 2*t_1; t_2))
+    b_a90 = if(opbouw ≡ 2; t_2; t_1)
+    b_90 = if(el_90 ≡ 1; b_p90; if(el_90 ≡ 2; b_a90; min(b_p90; b_a90)))
+    'De groep past alleen in het element als h groter is dan a_4 + (n_2 − 1)·a_2.
+    ok_90 = bool(h_90 > a_4 + (n_2 - 1)*a_2)
     #show
     b_90', dikte van het element; bij de zijdelen beide samen'
-    h_e = a_4 + (n_2 - 1)*a_2', van de belaste rand tot het verste verbindingsmiddel'
-    #if h_90 > h_e
+    #if ok_90 ≡ 1
+        #if rand ≡ 1
+            h_e = a_4 + (n_2 - 1)*a_2', van de belaste rand tot het verste verbindingsmiddel'
+        #else
+            h_e = h_90 - a_4', van de belaste rand aan de overkant tot het verste verbindingsmiddel'
+        #end if
         #hide
-        ok_90 = 1
         η_90 = if(η_in > 0; min(max(η_in; 0.5); 1); 1)
         #show
         F_90,Rd = k_mod,h*14*b_90/mm*sqrt(h_e/mm/(1 - h_e/h_90))*N/γ_M to kN', (8.4) naaldhout, w = 1'
@@ -670,10 +681,9 @@ n_s', aantal sneden per verbindingsmiddel'
         UC_90 = F_90,Ed/F_90,Rd', splijten (8.2)'
     #else
         #hide
-        ok_90 = 0
         UC_90 = 0
         #show
-        '<b style="color:#b91c1c">Vul de hoogte h van het element in; die moet groter zijn dan h<sub>e</sub>.</b>
+        '<b style="color:#b91c1c">Vul de hoogte h van het element in; die moet groter zijn dan a<sub>4</sub> + (n<sub>2</sub> − 1)·a<sub>2</sub>.</b>
     #end if
 #else
     #hide
@@ -695,14 +705,17 @@ groep = if(voorboren ≡ 1; 3; if(ρ_max ≤ 420 kg/m^3; 1; 2))
 n_a1 = if(groep ≡ 1; if(dklein ≡ 1; 5 + 5*cosα; 5 + 7*cosα); if(groep ≡ 2; 7 + 8*cosα; 4 + cosα))*d_a
 n_a2 = if(groep ≡ 1; 5; if(groep ≡ 2; 7; 3 + sinα))*d_a
 n_a3 = if(eind ≡ 1; if(groep ≡ 1; 10 + 5*cosα; if(groep ≡ 2; 15 + 5*cosα; 7 + 5*cosα)); if(groep ≡ 1; 10; if(groep ≡ 2; 15; 7)))*d_a
-n_a4 = if(rand ≡ 1; if(groep ≡ 1; if(dklein ≡ 1; 5 + 2*sinα; 5 + 5*sinα); if(groep ≡ 2; if(dklein ≡ 1; 7 + 2*sinα; 7 + 5*sinα); if(dklein ≡ 1; 3 + 2*sinα; 3 + 4*sinα))); if(groep ≡ 1; 5; if(groep ≡ 2; 7; 3)))*d_a
+n_a4b = if(groep ≡ 1; if(dklein ≡ 1; 5 + 2*sinα; 5 + 5*sinα); if(groep ≡ 2; if(dklein ≡ 1; 7 + 2*sinα; 7 + 5*sinα); if(dklein ≡ 1; 3 + 2*sinα; 3 + 4*sinα)))*d_a
+n_a4o = if(groep ≡ 1; 5; if(groep ≡ 2; 7; 3))*d_a
+n_a4 = if(rand ≡ 1; n_a4b; n_a4o)
 'Plaat op hout ×0,85 (§8.3.1.3(1)), staal op hout ×0,7 (§8.3.1.4(1)), alleen op de tussenafstanden.
 f_tus = if(opbouw ≡ 3; 0.85; if(opbouw ≥ 4; 0.7; 1))
 'Tabel 8.4, boutregels. Onbelast eind: 4d, en (1 + 6 sin α)d zodra de kracht meer dan 30° afwijkt.
 b_a1 = (4 + cosα)*d_a
 b_a2 = 4*d_a
 b_a3 = if(eind ≡ 1; max(7*d_a; 80 mm); max(4*d_a; (1 + 6*sinα)*d_a))
-b_a4 = if(rand ≡ 1; max((2 + 2*sinα)*d_a; 3*d_a); 3*d_a)
+b_a4b = max((2 + 2*sinα)*d_a; 3*d_a)
+b_a4 = if(rand ≡ 1; b_a4b; 3*d_a)
 'Tabel 8.6, axiaal belaste schroeven: a_1 7d, a_2 5d, eind 10d, rand 4d.
 x_ax = bool(middel ≡ 4)*bool(F_ax,Ed > 0 kN)
 'Gipsplaat: a_1 tussen 20d en 60d of 150 mm, rand 7d onbelast en 10d belast (§8.3.1.5(6) tot (8)).
@@ -711,11 +724,18 @@ a1_min = max(if(boutregels ≡ 0; f_tus*n_a1; b_a1); x_ax*7*d_v; gips*20*d_v)
 a2_min = max(if(boutregels ≡ 0; f_tus*n_a2; b_a2); x_ax*5*d_v)
 a3_min = max(if(boutregels ≡ 0; n_a3; b_a3); x_ax*10*d_v)
 a4_min = max(if(boutregels ≡ 0; n_a4; b_a4); x_ax*4*d_v; gips*if(rand ≡ 1; 10; 7)*d_v)
+'Met de hoogte h is ook de rand aan de overkant bekend; die is belast als de rand bij a_4 onbelast is.
+'Verspringt de rij, dan ligt elk tweede verbindingsmiddel 1d verder van de rand bij a_4 af.
+a4o_min = max(if(boutregels ≡ 0; if(rand ≡ 1; n_a4o; n_a4b); if(rand ≡ 1; 3*d_a; b_a4b)); x_ax*4*d_v; gips*if(rand ≡ 1; 7; 10)*d_v)
+a_4o = h_90 - a_4 - (n_2 - 1)*a_2 - versprongen*d_v
+a4o_tekst = if(versprongen ≡ 1; " − d"; "")
+a4o_toets = splijt*ok_90
 a1_max = if(gips ≡ 1; min(60*d_v; 150 mm); 10^6 mm)
 UC_a1 = max(a1_min/max(a_1; 0.1 mm); a_1/a1_max)
 UC_a2 = if(n_2 > 1; a2_min/max(a_2; 0.1 mm); 0)
 UC_a3 = a3_min/max(a_3; 0.1 mm)
 UC_a4 = a4_min/max(a_4; 0.1 mm)
+UC_a4o = if(a4o_toets ≡ 1; a4o_min/max(a_4o; 0.1 mm); 0)
 pen_min = if(middel ≤ 2; 8; 6)*d_v
 UC_pen = pen_min/max(t_pen; 0.1 mm)
 'Voorboren: houtdikte (8.18) volgens de nagelregels, en §8.3.1.1(2) voor nagels of §10.4.5 voor schroeven.
@@ -731,7 +751,7 @@ ok_t12 = if(x_ax ≡ 1; bool(t_elem ≥ 12*d_v); 1)
 ok_draad = if(x_ax ≡ 1; bool(min(t_pen; l_g) ≥ 6*d_v); 1)
 ok_glad = bool(ax_lang ≡ 0)
 ok_mat = bool(k_mod > 0)
-ok_det = bool(UC_a1 ≤ 1)*bool(UC_a2 ≤ 1)*bool(UC_a3 ≤ 1)*bool(UC_a4 ≤ 1)*bool(UC_pen ≤ 1)*ok_t18*ok_vb*ok_aantal*ok_kop*ok_fu*ok_hoek*ok_t12*ok_draad*ok_glad*ok_mat
+ok_det = bool(UC_a1 ≤ 1)*bool(UC_a2 ≤ 1)*bool(UC_a3 ≤ 1)*bool(UC_a4 ≤ 1)*bool(UC_a4o ≤ 1)*bool(UC_pen ≤ 1)*ok_t18*ok_vb*ok_aantal*ok_kop*ok_fu*ok_hoek*ok_t12*ok_draad*ok_glad*ok_mat
 #show
 
 #if boutregels ≡ 1
@@ -758,6 +778,9 @@ ok_det = bool(UC_a1 ≤ 1)*bool(UC_a2 ≤ 1)*bool(UC_a3 ≤ 1)*bool(UC_a4 ≤ 1)
 #end if
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">a<sub>3</sub>, eindafstand</td><td style="padding:3px 8px; text-align:right;">'a_3'</td><td style="padding:3px 8px; text-align:right;">'a3_min'</td><td style="padding:3px 8px; color:'kleur(UC_a3)'">'oordeel(UC_a3)'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">a<sub>4</sub>, randafstand</td><td style="padding:3px 8px; text-align:right;">'a_4'</td><td style="padding:3px 8px; text-align:right;">'a4_min'</td><td style="padding:3px 8px; color:'kleur(UC_a4)'">'oordeel(UC_a4)'</td></tr>
+#if a4o_toets ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Randafstand aan de overkant, h − a<sub>4</sub> − (n<sub>2</sub> − 1)·a<sub>2</sub>'a4o_tekst'</td><td style="padding:3px 8px; text-align:right;">'a_4o'</td><td style="padding:3px 8px; text-align:right;">'a4o_min'</td><td style="padding:3px 8px; color:'kleur(UC_a4o)'">'oordeel(UC_a4o)'</td></tr>
+#end if
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Indringdiepte aan de puntzijde</td><td style="padding:3px 8px; text-align:right;">'t_pen'</td><td style="padding:3px 8px; text-align:right;">'pen_min'</td><td style="padding:3px 8px; color:'kleur(UC_pen)'">'oordeel(UC_pen)'</td></tr>
 #if voorboren ≡ 0
     #if boutregels ≡ 0
@@ -827,8 +850,5 @@ UC_max = max(UC_v; UC_ax; UC_c; UC_90)
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de verbinding voldoet niet</b></span>
 #end if
 
-#hide
-nt_90 = if(bool(rand ≡ 0)*bool(α_n > 0) ≡ 1; "splijten naar de rand tegenover a<sub>4</sub> (§8.1.4), "; "")
-#show
-'<i>Niet getoetst: 'nt_90'verbindingsmiddelen in kops hout, blokschuif en de staalplaat zelf (bijlage A, §8.2.3(2)), de gatspeling onder 0,1d die een dikke staalplaat vraagt (§8.2.3(1)) en de factor 2/3 voor hout dat onder belasting droogt (§8.3.2(8)).</i>
+'<i>Niet getoetst: verbindingsmiddelen in kops hout, blokschuif en de staalplaat zelf (bijlage A, §8.2.3(2)), de gatspeling onder 0,1d die een dikke staalplaat vraagt (§8.2.3(1)) en de factor 2/3 voor hout dat onder belasting droogt (§8.3.2(8)).</i>
 `;

@@ -33,7 +33,8 @@
  *   • Boven A_b/A_ef = 0,45, de grens van (6.11), rekent het blad zonder
  *     vergroting: de veilige kant.
  *   • Het eindoordeel telt de nevenvoorwaarden mee: e ≤ t/4 (§6.1.3(4)) en een
- *     oplegging van ten minste 90 mm (§8.1.6(1)). Trek keurt af.
+ *     oplegging van ten minste 90 mm (§8.1.6(1)), gemeten op het deel van de
+ *     plaat dat op de wand ligt (min(a_L; a_t,ef)). Trek keurt af.
  *   • De toets op halve hoogte (§6.1.3(5), volgens §6.1.2) staat niet in dit
  *     blad; die hoort in de module Dragende metselwerkwand.
  */
@@ -41,11 +42,6 @@
 export const oplegMetselwerk = `"Oplegging op metselwerk — geconcentreerde last (EN 1996-1-1 §6.1.3)
 
 # 1. Metselwerk & materiaal
-
-@select overspanning "Overspanningrichting"
-  Loodrecht = 1
-  Evenwijdig = 2
-@end
 
 @select steensoort "Steensoort (holtepercentage → steengroep)"
   Baksteen <25% = 1
@@ -179,11 +175,15 @@ N_Ed = N_Edc + a_L/1000*q_Edc', rekenlast incl. wandlast over de oplegging [kN]'
 # 6. Nevenvoorwaarden
 
 '<b>Detaillering — §8.1.6(1): oplegging ten minste 90 mm:</b>
-opleg_min = min(a_L; a_t)
-#if opleg_min ≥ 90
-    'min(a<sub>L</sub>; a<sub>t</sub>) = 'opleg_min' mm<span style="color: green"> ≥ 90 mm → <b>voldoet</b></span>
+#if abs(exc) + a_t/2 > t/2
+    opleg_min = min(a_L; a_t_ef)', alleen het deel van de plaat op de wand [mm]'
 #else
-    'min(a<sub>L</sub>; a<sub>t</sub>) = 'opleg_min' mm<span style="color: red"> < 90 mm → <b>voldoet niet</b></span>
+    opleg_min = min(a_L; a_t)
+#end if
+#if opleg_min ≥ 90
+    'oplegging 'opleg_min' mm<span style="color: green"> ≥ 90 mm → <b>voldoet</b></span>
+#else
+    'oplegging 'opleg_min' mm<span style="color: red"> < 90 mm → <b>voldoet niet</b></span>
 #end if
 
 '<b>Excentriciteit — §6.1.3(4), e ≤ t/4:</b>

@@ -484,7 +484,11 @@ dy2 = 250
 '  <!-- normaalkracht -->
 '  <line x1="'kx'" y1="'ky0 - 44'" x2="'kx'" y2="'ky0 - 24'" style="stroke:#b91c1c; stroke-width:2.6"/>
 '  <polygon points="'kx','ky0 - 17' 'kx - 5','ky0 - 27' 'kx + 5','ky0 - 27'" style="fill:#b91c1c"/>
+#if N_Ed,max > N_Ed
+'  <text x="'kx + 9'" y="'ky0 - 30'" style="fill:#b91c1c; font-weight:700">N<tspan baseline-shift="sub" font-size="8">Ed</tspan> = 'N_Ed' kN; N<tspan baseline-shift="sub" font-size="8">Ed,max</tspan> = 'N_Ed,max' kN</text>
+#else
 '  <text x="'kx + 9'" y="'ky0 - 30'" style="fill:#b91c1c; font-weight:700">N<tspan baseline-shift="sub" font-size="8">Ed</tspan> = 'N_Ed' kN</text>
+#end if
 '  <text x="'kx + 13'" y="'sy(0.5) + 26'" style="fill:#334155; stroke:#fff; stroke-width:3; paint-order:stroke">L = 'L' m</text>
 '  <!-- momentenlijn, gevuld aan de trekzijde -->
 '  <line x1="'mx0'" y1="'ky0'" x2="'mx0'" y2="'ky1'" style="stroke:#374151; stroke-width:1.4"/>

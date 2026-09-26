@@ -13,7 +13,12 @@
  * blokschuif volgens EN 1993-1-8 (3.9) of (3.10), bij een enkele diagonaal ook
  * druk volgens 6.3.1 met de effectieve slankheid van bijlage BB.1.2, en de
  * horizontale verplaatsing volgens de NB bij EN 1990 A1.4.3. Bij een gelaste
- * aansluiting staat alleen de benodigde keelvlakte van de las (4.4) erin.
+ * aansluiting de twee flankelassen volgens §4.5.3.3 ((4.2) tot (4.4), met
+ * (4.9) voor een lange overlap) en de eisen van §4.5.1(2) en §4.5.2(2); bij een
+ * hoekprofiel is de las aan de hiel maatgevend, want de kracht loopt op e van
+ * de hiel. Ontbreekt een maat die een toets nodig heeft (d_0; e_1 voor de
+ * blokschuif; a en l_w voor de las) of is hij onleesbaar, dan blijft die toets
+ * op "niet getoetst" staan en voldoet het verband niet.
  *
  * Profielen: strippen (id 1–15) en gelijkzijdige hoekprofielen volgens
  * EN 10056-1 (id 16–30). Geen referentieberekening beschikbaar;
@@ -166,13 +171,27 @@ F_v,Ed = N_Ed*sin_α to kN', verticale component op kolom en fundering'
   Gebout, drie of meer bouten achter elkaar = 3
 @end
 
-#if aansluiting ≥ 1
+#hide
+'De vlaggen ok_gat, ok_bs en ok_las staan op niet getoetst tot hun toets echt is uitgerekend; een onleesbare invoer laat ze daar staan.
+ok_gat = if(aansluiting ≡ 0; 1; 0)
+#show
+#if aansluiting ≡ 0
+    a_w = ?*(mm)', keelhoogte a van de twee flankelassen langs de randen van het been of de strip'
+    l_w = ?*(mm)', lengte van elke flankelas'
+#else
     d_0 = ?*(mm)', gatdiameter'
     p_1 = ?*(mm)', steek van de bouten in de krachtrichting'
     e_1 = ?*(mm)', eindafstand van de laatste bout tot het eind van de diagonaal'
     e_2 = ?*(mm)', randafstand loodrecht op de kracht, tot de vrije rand van het aangesloten been of de rand van de strip'
     #if soort ≡ 1
         n_d = ?', aantal gaten naast elkaar in één doorsnede van de strip'
+    #end if
+    #if d_0 > 0 mm
+        #hide
+        ok_gat = 1
+        #show
+    #else
+        '<b style="color:#b91c1c">Vul d<sub>0</sub> in: zonder gatdiameter zijn de netto doorsnede en de blokschuif niet te toetsen.</b>
     #end if
 #end if
 
@@ -204,18 +223,60 @@ UC_t = N_Ed/N_t,Rd', trek'
 
 #hide
 UC_bs = 0
-ok_bs = 1
+ok_bs = if(aansluiting ≡ 0; 1; 0)
 toon_bs = 0
+UC_w = 0
+ok_las = if(aansluiting ≡ 0; 0; 1)
 #show
 #if aansluiting ≡ 0
-    '<b>Las</b> — f<sub>vw,d</sub> volgens (4.4) met β<sub>w</sub> uit tabel 4.1; de las en de knoopplaat zijn verder niet getoetst.
     #hide
     β_w = if(staalkwaliteit ≡ 235; 0.8; if(staalkwaliteit ≡ 275; 0.85; 0.9))
     #show
-    f_vw,d = f_u/(sqrt(3)*β_w*γ_M2) to N/mm^2
-    A_w,nodig = N_Ed/f_vw,d to mm^2', benodigde Σ a·l_eff van de lasnaden'
+    '<b>Las</b> — twee gelijke flankelassen, vereenvoudigde methode van §4.5.3.3 met β<sub>w</sub> = 'β_w' (tabel 4.1); de knoopplaat is van dezelfde staalsoort aangenomen en zelf niet getoetst.
+    f_vw,d = f_u/(sqrt(3)*β_w*γ_M2) to N/mm^2', (4.4)'
+    #if soort ≡ 1
+        N_las = N_Ed/2 to kN', per flankelas'
+    #else
+        N_las = N_Ed*(b_p - e_p)/b_p to kN', flankelas aan de hiel, de zwaarst belaste'
+    #end if
+    #if min(a_w; l_w) ≤ 0 mm
+        #hide
+        ok_las = 0
+        #show
+        A_w,nodig = N_las/f_vw,d to mm^2', benodigde a·l_eff per flankelas'
+        '<b style="color:#b91c1c">Las niet getoetst: vul a en l<sub>w</sub> in.</b>
+    #else
+        l_eff = l_w - 2*a_w', §4.5.1(1)'
+        #if a_w < 3 mm
+            #hide
+            ok_las = 2
+            #show
+            '<b style="color:#b91c1c">a &lt; 3 mm is niet toegestaan (§4.5.2(2)).</b>
+        #else if l_eff < max(30 mm; 6*a_w)
+            #hide
+            ok_las = 2
+            #show
+            '<b style="color:#b91c1c">l<sub>eff</sub> &lt; 30 mm of &lt; 6·a: deze las mag geen kracht overbrengen (§4.5.1(2)).</b>
+        #else
+            #hide
+            β_Lw = min(1; 1.2 - 0.2*l_w/(150*a_w))
+            #show
+            #if β_Lw < 1
+                β_Lw', (4.9): overlap langer dan 150·a (§4.11)'
+            #end if
+            F_las,Ed = N_las/l_eff to N/mm', (4.2), per eenheid van lengte'
+            F_las,Rd = β_Lw*f_vw,d*a_w to N/mm', (4.3)'
+            UC_w = F_las,Ed/F_las,Rd', las'
+            #hide
+            ok_las = 1
+            #show
+        #end if
+    #end if
 #else if soort ≡ 1
     #if n_d ≤ 1
+        #hide
+        ok_bs = 1
+        #show
         '<i>Strip met één rij bouten: geen blokschuif; de netto doorsnede (6.7) gaat voor, het uitscheuren vóór de bouten zit in de stuiktoets (tabel 3.4) van het boutblad.</i>
     #else if e_1 ≤ 0 mm
         #hide
@@ -256,6 +317,9 @@ toon_bs = 0
 #if toon_bs ≡ 1
     #if min(A_nt; A_nv) > 0 mm^2
         UC_bs = N_Ed/V_eff,Rd', blokschuif'
+        #hide
+        ok_bs = 1
+        #show
     #else
         #hide
         ok_bs = 0
@@ -373,12 +437,21 @@ th2 = th*tschaal
 # 9. Samenvatting
 
 #hide
-UC_max = max(UC_t; UC_c; UC_u; UC_bs)
+UC_max = max(UC_t; UC_c; UC_u; UC_bs; UC_w)
 #show
 UC_max', grootste van de toetsen hieronder'
 '<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
 '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:4px 8px;">Toets</th><th style="text-align:left; padding:4px 8px;">Norm</th><th style="text-align:right; padding:4px 8px;">UC</th><th style="text-align:left; padding:4px 8px;">Oordeel</th></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Trek</td><td style="padding:4px 8px;">§6.2.3, EN 1993-1-8 §3.10.3</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_t)'">'UC_t'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_t)'">'oordeel(UC_t)'</td></tr>
+#if aansluiting ≡ 0
+    #if ok_las ≡ 1
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Las</td><td style="padding:4px 8px;">EN 1993-1-8 §4.5.3.3</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_w)'">'UC_w'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_w)'">'oordeel(UC_w)'</td></tr>
+    #else if ok_las ≡ 2
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Las</td><td style="padding:4px 8px;">EN 1993-1-8 §4.5.1, §4.5.2</td><td style="padding:4px 8px; text-align:right; color:#b91c1c">—</td><td style="padding:4px 8px; color:#b91c1c">voldoet niet</td></tr>
+    #else
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Las</td><td style="padding:4px 8px;">EN 1993-1-8 §4.5.3.3</td><td style="padding:4px 8px; text-align:right; color:#b91c1c">—</td><td style="padding:4px 8px; color:#b91c1c">niet getoetst</td></tr>
+    #end if
+#end if
 #if ok_bs ≡ 0
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Blokschuif</td><td style="padding:4px 8px;">EN 1993-1-8 §3.10.2</td><td style="padding:4px 8px; text-align:right; color:#b91c1c">—</td><td style="padding:4px 8px; color:#b91c1c">niet getoetst</td></tr>
 #else if toon_bs ≡ 1
@@ -396,8 +469,14 @@ UC_max', grootste van de toetsen hieronder'
 
 #if ok_druk ≡ 0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar de druk bij omkerende wind is met deze keuze niet op te nemen of niet te toetsen (hoofdstuk 6) → <b>het verband voldoet niet</b></span>
+#else if ok_gat ≡ 0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar de gatdiameter d<sub>0</sub> ontbreekt (hoofdstuk 4) → <b>het verband voldoet niet</b></span>
 #else if ok_bs ≡ 0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar de blokschuif is niet getoetst (hoofdstuk 5) → <b>het verband voldoet niet</b></span>
+#else if ok_las ≡ 0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar de las is niet getoetst (hoofdstuk 5) → <b>het verband voldoet niet</b></span>
+#else if ok_las ≡ 2
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar de las voldoet niet aan §4.5.1(2) of §4.5.2(2) (hoofdstuk 5) → <b>het verband voldoet niet</b></span>
 #else if ok_2e ≡ 0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar α<sub>cr</sub> &lt; 3 vraagt een tweede-orde-analyse (hoofdstuk 3) → <b>het verband voldoet niet</b></span>
 #else if UC_max ≤ 1.0

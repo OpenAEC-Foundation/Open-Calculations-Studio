@@ -32,7 +32,7 @@ const tpl = laadTemplate("oplegMetselwerk.ts");
 const PROJECT = { CC: 1, K_FI: 0.9, rekenwijze: 1 };
 
 const BASIS = {
-  overspanning: "1", morteltype: "1", f_m: "15", h: "2800", h_k: "250",
+  morteltype: "1", f_m: "15", h: "2800", h_k: "250",
   a_L: "200", a_t: "160", L_r: "2000", exc: "0", q_Edc: "5.5",
 };
 
@@ -83,6 +83,15 @@ const GEVALLEN = [
     verwacht: { UC: "0.76" }, voldoet: false },
   { naam: "oplegging korter dan 90 mm", ref: 1, invoer: { a_t: "80", N_Edc: "30" },
     verwacht: { opleg_min: "80", UC: "0.93" }, voldoet: false },
+  // De 90 mm geldt voor het deel van de plaat dat op de wand ligt. Blad 2 met
+  // t = 80 en a_t = 100: a_t,ef = 40 − (−40) = 80 → min(200; 80) = 80 < 90.
+  // De UC zelf (referentiestand, hele plaat): A_b = 20 000, A_ef = 936,1·80 =
+  // 74 888, A_b/A_ef = 0,267, β = 1,5 − 1,1·0,267 = 1,206 < β_max = 1,25,
+  // N_Rdc = 1,206·20 000·1,681/1000 = 40,5 kN → UC = 21,1/40,5 = 0,52.
+  // Eerder telde het blad min(a_L; a_t) = 100 en gaf het "voldoet".
+  { naam: "plaat breder dan een dunne wand — op de wand korter dan 90 mm", ref: 1,
+    invoer: { t: "80", a_t: "100", N_Edc: "20" },
+    verwacht: { a_t_ef: "80", opleg_min: "80", UC: "0.52" }, voldoet: false },
   { naam: "keep even hoog als de wand (h_c = 0)", ref: 1, invoer: { h_k: "2800" },
     verwacht: { h_c: "0", UC: "0.95" }, voldoet: false },
   { naam: "trek op de oplegging", ref: 1, invoer: { N_Edc: "-50" },

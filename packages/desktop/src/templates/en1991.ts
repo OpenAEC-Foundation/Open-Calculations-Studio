@@ -21,8 +21,13 @@
  * c_pe tussen c_pe,1 en c_pe,10 logaritmisch in de belaste oppervlakte
  * (7.2.1); wanden volgens tabel NB.6 – 7.1 (zones A t/m E, zone E tussen
  * h/d = 1 en 5 lineair, zoals stalenGevelkolom.ts), platte daken met scherpe
- * rand volgens tabel 7.2. Inwendig +0,2 of −0,3, de ongunstigste (7.2.9(6)):
- * netto zuiging met +0,2 en netto druk met −0,3; zone I met c_pe = ±0,2.
+ * rand volgens tabel 7.2. Een borstwering of afgeronde dakrand geeft in die
+ * tabel gelijke of lagere waarden, de scherpe rand ligt dan aan de veilige
+ * kant; bij een afgeschuinde (mansarde)rand c_pe zelf invullen.
+ * Inwendig zonder dominante gevel +0,2 of −0,3, de ongunstigste (7.2.9(6)):
+ * netto zuiging met +0,2 en netto druk met −0,3; zone I met c_pe = ±0,2. Bij
+ * een dominante gevel één ingevulde c_pi (7.2.9(5)). De kracht F_w neemt
+ * zelf de ongunstigste, want c_s·c_d staat alleen op het uitwendige deel.
  * scripts/check-en1991-belastingen.mjs rekent de uitkomsten met de hand na.
  */
 
@@ -294,18 +299,39 @@ cpe(c1; c10) = if(A_bel ≥ 10 m^2; c10; if(A_bel ≤ 1 m^2; c1; c1 - (c1 - c10)
 
 # 4. Netto winddruk (5.1, 5.2)
 
+@select inwendig "Inwendige druk (7.2.9)"
+Geen dominante gevel: c_pi = +0,2 of −0,3, de ongunstigste = 1
+Dominante gevel: c_pi invullen = 2
+@end
+
 #hide
 c_pe,d = c_pe
 c_pe,z = if(zone_cpe ≡ 9; -c_pe; c_pe)
 #show
-w_d = q_p*(c_pe,d + 0.3) to kN/m^2', met c_pi = −0,3, onderdruk binnen (7.2.9(6))'
-w_z = q_p*(c_pe,z - 0.2) to kN/m^2', met c_pi = +0,2, overdruk binnen'
-#if abs(w_z) ≥ abs(w_d)
-    w_net = w_z', maatgevend: zuiging'
-    F_w = (cs_cd*c_pe,z - 0.2)*q_p*A_bel to kN', kracht op het element (5.5, 5.6); negatief is zuiging'
+#if inwendig ≡ 2
+    c_pi = ?', 0,75 of 0,9 × c_pe ter plaatse van de openingen in de dominante gevel (7.2.9(5))'
+    #hide
+    c_pe,dom = if(zone_cpe ≡ 9; if(c_pi ≥ 0; -0.2; 0.2); c_pe)
+    #show
+    w_net = q_p*(c_pe,dom - c_pi) to kN/m^2', negatief is zuiging'
+    F_w = (cs_cd*c_pe,dom - c_pi)*q_p*A_bel to kN', kracht op het element (5.5, 5.6)'
 #else
-    w_net = w_d', maatgevend: druk'
-    F_w = (cs_cd*c_pe,d + 0.3)*q_p*A_bel to kN', kracht op het element (5.5, 5.6)'
+    w_d = q_p*(c_pe,d + 0.3) to kN/m^2', met c_pi = −0,3, onderdruk binnen (7.2.9(6))'
+    w_z = q_p*(c_pe,z - 0.2) to kN/m^2', met c_pi = +0,2, overdruk binnen'
+    #if abs(w_z) ≥ abs(w_d)
+        w_net = w_z', maatgevend: zuiging'
+    #else
+        w_net = w_d', maatgevend: druk'
+    #end if
+    #hide
+    F_w,d = (cs_cd*c_pe,d + 0.3)*q_p*A_bel
+    F_w,z = (cs_cd*c_pe,z - 0.2)*q_p*A_bel
+    #show
+    #if abs(F_w,z) ≥ abs(F_w,d)
+        F_w = (cs_cd*c_pe,z - 0.2)*q_p*A_bel to kN', kracht op het element (5.5, 5.6); negatief is zuiging'
+    #else
+        F_w = (cs_cd*c_pe,d + 0.3)*q_p*A_bel to kN', kracht op het element (5.5, 5.6)'
+    #end if
 #end if
 `;
 

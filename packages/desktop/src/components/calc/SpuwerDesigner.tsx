@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
 import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useBladUitkomst } from "./bladResultaat";
+import { UitkomstKop } from "./designerKit";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
@@ -10,10 +12,12 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
  * waterstanden, rechts het vooraanzicht van de opening b × h in de opstand.
  * Beide aanzichten staan op één uniforme schaal.
  *
- * De UC in de kop en de voet is dezelfde toetsing als in het rekenblad
- * (templates/spuwer.ts, gecalibreerd op 5 referentieberekeningen):
+ * De kop toont de UC en het oordeel van het blad zelf (templates/spuwer.ts).
+ * Voor de tekening en de voetregel rekent het beeld dezelfde regels na:
  * Q_h = A·i_r (7.2), d_nd = 0,7·(Q_h/(b·n))^(2/3) (7.4), d_hw = d_nd + h_nd
  * (7.8), en h_min = 30 + d_hw − h_nd uit §7.3(3) getoetst op de spuwerhoogte h.
+ * Een diameter voor een ronde spuwer toont het beeld niet: (7.7) geeft geen
+ * minimale maat, §7.3(3) vraagt ten minste 117 mm.
  */
 const MARKER = "Spuwer";
 
@@ -68,6 +72,8 @@ export default function SpuwerDesigner() {
     [activeId, seedWaarden],
   );
   const [editing, setEditing] = useState<string | null>(null);
+  // De uitkomst van het blad zelf, voor de kop.
+  const uitkomst = useBladUitkomst();
 
   // Meet het beschikbare tekengebied zodat het beeld meegroeit met het paneel.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -123,7 +129,6 @@ export default function SpuwerDesigner() {
   const h_min = H_VERSTOP + d_hw - h_nd;            // mm — §7.3(3)
   const UC = h_sp > 0 ? h_min / h_sp : 0;
   const ok = UC <= 1.0;
-  const d_min = d_nd > 0 ? (Q_h / n_sp) / (d_nd / 1000 / 0.29) ** 1.5 * 1000 : 0;  // mm (7.7)
   const A_op = (b_sp * h_sp) / 1e6;                 // doorstroomoppervlak per spuwer [m²]
   const fmt = (v: number, dec = 0) => v.toFixed(dec).replace(".", ",");
 
@@ -227,12 +232,7 @@ export default function SpuwerDesigner() {
 
   return (
     <div className="vd-panel">
-      <div className="vd-head">
-        <strong>Parametrisch beeld — spuwer (noodoverlaat)</strong>
-        <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
-          u.c. = {fmt(UC, 2)} {ok ? "✓ voldoet" : "✗ voldoet niet"}
-        </span>
-      </div>
+      <UitkomstKop titel="Parametrisch beeld — spuwer (noodoverlaat)" uitkomst={uitkomst} />
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
         <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
@@ -319,7 +319,7 @@ export default function SpuwerDesigner() {
               <Dim name="h_sp" value={h_sp} x={xL - dimL} y={(yTop + ySill) / 2} step={10} label="h" />
               <Dim name="h_nd" value={h_nd} x={xL - dimL} y={(ySill + yRoof) / 2} step={10} label="hnd" />
               <Ro text={`dhw=${fmt(d_hw)}`} x={xL + 55 * s} y={(yWat + yRoof) / 2} title="waterstand op het dak = hnd + dnd" />
-              <Dim name="d_nd" value={d_nd} x={xL + 130 * s} y={(yWat + ySill) / 2} step={2} label="dnd" />
+              <Ro text={`dnd=${fmt(d_nd)}`} x={xL + 130 * s} y={(yWat + ySill) / 2} title="waterhoogte boven de onderzijde van de spuwer (7.4)" />
               <div className="vd-dim-ro" style={{ left: xP0 + T_OPSTAND * s / 2, top: (y30 + yWat) / 2, color: ok ? "#6b7280" : "#dc2626" }}
                 title="30 mm vrije hoogte tegen verstopping (§7.3(3)) — moet binnen de spuweropening passen">
                 {H_VERSTOP}
@@ -370,7 +370,7 @@ export default function SpuwerDesigner() {
         <span className="vd-live">
           Q<sub>h</sub> = {fmt(Q_h, 3)} m³/s · b<sub>tot</sub> = {fmt(b_tot)} mm · d<sub>nd</sub> = {fmt(d_nd, 1)} mm ·
           d<sub>hw</sub> = {fmt(d_hw, 1)} mm · q = {fmt(q_rw, 2)} kN/m² · h<sub>min</sub> = 30 + d<sub>hw</sub> − h<sub>nd</sub> = {fmt(h_min, 1)} mm ·
-          u.c. = {fmt(h_min, 1)}/{fmt(h_sp)} = {fmt(UC, 2)} · ronde spuwer d<sub>min</sub> = {fmt(d_min)} mm ·
+          u.c. = {fmt(h_min, 1)}/{fmt(h_sp)} = {fmt(UC, 2)} ·
           opening {fmt(b_sp)}×{fmt(h_sp)} mm ({fmt(A_op, 3)} m²)
         </span>
       </div>

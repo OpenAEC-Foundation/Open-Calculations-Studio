@@ -15,7 +15,11 @@
  *   2. Voor een aantal sets de getallen van een handberekening.
  *
  * Het eindoordeel kent drie uitkomsten: voldoet niet (UC > 1), niet
- * aangetoond (VC > 12 %) en voldoet.
+ * aangetoond (VC > 12 %, een open stalen buis waarvan de volle doorsnede een
+ * grondprop veronderstelt, of een UC die door lege invoer niet uit te rekenen
+ * is) en voldoet. De meldingen bij een ingekorte ΔL,
+ * een paalpunt in de kleeflagen en een open buis verschijnen alleen als ze
+ * gelden.
  *
  * Draaien:  node scripts/check-paal.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -113,8 +117,12 @@ function uitwerking(v) {
     }
   }
   const UC = (v.F_c_d + Fnk) / Rcd;
-  const oordeel = UC > 1 ? "voldoet niet" : VC > 0.12 ? "niet aangetoond" : "voldoet";
-  return { Ab, O, Deq, R, gem, min, x3, x4, Rck, Rcd, VC, Fnk, UC, oordeel, begrensd, ingekort };
+  // Paaltype 8 met een ronde doorsnede is een open buis: de volle doorsnede als
+  // paalpunt veronderstelt een grondprop, die het blad niet aantoont.
+  const openBuis = v.paaltype === 8 && v.vorm === 1;
+  const puntInKleef = v.nk === 1 && v.z_punt >= zDraag;
+  const oordeel = UC > 1 ? "voldoet niet" : VC > 0.12 || openBuis ? "niet aangetoond" : "voldoet";
+  return { Ab, O, Deq, R, gem, min, x3, x4, Rck, Rcd, VC, Fnk, UC, oordeel, begrensd, ingekort, openBuis, puntInKleef };
 }
 
 const s4 = (x) => {
@@ -219,6 +227,32 @@ const SETS = [
     // Met de hand: F_nk = 1,40·0,25·328 = 114,8 kN; UC = (300 + 114,8)/562,4 = 0,738 → niet aangetoond.
     handwerk: { R_cd: "562.4", UC: "0.738" },
   },
+  {
+    naam: "10 — standaard met de paalpunt op NAP −10, in de kleeflagen: melding en geen positieve schachtwrijving",
+    invoer: { z_punt: -10 },
+    // Met de hand: z_draag = −0,5 − 10 = −10,5 m ligt onder de punt → ΔL = max(−10,5 + 10; 0) = 0.
+    // R_c;cal,1 = 0,0841·9450 = 794,7; R_c;cal,2 = 0,0841·8400 = 706,4 kN. n = 2: R_c;k = 706,4/1,32 = 535,2;
+    // R_c;d = 446,0 kN. F_nk telt alle kleeflagen (veilige kant): UC = (450 + 95,1)/446,0 = 1,222.
+    handwerk: { R_scal_1: "0", R_ccal_1: "794.7", R_ccal_2: "706.4", R_cd: "446.0", UC: "1.222" },
+  },
+  {
+    naam: "11 — paaltype 8 met ronde doorsnede Ø 324 (open buis), geen negatieve kleef: niet aangetoond",
+    invoer: { paaltype: 8, vorm: 1, D: 324, nk: 0 },
+    // Met de hand: A_b = π/4·0,324² = 0,08245 m²; O_s = 1,0179 m; α_s = 0,006.
+    // R_c;cal,1 = 0,082448·9450 + 1,01788·0,006·10 000·3 = 779,13 + 183,22 = 962,35 ≈ 962,4 kN;
+    // R_c;cal,2 = 0,08245·8400 + 1,0179·0,006·9000·3 = 692,6 + 164,9 = 857,5 kN.
+    // n = 2: R_c;k = 857,5/1,32 = 649,6; R_c;d = 541,3 kN; UC = 450/541,3 = 0,831 → niet aangetoond (grondprop).
+    handwerk: { R_ccal_1: "962.4", R_ccal_2: "857.5", R_cd: "541.3", UC: "0.831" },
+  },
+  {
+    naam: "12 — geen negatieve kleef, ΔL = 20 m bij een paal van 14 m: ingekort tot de paallengte",
+    invoer: { nk: 0, ΔL_1: 20, ΔL_2: 20 },
+    // Met de hand: ΔL = z_kop − z_punt = −1 + 15 = 14 m. R_s,1 = 1,16·0,010·10 000·14 = 1624,0 →
+    // R_c;cal,1 = 794,7 + 1624,0 = 2418,7; R_c;cal,2 = 706,4 + 1,16·0,010·9000·14 = 706,4 + 1461,6 = 2168,0 kN.
+    // n = 2: R_c;k = min(2293,4/1,32; 2168,0/1,32) = min(1737,4; 1642,4) = 1642,4; R_c;d = 1368,7 kN;
+    // UC = 450/1368,7 = 0,329.
+    handwerk: { ΔL_1: "14.0", R_scal_1: "1624", R_ccal_2: "2168", R_cd: "1369", UC: "0.329" },
+  },
 ];
 
 /** Het eindoordeel zoals het blad het in de slotzin geeft. */
@@ -243,10 +277,15 @@ for (const set of SETS) {
   const ok = oordeel === r.oordeel;
   if (!ok) fouten++;
   console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${oordeel}   narekening ${r.oordeel}`);
-  // Een begrenzing op traject III of ΔL meldt het blad, en alleen dan.
+  // Een begrenzing op traject III of ΔL, een paalpunt in de kleeflagen en een
+  // open buis meldt het blad, en alleen dan. Zonder negatieve kleef noemt de
+  // melding bij ΔL geen kleeflagen.
   for (const [wel, patroon, wat] of [
     [r.begrensd, /avegaarpaal: traject III ten hoogste 2 MPa/, "traject III begrensd op 2 MPa"],
-    [r.ingekort, /ingekort tot de paallengte onder de lagen met negatieve kleef/, "ΔL ingekort"],
+    [r.ingekort && v.nk === 1, /ingekort tot de paallengte onder de lagen met negatieve kleef/, "ΔL ingekort onder de kleeflagen"],
+    [r.ingekort && v.nk !== 1, /ingekort tot de paallengte(?! onder)/, "ΔL ingekort tot de paallengte"],
+    [r.puntInKleef, /paalpunt ligt niet onder de lagen met negatieve kleef/, "paalpunt in de kleeflagen"],
+    [r.openBuis, /Open stalen buis: de volle doorsnede/, "open buis: grondprop"],
   ]) {
     const gemeld = patroon.test(got.text);
     if (gemeld !== wel) fouten++;
@@ -258,6 +297,17 @@ for (const set of SETS) {
     if (!melding) fouten++;
     console.log(`  ${melding ? "OK    " : "FOUT  "} melding    variatiecoëfficiënt ${s4(r.VC * 100)} % > 12 %`);
   }
+}
+
+// Een blad zonder invoer (zoals vlak na het invoegen, vóór het beeld de standaardwaarden
+// zet) heeft n_s = 0, dus R_c;cal;gem = 0/0 en UC = NaN. Het oordeel mag dan nooit
+// "voldoet" zijn; vroeger viel NaN door alle vergelijkingen heen naar "voldoet".
+{
+  const got = reken(tpl, {});
+  const oordeel = oordeelBlad(got.text);
+  const ok = oordeel === "niet aangetoond";
+  if (!ok) fouten++;
+  console.log(`\nLege invoer — geen uitrekenbare UC\n  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${oordeel}   verwacht niet aangetoond`);
 }
 
 afronden(fouten, "Paaldraagvermogen");

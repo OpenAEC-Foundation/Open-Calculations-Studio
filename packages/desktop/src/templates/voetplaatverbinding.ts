@@ -16,6 +16,13 @@
  * Het T-stuk rond het lijf rekent als een rij zonder verstijving (tabel 6.4):
  * de flenzen vergroten l_eff alleen, dus dat ligt aan de veilige kant.
  *
+ * De gatdiameter d_0 in de randafstandstoets (tabel 3.3) volgt de gekozen
+ * gatspeling: normale of vergrote gaten volgens EN 1090-2 tabel 11.
+ *
+ * Een ondersabeling dikker dan 0,2·min(b_p; d_p) of een rand dichtbij bij
+ * getrokken ankers maakt de druk- of kegeltoets ongeldig. De slotzin zegt dan
+ * "niet volledig getoetst", zodat de rapportkop geen "voldoet" leest.
+ *
  * Profielen HEB 100–400, HEA 100–400 en IPE 200–400 (id 1–38, gelijk aan het
  * beeld). Geen referentieberekening beschikbaar; scripts/check-voetplaat.mjs
  * rekent de uitkomsten onafhankelijk na.
@@ -242,7 +249,11 @@ M_abs = abs(M_Ed) to kN*m
 # 5. Druk op het beton (§6.2.5 en EN 1992-1-1 §6.7)
 
 k_sp = min(3; 1 + h_b/max(b_pl; d_pl))', spreiding in het blok, A_c1 ≤ 9·A_c0'
-k_j = if(positie ≡ 1; k_sp; 1)', concentratiefactor, 1 bij een rand dichtbij'
+#if positie ≡ 1
+    k_j = k_sp', concentratiefactor'
+#else
+    k_j = 1', concentratiefactor, 1 bij een rand dichtbij'
+#end if
 f_jd = 2/3*k_j*f_cd', β_j = 2/3 (§6.2.5(7))'
 t_g,max = 0.2*min(b_pl; d_pl)
 #if t_g > 50 mm
@@ -250,7 +261,13 @@ t_g,max = 0.2*min(b_pl; d_pl)
 #else
     f_ck,g = 0.2*f_ck', minimale sterkte van de ondersabeling (§6.2.5(7))'
 #end if
+#hide
+ok_g = 1
+#show
 #if t_g > t_g,max
+    #hide
+    ok_g = 0
+    #show
     '<b style="color:#b45309">De ondersabeling is dikker dan 0,2·min(b<sub>p</sub>; d<sub>p</sub>) = 't_g,max' mm: β<sub>j</sub> = 2/3 geldt dan niet (§6.2.5(7)); toets de ondersabeling apart.</b>
 #end if
 c = t_p*sqrt(f_y,p/(3*f_jd*γ_M0)) to mm', bijkomende steunbreedte (6.5)'
@@ -422,9 +439,14 @@ z_C = (h - t_f)/2', tot het midden van de gedrukte flens'
 
 #hide
 UC_kegel = 0
+ok_kegel = 1
 #show
 #if F_groep > 0 kN
-    k_1 = if(gescheurd ≡ 1; 8.9; 12.7)', ingestort anker: gescheurd 8,9, ongescheurd 12,7'
+    #if gescheurd ≡ 1
+        k_1 = 8.9', ingestort anker, gescheurd beton'
+    #else
+        k_1 = 12.7', ingestort anker, ongescheurd beton'
+    #end if
     s_cr = 3*h_ef', s_cr,N'
     N_Rk,c0 = k_1*sqrt(betonklasse)*(h_ef/(1 mm))^1.5*N to kN
     a_x = s_cr + min(s_x; s_cr)
@@ -436,6 +458,9 @@ UC_kegel = 0
     N_Rd,c = N_Rk,c0*A_c,N/A_c,N0*ψ_re*ψ_ec/1.5 to kN', γ_Mc = 1,5'
     UC_kegel = F_groep/N_Rd,c
     #if positie ≠ 1
+        #hide
+        ok_kegel = 0
+        #show
         '<b style="color:#b45309">Er ligt een rand dichtbij: de kegelbreuk is hier zonder randeffect gerekend. Toets de kegelbreuk met de werkelijke randafstanden en de randbreuk apart (EN 1992-4 §7.2.1.4 en §7.2.2.5).</b>
     #end if
 #else
@@ -450,17 +475,25 @@ UC_kegel = 0
 @end
 
 N_c,Ed = max(N_Ed; 0 kN)', drukkracht, bij trek nul'
-F_f,Rd = if(wrijving ≡ 1; 0.20*N_c,Ed; 0 kN) to kN', (6.1), zand-cementmortel'
+#if wrijving ≡ 1
+    F_f,Rd = 0.20*N_c,Ed to kN', (6.1), zand-cementmortel'
+#else
+    F_f,Rd = 0 kN', wrijving niet meegenomen'
+#end if
 α_bc = 0.44 - 0.0003*fyb_tab', (6.2)'
 #if fyb_tab > 640
     '<i>(6.2) geldt voor f<sub>yb</sub> tot 640 N/mm²; voor klasse 10.9 is α<sub>bc</sub> hier met de werkelijke f<sub>yb</sub> doorgetrokken.</i>
 #end if
 F_2,vb,Rd = α_bc*f_ub*A_s/γ_M2 to kN', (6.2)'
 #hide
-spel = if(d_anker ≤ 14; 1; if(d_anker ≤ 24; 2; 3))
+spel = if(gatspeling ≡ 1; if(d_anker ≤ 14; 1; if(d_anker ≤ 24; 2; 3)); if(d_anker ≤ 12; 3; if(d_anker ≤ 22; 4; if(d_anker ≤ 24; 6; 8))))
 ok_e = 1
 #show
-d_0 = d_a + spel*mm', gatdiameter bij normale speling'
+#if gatspeling ≡ 1
+    d_0 = d_a + spel*mm', gatdiameter, normale speling (EN 1090-2 tabel 11)'
+#else
+    d_0 = d_a + spel*mm', gatdiameter, vergrote gaten (EN 1090-2 tabel 11)'
+#end if
 e_1 = d_pl/2 - x_max', randafstand in de krachtrichting'
 e_2 = b_pl/2 - y_max', randafstand loodrecht erop'
 #if min(e_1; e_2) < 1.2*d_0
@@ -474,7 +507,11 @@ e_2 = b_pl/2 - y_max', randafstand loodrecht erop'
 k_1s = max(min(2.8*e_2/d_0 - 1.7; 2.5); 0)
 F_1,vb,Rd = k_1s*α_b*f_u,p*d_a*t_p/γ_M2 to kN', stuik van de plaat (tabel 3.4)'
 F_vb,Rd = min(F_1,vb,Rd; F_2,vb,Rd)
-n_v = if(gatspeling ≡ 1; n_a; 0)', ankers die meedoen: alleen bij normale gatspeling (§6.2.2(5))'
+#if gatspeling ≡ 1
+    n_v = n_a', ankers die meedoen: alleen bij normale gatspeling (§6.2.2(5))'
+#else
+    n_v = 0', ankers die meedoen: alleen bij normale gatspeling (§6.2.2(5))'
+#end if
 V_Rd = F_f,Rd + n_v*F_vb,Rd to kN', (6.3)'
 #hide
 ok_v = 1
@@ -530,10 +567,10 @@ UC_max', grootste van de toetsen hieronder'
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Ondersabeling</td><td style="padding:4px 8px;">§6.2.5(7)</td><td style="padding:4px 8px; text-align:right; color:#b45309">—</td><td style="padding:4px 8px; color:#b45309">apart toetsen</td></tr>
 #end if
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Trek in ankers en voetplaat</td><td style="padding:4px 8px;">§6.2.6.11, §6.2.6.12</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_t)'">'UC_t'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_t)'">'oordeel(UC_t)'</td></tr>
-#if positie ≡ 1 or F_groep ≤ 0 kN
+#if ok_kegel ≡ 1
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Kegelbreuk van het beton</td><td style="padding:4px 8px;">EN 1992-4 §7.2.1.4</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_kegel)'">'UC_kegel'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_kegel)'">'oordeel(UC_kegel)'</td></tr>
 #else
-    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Kegelbreuk van het beton</td><td style="padding:4px 8px;">EN 1992-4 §7.2.1.4</td><td style="padding:4px 8px; text-align:right; color:#64748b">—</td><td style="padding:4px 8px; color:#64748b">zonder rand; apart toetsen</td></tr>
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Kegelbreuk van het beton</td><td style="padding:4px 8px;">EN 1992-4 §7.2.1.4</td><td style="padding:4px 8px; text-align:right; color:#b45309">—</td><td style="padding:4px 8px; color:#b45309">zonder rand; apart toetsen</td></tr>
 #end if
 #if ok_v ≡ 0
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Afschuiving</td><td style="padding:4px 8px;">§6.2.2</td><td style="padding:4px 8px; text-align:right; color:#b91c1c">—</td><td style="padding:4px 8px; color:#b91c1c">geen weerstand</td></tr>
@@ -556,13 +593,19 @@ UC_max', grootste van de toetsen hieronder'
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar <b>de verbinding voldoet niet</b>: de randafstand van de ankers is kleiner dan 1,2·d<sub>0</sub> (tabel 3.3).</span>
 #else if ok_v ≡ 0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar <b>de verbinding voldoet niet</b>: er is geen afschuifweerstand.</span>
-#else if UC_max ≤ 1.0
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de verbinding voldoet</b></span>
-#else
+#else if UC_max > 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de verbinding voldoet niet</b></span>
+#else if ok_g ≡ 0 and ok_kegel ≡ 0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ≤ 1,0, maar <b>de verbinding is niet volledig getoetst</b>: toets de ondersabeling (§6.2.5(7)) en de kegelbreuk met de rand (EN 1992-4) apart.</span>
+#else if ok_g ≡ 0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ≤ 1,0, maar <b>de verbinding is niet volledig getoetst</b>: de ondersabeling is dikker dan 0,2·min(b<sub>p</sub>; d<sub>p</sub>); toets die apart (§6.2.5(7)).</span>
+#else if ok_kegel ≡ 0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ≤ 1,0, maar <b>de verbinding is niet volledig getoetst</b>: de kegelbreuk is zonder de rand gerekend; toets die met de randafstanden apart (EN 1992-4 §7.2.1.4).</span>
+#else
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de verbinding voldoet</b></span>
 #end if
 
 '<hr/>
 '<i>Aandachtspunten:</i>
-'<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Niet getoetst: het uittrekken van de ankerplaat, het splijten van het beton, de randbreuk onder dwarskracht (EN 1992-4) en de stijfheid van de kolomvoet (§6.3).</li><li>Bij een rand dichtbij: geen spreiding (k<sub>j</sub> = 1) en de kegelbreuk apart toetsen.</li><li>De dwarskracht werkt in de richting van d<sub>p</sub>; de stuik is met de randafstanden van de buitenste ankers gerekend.</li><li>De trekweerstand van de ankers geldt voor schroefdraad volgens EN 1090; anders factor 0,85 (§3.6.1(3)).</li></ul>
+'<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Niet getoetst: het uittrekken van de ankerplaat, het splijten van het beton, onder dwarskracht de randbreuk en het uitbreken aan de achterzijde van de ankers (EN 1992-4), en de stijfheid van de kolomvoet (§6.3).</li><li>Bij een rand dichtbij: geen spreiding (k<sub>j</sub> = 1) en de kegelbreuk apart toetsen.</li><li>De dwarskracht werkt in de richting van d<sub>p</sub>; de stuik is met de randafstanden van de buitenste ankers gerekend.</li><li>De trekweerstand van de ankers geldt voor schroefdraad volgens EN 1090; anders factor 0,85 (§3.6.1(3)).</li></ul>
 `;

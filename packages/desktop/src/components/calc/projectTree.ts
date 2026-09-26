@@ -178,7 +178,7 @@ export const bibliotheek: TreeNode[] = [
       { kind: "item", id: "book-funderingsadvies", label: "Funderingsadvies" },
       { kind: "item", id: "vdp-schuifspanning", label: "Vandepitte: Schuifspanningen (Jourawsky)", templateId: "vdp-schuifspanning" },
       { kind: "item", id: "vdp-doorbuiging", label: "Vandepitte: Doorbuiging + dwarskracht", templateId: "vdp-doorbuiging" },
-      { kind: "item", id: "vdp-knikken", label: "Vandepitte: Knikken (Euler)", templateId: "vdp-knikken" },
+      { kind: "item", id: "vdp-knikken", label: "Vandepitte: Knikken (Euler en normtoets)", templateId: "vdp-knikken" },
       { kind: "item", id: "vdp-mohr", label: "Vandepitte: Doorbuiging (Mohr)", templateId: "vdp-mohr" },
       { kind: "item", id: "vdp-eigenfrequentie", label: "Vandepitte: Eigenfrequentie", templateId: "vdp-eigenfrequentie" },
       { kind: "item", id: "vdp-virtuele-arbeid", label: "Vandepitte: Virtuele Arbeid (vakwerk)", templateId: "vdp-virtuele-arbeid" },
@@ -280,7 +280,7 @@ export const bibliotheek: TreeNode[] = [
         label: "NEN 9997-1 Geotechniek",
         children: [
           { kind: "item", id: "en1997-funderingsstrook", label: "§6 Funderingsstrook", templateId: "en1997-funderingsstrook" },
-          { kind: "item", id: "en1997-paaldraagvermogen", label: "§7 Paaldraagvermogen", templateId: "en1997-paaldraagvermogen" },
+          { kind: "item", id: "en1997-paaldraagvermogen", label: "§7 Paaldraagvermogen (zie module Paaldraagvermogen)", templateId: "en1997-paaldraagvermogen" },
           { kind: "item", id: "en1997-zetting", label: "§6.6 Zetting", templateId: "en1997-zetting" },
           { kind: "item", id: "en1997-glijding", label: "§6.5.3 Glijding", templateId: "en1997-glijding" },
         ],

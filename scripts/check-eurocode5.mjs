@@ -6,8 +6,10 @@
  * bewaakt vooral dat de keuzes op het blad ook echt doorwerken: sterkteklasse
  * (EN 338 / EN 14080), klimaatklasse × belastingduurklasse (k_mod, tabel 3.1),
  * γ_M per houttype (tabel 2.3 NB), k_cr = 0,67 (6.1.7(2)), k_c,90 en l_ef bij
- * een eind- of tussenoplegging (6.1.5), k_crit volgens (6.34) met l_ef + 2h en
- * in de houten balk de combinatie met alleen blijvende belasting (3.1.3(2)).
+ * een eind- of tussenoplegging (6.1.5), k_crit volgens (6.34) met l_ef + 2h,
+ * in de houten balk de combinatie met alleen blijvende belasting (3.1.3(2)) en
+ * in de doorbuiging ψ_2 per belastingcategorie. Per blad leest één set ook het
+ * oordeel zoals de afdruk dat doet, uit de slotzin "Maatgevende UC = …".
  *
  * De bladen dragen hun invoer als voorbeeldwaarden in de tekst; dit script
  * vervangt die regels per set.
@@ -36,6 +38,22 @@ function met(tpl, waarden) {
   return uit;
 }
 
+/**
+ * Toetst een set en leest daarbij het oordeel zoals de afdruk dat doet: het
+ * getal en het woord uit de laatste slotzin "Maatgevende UC = …" (UC_slot, en
+ * voldoet als 1 of 0). Zonder slotzin blijven beide leeg en zakt de set.
+ */
+function toetsMetOordeel(naam, got, verwacht) {
+  const i = got.text.lastIndexOf("Maatgevende UC");
+  const zin = i < 0 ? "" : got.text.slice(i, i + 240);
+  const m = zin.match(/Maatgevende UC\s*=\s*([\d.,]+)/);
+  const voldoet = !/voldoe[nt] niet/.test(zin) && /voldoe[nt]/.test(zin);
+  return toets(naam, got, verwacht, {}, {
+    UC_slot: m ? parseFloat(m[1].replace(",", ".")) : NaN,
+    voldoet: i < 0 ? NaN : voldoet ? 1 : 0,
+  });
+}
+
 // Keuzewaarden: sterkteklasse in de bladen met zes klassen.
 const C18 = "1", C24 = "2", C30 = "3", GL24h = "4", GL28h = "5", GL32h = "6";
 const BLIJVEND = "1", LANG = "2", MIDDELLANG = "3", KORT = "4", ZEER_KORT = "5";
@@ -47,9 +65,10 @@ let fouten = 0;
 {
   const tpl = bladen.ec5Buiging;
   // C24, klimaatklasse 3, blijvend: k_mod 0,50; f_m,d = 0,5·24/1,3 = 9,23; UC = 12,05/9,23 = 1,306.
-  fouten += toets("buiging — C24, klimaatklasse 3, blijvend",
+  fouten += toetsMetOordeel("buiging — C24, klimaatklasse 3, blijvend",
     reken(tpl, { sterkteklasse: "6", klimaatklasse: "3", belastingduurklasse: BLIJVEND }, PROJECT),
-    { f_mk: "24", gamma_M: "1.30", k_mod: "0.50", f_md: "9.23", sigma_md: "12.05", UC_buiging: "1.306" });
+    { f_mk: "24", gamma_M: "1.30", k_mod: "0.50", f_md: "9.23", sigma_md: "12.05", UC_buiging: "1.306",
+      UC_slot: "1.306", voldoet: "0" });
   // GL24h, middellang: γ_M 1,25; f_m,d = 0,8·24/1,25 = 15,36; UC = 12,05/15,36 = 0,785.
   fouten += toets("buiging — GL24h, middellang",
     reken(tpl, { sterkteklasse: "16", belastingduurklasse: MIDDELLANG }, PROJECT),
@@ -65,9 +84,10 @@ let fouten = 0;
 {
   const tpl = bladen.ec5Afschuiving;
   // C24, middellang: f_v,d = 0,8·4,0/1,3 = 2,462; UC = 1,199/2,462 = 0,487 (was 0,37 met k_cr = 1,0 en f_v,k 3,5).
-  fouten += toets("afschuiving — C24, middellang",
+  fouten += toetsMetOordeel("afschuiving — C24, middellang",
     reken(tpl, { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
-    { f_vk: "4.0", f_vd: "2.462", k_cr: "0.67", b_ef: "46.9", tau_d: "1.199", UC_afschuiving: "0.487" });
+    { f_vk: "4.0", f_vd: "2.462", k_cr: "0.67", b_ef: "46.9", tau_d: "1.199", UC_afschuiving: "0.487",
+      UC_slot: "0.487", voldoet: "1" });
   // C18, blijvend: f_v,d = 0,6·3,4/1,3 = 1,569; UC = 1,199/1,569 = 0,764.
   fouten += toets("afschuiving — C18, blijvend",
     reken(tpl, {}, PROJECT),
@@ -87,9 +107,9 @@ let fouten = 0;
 {
   const tpl = bladen.ec5Druk;
   // C24, middellang: f_c,0,d = 0,8·21/1,3 = 12,92; UC = 0,387.
-  fouten += toets("druk evenwijdig — C24, middellang",
+  fouten += toetsMetOordeel("druk evenwijdig — C24, middellang",
     reken(tpl, { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
-    { f_c0k: "21", f_c0d: "12.92", UC_druk: "0.387" });
+    { f_c0k: "21", f_c0d: "12.92", UC_druk: "0.387", UC_slot: "0.387", voldoet: "1" });
   // GL28h, klimaatklasse 3, lang: k_mod 0,55; f_c,0,d = 0,55·28/1,25 = 12,32; UC = 0,406.
   fouten += toets("druk evenwijdig — GL28h, klimaatklasse 3, lang",
     reken(tpl, { sterkteklasse: GL28h, klimaatklasse: "3", belastingduurklasse: LANG }, PROJECT),
@@ -103,9 +123,10 @@ let fouten = 0;
   // GL32h, middellang, eindoplegging, discreet: f_c,90,k 2,5 (EN 14080, was 3,3);
   // f_c,90,d = 0,8·2,5/1,25 = 1,60; l_ef = 100 + 30 = 130 (was 160);
   // σ = 15000/(70·130) = 1,648; UC = 1,648/(1,75·1,60) = 0,589 (was 0,44).
-  fouten += toets("druk loodrecht — GL32h, eindoplegging, discreet",
+  fouten += toetsMetOordeel("druk loodrecht — GL32h, eindoplegging, discreet",
     reken(tpl, { sterkteklasse: GL32h, belastingduurklasse: MIDDELLANG }, PROJECT),
-    { f_c90k: "2.5", f_c90d: "1.60", k_c90: "1.75", L_ef: "130", sigma_c90d: "1.648", UC_c90: "0.589" });
+    { f_c90k: "2.5", f_c90d: "1.60", k_c90: "1.75", L_ef: "130", sigma_c90d: "1.648", UC_c90: "0.589",
+      UC_slot: "0.589", voldoet: "1" });
   // C24, middellang, tussenoplegging, doorgaand: k_c,90 1,25; l_ef = 160;
   // σ = 15000/11200 = 1,339; f_c,90,d = 0,8·2,5/1,3 = 1,538; UC = 1,339/(1,25·1,538) = 0,696.
   fouten += toets("druk loodrecht — C24, tussenoplegging, doorgaand",
@@ -132,9 +153,16 @@ let fouten = 0;
   // C18, middellang: E_0,05 6000 (was vast 7400); λ_rel = 103,9/π·√(18/6000) = 1,812;
   // k = 0,5·(1 + 0,2·1,512 + 1,812²) = 2,293; k_c = 1/(2,293 + √(2,293² − 1,812²)) = 0,2705;
   // f_c,0,d = 0,8·18/1,3 = 11,08; UC = 8/(0,2705·11,08) = 2,67 (was 2,21).
-  fouten += toets("knik — C18, middellang",
+  fouten += toetsMetOordeel("knik — C18, middellang",
     reken(tpl, { sterkteklasse: C18, belastingduurklasse: MIDDELLANG }, PROJECT),
-    { E_005: "6000", beta_c: "0.2", lambda_relz: "1.812", k_z: "2.293", k_cz: "0.2705", UC_knik: "2.67" });
+    { E_005: "6000", beta_c: "0.2", lambda_relz: "1.812", k_z: "2.293", k_cz: "0.2705", UC_knik: "2.67",
+      UC_slot: "2.67", voldoet: "0" });
+  // b = 200 > h = 100: de zwakke as hoort bij h, dus λ_z = 3000/(100/√12) = 103,9 en
+  // λ_rel = 1,812, k_c = 0,2705 als hierboven; σ = 80 000/20 000 = 4,0;
+  // UC = 4,0/(0,2705·11,08) = 1,335 (met b in de slankheid was het 0,477).
+  fouten += toets("knik — C18, b 200 > h 100",
+    reken(met(tpl, { b: "200 mm" }), { sterkteklasse: C18, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { lambda_z: "103.9", lambda_relz: "1.812", k_cz: "0.2705", sigma_c0d: "4.00", UC_knik: "1.335" });
   // C24, L_k = 1000: f_c,0,k 21 (was 24); λ_rel = 34,64/π·√(21/7400) = 0,587;
   // k = 0,5·(1 + 0,2·0,287 + 0,587²) = 0,701; k_c = 0,922; k_c·f_c,0,d = 0,922·12,92 = 11,92;
   // UC = 8/11,92 = 0,671.
@@ -153,6 +181,27 @@ let fouten = 0;
     { lambda_relz: "0.235", k_cz: "1.000" });
 }
 
+// ── Doorbuiging ──────────────────────────────────────────────────────────
+// 70×200, L = 4000: I_y = 46,67·10⁶ mm⁴; g_k 1,0 en q_k 2,5 kN/m.
+{
+  const tpl = bladen.ec5Doorbuiging;
+  // Standaard: C18, klimaatklasse 1, categorie A (ψ_2 0,3).
+  // w_G = 5·1,0·4000⁴/(384·9000·46,67·10⁶) = 7,937; w_Q = 19,84; w_inst = 27,78;
+  // w_fin = 7,937·1,6 + 19,84·(1 + 0,3·0,6) = 12,70 + 23,41 = 36,11;
+  // UC: 27,78/13,33 = 2,083; 36,11/16 = 2,257; 36,11/26,67 = 1,354.
+  fouten += toetsMetOordeel("doorbuiging — standaard (C18, klimaatklasse 1, categorie A)",
+    reken(tpl, {}, PROJECT),
+    { E_mean: "9000", k_def: "0.60", psi_2: "0.3", w_inst: "27.78", w_fin: "36.11",
+      UC_inst: "2.083", UC_netfin: "2.257", UC_fin: "1.354", UC_max: "2.257", UC_slot: "2.257", voldoet: "0" });
+  // GL32h (E_0,mean 14 200 volgens EN 14080, was 13 700), klimaatklasse 2, opslag (ψ_2 0,8, was vast 0,3):
+  // w_G = 7,937·9000/14 200 = 5,030; w_Q = 12,58; w_fin,Q = 12,58·(1 + 0,8·0,8) = 20,62;
+  // w_net,fin = 5,030·1,8 + 20,62 = 29,68; UC = 29,68/16 = 1,855 (was 1,597).
+  fouten += toets("doorbuiging — GL32h, klimaatklasse 2, categorie E",
+    reken(tpl, { sterkteklasse: GL32h, klimaatklasse: "2", belastingcat: "5" }, PROJECT),
+    { E_mean: "14200", k_def: "0.80", psi_2: "0.8", w_inst_G: "5.030", w_fin_Q: "20.62", w_netfin: "29.68",
+      UC_netfin: "1.855" });
+}
+
 // ── Volledige toetsing houten balk ───────────────────────────────────────
 // 70×200, L = 4000, L_opl = 100: W_y = 466 667 mm³, I_y = 46,67·10⁶ mm⁴.
 {
@@ -166,12 +215,23 @@ let fouten = 0;
   // λ = √(18/28,67) = 0,792; k_crit = 1,56 − 0,75·0,792 = 0,966; UC = 20,57/(0,966·8,31) = 2,564.
   // w_G = 5·1,5·4000⁴/(384·9000·46,67·10⁶) = 11,90; w_Q = 15,87;
   // w_net,fin = 11,90·1,6 + 15,87·(1 + 0,3·0,6) = 37,78; UC = 37,78/16 = 2,361.
-  fouten += toets("houten balk — standaard (C18, blijvend, CC2, categorie A)",
+  // Maatgevend is kip: UC_max = 2,564, de balk voldoet niet.
+  fouten += toetsMetOordeel("houten balk — standaard (C18, blijvend, CC2, categorie A)",
     reken(tpl, {}, PROJECT),
     { q_da: "3.225", q_db: "4.80", q_d: "4.80", M_Ed: "9.60", f_md: "8.31", UC_buiging: "2.476",
       tau_d: "1.535", UC_afschuiving: "0.978", L_ef: "130", UC_c90: "0.693",
       l_ef: "4000", sigma_mcrit: "28.67", lambda_relm: "0.792", k_crit: "0.966", UC_kip: "2.564",
-      w_netfin: "37.78", UC_doorbuiging: "2.361" });
+      w_netfin: "37.78", UC_doorbuiging: "2.361", UC_slot: "2.564", voldoet: "0" });
+  // C24 100×300, middellang: q_d = 4,80 met k_mod 0,80 (2,025/0,6 = 3,375 < 4,8/0,8 = 6,0).
+  // σ = 9,60·10⁶/1,5·10⁶ = 6,40; f_m,d = 14,77; UC = 0,433.
+  // τ = 1,5·9600/(67·300) = 0,716; f_v,d = 2,462; UC = 0,291.
+  // σ_c,90 = 9600/(100·130) = 0,738; UC = 0,738/(1,5·1,538) = 0,320.
+  // l_ef = 3600 + 600 = 4200; σ_crit = 0,78·100²·7400/(300·4200) = 45,81; λ = 0,724 → k_crit 1.
+  // w = 2,020·1,6 + 2,694·1,18 = 6,411; UC = 0,401. UC_max = 0,433: de balk voldoet.
+  fouten += toetsMetOordeel("houten balk — C24 100×300, middellang: voldoet",
+    reken(met(tpl, { b: "100 mm", h: "300 mm" }), { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { UC_buiging: "0.433", UC_afschuiving: "0.291", UC_c90: "0.320", k_crit: "1.0", UC_kip: "0.433",
+      w_netfin: "6.41", UC_doorbuiging: "0.401", UC_slot: "0.433", voldoet: "1" });
   // C24, middellang, q_d = 5 kN/m (alleen q_k = 10/3).
   // σ_crit = 0,78·4900·7400/(200·4000) = 35,35; λ = 0,824; k_crit = 0,942;
   // UC_kip = 21,43/(0,942·14,77) = 1,54 (was 1,45 met k_crit = 1 en l_ef = 0,9·L).

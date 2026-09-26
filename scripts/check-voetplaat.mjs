@@ -10,8 +10,11 @@
  *      bij ankers binnen het profiel het T-stuk rond het lijf (tabel 6.4), de
  *      krachtsverdeling bij N en M (tabel 6.7), de kegelbreuk, afschuiving
  *      met wrijving en α_bc (§6.2.2), de interactie per anker (tabel 3.4), de
- *      hoeklassen en de voorwaarden voor blokhoogte, randafstand (tabel 3.3)
- *      en plaatdikte (tabel 3.1).
+ *      hoeklassen en de voorwaarden voor blokhoogte, randafstand (tabel 3.3,
+ *      met d_0 naar de gatspeling van EN 1090-2 tabel 11) en plaatdikte
+ *      (tabel 3.1). Is de ondersabeling dikker dan 0,2·min(b_p; d_p), of ligt
+ *      er een rand dichtbij terwijl ankers trek krijgen, dan is de verbinding
+ *      niet volledig getoetst en mag de rapportkop geen "voldoet" lezen.
  *   2. Voor een aantal sets de getallen van een handberekening, en bij de
  *      invoercontroles de melding in het blad.
  *
@@ -135,7 +138,8 @@ function uitwerking(v) {
   // afschuiving
   const Ff = v.wrijving === 1 ? 0.2 * Math.max(N, 0) : 0;
   const F2vb = ((0.44 - 0.0003 * fyb) * fub * As) / 1.25;
-  const d0 = d + (d <= 14 ? 1 : d <= 24 ? 2 : 3);
+  // EN 1090-2 tabel 11: normale speling 1/2/3 mm, vergrote gaten 3/4/6/8 mm.
+  const d0 = d + (v.gatspeling === 1 ? (d <= 14 ? 1 : d <= 24 ? 2 : 3) : (d <= 12 ? 3 : d <= 22 ? 4 : d <= 24 ? 6 : 8));
   const e1 = dp / 2 - xmax, e2 = bp / 2 - ymax;
   const ab = Math.min(e1 / (3 * d0), fub / fup, 1), k1s = Math.max(Math.min((2.8 * e2) / d0 - 1.7, 2.5), 0);
   const F1vb = (k1s * ab * fup * d * v.t_p) / 1.25;
@@ -157,9 +161,12 @@ function uitwerking(v) {
   // Voorwaarden die los van de UC "voldoet niet" geven: blokhoogte (standaard
   // 50 mm onder de ankerplaat), randafstand ≥ 1,2·d_0 (tabel 3.3), plaat ≤ 80 mm.
   const ok = v.h_b >= v.h_ef + (v.c_onder ?? 50) && Math.min(e1, e2) >= 1.2 * d0 && v.t_p <= 80;
+  // Voorwaarden van de toetsen zelf: β_j = 2/3 alleen bij t_g ≤ 0,2·min(b_p; d_p)
+  // (§6.2.5(7)); de kegelbreuk alleen zonder rand dichtbij.
+  const volledig = v.t_g <= 0.2 * Math.min(bp, dp) && (v.positie === 1 || Fgroep <= 0);
 
   const UCmax = Math.max(UCc, UCt, UCk, UCv, UCtv, UClas);
-  return { kj, fjd, c, Fcpl, Njrd, FCrd, Ftrd, FTrd, FT, UCc, UCt, UCk, F2vb, F1vb, Vrd, UCv, UCtv, UClas, UCmax, schar, ok };
+  return { kj, fjd, c, Fcpl, Njrd, FCrd, Ftrd, FTrd, FT, UCc, UCt, UCk, F2vb, F1vb, Vrd, UCv, UCtv, UClas, UCmax, schar, ok, volledig };
 }
 
 const s4 = (x) => {
@@ -278,6 +285,30 @@ const SETS = [
     invoer: { e_d: 25, e_b: 25 },
     melding: /randafstand van de ankers is kleiner/,
   },
+  {
+    naam: "16 — vergrote gaten, randafstand 35 mm bij M24: d_0 uit EN 1090-2 tabel 11",
+    invoer: { e_d: 35, e_b: 35, gatspeling: 0, N_Ed: -100 },
+    // Met de hand: vergrote gaten bij M24 geven 6 mm speling, d_0 = 30 mm, dus
+    // 1,2·d_0 = 36 mm > 35 mm. Met normale gaten (d_0 = 26) was 31,2 mm voldoende.
+    handwerk: { d_0: "30" },
+    melding: /randafstand van de ankers is kleiner/,
+  },
+  {
+    naam: "17 — ondersabeling 90 mm onder 460 × 380: dikker dan 0,2·min(b_p; d_p)",
+    invoer: { t_g: 90 },
+    // Met de hand: t_g,max = 0,2·380 = 76 mm < 90 mm, dus β_j = 2/3 geldt niet.
+    // UC_max = 0,50 (las), maar de slotzin mag geen "voldoet" geven.
+    handwerk: { t_g_max: "76", f_ck_g: "25", UC_max: "0.500" },
+    melding: /niet volledig getoetst/,
+  },
+  {
+    naam: "18 — één rand dichtbij met getrokken ankers: kegelbreuk zonder rand",
+    invoer: { positie: 2, M_Ed: 60, V_Ed: 50 },
+    // Als set 2, maar k_j = 1: f_jd = 2/3·16,67 = 11,11 N/mm². De kegelbreuk is
+    // zonder rand gerekend, dus de verbinding is niet volledig getoetst.
+    handwerk: { k_j: "1", f_jd: "11.11" },
+    melding: /niet volledig getoetst/,
+  },
 ];
 
 let fouten = 0;
@@ -292,8 +323,12 @@ for (const set of SETS) {
   if (r.schar) {
     ok = /een scharnierende kolomvoet kan het moment niet overbrengen/.test(got.text);
   } else {
-    const voldoet = /de verbinding voldoet(?! niet)/.test(got.text);
-    const wil = r.ok && r.UCmax <= 1;
+    // Zoals de rapportkop het leest (bladResultaat.ts): de slotzin vanaf
+    // "Maatgevende UC" bevat "voldoet" en niet "voldoet niet".
+    const i = got.text.lastIndexOf("Maatgevende UC");
+    const zin = i >= 0 ? got.text.slice(i, i + 240) : "";
+    const voldoet = !/voldoe[nt] niet/.test(zin) && /voldoe[nt]/.test(zin);
+    const wil = r.ok && r.volledig && r.UCmax <= 1;
     ok = voldoet === wil;
     console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${voldoet ? "voldoet" : "voldoet niet"}   narekening ${wil ? "voldoet" : "voldoet niet"}`);
   }

@@ -10,42 +10,30 @@
 // 1. Funderingsstrook — NEN 9997-1 §6 / Bijlage D
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** NEN 9997-1 §6 — Draagvermogen funderingsstrook */
+/**
+ * NEN 9997-1 §6 — Draagvermogen funderingsstrook.
+ *
+ * Partiële factoren uit tabel A.4a, voor funderingen op staal onafhankelijk
+ * van de gevolgklasse: γ_φ' op tan φ', γ_c' en γ_γ op het volumiek gewicht in
+ * de q- en de γ-term (6.5.2.2). De inclinatiefactoren gebruiken dezelfde V_Ed
+ * als de toets. Invoer met eenheden; de rekenkern rekent om. De slotzin
+ * "Maatgevende UC = …" is wat de rapportkop leest. scripts/check-en1997.mjs
+ * rekent het na.
+ */
 export const en1997Funderingsstrook = `# Draagvermogen Funderingsstrook — NEN 9997-1 §6 / Bijlage D
 
-## Gevolgklasse en partiele factoren
+## Partiële factoren (tabel A.4a)
 
-@select gevolgklasse "Gevolgklasse (Bijlage A, tabel A.1)"
-CC1 — Lage gevolgen = 1
-CC2 — Middelmatige gevolgen = 2
-CC3 — Grote gevolgen = 3
-@end
-
-Partiele factoren grondweerstanden (Bijlage A, tabel A.3b):
-
-#if gevolgklasse == 1
+gamma_phi = 1.15', op tan φ′'
+gamma_c = 1.6', op c′'
+gamma_gamma = 1.1', op het volumiek gewicht'
 gamma_Rv = 1.0
-gamma_phi = 1.15
-gamma_c = 1.5
-#end if
-
-#if gevolgklasse == 2
-gamma_Rv = 1.0
-gamma_phi = 1.20
-gamma_c = 1.65
-#end if
-
-#if gevolgklasse == 3
-gamma_Rv = 1.0
-gamma_phi = 1.25
-gamma_c = 1.8
-#end if
 
 ## Grondparameters
 
 Effectieve wrijvingshoek (karakteristiek):
 
-phi_k = 25 deg
+phi_k = 25', in graden'
 
 Effectieve cohesie (karakteristiek):
 
@@ -119,6 +107,12 @@ s_c = 1.0
 s_q = 1.0
 s_gamma = 1.0
 
+## Belasting
+
+Verticale belasting per m' strook (rekenwaarde):
+
+V_Ed = 80 kN/m
+
 ## Inclinatiefactoren
 
 @select inclinatie "Horizontale belasting"
@@ -135,17 +129,13 @@ Horizontale kracht H_d:
 
 H_d = 5 kN/m
 
-Verticale kracht V_d voor inclinatie:
-
-V_d_incl = 80 kN/m
-
-Inclinatiefactor (Bijlage D, formule D.10):
+Inclinatiefactor (Bijlage D, formule D.10), met dezelfde V_Ed als de toets:
 
 m_exp = 2.0
-i_q = (1 - H_d / V_d_incl)^m_exp
-i_gamma = (1 - H_d / V_d_incl)^(m_exp + 1)
+i_q = (1 - H_d / V_Ed)^m_exp
+i_gamma = (1 - H_d / V_Ed)^(m_exp + 1)
 
-#if c_d > 0
+#if c_d > 0 kPa
 i_c = i_q - (1 - i_q) / (N_c * tan(phi_d_deg * pi / 180))
 #else
 i_c = 1.0
@@ -154,47 +144,39 @@ i_c = 1.0
 
 ## Grondspanning naast fundering
 
-Effectieve grondspanning op funderingsniveau:
+Rekenwaarde effectieve grondspanning op funderingsniveau en volumiek gewicht onder de zool (6.5.2.2):
 
 #if grondwater == 1
-q_eff = gamma_grond * D / 1000 to kPa
-gamma_eff = gamma_grond to kN/m^3
+q_eff = gamma_grond * D / gamma_gamma to kPa
+gamma_eff = gamma_grond / gamma_gamma to kN/m^3
 #end if
 
 #if grondwater == 2
-q_eff = gamma_grond * D / 1000 to kPa
-gamma_eff = gamma_grond_eff to kN/m^3
+q_eff = gamma_grond * D / gamma_gamma to kPa
+gamma_eff = gamma_grond_eff / gamma_gamma to kN/m^3
 #end if
 
 #if grondwater == 3
-q_eff = gamma_grond_eff * D / 1000 to kPa
-gamma_eff = gamma_grond_eff to kN/m^3
+q_eff = gamma_grond_eff * D / gamma_gamma to kPa
+gamma_eff = gamma_grond_eff / gamma_gamma to kN/m^3
 #end if
 
 ## Draagvermogen (Bijlage D, formule D.1)
 
-R_over_A = c_d * N_c * s_c * i_c + q_eff * N_q * s_q * i_q + 0.5 * gamma_eff * B_eff / 1000 * N_gamma * s_gamma * i_gamma to kPa
+R_over_A = c_d * N_c * s_c * i_c + q_eff * N_q * s_q * i_q + 0.5 * gamma_eff * B_eff * N_gamma * s_gamma * i_gamma to kPa
 
 Draagvermogen per m' strook:
 
-R_d = R_over_A * B_eff / 1000 to kN/m
-
-## Belasting
-
-Verticale belasting per m' strook (rekenwaarde):
-
-V_Ed = 80 kN/m
+R_d = R_over_A * B_eff / gamma_Rv to kN/m
 
 ## Toetsing (art. 6.5.2, formule 6.1)
 
-Unity check:
+UC_max = V_Ed / R_d
 
-UC = V_Ed / R_d
-
-#if UC < 1
-  Draagvermogen funderingsstrook voldoet (UC = {{UC}}).
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>draagvermogen voldoet</b></span>
 #else
-  Draagvermogen funderingsstrook voldoet NIET (UC = {{UC}})!
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>draagvermogen voldoet niet</b></span>
 #end if
 
 ## Overzicht
@@ -242,7 +224,7 @@ UC = V_Ed / R_d
   <text x="135" y="125" text-anchor="middle" font-size="10" fill="#6b7280" transform="rotate(-90,135,125)">D = {{D}} mm</text>
   <!-- Resultaten -->
   <text x="420" y="240" text-anchor="middle" font-size="11" fill="#374151">R_d = {{R_d}} kN/m</text>
-  <text x="420" y="260" text-anchor="middle" font-size="13" fill="#059669" font-weight="bold">UC = {{UC}}</text>
+  <text x="420" y="260" text-anchor="middle" font-size="13" fill="#374151" font-weight="bold">UC = {{UC_max}}</text>
 </svg>
 @end
 `;
@@ -251,268 +233,31 @@ UC = V_Ed / R_d
 // 2. Paaldraagvermogen — NEN 9997-1 §7
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** NEN 9997-1 §7 — Axiaal draagvermogen paalfundering */
+/**
+ * NEN 9997-1 §7 — Axiaal draagvermogen paalfundering: alleen een verwijzing.
+ *
+ * Het paaldraagvermogen rekent de module Paaldraagvermogen (paaldraagvermogen.ts)
+ * volgens art. 7.6.2.3, met tabel 7.c, tabel A.10a/A.10b en γ_t, en die heeft een
+ * controlescript. Een tweede, vereenvoudigde uitwerking hier zou ernaast gaan
+ * afwijken; dit blad rekent daarom niet zelf.
+ */
 export const en1997Paaldraagvermogen = `# Axiaal Draagvermogen Paalfundering — NEN 9997-1 §7
 
-## Gevolgklasse en partiele factoren
-
-@select gevolgklasse "Gevolgklasse (Bijlage A)"
-CC1 — Lage gevolgen = 1
-CC2 — Middelmatige gevolgen = 2
-CC3 — Grote gevolgen = 3
-@end
-
-@select paaltype "Type paal (tabel 7.b NB)"
-Grondverdringende paal (gedrukt) = 1
-Grondverdringende paal (geboord) = 2
-Schroefpaal = 3
-Boorpaal = 4
-@end
-
-Partiele factoren paaldraagvermogen (tabel 7.b NB):
-
-#if gevolgklasse == 1
-gamma_b = 1.2
-gamma_s = 1.2
-#end if
-
-#if gevolgklasse == 2
-gamma_b = 1.25
-gamma_s = 1.25
-#end if
-
-#if gevolgklasse == 3
-gamma_b = 1.3
-gamma_s = 1.3
-#end if
-
-## Correlatiefactoren (tabel A.10 NB)
-
-Aantal sonderingen:
-
-n_sond = 3
-
-@select xi_keuze "Correlatiefactoren xi (tabel A.10)"
-1 sondering (xi_3=1.39, xi_4=1.39) = 1
-2 sonderingen (xi_3=1.27, xi_4=1.23) = 2
-3 sonderingen (xi_3=1.20, xi_4=1.15) = 3
-5 sonderingen (xi_3=1.12, xi_4=1.06) = 5
-7 sonderingen (xi_3=1.08, xi_4=1.02) = 7
-10 sonderingen (xi_3=1.05, xi_4=1.00) = 10
-@end
-
-#if xi_keuze == 1
-xi_3 = 1.39
-xi_4 = 1.39
-#end if
-
-#if xi_keuze == 2
-xi_3 = 1.27
-xi_4 = 1.23
-#end if
-
-#if xi_keuze == 3
-xi_3 = 1.20
-xi_4 = 1.15
-#end if
-
-#if xi_keuze == 5
-xi_3 = 1.12
-xi_4 = 1.06
-#end if
-
-#if xi_keuze == 7
-xi_3 = 1.08
-xi_4 = 1.02
-#end if
-
-#if xi_keuze == 10
-xi_3 = 1.05
-xi_4 = 1.00
-#end if
-
-## Paalgeometrie
-
-Paaldiameter (equivalente diameter):
-
-D_paal = 250 mm
-
-Paallengte (vanaf maaiveld):
-
-L_paal = 12000 mm
-
-Paalvoetoppervlak:
-
-A_b = pi / 4 * D_paal^2 to mm^2
-
-Omtrek paal:
-
-O_paal = pi * D_paal to mm
-
-## Puntdraagvermogen (art. 7.6.2.3)
-
-Rekenwaarde conusweerstand gemiddeld aan paalpunt q_c;I;gem:
-
-q_c_punt = 15 MPa
-
-@select alpha_p "Puntdraagvermogenfactor alpha_p (tabel 7.d NB)"
-Grondverdringend, zand/grind (alpha_p = 1.0) = 1.0
-Grondverdringend, klei (alpha_p = 0.7) = 0.7
-Schroefpaal, zand/grind (alpha_p = 0.8) = 0.8
-Boorpaal, zand/grind (alpha_p = 0.5) = 0.5
-Boorpaal, klei (alpha_p = 0.5) = 0.5
-@end
-
-alpha_p = alpha_p_keuze * 1
-
-Puntdraagvermogen (karakteristiek per sondering):
-
-q_b_max = alpha_p * q_c_punt to MPa
-
-R_b_cal = q_b_max * A_b / 1000 to kN
-
-## Schachtdraagvermogen (art. 7.6.2.3)
-
-@select alpha_s "Schachtwrijvingsfactor alpha_s (tabel 7.e NB)"
-Zand, grondverdringend (alpha_s = 0.010) = 0.010
-Zand, boorpaal (alpha_s = 0.006) = 0.006
-Klei, grondverdringend (alpha_s = 0.025) = 0.025
-Klei, boorpaal (alpha_s = 0.020) = 0.020
-@end
-
-Gemiddelde conusweerstand langs schacht q_c;z;gem:
-
-q_c_schacht = 5 MPa
-
-Schachtlengte in dragende laag:
-
-L_schacht = 10000 mm
-
-Schachtdraagvermogen (karakteristiek per sondering):
-
-R_s_cal = alpha_s * q_c_schacht * O_paal * L_schacht / 1000 to kN
-
-## Totaal draagvermogen (art. 7.6.2.1)
-
-Karakteristiek draagvermogen per sondering:
-
-R_c_cal = R_b_cal + R_s_cal to kN
-
-Karakteristiek draagvermogen (met correlatiefactoren, formule 7.2/7.3):
-
-R_c_k_gem = R_c_cal / xi_3 to kN
-
-R_c_k_min = R_c_cal / xi_4 to kN
-
-Maatgevend karakteristiek draagvermogen (kleinste waarde):
-
-#if R_c_k_gem < R_c_k_min
-R_c_k = R_c_k_gem to kN
-#else
-R_c_k = R_c_k_min to kN
-#end if
-
-## Rekenwaarde draagvermogen (formule 7.1)
-
-R_b_d = R_b_cal / (xi_3 * gamma_b) to kN
-
-R_s_d = R_s_cal / (xi_3 * gamma_s) to kN
-
-Totaal rekenwaarde draagvermogen:
-
-R_c_d = R_b_d + R_s_d to kN
-
-## Belasting
-
-Rekenwaarde drukbelasting op paal:
-
-F_c_d = 300 kN
-
-## Toetsing (formule 7.1)
-
-Unity check:
-
-UC = F_c_d / R_c_d
-
-#if UC < 1
-  Paaldraagvermogen voldoet (UC = {{UC}}).
-#else
-  Paaldraagvermogen voldoet NIET (UC = {{UC}})!
-#end if
-
-## Verdeling punt / schacht
-
-Aandeel punt:
-
-aandeel_punt = R_b_d / R_c_d * 100
-
-Aandeel schacht:
-
-aandeel_schacht = R_s_d / R_c_d * 100
-
-## Overzicht
-
-@svg
-<svg width="400" height="380" viewBox="0 0 400 380">
-  <defs>
-    <marker id="arrowDown" markerWidth="8" markerHeight="8" refX="4" refY="8" orient="auto">
-      <polygon points="0 0, 8 8, 4 6" fill="#dc2626"/>
-    </marker>
-    <pattern id="soil2" patternUnits="userSpaceOnUse" width="10" height="10">
-      <circle cx="3" cy="3" r="1" fill="#a3a3a3"/>
-      <circle cx="8" cy="8" r="0.8" fill="#b3b3b3"/>
-    </pattern>
-  </defs>
-  <!-- Grond -->
-  <rect x="20" y="50" width="360" height="300" fill="url(#soil2)"/>
-  <rect x="20" y="50" width="360" height="300" fill="#d4b896" fill-opacity="0.5"/>
-  <!-- Maaiveld -->
-  <line x1="20" y1="50" x2="380" y2="50" stroke="#6b7280" stroke-width="2"/>
-  <text x="385" y="54" font-size="10" fill="#6b7280">MV</text>
-  <!-- Dragende laag -->
-  <rect x="20" y="260" width="360" height="90" fill="#8B7355" fill-opacity="0.4"/>
-  <text x="385" y="300" font-size="9" fill="#8B7355">Zand</text>
-  <!-- Paal -->
-  <rect x="175" y="50" width="30" height="280" fill="#b0b0b0" stroke="#374151" stroke-width="1.5"/>
-  <!-- Belasting -->
-  <line x1="190" y1="10" x2="190" y2="45" stroke="#dc2626" stroke-width="2" marker-end="url(#arrowDown)"/>
-  <text x="190" y="8" text-anchor="middle" font-size="10" fill="#dc2626">F_c,d = {{F_c_d}} kN</text>
-  <!-- Schachtwrijving pijlen -->
-  <line x1="160" y1="100" x2="170" y2="90" stroke="#059669" stroke-width="1.5"/>
-  <line x1="160" y1="150" x2="170" y2="140" stroke="#059669" stroke-width="1.5"/>
-  <line x1="160" y1="200" x2="170" y2="190" stroke="#059669" stroke-width="1.5"/>
-  <line x1="160" y1="250" x2="170" y2="240" stroke="#059669" stroke-width="1.5"/>
-  <line x1="160" y1="300" x2="170" y2="290" stroke="#059669" stroke-width="1.5"/>
-  <line x1="220" y1="100" x2="210" y2="90" stroke="#059669" stroke-width="1.5"/>
-  <line x1="220" y1="150" x2="210" y2="140" stroke="#059669" stroke-width="1.5"/>
-  <line x1="220" y1="200" x2="210" y2="190" stroke="#059669" stroke-width="1.5"/>
-  <line x1="220" y1="250" x2="210" y2="240" stroke="#059669" stroke-width="1.5"/>
-  <line x1="220" y1="300" x2="210" y2="290" stroke="#059669" stroke-width="1.5"/>
-  <text x="140" y="200" text-anchor="end" font-size="9" fill="#059669">R_s</text>
-  <!-- Puntdruk -->
-  <line x1="175" y1="340" x2="190" y2="350" stroke="#1e40af" stroke-width="2"/>
-  <line x1="205" y1="340" x2="190" y2="350" stroke="#1e40af" stroke-width="2"/>
-  <text x="190" y="365" text-anchor="middle" font-size="9" fill="#1e40af">R_b</text>
-  <!-- Maat L -->
-  <line x1="145" y1="50" x2="145" y2="330" stroke="#6b7280" stroke-width="1" stroke-dasharray="4"/>
-  <line x1="140" y1="50" x2="150" y2="50" stroke="#6b7280" stroke-width="1"/>
-  <line x1="140" y1="330" x2="150" y2="330" stroke="#6b7280" stroke-width="1"/>
-  <text x="135" y="190" text-anchor="middle" font-size="9" fill="#6b7280" transform="rotate(-90,135,190)">L = {{L_paal}} mm</text>
-  <!-- Resultaten -->
-  <text x="310" y="100" text-anchor="middle" font-size="11" fill="#374151">R_b,d = {{R_b_d}} kN</text>
-  <text x="310" y="120" text-anchor="middle" font-size="11" fill="#374151">R_s,d = {{R_s_d}} kN</text>
-  <text x="310" y="145" text-anchor="middle" font-size="11" fill="#1e40af" font-weight="bold">R_c,d = {{R_c_d}} kN</text>
-  <text x="310" y="175" text-anchor="middle" font-size="13" fill="#059669" font-weight="bold">UC = {{UC}}</text>
-</svg>
-@end
+'Dit normblad rekent niet zelf. Het draagvermogen op druk volgens art. 7.6.2.3 (Koppejan, tabel 7.c, tabel A.10 en γ<sub>t</sub>, met negatieve kleef volgens 7.3.2.2) staat in de module <b>Paaldraagvermogen</b>; voeg die in via de catalogus.
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Zetting — NEN 9997-1 §6.6 / Bijlage F
+// 3. Zetting, indicatief — NEN 9997-1 §6.6
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** NEN 9997-1 §6.6 / Bijlage F — Zettingsberekening */
-export const en1997Zetting = `# Zettingsberekening — NEN 9997-1 §6.6 / Bijlage F
+/**
+ * NEN 9997-1 §6.6 — Indicatieve zakking met een 1:2-spreiding of een
+ * invloedsfactor, geen berekening volgens 6.6 of bijlage F. Invoer met
+ * eenheden; de rekenkern rekent om. scripts/check-en1997.mjs rekent het na.
+ */
+export const en1997Zetting = `# Zetting, indicatief — NEN 9997-1 §6.6
+
+'<i>Indicatieve zakking (elastisch, één laag), geen berekening volgens 6.6 of bijlage F.</i>
 
 ## Funderingsgeometrie
 
@@ -565,13 +310,13 @@ A_f = B * L_f to mm^2
 
 Contactspanning (additioneel, boven eigen grondgewicht):
 
-sigma_0 = F_k / A_f * 1000 to kPa
+sigma_0 = F_k / A_f to kPa
 
 Eigen grondspanning op funderingsniveau:
 
-sigma_v0 = gamma_grond * D / 1000 to kPa
+sigma_v0 = gamma_grond * D to kPa
 
-## Zetting met elastische methode (Bijlage F)
+## Zakking, elastisch
 
 @select zettingsmethode "Berekeningsmethode"
 1:2 methode (vereenvoudigd) = 1
@@ -588,11 +333,11 @@ de extra spanning op diepte z geschat als:
 
 Gemiddelde spanning over de samendrukbare laag:
 
-sigma_gem = F_k / ((B + H_laag / 2) * (L_f + H_laag / 2)) * 1e6 to kPa
+sigma_gem = F_k / ((B + H_laag / 2) * (L_f + H_laag / 2)) to kPa
 
 Zetting (1:2 methode):
 
-s = sigma_gem * H_laag / (E_s * 1000) to mm
+s = sigma_gem * H_laag / E_s to mm
 #else
 ## Boussinesq methode
 
@@ -602,7 +347,7 @@ I_s = 0.85
 
 Zetting (Boussinesq):
 
-s = sigma_0 * B / (E_s * 1000) * I_s to mm
+s = sigma_0 * B / E_s * I_s to mm
 #end if
 
 ## Grenswaarde
@@ -615,14 +360,12 @@ Fundering scheidingswand (15 mm) = 15
 
 s_max = grenswaarde * 1 mm
 
-Unity check:
+UC_max = s / s_max
 
-UC = s / s_max
-
-#if UC < 1
-  Zetting voldoet ({{s}} mm < {{s_max}} mm, UC = {{UC}}).
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>indicatieve zakking voldoet</b></span>; rotatie (2.4.9) niet getoetst
 #else
-  Zetting voldoet NIET ({{s}} mm > {{s_max}} mm, UC = {{UC}})!
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>indicatieve zakking voldoet niet</b></span>
 #end if
 `;
 
@@ -630,56 +373,41 @@ UC = s / s_max
 // 4. Glijdingscontrole — NEN 9997-1 §6.5.3
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** NEN 9997-1 §6.5.3 — Schuifweerstand funderingsstrook */
+/**
+ * NEN 9997-1 §6.5.3 — Glijding van een funderingsstrook.
+ *
+ * Gedraineerd met δ_d = φ'_cv;d (in het werk gestort) of 2/3·φ'_cv;d (glad
+ * prefab), c' verwaarloosd (6.5.3(10)); γ_φ' uit tabel A.4a, onafhankelijk van
+ * de gevolgklasse. Op klei of veen daarnaast ongedraineerd (6.4a), ten hoogste
+ * 0,4·V_d (6.5). scripts/check-en1997.mjs rekent het na.
+ */
 export const en1997Glijding = `# Glijdingscontrole — NEN 9997-1 §6.5.3
 
-## Gevolgklasse
+## Partiële factoren (tabel A.4a)
 
-@select gevolgklasse "Gevolgklasse"
-CC1 — Lage gevolgen = 1
-CC2 — Middelmatige gevolgen = 2
-CC3 — Grote gevolgen = 3
-@end
-
-Partiele factor grondweerstand (Bijlage A):
-
-#if gevolgklasse == 1
+gamma_phi = 1.15', op tan φ′'
 gamma_Rh = 1.0
-gamma_phi = 1.15
-gamma_c = 1.5
-#end if
-
-#if gevolgklasse == 2
-gamma_Rh = 1.0
-gamma_phi = 1.20
-gamma_c = 1.65
-#end if
-
-#if gevolgklasse == 3
-gamma_Rh = 1.0
-gamma_phi = 1.25
-gamma_c = 1.8
-#end if
 
 ## Grondparameters
 
-Effectieve wrijvingshoek (karakteristiek):
+Kritieke-toestandshoek van inwendige wrijving (karakteristiek):
 
-phi_k = 25 deg
+phi_cv_k = 25', φ′_cv;k in graden'
 
-Effectieve cohesie (karakteristiek):
-
-c_k = 0 kPa
+@select uitvoering "Fundering"
+In het werk gestort (δ_d = φ′_cv;d) = 1
+Glad prefab (δ_d = 2/3·φ′_cv;d) = 2
+@end
 
 ## Rekenwaarden
 
-Rekenwaarde wrijvingshoek:
+phi_cv_d = atan(tan(phi_cv_k * pi / 180) / gamma_phi) * 180 / pi
 
-phi_d_deg = atan(tan(phi_k * pi / 180) / gamma_phi) * 180 / pi
-
-Rekenwaarde cohesie:
-
-c_d = c_k / gamma_c to kPa
+#if uitvoering == 1
+delta_d = phi_cv_d', 6.5.3(10)'
+#else
+delta_d = 2 / 3 * phi_cv_d', 6.5.3(10)'
+#end if
 
 ## Funderingsgeometrie
 
@@ -691,10 +419,6 @@ Lengte (per strekkende meter):
 
 L_f = 1000 mm
 
-Contactoppervlak:
-
-A_f = B * L_f to mm^2
-
 ## Belasting
 
 Verticale belasting (rekenwaarde, gunstig):
@@ -705,29 +429,37 @@ Horizontale belasting (rekenwaarde):
 
 H_Ed = 10 kN/m
 
-## Schuifweerstand (formule 6.2)
+## Gedraineerd (formule 6.3a)
 
-Wrijvingsweerstand:
+R_h = V_Ed * tan(delta_d * pi / 180) / gamma_Rh to kN/m', c′ verwaarloosd (6.5.3(10))'
 
-R_frictie = V_Ed * tan(phi_d_deg * pi / 180) to kN/m
+UC_dr = H_Ed / R_h
 
-Cohesieweerstand:
+## Ongedraineerd (formules 6.4a en 6.5)
 
-R_cohesie = c_d * A_f / 1e6 to kN/m
+@select ondergrond "Ondergrond onder de zool"
+Zand of grind: alleen gedraineerd = 1
+Klei of veen: ook ongedraineerd = 2
+@end
 
-Totale schuifweerstand:
-
-R_h = R_frictie + R_cohesie to kN/m
+#if ondergrond == 2
+c_uk = 50 kPa
+gamma_cu = 1.35', op c_u'
+R_hu = min(B * c_uk / gamma_cu; 0.4 * V_Ed) to kN/m', (6.4a), ten hoogste 0,4·V_d (6.5)'
+UC_ud = H_Ed / R_hu
+#end if
 
 ## Toetsing (art. 6.5.3)
 
-Unity check:
-
-UC = H_Ed / R_h
-
-#if UC < 1
-  Glijding voldoet (UC = {{UC}}).
+#if ondergrond == 2
+UC_max = max(UC_dr; UC_ud)
 #else
-  Glijding voldoet NIET (UC = {{UC}})!
+UC_max = UC_dr
+#end if
+
+#if UC_max ≤ 1
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>glijding voldoet</b></span>
+#else
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>glijding voldoet niet</b></span>
 #end if
 `;

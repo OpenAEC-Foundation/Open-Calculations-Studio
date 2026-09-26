@@ -12,7 +12,8 @@
  *      een last op B/2 ± e_F, de ankerkracht (9.23) met de meetellende lengte
  *      als hefboom en alleen de last op de eindstijl als ontlasting (methode A),
  *      de eindstijl (6.23)/(6.24), de druk loodrecht op de onderregel (6.3), de
- *      schuifspanning in de beplating en de indicatieve verplaatsing. Het blad
+ *      schuifspanning in de beplating en de indicatieve verplaatsing (per
+ *      paneel, het grootste van het volle en het restpaneel). Het blad
  *      moet daar op vier significante cijfers mee overeenkomen.
  *   2. Voor een paar gevallen getallen die met de hand zijn nagerekend, zodat
  *      een fout die in beide uitwerkingen zit niet onopgemerkt blijft.
@@ -185,7 +186,8 @@ function uitwerking(v) {
     // Methode A: alleen de last op de eindstijl zelf ontlast het anker.
     w.Nt = Math.max(0, Ft - (0.9 * w.G * aE) / 1000);
     w.Nc = Ft + ((gG * w.G + gQ * psi0 * w.Q) * (aE + w.aOp)) / 1000;
-    const Mw = (gQ * w.w * (aE + w.aOp) * hw * hw) / 8 / 1e3; // N·mm, met w in kN/m² = 1e-3 N/mm²
+    // Druk of zuiging: de buiging telt met |w_k|.
+    const Mw = (gQ * Math.abs(w.w) * (aE + w.aOp) * hw * hw) / 8 / 1e3; // N·mm, met w in kN/m² = 1e-3 N/mm²
     const sc = (w.Nc * 1000) / Aeind, sm = Mw / Weind;
     w.UCst = Math.max(sc / (kcy * fc0d) + sm / fmd, sc / (kcz * fc0d) + (0.7 * sm) / fmd);
     w.UCc90 = (w.Nc * 1000) / (Aef * 1.25 * fc90d);
@@ -201,14 +203,20 @@ function uitwerking(v) {
     // schuifspanning zit in het volle paneel: F·a/(L_e·t).
     const u = (aX, t, P) => (aX > 0 ? (w.F * 1000 * aX) / (Math.max(Le(P, w.L), 1) * t) / Math.max(fvd(P), 0.001) : 0);
     w.UCpl = Math.max(u(aA, v.t_A, "A"), u(aB, v.t_B, "B"));
-    // Verplaatsing bij F/γ_Q: per zijde slip + afschuiving van het volle paneel,
-    // daarbij ankerslip en rek van de eindstijlen over de hefboom L_ef.
+    // Verplaatsing bij F/γ_Q: per zijde slip + afschuiving per paneel, met de
+    // schuifstroom q = F·a·R_p(b)/(R·b); het grootste van het volle en het
+    // restpaneel. Daarbij ankerslip en rek van de eindstijlen over de hefboom L_ef.
     w.onb = (aA > 0 && !bekend("A")) || (aB > 0 && !bekend("B"));
     const Fk = (w.F / gQ) * 1000;
     const vz = (aX, P) => {
       if (aX <= 0) return 0;
-      const b = be(P, w.L);
-      return (Fk * aX * ((2 * v[`s_${P}`] * (b + hw)) / (PL[P].K * b) + hw / (Gpl[P] * v[`t_${P}`]))) / Math.max(Le(P, w.L), 1);
+      const R = zijde(P, w.L), bpl = v[`b_pl_${P}`];
+      const uPaneel = (b) => {
+        if (b < hw / 4) return 0; // telt niet mee en draagt niets
+        const q = (Fk * aX * paneel(P, b)) / (Math.max(R, 0.001) * b);
+        return q * ((2 * v[`s_${P}`] * (b + hw)) / (PL[P].K * b) + hw / (Gpl[P] * v[`t_${P}`]));
+      };
+      return Math.max(uPaneel(be(P, w.L)), uPaneel(w.L - Math.floor(w.L / bpl) * bpl));
     };
     w.u = w.onb ? 0 : Math.max(vz(aA, "A"), vz(aB, "B"))
       + (of0(v.u_a) + (2 * Fk * hw * hw) / (Math.max(w.Lef, 1) * E0mean * Aeind)) * hw / Math.max(w.Lef, 1);
@@ -397,6 +405,28 @@ const SETS = [
     // R_1 = 0 (§9.2.4.2(2)), dus R_tot = 0 en UC_totaal = 30/0,001 = 30 000.
     handwerk: { R_1: "0", R_tot: "0" },
   },
+  {
+    naam: "16 — platen van 2600 mm (c = 1) met een restpaneel van 1000: het restpaneel verplaatst het meest",
+    invoer: { n_wanden: 1, L_1: 3600, x_1: 5, b_pl_A: 2600, F_w_k: 7, G_pl_A: 1080 },
+    project: { CC: 2, K_FI: 1 },
+    // R_p(2600) = 0,4883·2600·1/100 = 12,696 kN; R_p(1000) = 0,4883·1000·(1000/1300)/100 = 3,756 kN;
+    // R_1 = 16,452 kN. F_k = 10,5/1,5 = 7 kN; K_ser = 653,9 N/mm, G·t = 1080·12.
+    //   vol:  q = 7000·12,696/(16452·2600) = 2,078 N/mm;
+    //         u = 2,078·(2·100·5200/(653,9·2600) + 2600/12 960) = 2,078·0,8123 = 1,688 mm;
+    //   rest: q = 7000·3,756/(16452·1000) = 1,598 N/mm;
+    //         u = 1,598·(2·100·3600/(653,9·1000) + 0,2006) = 1,598·1,3017 = 2,080 mm.
+    // L_ef = 16 452·2600/12 696 = 3369 mm; eindstijlen 2·7000·2600²/(3369·11 000·10 640)·2600/3369
+    //   = 0,185 mm → u = 2,080 + 0,185 = 2,265 mm (alleen het volle paneel gaf 1,873 mm).
+    handwerk: { R_1: "16.45", L_ef_1: "3369", u_1: { waarde: "2.265", tol: 0.002, waarom: "tussenwaarden afgerond" } },
+  },
+  {
+    naam: "17 — set 8 met zuiging op wand 1 (w_k,1 = −0,6): dezelfde buiging van de eindstijl",
+    invoer: { a_op_1: 900, w_k_1: -0.6 },
+    project: { CC: 2, K_FI: 1 },
+    // M_w = 1,5·|−0,6|·1,2·2,6²/8 = 0,9126 kNm, dus UC_st = 0,389 als in set 8.
+    // Met het teken erin werd M_w negatief en UC_st,1 zelfs kleiner dan nul.
+    handwerk: { M_w_1: "0.9126", UC_st_1: "0.389" },
+  },
 ];
 
 let fouten = 0;
@@ -426,6 +456,22 @@ function tekst(naam, invoer, project, eisen) {
   console.log(`\n${naam}\n  ${ok ? "OK    " : "FOUT  "} ${eisen.map(([re, moet]) => `${moet ? "" : "geen "}${re.source}`).join("; ")}`);
 }
 
+/**
+ * Het oordeel zoals de kop van het rapport het leest: 240 tekens vanaf de
+ * laatste "Maatgevende UC", "voldoet"/"voldoen" zonder "niet" is voldoet
+ * (leesResultaat in packages/desktop/src/components/calc/bladResultaat.ts).
+ */
+function kop(naam, invoer, project, verwacht) {
+  const selectValues = Object.fromEntries(Object.entries({ ...STANDAARD, ...invoer }).map(([k, x]) => [k, String(x)]));
+  const t = reken(tpl, selectValues, project).text;
+  const i = t.lastIndexOf("Maatgevende UC");
+  const zin = i < 0 ? "" : t.slice(i, i + 240);
+  const oordeel = !/voldoe[nt] niet/.test(zin) && /voldoe[nt]/.test(zin);
+  const ok = oordeel === verwacht;
+  if (!ok) fouten++;
+  console.log(`  ${ok ? "OK    " : "FOUT  "} kop van het rapport: ${oordeel ? "voldoet" : "voldoet niet"}   [${naam}]`);
+}
+
 // Klimaatklasse 3 met OSB moet expliciet als niet toegestaan in het blad staan.
 tekst("OSB in klimaatklasse 3", { klimaat: 3 }, { CC: 2, K_FI: 1 },
   [[/Plaatmateriaal A is in klimaatklasse 3 niet toegestaan/, true], [/voldoen niet/, true]]);
@@ -442,10 +488,14 @@ tekst("geen melding bij volle panelen", {}, { CC: 2, K_FI: 1 },
 // Zonder G en K_ser is de verplaatsing niet bepaald, en dat staat erbij.
 tekst("verplaatsing niet bepaald", {}, { CC: 2, K_FI: 1 }, [[/n\.b\.: verplaatsing niet bepaald/, true]]);
 tekst("verplaatsing bepaald", { G_pl_A: 1080, G_pl_B: 700, K_ser_B: 250 }, { CC: 2, K_FI: 1 },
-  [[/n\.b\.: verplaatsing niet bepaald/, false], [/de verplaatsing is niet bepaald/, false]]);
-// Het eindoordeel zegt het ook als de verplaatsing ontbreekt.
+  [[/n\.b\.: verplaatsing niet bepaald/, false], [/de verplaatsing is niet bepaald/, false],
+    [/≤ 1,0 → de wanden in deze richting voldoen/, true]]);
+kop("verplaatsing bepaald", { G_pl_A: 1080, G_pl_B: 700, K_ser_B: 250 }, { CC: 2, K_FI: 1 }, true);
+// Ontbreekt de verplaatsing, dan zegt het eindoordeel dat, en niet "voldoen":
+// de kop van het rapport leest het oordeel uit deze zin en mag dan geen "voldoet" melden.
 tekst("eindoordeel zonder verplaatsing", {}, { CC: 2, K_FI: 1 },
-  [[/voldoen ; de verplaatsing is niet bepaald \(n\.b\.\) en apart aan te tonen/, true]]);
+  [[/≤ 1,0, maar de verplaatsing is niet bepaald \(n\.b\.\) ?: apart aantonen/, true]]);
+kop("eindoordeel zonder verplaatsing", {}, { CC: 2, K_FI: 1 }, false);
 // Zonder enige sterkte in het wandvlak voldoet de bouwlaag niet.
 tekst("wand korter dan h/4, geen sterkte", { n_wanden: 1, L_1: 600 }, { CC: 2, K_FI: 1 },
   [[/> 1,0 → de wanden in deze richting voldoen niet/, true]]);

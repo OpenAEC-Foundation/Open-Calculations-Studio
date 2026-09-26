@@ -1,4 +1,4 @@
-import { useDesigner, Dim, Force, Defs, HDim, VDim, loadMark, fmt, clamp } from "./designerKit";
+import { useDesigner, Dim, Force, Ro, Defs, HDim, VDim, loadMark, fmt, clamp } from "./designerKit";
 import { useAlleenLezen } from "../../store/actiefBlad";
 import { VERBAND_PROFIELEN } from "./windverbandProfielen";
 import "./VoetplaatDesigner.css";
@@ -11,7 +11,8 @@ import "./VoetplaatDesigner.css";
  *     kracht, de verticale belasting op de kolommen en de maten b en h. In een
  *     X-kruis is de gedrukte diagonaal slap getekend.
  *   • De aansluiting van de diagonaal — het aangesloten been of de strip op de
- *     knoopplaat, met de boutgaten op steek p₁ en randafstand e₂, of de las.
+ *     knoopplaat, met de boutgaten op eindafstand e₁, steek p₁ en randafstand
+ *     e₂, of de twee flankelassen met keelhoogte a en lengte l_w.
  *
  * Het beeld rekent zelf niets; de krachten en alle toetsen staan in het
  * rekenblad.
@@ -33,9 +34,11 @@ const GRENS = [{ v: 300, label: "h/300" }, { v: 150, label: "h/150" }, { v: 500,
 
 // Een L 60×60×6 S235 in een X-kruis van 6 × 5 m, aangesloten met twee bouten
 // M16 in gaten van 18 mm. Dezelfde waarden als in scripts/check-windverband.mjs.
+// De las (a_w, l_w) heeft bewust geen startwaarde: een blad dat op "gelast"
+// wordt gezet, meldt de las als niet getoetst tot a en l_w zijn ingevuld.
 const DEFAULTS: Record<string, number> = {
   verbandtype: 1, profile: 20, staalkwaliteit: 235, b_v: 6, h_v: 5, F_w_k: 40, V_Ed: 600, m_k: 4,
-  aansluiting: 2, d_0: 18, p_1: 60, e_2: 30, n_d: 1, grens_u: 300,
+  aansluiting: 2, d_0: 18, p_1: 60, e_1: 40, e_2: 30, n_d: 1, grens_u: 300,
 };
 
 export default function WindverbandDesigner() {
@@ -54,8 +57,11 @@ export default function WindverbandDesigner() {
   const Fw = d("F_w_k"), V = d("V_Ed");
   const mk = clamp(Math.round(d("m_k")), 1, 50);
   const aans = clamp(Math.round(d("aansluiting")), 0, 3);
-  const d0 = Math.max(1, d("d_0")), p1 = Math.max(d0, d("p_1")), e2 = Math.max(d0 / 2, d("e_2"));
+  // De tekening klemt de maten op iets tekenbaars; de maatchips tonen de waarden uit het blad.
+  const d0Blad = d("d_0"), p1Blad = d("p_1"), e2Blad = d("e_2");
+  const d0 = Math.max(1, d0Blad), p1 = Math.max(d0, p1Blad), e2 = Math.max(d0 / 2, e2Blad);
   const nd = clamp(Math.round(d("n_d")), 1, 6);
+  const e1 = d("e_1"), aw = d("a_w"), lw = d("l_w");
   const grens = Math.round(d("grens_u"));
   const Ld = Math.hypot(bv, hv);
   const alfa = (Math.atan2(hv, bv) * 180) / Math.PI;
@@ -77,13 +83,22 @@ export default function WindverbandDesigner() {
 
   // de aansluiting: been of strip van boven gezien, met de knoopplaat links
   const nb = aans === 0 ? 0 : aans === 3 ? 3 : aans;
-  const e1 = Math.max(1.5 * d0, 2 * d0);                   // alleen voor de tekening
-  const lang = (nb > 1 ? (nb - 1) * p1 : 0) + 2 * e1 + 0.8 * p.b;
+  // Niet ingevulde maten (0) tekenen op een gangbare maat; de maatchip toont de waarde uit het blad.
+  const e1T = e1 > 0 ? e1 : 2 * d0;
+  const lwT = lw > 0 ? lw : 1.2 * p.b;
+  // de overlap met de knoopplaat: bij bouten e₁ + steken + e₁, bij een las de laslengte plus een rand
+  const overlap = aans === 0 ? lwT + 10 : 2 * e1T + (nb > 1 ? (nb - 1) * p1 : 0);
+  const lang = overlap + 0.8 * p.b;
   const sD = clamp(Math.min((DW - 110) / lang, (DH - 110) / p.b), 0.2, 4);
   const lx0 = 30, lx1 = lx0 + lang * sD;
   const ly0 = (DH - p.b * sD) / 2 + 6, ly1 = ly0 + p.b * sD;  // ly0: hiel (hoek) of rand; ly1: vrije rand
-  const plaatX1 = lx0 + (e1 * 2 + (nb > 1 ? (nb - 1) * p1 : 0)) * sD;  // eind van de knoopplaat
-  const gatX = (i: number) => lx0 + (e1 + i * p1) * sD;
+  const plaatX1 = lx0 + overlap * sD;  // eind van de knoopplaat
+  const lasX1 = lx0 + lwT * sD;        // eind van de flankelassen
+  const gatX = (i: number) => lx0 + (e1T + i * p1) * sD;
+  // Een strip met één gat: dat gat zit in het midden en e₂ doet in het blad niet mee.
+  const e2Telt = hoek || nd > 1;
+  // Staan de maatchips van e₁ en p₁ te dicht op elkaar, dan zakt e₁ een regel.
+  const yE1 = nb > 1 && ((e1T + p1) / 2) * sD < 48 ? ly1 + 52 : ly1 + 30;
   // strip: gaten gelijk over de breedte met e₂ aan beide randen; hoek: één rij op e₂ van de vrije rand
   const gatY = (j: number) =>
     hoek ? ly1 - e2 * sD
@@ -220,9 +235,8 @@ export default function WindverbandDesigner() {
                 {/* boutgaten of las */}
                 {aans === 0 ? (
                   <g>
-                    <line x1={lx0} y1={ly0 - 3} x2={plaatX1 - 4} y2={ly0 - 3} stroke="#d97706" strokeWidth={3} strokeLinecap="round" />
-                    <line x1={lx0} y1={ly1 + 3} x2={plaatX1 - 4} y2={ly1 + 3} stroke="#d97706" strokeWidth={3} strokeLinecap="round" />
-                    <text x={(lx0 + plaatX1) / 2} y={ly1 + 20} textAnchor="middle" fontSize={10} fill="#d97706">las</text>
+                    <line x1={lx0} y1={ly0 - 3} x2={lasX1} y2={ly0 - 3} stroke="#d97706" strokeWidth={3} strokeLinecap="round" />
+                    <line x1={lx0} y1={ly1 + 3} x2={lasX1} y2={ly1 + 3} stroke="#d97706" strokeWidth={3} strokeLinecap="round" />
                   </g>
                 ) : (
                   Array.from({ length: nb }, (_, i) => Array.from({ length: rijen }, (_, j) => (
@@ -237,14 +251,21 @@ export default function WindverbandDesigner() {
                 <line x1={lx0} y1={yZw} x2={lx1} y2={yZw} stroke="#b91c1c" strokeWidth={0.8} strokeDasharray="8 3 2 3" />
                 <line x1={lx1 - 40} y1={yZw} x2={lx1 + 26} y2={yZw} className="vd-load" strokeWidth={2.6} markerEnd={loadMark("wa")} />
                 {/* maten */}
+                {aans === 0 && <HDim k="wa" x0={lx0} x1={lasX1} y={ly1 + 34} ext={ly1 + 6} />}
+                {nb >= 1 && <HDim k="wa" x0={lx0} x1={gatX(0)} y={yE1} ext={gatY(0) + rGat + 2} />}
                 {nb > 1 && <HDim k="wa" x0={gatX(0)} x1={gatX(1)} y={ly1 + 30} ext={gatY(0) + rGat + 2} />}
                 {nb >= 1 && <VDim k="wa" y0={gatY(0)} y1={ly1} x={gatX(0) - rGat - 24} ext={gatX(0) - rGat - 2} />}
                 <VDim k="wa" y0={ly0} y1={ly1} x={lx1 + 52} ext={lx1 + 4} />
               </svg>
 
-              {nb > 1 && <Dim ctx={ctx} name="p_1" value={p1} x={(gatX(0) + gatX(1)) / 2} y={ly1 + 30} step={5} label="p1" />}
-              {nb >= 1 && <Dim ctx={ctx} name="e_2" value={e2} x={gatX(0) - rGat - 24} y={(gatY(0) + ly1) / 2} step={5} label="e2" />}
-              {nb >= 1 && <Dim ctx={ctx} name="d_0" value={d0} x={gatX(Math.max(0, nb - 1)) + rGat + 26} y={gatY(0)} step={1} label="d0" />}
+              {aans === 0 && <Dim ctx={ctx} name="l_w" value={lw} x={(lx0 + lasX1) / 2} y={ly1 + 34} step={10} label="lw" />}
+              {aans === 0 && <Dim ctx={ctx} name="a_w" value={aw} x={(lx0 + lasX1) / 2} y={ly0 - 14} step={1} label="a" dec={aw % 1 ? 1 : 0} />}
+              {nb >= 1 && <Dim ctx={ctx} name="e_1" value={e1} x={(lx0 + gatX(0)) / 2} y={yE1} step={5} label="e1" />}
+              {nb > 1 && <Dim ctx={ctx} name="p_1" value={p1Blad} x={(gatX(0) + gatX(1)) / 2} y={ly1 + 30} step={5} label="p1" />}
+              {nb >= 1 && (e2Telt
+                ? <Dim ctx={ctx} name="e_2" value={e2Blad} x={gatX(0) - rGat - 24} y={(gatY(0) + ly1) / 2} step={5} label="e2" />
+                : <Ro text={`b/2=${fmt(p.b / 2)}`} x={gatX(0) - rGat - 24} y={(gatY(0) + ly1) / 2} title="één gat in het midden van de strip; e₂ telt in het blad niet mee" />)}
+              {nb >= 1 && <Dim ctx={ctx} name="d_0" value={d0Blad} x={gatX(Math.max(0, nb - 1)) + rGat + 26} y={gatY(0)} step={1} label="d0" />}
               <div className="vd-dim-ro" style={{ left: lx1 + 52, top: ly1 - 12, color: "#6b7280" }} title="breedte van het been of de strip (mm)">b={fmt(p.b)}</div>
             </div>
           </div>
@@ -255,12 +276,12 @@ export default function WindverbandDesigner() {
         <span>
           {afdruk ? "" : "Klik op een blauwe maat of een rode kracht om die te wijzigen — stroomt direct terug in de rekensheet."}
           {!afdruk && <br />}
-          De krachten, de netto doorsnede, knik en de verplaatsing staan in het rekenblad.
+          De krachten en alle toetsen staan in het rekenblad.
         </span>
         <span className="vd-live">
           {p.naam} S{fy} · vak {fmt(bv, 2)} × {fmt(hv, 2)} m, L<sub>d</sub> = {fmt(Ld, 2)} m, α = {fmt(alfa, 1)}° ·
           {" "}F<sub>w,k</sub> = {fmt(Fw)} kN · V<sub>Ed</sub> = {fmt(V)} kN, m = {mk} ·
-          {" "}{aans === 0 ? "gelast" : `${AANSLUITING[aans].label.toLowerCase()}, d₀ = ${fmt(d0)} mm`} · h/{grens}
+          {" "}{aans === 0 ? `gelast, a = ${fmt(aw, aw % 1 ? 1 : 0)} mm, l_w = ${fmt(lw)} mm` : `${AANSLUITING[aans].label.toLowerCase()}, d₀ = ${fmt(d0Blad)} mm`} · h/{grens}
         </span>
       </div>
     </div>

@@ -131,6 +131,11 @@ let fouten = 0;
     { n_eff: "2", h_ef: "2025" });
   fouten += toets("slankheid — houten vloer", reken(tpl, { ondersteuning: "3" }, PROJECT),
     { rho_2: "1.00", h_ef: "2700", UC_max: "1.00" });
+  // n = 3 met L_v = 500 < 15·t: h = 2700 > 3,5·500 → (5.7) 1,5·500/2700 = 0,278,
+  // niet kleiner dan 0,3 → h_ef = 0,3 × 2700 = 810, λ = 8,1 (was 750 en 7,5).
+  fouten += toets("slankheid — n = 3, ρ_3 niet kleiner dan 0,3",
+    reken(met(tpl, { L_v: "500*mm" }), { n_rand: "3" }, PROJECT),
+    { n_eff: "3", rho_n: "0.300", h_ef: "810", lam: "8.10" });
 }
 
 afronden(fouten, "Normbladen EN 1996-1-1");

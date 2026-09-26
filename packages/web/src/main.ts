@@ -69,6 +69,7 @@ import {
   ec2Doorbuiging,
   ec2BetonBalk,
 } from './templates/en1992';
+import { metProjectkop } from './templates/projectkop';
 
 const paalExample = `# Projectgegevens
 
@@ -84,8 +85,6 @@ CC3 — Grote gevolgen = 3
 100 jaar (bijzondere constructie) = 100
 @end
 
-Projectnummer: 2558
-Projectomschrijving: Woning en bijgebouw Laageind 57 Driebruggen
 Onderdeel: Funderingen
 
 # Paaldraagvermogen — NEN 9997-1
@@ -426,10 +425,10 @@ function debounce(fn: (arg: string) => void, ms: number) {
   };
 }
 
-// Template map for calculation items
-const templates: Record<string, string> = {
-  'paaldraagvermogen': paalExample,
-  'stalen-ligger': exampleDoc,
+// Normbladen: kopieën van de desktopbladen. Die rekenen met projectgegevens
+// (gevolgklasse, wind, …) die de web-app niet in de scope zet; metProjectkop
+// geeft een blad dat er een gebruikt, daarvoor keuzelijsten onder de titel.
+const normbladen: Record<string, string> = {
   'ec5-buiging': ec5Buiging,
   'ec5-afschuiving': ec5Afschuiving,
   'ec5-druk': ec5Druk,
@@ -482,6 +481,15 @@ const templates: Record<string, string> = {
   'ec2-scheurwijdte': ec2Scheurwijdte,
   'ec2-doorbuiging': ec2Doorbuiging,
   'ec2-betonbalk': ec2BetonBalk,
+};
+
+// Template map for calculation items
+const templates: Record<string, string> = {
+  'paaldraagvermogen': paalExample,
+  'stalen-ligger': exampleDoc,
+  ...Object.fromEntries(
+    Object.entries(normbladen).map(([id, blad]) => [id, metProjectkop(blad)]),
+  ),
 };
 
 const editorEl = document.getElementById('editor')!;

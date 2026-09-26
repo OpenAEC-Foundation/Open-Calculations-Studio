@@ -15,7 +15,11 @@
  * - Mohr: veld getoetst aan L/250, overstek aan 2a/250 (dubbele lengte als
  *   overspanning); a_1 en a_C horen bij hetzelfde lastgeval;
  * - eigenfrequentie: de randvoorwaarde bepaalt c_1; geen eigen oordeel, alleen
- *   de 8 Hz-grens van NEN-EN 1995-1-1 7.3.3 als signaal.
+ *   de 8 Hz-grens van NEN-EN 1995-1-1 7.3.3 als signaal;
+ * - vakwerk: Warrenvakwerk zonder verticalen met een even aantal velden, de
+ *   som Σ N·n·L/EA in gesloten vorm per staafgroep. Het eerdere model telde
+ *   de randstaven twee tot vier keer en de diagonalen half mee; bij slanke
+ *   diagonalen gaf dat een te kleine doorbuiging.
  * Materiaalwaarden hout gelijk aan eurocode5.ts (EN 338, EN 14080, tabel 3.1
  * en tabel 2.3 met NB). scripts/check-vandepitte-toetsen.mjs rekent na.
  */
@@ -530,40 +534,50 @@ L = ?*(m)', overspanning of kraaglengte'
 /** Vandepitte Hfd. 1 — Beginsel van de virtuele arbeid */
 export const vandepitteVirtueleArbeid = `"Doorbuiging vakwerk met virtuele arbeid — Vandepitte, Deel I, Hfd. 1, art. 1.5
 
-'<i>a = Σ N<sub>i</sub>·n<sub>i</sub>·L<sub>i</sub>/(E·A<sub>i</sub>), met N<sub>i</sub> door de belasting en n<sub>i</sub> door een eenheidslast in het punt van a. Vereenvoudigd model: twee boven-, twee onderrand- en twee diagonaalstaven, puntlast midden op de onderrand.</i>
+'<i>a = Σ N<sub>i</sub>·n<sub>i</sub>·L<sub>i</sub>/(E·A<sub>i</sub>), met N<sub>i</sub> door de belasting en n<sub>i</sub> = N<sub>i</sub>/F door een eenheidslast in het punt van a. Warrenvakwerk zonder verticalen, opgelegd aan de uiteinden van de onderrand, puntlast op het middelste knooppunt van de onderrand.</i>
 
 # 1. Vakwerk
 
 L = ?*(m)', overspanning'
-H = ?*(m)', hoogte'
+H = ?*(m)', hoogte, hart op hart van de randen'
+n_v = ?', aantal velden (even)'
 E = ?*(N/mm^2)
 A_boven = ?*(mm^2)
 A_onder = ?*(mm^2)
 A_diag = ?*(mm^2)
 F = ?*(kN)', puntlast midden op de onderrand (BGT)'
 
-# 2. Staafkrachten en bijdragen
+#if n_v < 2 or mod(n_v; 2) ≠ 0
+    '<span style="color: red">Vul een even aantal velden in: de puntlast staat op het middelste knooppunt van de onderrand.</span>
+    #hide
+    UC_max = 1/0
+    #show
+#else
+    # 2. Staafkrachten
 
-N_boven = F*L/(4*H) to kN
-n_boven = L/(4*H)
-L_boven = L/2 to mm
-δ_boven = N_boven*n_boven*L_boven/(E*A_boven) to mm
+    l_v = L/n_v to mm', veldlengte; lengte van een randstaaf'
+    L_diag = sqrt(H^2 + (l_v/2)^2) to mm
+    N_boven = -F*L/(4*H) to kN', bovenrand midden, druk'
+    N_onder = F*(n_v - 1)*L/(4*n_v*H) to kN', onderrand naast het midden, trek'
+    N_diag = F/2*L_diag/H to kN', elke diagonaal, trek of druk'
 
-N_onder = F*L/(4*H) to kN
-n_onder = L/(4*H)
-L_onder = L/2 to mm
-δ_onder = N_onder*n_onder*L_onder/(E*A_onder) to mm
+    # 3. Bijdragen
 
-L_diag = sqrt(H^2 + (L/4)^2) to mm
-N_diag = F/2*L_diag/H to kN
-n_diag = 1/2*L_diag/H
-δ_diag = N_diag*n_diag*L_diag/(E*A_diag) to mm
+    #hide
+    m_v = n_v/2
+    #show
+    S_boven = (m_v - 1)*m_v*(2*m_v - 1)/3 + m_v^2', Σk² over de bovenrandstaven, M = k·F·l_v/2, k = 1 … n_v/2 … 1'
+    S_onder = m_v*(4*m_v^2 - 1)/6', Σ(k − ½)² over de onderrandstaven, k = 1 … n_v/2 aan elke kant'
+    δ_boven = F*l_v^3*S_boven/(4*H^2*E*A_boven) to mm', n_v − 1 staven, N = M/H'
+    δ_onder = F*l_v^3*S_onder/(4*H^2*E*A_onder) to mm', n_v staven, N = M/H'
+    δ_diag = n_v*F*L_diag^3/(2*H^2*E*A_diag) to mm', 2·n_v staven'
 
-# 3. Doorbuiging en toetsing
+    # 4. Doorbuiging en toetsing
 
-δ_totaal = 2*δ_boven + 2*δ_onder + 2*δ_diag to mm
-v_toel = L/300 to mm
-UC_max = δ_totaal/v_toel
+    δ_totaal = δ_boven + δ_onder + δ_diag to mm
+    v_toel = L/300 to mm
+    UC_max = δ_totaal/v_toel
+#end if
 #if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: doorbuiging vakwerk</span>
 #else
@@ -588,7 +602,7 @@ export const vandepitteFormules: { id: string; label: string; template: string }
   },
   {
     id: 'vdp-knikken',
-    label: 'Vandepitte: Knikken (Euler)',
+    label: 'Vandepitte: Knikken (Euler en normtoets)',
     template: vandepitteKnikken,
   },
   {

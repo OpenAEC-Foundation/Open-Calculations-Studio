@@ -5,8 +5,8 @@
  * Sets 1S t/m 5S bij t = 50 jaar variëren het aantal spuwers en de afmetingen;
  * 6S t/m 8S variëren de ontwerplevensduur en daarmee de regenintensiteit i_r.
  *
- * De u.c. staat niet als losse grootheid in het blad maar in de conclusieregel;
- * die wordt daarom uit de gerenderde tekst gehaald.
+ * De UC wordt uit de slotzin gehaald ("Maatgevende UC = …"): daar leest ook de
+ * rapportkop de uitkomst en het oordeel van het blad.
  *
  * De referentiebladen geven ook een ronde spuwer bij gelijke d_nd (160 / 160 /
  * 80 / 160 / 160 mm). Het blad drukt die niet meer af: het is geen minimale
@@ -62,10 +62,21 @@ const REFERENTIES = [
 let fouten = 0;
 for (const ref of REFERENTIES) {
   const got = reken(tpl, { ...BASIS, ...ref.invoer });
-  // De u.c. staat in de conclusieregel: "u.c. = 0.9459 ≤ 1.0 → Spuwer voldoet".
-  const m = got.text.match(/u\.c\.\s*=\s*([\d.]+)/);
+  // De slotzin: "Maatgevende UC = 0.9459 ≤ 1.0 → Spuwer voldoet".
+  const m = got.text.match(/Maatgevende UC\s*=\s*([\d.]+)/);
   const afgeleid = m ? { UC: parseFloat(m[1]) } : {};
   fouten += toets(ref.blad, got, ref.verwacht, {}, afgeleid);
+  if (!m) {
+    fouten++;
+    console.log("  FOUT   geen slotzin 'Maatgevende UC = …'");
+  } else {
+    // Het oordeel in de slotzin moet bij de UC passen.
+    const zin = got.text.slice(got.text.lastIndexOf("Maatgevende UC"));
+    const voldoet = !/voldoet niet/.test(zin) && /voldoet/.test(zin);
+    const ok = voldoet === (parseFloat(m[1]) <= 1);
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel   ${voldoet ? "voldoet" : "voldoet niet"}`);
+  }
   if (/ronde spuwer/i.test(got.text)) {
     fouten++;
     console.log('  FOUT   het blad drukt weer een ronde-spuwerdiameter af');

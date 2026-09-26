@@ -53,10 +53,6 @@ const CATEGORIE: { v: number; label: string }[] = [
   { v: 1, label: "I" },
   { v: 2, label: "II" },
 ];
-const OVERSPANNING: { v: number; label: string }[] = [
-  { v: 1, label: "Loodrecht" },
-  { v: 2, label: "Evenwijdig" },
-];
 
 /**
  * Eén bron van waarheid voor de invoer-defaults — gebruikt om de controls te
@@ -66,7 +62,7 @@ const OVERSPANNING: { v: number; label: string }[] = [
 // Defaults spiegelen de referentieberekening (document1.pdf): cellenbeton G2,
 // M15, t=150, a_t=100 → UC ≈ 12,66.
 const DEFAULTS: Record<string, number> = {
-  overspanning: 1, steensoort: 7, steencategorie: 1, 
+  steensoort: 7, steencategorie: 1,
   morteltype: 1, f_b: 2, f_m: 15,
   N_Edc: 360, q_Edc: 5.5,
   h: 2800, t: 150, a_L: 200, a_t: 100, h_k: 250, a_1: 300, L_r: 2220, exc: 0,
@@ -134,7 +130,6 @@ export default function OplegMetselwerkDesigner() {
   const d = (name: string) => num(name, DEFAULTS[name]);
 
   // ── invoer ────────────────────────────────────────────────────────────────
-  const overspanning = Math.round(d("overspanning"));
   const steenId = Math.round(d("steensoort"));
   const steen = STENEN[steenId] ?? STENEN[1];
   const catId = Math.round(d("steencategorie"));
@@ -274,13 +269,6 @@ export default function OplegMetselwerkDesigner() {
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
         <div className="vd-controls vd-compact" style={{ alignSelf: "stretch", overflowY: "auto", minHeight: 0 }}>
-          <span className="vd-ctrl-h">Geometrie</span>
-          <label>Overspanningrichting
-            <select value={overspanning} onChange={(e) => setVal("overspanning", parseInt(e.target.value))}>
-              {OVERSPANNING.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-            </select>
-          </label>
-
           <span className="vd-ctrl-h">Metselwerk</span>
           <label>Steencategorie
             <select value={catId} onChange={(e) => setVal("steencategorie", parseInt(e.target.value))}>
@@ -340,6 +328,9 @@ export default function OplegMetselwerkDesigner() {
           </label>
           <label>Oplegbreedte a<sub>t</sub>
             <input type="number" step={10} value={a_t} onChange={(e) => setVal("a_t", parseFloat(e.target.value))} />
+          </label>
+          <label title="Excentriciteit van de last t.o.v. het wandhart; de oplegplaat ligt gecentreerd onder de last">Excentriciteit e
+            <input type="number" step={5} value={exc} onChange={(e) => setVal("exc", parseFloat(e.target.value))} />
           </label>
           <label>Hoogte oplegblok h<sub>k</sub>
             <input type="number" step={10} value={h_k} onChange={(e) => setVal("h_k", parseFloat(e.target.value))} />

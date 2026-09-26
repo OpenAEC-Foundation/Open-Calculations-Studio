@@ -336,7 +336,7 @@ export default function GordingDesigner() {
                 <label>c<sub>pe</sub> bij zuiging
                   <input type="number" step={0.1} value={cpeZuig} onChange={(e) => setVal("c_pe_zuig", parseFloat(e.target.value))} />
                 </label>
-                <div className="gd-note">Negatief, voor de dakzone van deze gording bij A = h.o.h. × L; het blad rekent opwaarts met c<sub>pi</sub> = +0,2.</div>
+                <div className="gd-note">Negatief, voor de dakzone van deze gording bij A = h.o.h. × L; het blad rekent opwaarts met c<sub>pi</sub> = +0,2.{dakType === 1 && <> Op een plat dak toetst het blad ook druk in zone I: c<sub>pe</sub> = +0,2 met c<sub>pi</sub> = −0,3.</>}</div>
               </>
             )}
             {loadTab === 3 && (
@@ -461,7 +461,7 @@ export default function GordingDesigner() {
       <div className="vd-foot">
         <span>Klik op een blauwe maat om die te wijzigen — stroomt direct terug in de rekensheet.</span>
         <span className="vd-live">
-          α = {fmt(alphaDeg, 1)}° · daklengte {Math.round(slopeLen)} mm · h.o.h. {Math.round(hohSlope)} mm · buiging (6.11) {w("UC_611")} · (6.12) {w("UC_612")} · afschuiving {w("UC_afsch")} · oplegdruk {w("UC_c90")} · kip {w("UC_kip")} · doorbuiging w<sub>y</sub> {w("UC_wy")} · w<sub>z</sub> {w("UC_wz")}
+          α = {fmt(alphaDeg, 1)}° · daklengte {Math.round(slopeLen)} mm · h.o.h. {Math.round(hohSlope)} mm · buiging (6.11) {w("UC_611")} · (6.12) {w("UC_612")} · afschuiving {w("UC_afsch")} · oplegdruk {w("UC_c90")} · kip {w("UC_kip")} · doorbuiging w<sub>y</sub> {w("UC_wy")} · w<sub>z</sub> {w("UC_wz")} · opwaarts {w("UC_w_op")}
         </span>
       </div>
     </div>
