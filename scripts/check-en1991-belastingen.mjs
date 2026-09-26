@@ -41,6 +41,44 @@
  *   q_op   = 0,8216·(−1,375·0,2 − 0,485·0,6) = 0,8216·(−0,566) = −0,4650 kN/m
  *   q_neer = 0,8216·(0,7·0,2 + 0,4·0,6)     = 0,8216·0,38    =  0,3122 kN/m
  *
+ * Schilddak (7.2.6, tabel NB.12 – 7.5, figuur 7.9), z = 10 m. De helling van
+ * het vlak aan loefzijde bepaalt alle zones (opmerking 3). F, G en H hebben tot
+ * 45° zuiging en druk, daarboven alleen druk; I tot en met N alleen zuiging.
+ *   θ = 0°, zone L, α = 30°, A = 10 m², b = 20 m: e = 20, e/10 = 2 m. Strook
+ *   [1,5; 2,5] haaks op de hoekkeper: L 0,5 m (−1,4), daarna M 0,5 m (−0,8).
+ *     q_zuiging = 0,8525·(−1,4·0,5 − 0,8·0,5 − 0,2·1,0) = 0,8525·(−1,3) = −1,108 kN/m
+ *     q_druk    = 0,8525·(−1,4·0,5 − 0,8·0,5 + 0,3·1,0) = 0,8525·(−0,8) = −0,682 kN/m
+ *   θ = 90°, zone M, α = 30°, b = 10 m: e/2 = 5 m. Strook [4; 6] in de
+ *   windrichting: M 1 m (−0,8), N 1 m (−0,2).
+ *     q_zuiging = 0,8525·(−0,8 − 0,2 − 0,2·2) = −1,194;  q_druk = 0,8525·(−1,0 + 0,6) = −0,341 kN/m
+ *   θ = 0°, zone K, α = 20°, A = 5 m²: c_pe,10 = −1,2 + 0,7·5/15 = −0,9667;
+ *     c_pe,1 = −2,0 + 1,0·5/15 = −1,6667; c_pe = −1,6667 + 0,7·log10(5) = −1,177.
+ *   θ = 90°, zone H, α = 40°, A = 2 m² (bij 45° −0,0 in beide kolommen):
+ *     c_pe,10 = −0,2 + 0,2·10/15 = −0,0667; c_pe,1 = −1,0 + 1,0·10/15 = −0,3333;
+ *     c_pe = −0,3333 + 0,2667·log10(2) = −0,2531; druk 0,4 + 0,2·10/15 = 0,5333.
+ *
+ * Hoger bouwwerk in de buurt (A.4, normatief volgens de NB), h_low = z = 10 m,
+ * h_high = 60 > 2·h_ave = 24, d_large = 40 → r = h_high = 60 (≤ 2·40):
+ *   x = 80 (r < x < 2r): z_n = ½·(60 − (1 − 2·10/60)·(80 − 60)) = ½·(60 − 13,33) = 23,33 m > z_e
+ *     c_r = 0,2094·ln(23,33/0,2) = 0,2094·4,759 = 0,9966; v_m = 26,91 m/s; I_v = 0,2101
+ *     q_p = (1 + 7·0,2101)·0,625·26,91² = 1117,7 N/m² → 1,118 kN/m²
+ *   x = 30 (≤ r): z_n = r/2 = 30 m → q_p = 1,202.  x = 150 (≥ 2r): z_n = h_low, geen verhoging.
+ *
+ * Windmoment (7.2.2): per strook F = f·c_s c_d·(c_D − c_E)·q_p(z_e)·b·h_strook,
+ * z_e de bovenkant van de strook (figuur 7.4, volgens de NB ook voor zone E),
+ * f = 0,85 voor het gebrek aan correlatie (7.2.2(3) van de NB); c_D = +0,8,
+ * c_E = −0,5 bij h/d ≤ 1 tot −0,7 bij h/d = 5 (tabel NB.6 – 7.1, c_pe,10).
+ *   h = z = 10, b = 12, h/d = 1, f = 0,85: één strook (h ≤ b).
+ *     F = 0,85·1,3·0,8525·12·10 = 113,0 kN;  M = 113,0·5 = 565,2 kNm
+ *   h = 25, b = 10, h/d = 2,5, zonder f: h > 2b, stroken [0; 10], [10; 15], [15; 25].
+ *     c_E = −0,5 − 0,2·1,5/4 = −0,575; q_p(15) = 0,9759; q_p(25) = 1,1406
+ *     F = 1,375·10·(0,8525·10 + 0,9759·5 + 1,1406·10) = 117,2 + 67,09 + 156,8 = 341,1 kN
+ *     M = 117,2·5 + 67,09·12,5 + 156,8·20 = 4561 kNm;  z_F = 13,37 m
+ *   h = 16, b = 10, h/d = 1, f = 0,85: b < h ≤ 2b, stroken [0; 10] en [10; 16], q_p(16) = 0,9961.
+ *     F = 0,85·1,3·10·(0,8525·10 + 0,9961·6) = 94,20 + 66,04 = 160,2 kN;  M = 471,0 + 858,5 = 1329,6 kNm
+ *   Het eerste geval met het hoge bouwwerk hierboven (x = 80): overal q_p(23,33) = 1,118.
+ *     F = 0,85·1,3·1,118·12·10 = 148,2 kN;  M = 741,0 kNm
+ *
  * Sneeuw tegen een hoger bouwdeel, h = 3,5, b_1 = 9,6, b_2 = 4,8, hoog dak 40°:
  *   l_s = 7 m; μ_w = 14,4/7 = 2,057 (≤ 2·3,5/0,7 = 10); μ_s = 0,5333·9,6/7 = 0,7314
  *   μ_2 = 2,789, s_2 = 1,952; b_2 < l_s: μ = 2,789 − 1,989·4,8/7 = 1,425 → 0,9975 kN/m²
@@ -192,6 +230,55 @@ fouten += toets("zijgevel, element over A en B", W(1, 10, { b_bel: "2", x_el: "3
 fouten += toets("gevel zone D", W(4, 10, { b_bel: "1.5" }), { q_el_z: "0.7673", q_el_d: "1.407" });
 fouten += toets("gevel zone D, c_s·c_d = 0,9", W(4, 10, { b_bel: "1.5", bouwwerkfactor: "3", cs_cd: "0.9" }),
   { q_el_z: "0.6650", q_el_d: "1.304" });
+
+// ── Wind: schilddak (tabel NB.12 – 7.5) ─────────────────────────────────────
+// zone_sd: θ = 0° F, G, H, I, J, K, L, M = 1 … 8; θ = 90° F, G, H, I, J, L, M, N = 9 … 16.
+const SD = (zone, α, A, extra = {}) =>
+  reken(wind, { bouwdeel_wind: "5", zone_sd: String(zone), α_sd: String(α), z: "10", A_bel: String(A), ...extra }, PROJECT);
+
+// θ = 0°, zone L, α = 30°: zie de kop. w_z = (−1,4 − 0,2)·0,8525 = −1,364; w_d = (−1,4 + 0,3)·0,8525 = −0,9378.
+// Zonetabel met b = 1 m: F (−0,5 / +0,5), K (−0,5, alleen zuiging), L (−1,4) en M (−0,8).
+{
+  const r = SD(7, 30, 10, { b_bel: "1", x_el: "1.5", b_geb: "20" });
+  fouten += toets("schilddak θ = 0°, zone L, α = 30°, element over L en M", r,
+    { c_pe_z: "-1.4", w_z: "-1.364", w_d: "-0.9378", w_net: "-1.364", e_w: "20", q_el_z: "-1.108", q_el_d: "-0.682" });
+  for (const regel of ["F -0.5 0.5 -0.597 0.682", "K -0.5 -0.5 -0.597 -0.171", "L -1.4 -1.4 -1.364 -0.938", "M -0.8 -0.8 -0.853 -0.426"]) {
+    fouten += tabelregel(r, regel);
+  }
+}
+// θ = 90°, zone M, α = 30°: strook [4; 6] over M en N (vanaf e/2 = 5 m), zie de kop.
+fouten += toets("schilddak θ = 90°, zone M, α = 30°, element over M en N", SD(15, 30, 10, { b_bel: "2", x_el: "4", b_geb: "10" }),
+  { c_pe_z: "-0.8", e_w: "10", q_el_z: "-1.194", q_el_d: "-0.341" });
+// θ = 0°, zone K, α = 20°, A = 5 m²: c_pe = −1,177 (zie de kop); w_z = (−1,177 − 0,2)·0,8525 = −1,174.
+fouten += toets("schilddak θ = 0°, zone K, α = 20°, A = 5 m²", SD(6, 20, 5), { c_pe_z: "-1.177", w_z: "-1.174", w_net: "-1.174" });
+// θ = 0°, zone F, α = 60°: alleen druk +0,7 → w_net = (0,7 + 0,3)·0,8525 = 0,8525.
+fouten += toets("schilddak θ = 0°, zone F, α = 60°", SD(1, 60, 10), { c_pe_z: "0.7", c_pe_d: "0.7", w_net: "0.8525" });
+// θ = 90°, zone H, α = 40°, A = 2 m²: zuiging −0,2531, druk 0,5333 → w_d = 0,8333·0,8525 = 0,7104 maatgevend.
+fouten += toets("schilddak θ = 90°, zone H, α = 40°, A = 2 m²", SD(11, 40, 2),
+  { c_pe_z: "-0.2531", c_pe_d: "0.5333", w_z: "-0.3862", w_d: "0.7104", w_net: "0.7104" });
+
+// ── Wind: hoger bouwwerk in de buurt (A.4) en windmoment (7.2.2) ─────────────
+const HOOG = { hoger_bw: "1", h_hoog: "60", h_gem: "12", d_groot: "40" };
+// Zie de kop: x = 80 → z_n = 23,33 m, q_p = 1,118; zone F, A = 10 m²: (−1,8 − 0,2)·1,118 = −2,235.
+fouten += toets("hoger bouwwerk, r < x < 2r", W(6, 10, { ...HOOG, x_hoog: "80" }),
+  { r_A4: "60", z_n: "23.33", z_e: "23.33", q_p: "1.118", w_net: "-2.235" });
+// x = 30 ≤ r: z_n = 30 m → q_p = 1,202.
+fouten += toets("hoger bouwwerk, x ≤ r", W(6, 10, { ...HOOG, x_hoog: "30" }), { z_n: "30", z_e: "30", q_p: "1.202" });
+// x = 150 ≥ 2r: z_n = h_low = z, geen verhoging.
+fouten += toets("hoger bouwwerk, x ≥ 2r", W(6, 10, { ...HOOG, x_hoog: "150" }), { z_n: "10", z_e: "10", q_p: "0.8525" });
+// h_high = 20 ≤ 2·h_ave = 24: geen invloed, ook al ligt het gebouw binnen r.
+fouten += toets("hoger bouwwerk, h_high ≤ 2·h_ave", W(6, 10, { ...HOOG, h_hoog: "20", x_hoog: "5" }), { z_e: "10", q_p: "0.8525" });
+
+// Windmoment, zie de kop. Gevel zone D (h/d uit 3) of zone B (b en h/d uit 3 en 5).
+fouten += toets("windmoment, h ≤ b, met 0,85", W(4, 10, { b_bel: "1", hd: "1", windmoment: "1", b_mw: "12" }),
+  { c_D: "0.8", c_E: "-0.5", f_cor: "0.85", F_wind: "113.0", M_wind: "565.2", z_F: "5" });
+fouten += toets("windmoment, h > 2b, drie stroken, zonder 0,85", W(4, 10, { z: "25", b_bel: "1", hd: "2.5", windmoment: "2", b_mw: "10" }),
+  { c_E: "-0.575", F_wind: "341.1", M_wind: "4561", z_F: "13.37" });
+// M = 1329,6 kNm, op vier cijfers getoond als 1330.
+fouten += toets("windmoment, b < h ≤ 2b, b en h/d uit het blad", W(2, 10, { z: "16", b_bel: "1", x_el: "0", b_geb: "10", hd: "1", windmoment: "1" }),
+  { b_mw: "10", hd_mw: "1", F_wind: "160.2", M_wind: "1330", z_F: "8.297" });
+fouten += toets("windmoment met het hoge bouwwerk (x = 80)", W(4, 10, { ...HOOG, x_hoog: "80", b_bel: "1", hd: "1", windmoment: "1", b_mw: "12" }),
+  { q_p: "1.118", F_wind: "148.2", M_wind: "741.0" });
 
 // ── Sneeuw ───────────────────────────────────────────────────────────────────
 const sneeuw = blad("en1991Sneeuwbelasting");
