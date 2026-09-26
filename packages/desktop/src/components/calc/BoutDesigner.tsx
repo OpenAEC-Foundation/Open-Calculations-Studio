@@ -61,7 +61,7 @@ const DEFAULTS: Record<string, number> = {
   staalsoort: 235, boutkwaliteit: 88, boutdiameter: 16,
   afschuifvlak: 1, boutpositie: 1, randpositie: 1,
   t_plaat: 20, e_1: 30, p_1: 80, e_2: 25, p_2: 60,
-  n_v: 1, F_v_Ed: 0, F_t_Ed: 0, overlaptype: 1,
+  n_v: 1, F_v_Ed: 0, F_t_Ed: 0, overlaptype: 1, boutgroep: 0,
 };
 
 /** Zeskant met de platte kanten boven en onder, in bovenaanzicht. */
@@ -121,7 +121,10 @@ export default function BoutDesigner() {
   const eenKolom = randpos === 1 && (uitkomst ? g.k_1_bin === undefined : !(d("p_2") > 0));
   const e2 = Math.max(1, d("e_2")), p2 = eenKolom ? 0 : Math.max(1, d("p_2"));
   const nv = Math.max(1, Math.round(d("n_v")));
-  const FvEd = Math.max(0, d("F_v_Ed")), FtEd = Math.max(0, d("F_t_Ed"));
+  // Bij een boutgroep rekent het blad F_v,Ed uit (de maatgevende bout); het beeld leest hem daar.
+  const groep = Math.round(d("boutgroep"));
+  const FvEd = groep >= 1 ? Math.max(0, g.F_v_Ed ?? 0) : Math.max(0, d("F_v_Ed"));
+  const FtEd = Math.max(0, d("F_t_Ed"));
   const overlap = Math.round(d("overlaptype"));    // 2 = enkele overlap, één boutrij
   const d0 = GAT[M] ?? M + 2, dk = EW[M] ?? M * 1.7;
 
@@ -296,9 +299,23 @@ export default function BoutDesigner() {
           ))}{(pos === 2 || !eenKolom) && <> · p ≤ {fmt(pmax)}</>}</span>
 
           <span className="vd-ctrl-h">Krachten (kN) — 0 = alleen weerstanden</span>
-          <label title="Afschuifkracht op de bout">F<sub>v,Ed</sub>
-            <input type="number" step={5} min={0} value={FvEd} onChange={(e) => set("F_v_Ed", parseFloat(e.target.value))} />
+          <label style={{ flexDirection: "column", alignItems: "stretch" }}
+            title="Bij een boutgroep verdeelt het blad V en M in het vlak elastisch over de bouten; de zwaarst belaste bout wordt getoetst">Kracht op de bout
+            <select style={{ width: "100%" }} value={groep} onChange={(e) => set("boutgroep", parseInt(e.target.value))}>
+              <option value={0}>invoeren</option>
+              <option value={1}>uit een boutgroep, draaipunt in het zwaartepunt</option>
+              <option value={2}>uit een boutgroep, vast draaipunt</option>
+            </select>
           </label>
+          {groep >= 1 ? (
+            <span className="gd-note">
+              F<sub>v,Ed</sub> = {w("F_v_Ed", 1)} kN: de maatgevende bout van de groep. Het patroon, V en M staan in het blad.
+            </span>
+          ) : (
+            <label title="Afschuifkracht op de bout">F<sub>v,Ed</sub>
+              <input type="number" step={5} min={0} value={FvEd} onChange={(e) => set("F_v_Ed", parseFloat(e.target.value))} />
+            </label>
+          )}
           <label title="Trekkracht op de bout — inclusief eventuele hefboomkracht">F<sub>t,Ed</sub>
             <input type="number" step={5} min={0} value={FtEd} onChange={(e) => set("F_t_Ed", parseFloat(e.target.value))} />
           </label>
