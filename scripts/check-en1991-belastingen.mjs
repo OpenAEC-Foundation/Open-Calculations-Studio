@@ -129,7 +129,7 @@ fouten += toets("wind, ontwerplevensduur 25 jaar", reken(wind, { zone_cpe: "6", 
 
 // ── Wind: zadeldak, overkapping, luifel en de lijnlast op een element ────────
 const ZD = (zone, α, A, extra = {}) =>
-  reken(wind, { onderdeel: "2", zone_zd: String(zone), α_zd: String(α), z: "10", A_bel: String(A), ...extra }, PROJECT);
+  reken(wind, { bouwdeel_wind: "2", zone_zd: String(zone), α_zd: String(α), z: "10", A_bel: String(A), ...extra }, PROJECT);
 
 // Het uitgewerkte voorbeeld uit de kop: zone G, α = 30°, strook [1,0; 2,2] over G en H.
 // w_z = (−0,5 − 0,2)·0,8525 = −0,5968; w_d = (0,7 + 0,3)·0,8525 = 0,8525 → druk.
@@ -159,7 +159,7 @@ fouten += toets("zadeldak θ = 90°, zone G, α = 30°", ZD(7, 30, 10, { b_bel: 
   { c_pe_z: "-1.4", w_net: "-1.364", q_el_z: "-1.705" });
 
 const OV = (zone, α, φ, extra = {}) =>
-  reken(wind, { onderdeel: "3", zone_ov: String(zone), α_ov: String(α), φ_ov: String(φ), z: "10", A_bel: "5", ...extra }, PROJECT);
+  reken(wind, { bouwdeel_wind: "3", zone_ov: String(zone), α_ov: String(α), φ_ov: String(φ), z: "10", A_bel: "5", ...extra }, PROJECT);
 // Open overkapping (tabel 7.6), α = 10°, φ = 0,5, zone C: neer +1,6; op −2,1 + 0,5·(−2,7 + 2,1) = −2,4.
 // w_neer = 1,6·0,8525 = 1,364; w_op = −2,046; F = w·5. Strook [0,3; 1,3] met d = 8 (d/10 = 0,8): C 0,5 m, A 0,5 m
 // (A: +1,2 en −1,5 + 0,5·(−0,1) = −1,55): q_op = 0,8525·(−2,4·0,5 − 1,55·0,5) = −1,684; q_neer = 0,8525·1,4 = 1,194.
@@ -174,7 +174,7 @@ fouten += toets("overkapping, zone A, α = 12,5°, φ = 0,5", OV(1, 12.5, 0.5, {
 
 // Luifel: zie de kop.
 fouten += toets("luifel aan een gebouw, stang aan de zijrand",
-  reken(wind, { onderdeel: "4", zone_lf: "1", h_1: "2.7", d_1: "0.8", b_1: "1.6", z: "9", A_bel: "1", b_bel: "0.8", x_el: "0" }, PROJECT),
+  reken(wind, { bouwdeel_wind: "4", zone_lf: "1", h_1: "2.7", d_1: "0.8", b_1: "1.6", z: "9", A_bel: "1", b_bel: "0.8", x_el: "0" }, PROJECT),
   { q_p: "0.8216", r_h: "0.3", r_d: "3.375", c_p_net_neer: "0.7", c_p_net_op: "-1.375", e_A: "0.2", q_el_z: "-0.4650", q_el_d: "0.3122" });
 
 // Plat dak, zone F, b = 20 m → e = 20: strook [1; 3] over F (tot 2 m) en H.

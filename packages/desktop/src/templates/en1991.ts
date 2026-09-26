@@ -318,14 +318,14 @@ Bepaald volgens bijlage C = 3
 
 # 3. Drukcoëfficiënten
 
-@select onderdeel "Onderdeel"
+@select bouwdeel_wind "Onderdeel"
 Gevel of plat dak (tabel NB.6 – 7.1 en NB.7 – 7.2) = 1
 Zadeldak (7.2.5, tabel NB.10 – 7.4a en NB.11 – 7.4b) = 2
 Open overkapping, lessenaarsvorm (7.3, tabel 7.6) = 3
 Luifel aan een gebouw (7.2.12, tabel NB.18 – 8) = 4
 @end
 
-#if onderdeel ≡ 1
+#if bouwdeel_wind ≡ 1
     @select zone_cpe "Zone"
     Wand: zone A (c_pe,10 = -1.2; c_pe,1 = -1.4) = 1
     Wand: zone B (c_pe,10 = -0.8; c_pe,1 = -1.1) = 2
@@ -338,7 +338,7 @@ Luifel aan een gebouw (7.2.12, tabel NB.18 – 8) = 4
     Plat dak: zone I (c_pe = +0.2; zuiging c_pe,10 = -0.2; c_pe,1 = -0.5) = 9
     Zelf invullen = 0
     @end
-#else if onderdeel ≡ 2
+#else if bouwdeel_wind ≡ 2
     @select zone_zd "Zone (figuur 7.8)"
     θ = 0°: F, hoeken langs de goot aan loefzijde = 1
     θ = 0°: G, goot aan loefzijde tussen de hoeken = 2
@@ -351,7 +351,7 @@ Luifel aan een gebouw (7.2.12, tabel NB.18 – 8) = 4
     θ = 90°: I = 9
     @end
     α_zd = ?*(deg)', dakhelling'
-#else if onderdeel ≡ 3
+#else if bouwdeel_wind ≡ 3
     @select zone_ov "Zone (tabel 7.6)"
     A, binnengebied = 1
     B, langs de randen evenwijdig aan de wind (breedte b/10) = 2
@@ -370,7 +370,7 @@ Luifel aan een gebouw (7.2.12, tabel NB.18 – 8) = 4
 #end if
 
 A_bel = ?*(m^2)', belaste oppervlakte van het element'
-#if onderdeel ≡ 1
+#if bouwdeel_wind ≡ 1
     #if zone_cpe ≡ 0
         c_pe,hand = ?', uitwendige drukcoëfficiënt'
     #else if zone_cpe ≤ 5
@@ -384,7 +384,7 @@ c_pe,I = cpe(-0.5; -0.2)
 ip(tab; kol; xa) = hlookup_le(tab; xa; 1; kol) + (hlookup_ge(tab; xa; 1; kol) - hlookup_le(tab; xa; 1; kol))*if(hlookup_ge(tab; xa; 1; 1) > hlookup_le(tab; xa; 1; 1); (xa - hlookup_le(tab; xa; 1; 1))/(hlookup_ge(tab; xa; 1; 1) - hlookup_le(tab; xa; 1; 1)); 0)
 kies(i; v1; v2; v3; v4; v5) = if(i ≡ 1; v1; if(i ≡ 2; v2; if(i ≡ 3; v3; if(i ≡ 4; v4; v5))))
 #show
-#if onderdeel ≡ 1
+#if bouwdeel_wind ≡ 1
     #if zone_cpe ≡ 1
         c_pe = cpe(-1.4; -1.2)', zone A: c_pe,1 = −1,4; c_pe,10 = −1,2'
     #else if zone_cpe ≡ 2
@@ -476,7 +476,7 @@ kies(i; v1; v2; v3; v4; v5) = if(i ≡ 1; v1; if(i ≡ 2; v2; if(i ≡ 3; v3; if
         cd_5 = 0
     #end if
     #show
-#else if onderdeel ≡ 2
+#else if bouwdeel_wind ≡ 2
     #hide
     'Tabel NB.10 – 7.4a (θ = 0°) per helling: c_pe,10 en c_pe,1 van F, G, H, I en J; dan de druk op F en G, op H en op J.
     T_0 = [5; 15; 30; 45; 60; 75 | -1.7; -0.9; -0.5; 0; 0; 0 | -2.5; -2.0; -1.5; 0; 0; 0 | -1.2; -0.8; -0.5; 0; 0; 0 | -2.0; -1.5; -1.5; 0; 0; 0 | -0.6; -0.3; -0.2; 0; 0; 0 | -1.2; -1.0; -1.0; 0; 0; 0 | -0.6; -0.4; -0.4; -0.2; -0.2; -0.2 | -1.0; -1.0; -1.0; -1.0; -1.0; -1.0 | -0.6; -1.0; -0.5; -0.3; -0.3; -0.3 | -1.0; -1.5; -1.0; -1.0; -1.0; -1.0 | 0; 0.2; 0.7; 0.7; 0.7; 0.8 | 0; 0.2; 0.4; 0.6; 0.7; 0.8 | 0.2; 0; 0; 0; 0; 0]
@@ -532,7 +532,7 @@ kies(i; v1; v2; v3; v4; v5) = if(i ≡ 1; v1; if(i ≡ 2; v2; if(i ≡ 3; v3; if
     #else
         c_pe,z', tabel NB.11 – 7.4b, alleen zuiging; logaritmisch in A (7.2.1)'
     #end if
-#else if onderdeel ≡ 3
+#else if bouwdeel_wind ≡ 3
     #hide
     'Tabel 7.6 per helling: maximaal voor alle φ van A, B en C; minimaal bij φ = 0 van A, B en C; minimaal bij φ = 1 van A, B en C.
     T_ov = [0; 5; 10; 15; 20; 25; 30 | 0.5; 0.8; 1.2; 1.4; 1.7; 2.0; 2.2 | 1.8; 2.1; 2.4; 2.7; 2.9; 3.1; 3.2 | 1.1; 1.3; 1.6; 1.8; 2.1; 2.3; 2.4 | -0.6; -1.1; -1.5; -1.8; -2.2; -2.6; -3.0 | -1.3; -1.7; -2.0; -2.4; -2.8; -3.2; -3.8 | -1.4; -1.8; -2.1; -2.5; -2.9; -3.2; -3.6 | -1.5; -1.6; -1.6; -1.6; -1.6; -1.5; -1.5 | -1.8; -2.2; -2.6; -2.9; -2.9; -2.5; -2.2 | -2.2; -2.5; -2.7; -3.0; -3.0; -2.8; -2.7]
@@ -600,7 +600,7 @@ kies(i; v1; v2; v3; v4; v5) = if(i ≡ 1; v1; if(i ≡ 2; v2; if(i ≡ 3; v3; if
 
 # 4. Netto winddruk (5.1, 5.2)
 
-#if onderdeel ≤ 2
+#if bouwdeel_wind ≤ 2
     @select inwendig "Inwendige druk (7.2.9)"
     Geen dominante gevel: c_pi = +0,2 of −0,3, de ongunstigste = 1
     Dominante gevel: c_pi invullen = 2
@@ -654,11 +654,11 @@ r_2 = 0 m
 i_1 = k_z
 i_2 = k_z
 i_3 = k_z
-#if onderdeel ≡ 1
+#if bouwdeel_wind ≡ 1
     nb = if(zone_cpe ≡ 0 or zone_cpe ≡ 4 or zone_cpe ≡ 5; 1; 3)
-#else if onderdeel ≡ 2
+#else if bouwdeel_wind ≡ 2
     nb = if(θ_90 ≡ 1; 3; 2)
-#else if onderdeel ≡ 3
+#else if bouwdeel_wind ≡ 3
     nb = if(zone_ov ≡ 1; 1; 2)
 #else
     nb = 2
@@ -667,10 +667,10 @@ i_3 = k_z
 b_bel = ?*(m)', belastingbreedte van het element<span class="kolom-3"></span>'
 #if nb > 1
     x_el = ?*(m)', afstand van de rand tot de belaste strook<span class="kolom-3"></span>'
-    #if onderdeel ≤ 2
+    #if bouwdeel_wind ≤ 2
         b_geb = ?*(m)', breedte b van het gebouw dwars op de wind<span class="kolom-3"></span>'
         e_w = min(b_geb; 2*z) to m', e = min(b; 2h), met h = z (figuur 7.5 t/m 7.8)'
-    #else if onderdeel ≡ 3
+    #else if bouwdeel_wind ≡ 3
         #if zone_ov ≡ 2
             b_ov = ?*(m)', breedte b van de overkapping dwars op de wind<span class="kolom-3"></span>'
         #else
@@ -680,7 +680,7 @@ b_bel = ?*(m)', belastingbreedte van het element<span class="kolom-3"></span>'
         e_A = min(d_1/4; b_1/2) to m', breedte van zone A (figuur NB.4 – 6)'
     #end if
     #hide
-    #if onderdeel ≡ 1
+    #if bouwdeel_wind ≡ 1
         #if zone_cpe ≤ 3
             r_1 = e_w/5
             r_2 = e_w
@@ -694,13 +694,13 @@ b_bel = ?*(m)', belastingbreedte van het element<span class="kolom-3"></span>'
             i_2 = 3
             i_3 = 4
         #end if
-    #else if onderdeel ≡ 2
+    #else if bouwdeel_wind ≡ 2
         r_1 = e_w/10
         r_2 = if(θ_90 ≡ 1; e_w/2; r_1)
         i_1 = if(θ_90 ≡ 0 and k_z ≥ 4; 5; if(k_z ≡ 1; 1; 2))
         i_2 = if(θ_90 ≡ 0 and k_z ≥ 4; 4; 3)
         i_3 = if(θ_90 ≡ 1; 4; i_2)
-    #else if onderdeel ≡ 3
+    #else if bouwdeel_wind ≡ 3
         #if zone_ov ≡ 2
             r_1 = b_ov/10
         #else
@@ -718,13 +718,13 @@ b_bel = ?*(m)', belastingbreedte van het element<span class="kolom-3"></span>'
         i_3 = 2
     #end if
     #show
-    #if onderdeel ≡ 1
+    #if bouwdeel_wind ≡ 1
         #if zone_cpe ≤ 3
             '<i>Zijgevel, x vanaf de hoek aan loefzijde: zone A tot e/5, B tot e, daarna C (figuur 7.5).</i><span class="alleen-scherm"></span>
         #else
             '<i>Plat dak, x vanaf de rand aan loefzijde: F of G tot e/10, H tot e/2, daarna I (figuur 7.6). F ligt binnen e/4 van de zijrand; F of G volgt uit de gekozen zone.</i><span class="alleen-scherm"></span>
         #end if
-    #else if onderdeel ≡ 2
+    #else if bouwdeel_wind ≡ 2
         #if θ_90 ≡ 1
             '<i>x vanaf de kopgevel aan loefzijde: F of G tot e/10, H tot e/2, daarna I (figuur 7.8). F ligt binnen e/4 van de goot; F of G volgt uit de gekozen zone.</i><span class="alleen-scherm"></span>
         #else if k_z ≥ 4
@@ -732,7 +732,7 @@ b_bel = ?*(m)', belastingbreedte van het element<span class="kolom-3"></span>'
         #else
             '<i>Loefvlak, x vanaf de goot: F of G tot e/10, daarna H tot de nok (figuur 7.8). F ligt binnen e/4 van de kopgevel; F of G volgt uit de gekozen zone.</i><span class="alleen-scherm"></span>
         #end if
-    #else if onderdeel ≡ 3
+    #else if bouwdeel_wind ≡ 3
         '<i>x vanaf de rand evenwijdig aan de wind (zone B, tot b/10) of vanaf de rand aan loef- of lijzijde (zone C, tot d/10, gemeten in het dakvlak, 7.2.1(4)); daarna A.</i><span class="alleen-scherm"></span>
     #else
         '<i>x vanaf de zijrand van de luifel: A tot e, daarna B; de strook loopt over de volle uitkraging.</i><span class="alleen-scherm"></span>
@@ -762,14 +762,14 @@ qz(kc) = round((cs_cd*kc - cpi_z)*qp_r*bb_r; 3)
 qd(kc) = round((cs_cd*kc - cpi_d)*qp_r*bb_r; 3)
 #show
 #if nz > 0
-    #if onderdeel ≤ 2
+    #if bouwdeel_wind ≤ 2
         'Per zone q = (c<sub>s</sub>c<sub>d</sub>·c<sub>pe</sub> − c<sub>pi</sub>)·q<sub>p</sub>·b<sub>bel</sub>, zuiging met c<sub>pi</sub> = 'cpi_z' en druk met c<sub>pi</sub> = 'cpi_d'; negatief is zuiging.
     #else
         'Per zone q = c<sub>s</sub>c<sub>d</sub>·c<sub>p,net</sub>·q<sub>p</sub>·b<sub>bel</sub>; positief is neerwaarts.
     #end if
     '<table style="border-collapse:collapse; font-size:0.85em; line-height:1.25; margin:2px 0 6px;">
-    '<tr style="display:'if(onderdeel ≤ 2; "table-row"; "none")'; border-bottom:1.5px solid #374151;"><th style="padding:1px 8px; text-align:left;">Zone</th><th style="padding:1px 8px; text-align:right;">c<sub>pe</sub> zuiging</th><th style="padding:1px 8px; text-align:right;">c<sub>pe</sub> druk</th><th style="padding:1px 8px; text-align:right;">q zuiging [kN/m]</th><th style="padding:1px 8px; text-align:right;">q druk [kN/m]</th></tr>
-    '<tr style="display:'if(onderdeel ≤ 2; "none"; "table-row")'; border-bottom:1.5px solid #374151;"><th style="padding:1px 8px; text-align:left;">Zone</th><th style="padding:1px 8px; text-align:right;">c<sub>p,net</sub> opwaarts</th><th style="padding:1px 8px; text-align:right;">c<sub>p,net</sub> neerwaarts</th><th style="padding:1px 8px; text-align:right;">q opwaarts [kN/m]</th><th style="padding:1px 8px; text-align:right;">q neerwaarts [kN/m]</th></tr>
+    '<tr style="display:'if(bouwdeel_wind ≤ 2; "table-row"; "none")'; border-bottom:1.5px solid #374151;"><th style="padding:1px 8px; text-align:left;">Zone</th><th style="padding:1px 8px; text-align:right;">c<sub>pe</sub> zuiging</th><th style="padding:1px 8px; text-align:right;">c<sub>pe</sub> druk</th><th style="padding:1px 8px; text-align:right;">q zuiging [kN/m]</th><th style="padding:1px 8px; text-align:right;">q druk [kN/m]</th></tr>
+    '<tr style="display:'if(bouwdeel_wind ≤ 2; "none"; "table-row")'; border-bottom:1.5px solid #374151;"><th style="padding:1px 8px; text-align:left;">Zone</th><th style="padding:1px 8px; text-align:right;">c<sub>p,net</sub> opwaarts</th><th style="padding:1px 8px; text-align:right;">c<sub>p,net</sub> neerwaarts</th><th style="padding:1px 8px; text-align:right;">q opwaarts [kN/m]</th><th style="padding:1px 8px; text-align:right;">q neerwaarts [kN/m]</th></tr>
     '<tr style="font-weight:'if(k_z ≡ 1; 700; 400)'; border-bottom:1px solid #e5e7eb;"><td style="padding:0 8px;">'zn_1'</td><td style="padding:0 8px; text-align:right;">'round(cz_1; 3)'</td><td style="padding:0 8px; text-align:right;">'round(cd_1; 3)'</td><td style="padding:0 8px; text-align:right;">'qz(cz_1)'</td><td style="padding:0 8px; text-align:right;">'qd(cd_1)'</td></tr>
     '<tr style="font-weight:'if(k_z ≡ 2; 700; 400)'; border-bottom:1px solid #e5e7eb;"><td style="padding:0 8px;">'zn_2'</td><td style="padding:0 8px; text-align:right;">'round(cz_2; 3)'</td><td style="padding:0 8px; text-align:right;">'round(cd_2; 3)'</td><td style="padding:0 8px; text-align:right;">'qz(cz_2)'</td><td style="padding:0 8px; text-align:right;">'qd(cd_2)'</td></tr>
     '<tr style="display:'if(nz < 3; "none"; "table-row")'; font-weight:'if(k_z ≡ 3; 700; 400)'; border-bottom:1px solid #e5e7eb;"><td style="padding:0 8px;">'zn_3'</td><td style="padding:0 8px; text-align:right;">'round(cz_3; 3)'</td><td style="padding:0 8px; text-align:right;">'round(cd_3; 3)'</td><td style="padding:0 8px; text-align:right;">'qz(cz_3)'</td><td style="padding:0 8px; text-align:right;">'qd(cd_3)'</td></tr>
@@ -780,7 +780,7 @@ qd(kc) = round((cs_cd*kc - cpi_d)*qp_r*bb_r; 3)
 #if nb > 1
     'Strook van 'round(u_el/(1 m); 3)' tot 'round(v_el/(1 m); 3)' m vanaf de rand:<span style="display:'if(l_1 > 0 m; "inline"; "none")'; margin-left:0.5em;">zone 'zb_1' over 'round(l_1/(1 m); 3)' m</span><span style="display:'if(l_2 > 0 m; "inline"; "none")'; margin-left:0.5em;">zone 'zb_2' over 'round(l_2/(1 m); 3)' m</span><span style="display:'if(l_3 > 0 m; "inline"; "none")'; margin-left:0.5em;">zone 'zb_3' over 'round(l_3/(1 m); 3)' m</span>
 #end if
-#if onderdeel ≤ 2
+#if bouwdeel_wind ≤ 2
     q_el,z', zuiging op het element, de som over de zones van de strook<span class="kolom-2"></span>'
     q_el,d', druk op het element<span class="kolom-2"></span>'
 #else
