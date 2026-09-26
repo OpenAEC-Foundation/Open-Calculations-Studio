@@ -20,7 +20,7 @@ import { useProjectStore, PROJECT_ID } from "./store/projectStore";
 import { usePrintStore } from "./store/printStore";
 import { useRecentFiles } from "./hooks/useRecentFiles";
 import { useSneltoetsen } from "./hooks/useSneltoetsen";
-import { openCalculationFile } from "./tauri/fileOps";
+import { useBestandActies } from "./hooks/useBestandActies";
 import { leesProjectBestand } from "./store/projectBestand";
 import { setAngleMode, type AngleMode } from "@ifc-calc/core";
 import { UNITS_DEFAULTS, type UnitsSettings } from "./components/settings/SettingsDialog";
@@ -69,6 +69,7 @@ export default function App() {
   const actief = exemplaren.find((e) => e.id === activeId) ?? null;
   const source = actief?.source ?? "";
   const { addRecentFile } = useRecentFiles();
+  const { openen } = useBestandActies();
   useSneltoetsen();
 
   // De afdrukweergave bestaat alleen tijdens het printen. Even wachten voordat
@@ -148,23 +149,6 @@ export default function App() {
     </div>
   ) : null;
 
-  const handleBrowse = useCallback(async () => {
-    try {
-      const file = await openCalculationFile();
-      if (!file) return;
-      laadProject(leesProjectBestand(file.raw, file.name));
-      markeerOpgeslagen(file.path);
-      await addRecentFile({
-        path: file.path,
-        name: file.name,
-        type: "report",
-        timestamp: Date.now(),
-      });
-    } catch (err) {
-      alert(`Bestand openen mislukt: ${(err as Error).message}`);
-    }
-  }, [laadProject, markeerOpgeslagen, addRecentFile]);
-
   const handleOpenRecent = useCallback(async (path: string) => {
     try {
       // Only Tauri runtime can read by absolute path; browser fallback cannot.
@@ -234,7 +218,7 @@ export default function App() {
           setBackstageOpen(false);
           setSettingsOpen(true);
         }}
-        onBrowse={handleBrowse}
+        onBrowse={openen}
         onOpenFile={handleOpenRecent}
       />
       <SettingsDialog
