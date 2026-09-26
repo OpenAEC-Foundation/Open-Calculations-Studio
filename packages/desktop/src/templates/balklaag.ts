@@ -18,16 +18,18 @@
  *
  * Gecalibreerd op document1 t/m document9 — zie scripts/check-balklaag.mjs.
  * Belastinggevallen en combinaties: scripts/check-balklaag-schema3.mjs.
+ *
+ * Op papier is het blad beknopter dan op het scherm (PrintDocument.css): uitleg
+ * en de tekeningen die het beeld al toont dragen `alleen-scherm`, korte regels
+ * een merkteken `kolom-2`, `kolom-3` of `kolom-4`, en waar een formule op
+ * papier te breed is staat daar de kale waarde met `alleen-afdruk`. De knopen
+ * blijven gelijk; wat het beeld en de controles lezen, verandert niet.
  */
 
 export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
 
-'<i>Toetsing van een houten vloerbalk of onderslag op een enkelvoudige
-'overspanning, met een overstek, op drie steunpunten of als raveelbalk, belast
-'door permanente + veranderlijke vloerbelasting en een geconcentreerde last.
-'BGT-doorbuiging incl. kruip en UGT-buiging + afschuiving.</i>
-
-# 1. Profiel & materiaal
+'<i>Toetsing van een houten vloerbalk of onderslag: enkelvoudig, met een overstek, op drie steunpunten of als raveelbalk, belast door een permanente en een veranderlijke vloerbelasting en een geconcentreerde last. UGT-buiging en afschuiving, BGT-doorbuiging met kruip en de trillingstoets.</i><span class="alleen-scherm"></span>
+# 1. Profiel, materiaal en doorsnede
 
 @select profiel "Profiel (b×h)"
   46×96 = 1
@@ -60,11 +62,16 @@ export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
   Zelf invullen = 28
 @end
 
-'<i>Staat de maat niet in de lijst, kies dan "Zelf invullen" en geef de breedte
-'en de hoogte op. Zo zijn ook maten als 60×205, 63×211, 90×230 en 200×200 te
-'rekenen.</i>
-b_zelf = ?*(mm)', breedte — alleen bij profiel "Zelf invullen"'
-h_zelf = ?*(mm)', hoogte — alleen bij profiel "Zelf invullen"'
+#if profiel ≡ 28
+    b_zelf = ?*(mm)', breedte<span class="kolom-3"></span>'
+    h_zelf = ?*(mm)', hoogte<span class="kolom-3"></span>'
+#else
+    '<i>Staat de maat niet in de lijst, kies dan "Zelf invullen" en geef de breedte en de hoogte op; zo zijn ook maten als 60×205, 63×211, 90×230 en 200×200 te rekenen.</i><span class="alleen-scherm"></span>
+    #hide
+    b_zelf = 0 mm
+    h_zelf = 0 mm
+    #show
+#end if
 
 @select sterkteklasse "Sterkteklasse"
   C18 = 1
@@ -108,7 +115,7 @@ E_mean = hlookup(materialen; sterkteklasse; 1; 4)*N/mm^2
 k_mod_12 = if(duurklasse ≡ 1; 0.90; if(duurklasse ≡ 2; 0.80; if(duurklasse ≡ 3; 0.70; 0.60)))
 k_mod_3 = if(duurklasse ≡ 1; 0.70; if(duurklasse ≡ 2; 0.65; if(duurklasse ≡ 3; 0.55; 0.50)))
 k_mod = if(klimaat ≡ 3; k_mod_3; k_mod_12)
-k_def = if(klimaat ≡ 1; 0.60; if(klimaat ≡ 2; 0.80; 2.00))', kruipfactor (Tabel 3.2)'
+k_def = if(klimaat ≡ 1; 0.60; if(klimaat ≡ 2; 0.80; 2.00))
 'Hoogtefactor k_h op f_m,k — massief §3.2(3) bij h < 150 mm, gelijmd gelamineerd
 '§3.3(3) bij h < 600 mm. Op 71×221 is k_h = 1 voor massief en 1,10 voor GL.
 h_ruw = h_balk/(1 mm)', balkhoogte als kaal getal in mm'
@@ -120,20 +127,44 @@ f_m,k_eff = k_h*f_m,k', karakteristieke buigsterkte incl. hoogtefactor'
 #show
 
 '<h6>Gekozen profiel en materiaal</h6>
-b_balk
-h_balk
-f_m,k
-f_v,k
-E_mean
-k_mod
-k_def
-k_h
-f_m,k_eff
+b_balk'<span class="alleen-scherm"></span>'
+h_balk'<span class="alleen-scherm"></span>'
+f_m,k'<span class="kolom-4"></span>'
+f_v,k'<span class="kolom-4"></span>'
+E_mean'<span class="kolom-4"></span>'
+ρ_mean'<span class="kolom-4"></span>'
+γ_M'<span class="alleen-scherm"></span>'
+k_mod', Tabel 3.1<span class="kolom-4"></span>'
+k_def', Tabel 3.2<span class="kolom-4"></span>'
+k_h'<span class="kolom-4"></span>'
+f_m,k_eff'<span class="kolom-4"></span>'
 
-f_m,d = k_mod*f_m,k_eff/γ_M', rekenwaarde buigsterkte (incl. k_h)'
-f_v,d = k_mod*f_v,k/γ_M', rekenwaarde afschuifsterkte'
-f_m,d
-f_v,d
+f_m,d = k_mod*f_m,k_eff/γ_M'<span class="kolom-2"></span>'
+f_v,d = k_mod*f_v,k/γ_M'<span class="kolom-2"></span>'
+
+A = b_balk*h_balk'<span class="alleen-scherm"></span>'
+I_y = b_balk*h_balk^3/12', traagheidsmoment<span class="alleen-scherm"></span>'
+W_y = b_balk*h_balk^2/6', weerstandsmoment<span class="alleen-scherm"></span>'
+S_y = b_balk*h_balk^2/8', statisch moment (NL) voor afschuiving<span class="alleen-scherm"></span>'
+A', b·h<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+I_y'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+W_y'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+S_y'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+
+#hide
+ρ_xc = 550 kg/m^3
+g_xc = 10 m/s^2
+g_nb = 9.81 m/s^2
+g_balk_xc = A*ρ_xc*g_xc to kN/m
+g_balk_nb = A*ρ_mean*g_nb to kN/m
+g_balk = if(rekenwijze ≡ 1; g_balk_xc; g_balk_nb)
+#show
+#if rekenwijze ≡ 1
+    g_balk', eigen gewicht, A · 550 kg/m³ · 10 m/s²'
+#else
+    g_balk', eigen gewicht, A · ρ<sub>mean</sub> · 9,81 m/s² (EN 338)'
+#end if
+
 
 # 2. Geometrie en statisch schema
 
@@ -149,117 +180,63 @@ f_v,d
   Onderslag (belaste breedte) = 2
 @end
 
-L_d = ?*(mm)', dagmaat (vrije overspanning) — bij twee velden die van het eerste veld'
-a_opl = ?*(mm)', opleglengte per zijde'
-hoh = ?*(mm)', hart-op-hart afstand van de balken'
-t_vloer = ?*(mm)', dikte beschot'
-E_beschot = ?*(N/mm^2)', E-modulus beschot (E_0,ser,rep)'
-b_vloer = ?*(m)', breedte van het vloerveld — nodig voor de trillingstoets'
-
-'<i>De maten hieronder gelden alleen voor het gekozen schema; bij een ander
-'schema blijven ze buiten beschouwing.</i>
-a_over = ?*(mm)', lengte van het overstek — alleen bij schema 2'
-L_veld2 = ?*(mm)', theoretische overspanning van het tweede veld (hart op hart steunpunten) — alleen bij schema 3'
-b_sparing = ?*(mm)', breedte van de sparing = overspanning raveelbalk — schema 4'
-l_staart = ?*(mm)', staartlengte van de onderbroken balken — schema 4'
-
-'<i>Een onderslag draagt een strook vloer in plaats van één balk. Bij balken
-'die over twee gelijke velden doorlopen is die belaste breedte 1,25 × L, bij
-'losse balken aan weerszijden de som van de halve overspanningen. De
-'concentratiefactor k<sub>r</sub> is dan 1,0, en de trillingstoets (§9b) hoort
-'bij de balklaag zelf: bij een onderslag vervalt hij.</i>
-b_ond = ?*(m)', belaste breedte — alleen bij soort ligger "Onderslag"'
-
 #hide
-'De theoretische overspanning van het maatgevende veld. Bij een raveelbalk is
-'dat de breedte van de sparing tussen de wisselbalken, bij de overige schema's
-'de dagmaat plus de opleglengte.
-L_th_0 = L_d + a_opl
-L_th_rav = b_sparing + a_opl
-#show
-L_th = if(schema ≡ 4; L_th_rav; L_th_0)', theoretische overspanning'
-
-# 3. Belastingen
-
-'<i>Eén permanente en één veranderlijke vloerbelasting. Wat daarin thuishoort
-'bepaal je zelf: vloerafwerking, plafond, vaste scheidingswanden en overige
-'blijvende lasten tellen op in G<sub>k</sub>. Verplaatsbare scheidingswanden
-'horen volgens EN 1991-1-1 §6.3.1.2 juist bij de veranderlijke last Q<sub>k</sub>.
-'Het eigen gewicht van de balk zelf komt hier niet bij — dat rekent de sheet
-'in §4 zelf uit de doorsnede en de dichtheid.</i>
-
-G_k = ?*(kN/m^2)', permanente vloerbelasting'
-Q_k = ?*(kN/m^2)', veranderlijke vloerbelasting'
-F_k = ?*(kN)', geconcentreerde last'
-
-@select belastingcat "Belastingcategorie (Tabel NB.2 — A1.1)"
-  A — woon- en verblijfsruimtes = 1
-  B — kantoorruimtes = 2
-  C — bijeenkomstruimtes = 3
-  D — winkelruimtes = 4
-  E — opslagruimtes = 5
-  F — verkeersruimte, voertuig ≤ 25 kN = 6
-  G — verkeersruimte, 25 < voertuig ≤ 160 kN = 7
-  H — daken = 8
-  Sneeuwbelasting = 9
-  Windbelasting = 10
-  Zelf invullen = 11
-@end
-
-ψ_0_zelf = ?', ψ0 — alleen bij "zelf invullen"'
-ψ_2_zelf = ?', ψ2 — alleen bij "zelf invullen"'
-
-#hide
-'ψ-factoren uit NEN-EN 1990 Tabel NB.2 — A1.1. Dezelfde waarden als het
-'normblad "EN 1990 — Rekenwaarden" in de bibliotheek; één bron, zodat de
-'twee niet uit elkaar kunnen lopen.
-'   [categorie | ψ_0 | ψ_1 | ψ_2]
-ψ_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 |0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 |0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 |0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
+'Een onderslag: soort ligger 2, behalve bij een raveelbalk — die houdt zijn
+'belaste breedte l_staart/2, ook als de soort op "Onderslag" staat.
+ond = bool(ligger ≡ 2)*(1 - bool(schema ≡ 4))
+'Heeft de ligger een tweede deel: veld 2 of een overstek?
+s2 = bool(schema ≡ 2)
+s3 = bool(schema ≡ 3)
+s23 = s2 + s3
 #show
 
-ψ_0 = if(belastingcat ≡ 11; ψ_0_zelf; hlookup(ψ_tabel; belastingcat; 1; 2))
-ψ_1 = if(belastingcat ≡ 11; ψ_0_zelf; hlookup(ψ_tabel; belastingcat; 1; 3))
-ψ_2 = if(belastingcat ≡ 11; ψ_2_zelf; hlookup(ψ_tabel; belastingcat; 1; 4))
+'<i>Alleen de maten van het gekozen schema staan hieronder; de andere blijven buiten beschouwing.</i><span class="alleen-scherm"></span>
+'<span class="alleen-afdruk"></span>
+#if schema ≡ 4
+    b_sparing = ?*(mm)', breedte sparing<span class="alleen-scherm"> = overspanning van de raveelbalk</span><span class="kolom-3"></span>'
+    l_staart = ?*(mm)', staartlengte<span class="alleen-scherm"> van de onderbroken balken</span><span class="kolom-3"></span>'
+    #hide
+    L_d = 0 mm
+    #show
+#else
+    L_d = ?*(mm)', dagmaat<span class="alleen-scherm"> (vrije overspanning); bij twee velden die van het eerste veld</span><span class="kolom-3"></span>'
+    #hide
+    b_sparing = 0 mm
+    l_staart = 0 mm
+    #show
+#end if
+a_opl = ?*(mm)', opleglengte<span class="alleen-scherm"> per zijde</span><span class="kolom-3"></span>'
+#if schema ≡ 2
+    a_over = ?*(mm)', overstek<span class="kolom-3"></span>'
+#else
+    #hide
+    a_over = 0 mm
+    #show
+#end if
+#if schema ≡ 3
+    L_veld2 = ?*(mm)', veld 2<span class="alleen-scherm">, theoretisch (hart op hart steunpunten)</span><span class="kolom-3"></span>'
+#else
+    #hide
+    L_veld2 = 0 mm
+    #show
+#end if
+hoh = ?*(mm)', h.o.h. balken<span class="kolom-3"></span>'
+t_vloer = ?*(mm)', dikte beschot<span class="kolom-3"></span>'
+E_beschot = ?*(N/mm^2)', beschot<span class="alleen-scherm"> (E<sub>0,ser,rep</sub>)</span><span class="kolom-3"></span>'
+#if ond ≡ 1
+    b_ond = ?*(m)', belaste breedte onderslag<span class="kolom-3"></span>'
+    '<i>Een onderslag draagt een strook vloer in plaats van één balk: bij balken die over twee gelijke velden doorlopen 1,25 × L, bij losse balken aan weerszijden de som van de halve overspanningen. k<sub>r</sub> is dan 1,0 en de trillingstoets hoort bij de balklaag zelf.</i><span class="alleen-scherm"></span>
+#else
+    #hide
+    b_ond = 0 m
+    #show
+#end if
 
-Q_k_eff = Q_k', veranderlijke vloerbelasting'
-
-# 4. Doorsnede-eigenschappen
-
-A = b_balk*h_balk
-I_y = b_balk*h_balk^3/12', traagheidsmoment'
-W_y = b_balk*h_balk^2/6', weerstandsmoment'
-S_y = b_balk*h_balk^2/8', statisch moment (NL) voor afschuiving'
-
-'<i><b>Splitspunt — eigen gewicht (register punt 8).</b> De referentie-uitwerking rekent met een
-'vaste 550 kg/m³ én g = 10 m/s²; de norm met ρ<sub>mean</sub> uit EN 338 en
-'g = 9,81. Welke van de twee de conclusie stuurt staat in de projectgegevens.</i>
-#hide
-ρ_xc = 550 kg/m^3
-g_xc = 10 m/s^2
-g_nb = 9.81 m/s^2
-#show
-g_balk_xc = A*ρ_xc*g_xc to kN/m', eigen gewicht — de referentie-uitwerking'
-g_balk_nb = A*ρ_mean*g_nb to kN/m', eigen gewicht — EN 338'
-g_balk = if(rekenwijze ≡ 1; g_balk_xc; g_balk_nb)', gehanteerd eigen gewicht'
-
-# 4b. Rekenmodel van de ligger
-
-'<i>De ligger bestaat uit veld 1 met overspanning L<sub>th</sub> en eventueel een
-'tweede deel: het overstek (schema 2) of veld 2 (schema 3). Elk
-'belastinggeval in §7 is een set van hoogstens vier lasten: een verdeelde last
-'op veld 1 en op het tweede deel, een puntlast midden in veld 1 en een op het
-'tweede deel (midden in veld 2, of op het uiteinde van het overstek).</i>
-
-'<i>Bij twee velden volgt het steunmoment M<sub>B</sub> uit de
-'drie-momentenvergelijking. Voor een gelijkmatige last w<sub>1</sub> op veld 1
-'en w<sub>2</sub> op veld 2 is M<sub>B</sub> = (w<sub>1</sub>·L<sub>1</sub>³ +
-'w<sub>2</sub>·L<sub>2</sub>³) / (8·(L<sub>1</sub> + L<sub>2</sub>)), voor een
-'puntlast P midden in veld 1 M<sub>B</sub> = 3·P·L<sub>1</sub>² /
-'(16·(L<sub>1</sub> + L<sub>2</sub>)). Bij een overstek volgt het uit het
-'evenwicht van de kraag. Met M<sub>B</sub> bekend is elk veld een ligger op twee
-'steunpunten met een inklemmend eindmoment; reacties, moment, dwarskracht en
-'zakking volgen dan uit het evenwicht en de vormfuncties hieronder. Nagerekend
-'tegen een onafhankelijke numerieke balkberekening.</i>
+#if schema ≡ 4
+    L_th = b_sparing + a_opl', theoretische overspanning, sparing plus opleglengte'
+#else
+    L_th = L_d + a_opl', theoretische overspanning'
+#end if
 
 #hide
 'Lengtes in m, verdeelde lasten in kN/m en puntlasten in kN, als kaal getal:
@@ -322,21 +299,66 @@ Um2(w2; P2; Ms) = if(r_L2 > 0; 1000/EI_n*(5*w2*r_L2^4/384 + P2*r_L2^3/48 - Ms*r_
 Ue(w1; w2; P1; P2; Ms) = if(r_a > 0; 1000/EI_n*uod(r_a; w1; w2; P1; P2; Ms); 0)
 #show
 
-# 5. Belasting per balk
+# 3. Belastingen
 
-'<i>De belaste breedte hangt af van de soort ligger: bij een balk in een
-'balklaag is dat de hart-op-hart afstand, bij een onderslag de ingevoerde
-'strook vloer. Bij een raveelbalk is het de halve staartlengte: elke
-'onderbroken balk zet zijn oplegreactie op de raveelbalk af, wat per
-'strekkende meter neerkomt op een vloerstrook van l<sub>staart</sub>/2.</i>
-b_belast = if(schema ≡ 4; l_staart/2; if(ligger ≡ 2; b_ond; hoh)) to mm', belaste breedte per meter balk'
+'<i>Vloerafwerking, plafond, vaste scheidingswanden en overige blijvende lasten tellen op in G<sub>k</sub>; verplaatsbare scheidingswanden horen volgens EN 1991-1-1 §6.3.1.2 bij Q<sub>k</sub>. Het eigen gewicht van de balk rekent het blad in §1 zelf uit de doorsnede en de dichtheid.</i><span class="alleen-scherm"></span>
+G_k = ?*(kN/m^2)', permanent<span class="kolom-3"></span>'
+Q_k = ?*(kN/m^2)', veranderlijk<span class="kolom-3"></span>'
+F_k = ?*(kN)', geconcentreerd<span class="kolom-3"></span>'
 
-P_g,k = b_belast*G_k + g_balk to kN/m', lijnlast permanent op de balk'
-q_q,k = b_belast*Q_k_eff to kN/m', lijnlast veranderlijk'
+@select belastingcat "Belastingcategorie (Tabel NB.2 — A1.1)"
+  A — woon- en verblijfsruimtes = 1
+  B — kantoorruimtes = 2
+  C — bijeenkomstruimtes = 3
+  D — winkelruimtes = 4
+  E — opslagruimtes = 5
+  F — verkeersruimte, voertuig ≤ 25 kN = 6
+  G — verkeersruimte, 25 < voertuig ≤ 160 kN = 7
+  H — daken = 8
+  Sneeuwbelasting = 9
+  Windbelasting = 10
+  Zelf invullen = 11
+@end
 
-'<i>Een puntlast verdeelt zich via het beschot over meerdere balken. De
-'concentratiefactor k<sub>r</sub> bepaalt het deel dat op één balk komt
-'(NEN-EN 1995-1-1 NB). Stijver beschot (dikker) → kleinere k<sub>r</sub>.</i>
+#if belastingcat ≡ 11
+    ψ_0_zelf = ?', ψ<sub>0</sub><span class="kolom-3"></span>'
+    ψ_2_zelf = ?', ψ<sub>2</sub><span class="kolom-3"></span>'
+#else
+    #hide
+    ψ_0_zelf = 0
+    ψ_2_zelf = 0
+    #show
+#end if
+
+#hide
+'ψ-factoren uit NEN-EN 1990 Tabel NB.2 — A1.1. Dezelfde waarden als het
+'normblad "EN 1990 — Rekenwaarden" in de bibliotheek; één bron, zodat de
+'twee niet uit elkaar kunnen lopen.
+'   [categorie | ψ_0 | ψ_1 | ψ_2]
+ψ_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 |0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 |0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 |0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
+ψ_0 = if(belastingcat ≡ 11; ψ_0_zelf; hlookup(ψ_tabel; belastingcat; 1; 2))
+ψ_2 = if(belastingcat ≡ 11; ψ_2_zelf; hlookup(ψ_tabel; belastingcat; 1; 4))
+#show
+'<span class="alleen-afdruk"></span>
+#if belastingcat ≡ 11
+    ψ_0'<span class="alleen-scherm"></span>'
+    ψ_2'<span class="alleen-scherm"></span>'
+#else
+    ψ_0', Tabel NB.2 — A1.1<span class="kolom-3"></span>'
+    ψ_2', idem<span class="kolom-3"></span>'
+#end if
+
+'<h6>Lasten per balk<span class="alleen-scherm"></span></h6>
+'<i>De belaste breedte is bij een balk in een balklaag de hart-op-hart afstand en bij een onderslag de ingevoerde strook vloer. Bij een raveelbalk is het de halve staartlengte: elke onderbroken balk zet zijn oplegreactie op de raveelbalk af, per strekkende meter een vloerstrook van l<sub>staart</sub>/2.</i><span class="alleen-scherm"></span>
+#if schema ≡ 4
+    b_belast = l_staart/2 to mm', belaste breedte, halve staartlengte'
+#else if ligger ≡ 2
+    b_belast = b_ond to mm', belaste breedte van de onderslag'
+#else
+    b_belast = hoh to mm', belaste breedte, hart-op-hart afstand'
+#end if
+P_g,k = b_belast*G_k + g_balk to kN/m', permanent'
+q_q,k = b_belast*Q_k to kN/m', veranderlijk'
 
 #hide
 a_ref = 1000 mm
@@ -346,23 +368,22 @@ a_ref = 1000 mm
 EI_ref = 50000000', referentiestijfheid per mm plaatbreedte (N·mm)'
 t_ruw = t_vloer/(1 mm)
 E_vl = E_beschot/(1 N/mm^2)', E-modulus beschot, dimensieloos voor de deling'
-#show
-k_r_0 = 0.37 + 0.8*hoh/a_ref - E_vl*t_ruw^3/12/EI_ref
 'Bij een raveelbalk en bij een onderslag staat de puntlast rechtstreeks op de
-'ligger; er is dan geen balklaag waarover hij zich verdeelt, dus k<sub>r</sub> = 1.
-k_r = if(schema ≡ 4; 1; if(ligger ≡ 2; 1; min(1; k_r_0)))', concentratiefactor, afgetopt op 1,0 (NEN-EN 1995-1-1 NB)'
-F_Q,k = F_k*k_r to kN', effectieve puntlast op één balk'
-
-# 6. Doorsnede van de balklaag
-
-#hide
-'Een onderslag: soort ligger 2, behalve bij een raveelbalk — die houdt zijn
-'belaste breedte l_staart/2, ook als de soort op "Onderslag" staat.
-ond = bool(ligger ≡ 2)*(1 - bool(schema ≡ 4))
+'ligger; er is dan geen balklaag waarover hij zich verdeelt.
+kr_een = max(bool(schema ≡ 4); bool(ligger ≡ 2))
 #show
-#if ond ≡ 0
-'<i>Vloerhout (dikte t<sub>vloer</sub>) op de balken, hart-op-hart afstand hoh.</i>
+#if kr_een ≡ 1
+    k_r = 1'<span class="alleen-scherm">, puntlast rechtstreeks op de ligger</span><span class="kolom-2"></span>'
+#else
+    '<i>Een puntlast verdeelt zich via het beschot over meerdere balken. De concentratiefactor k<sub>r</sub> (NB) is het deel dat op één balk komt; stijver beschot geeft een kleinere k<sub>r</sub>.</i><span class="alleen-scherm"></span>
+    k_r_0 = 0.37 + 0.8*hoh/a_ref - E_vl*t_ruw^3/12/EI_ref
+    k_r = min(1; k_r_0)'<span class="alleen-scherm">, concentratiefactor (NB)</span><span class="kolom-2"></span>'
+#end if
+F_Q,k = F_k*k_r to kN'<span class="alleen-scherm">, puntlast op één balk</span><span class="kolom-2"></span>'
 
+'<h6>Doorsnede<span class="alleen-scherm"></span></h6>
+#if ond ≡ 0
+'<i>Vloerhout (dikte t<sub>vloer</sub>) op de balken, hart-op-hart afstand hoh. De doorsnede staat op schaal.</i><span class="alleen-scherm"></span>
 #hide
 'De doorsnede staat op schaal: balkbreedte, balkhoogte, beschotdikte en de
 'hart-op-hart afstand krijgen allemaal dezelfde factor, zodat de verhoudingen
@@ -390,7 +411,7 @@ vy = 46', bovenkant beschot'
 by = vy + vt', bovenkant balken'
 svgH = by + bh + 46
 #show
-'<svg viewbox="0 0 480 'svgH'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'svgH'px;">
+'<svg class="alleen-scherm" viewbox="0 0 480 'svgH'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'svgH'px;">
 '  <rect x="24" y="'vy'" width="432" height="'vt'" style="fill:#D9B382; stroke:#8B6F47; stroke-width:0.8"/>
 #for i = 0 : n_balk - 1
 '  <rect x="'x0 + i*gap'" y="'by'" width="'bw'" height="'bh'" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:0.8"/>
@@ -403,8 +424,7 @@ svgH = by + bh + 46
 '  <text x="456" y="'by + bh + 13'" text-anchor="end" style="fill:#8B6F47">balk 'b_balk' × 'h_balk'</text>
 '</svg>'
 #else
-'<i>Een onderslag: één ligger die de balken draagt, met een strook vloer van
-'b<sub>ond</sub> = 'b_ond' m per strekkende meter. De doorsnede staat op schaal.</i>
+'<i>Een onderslag: één ligger die de balken draagt, met een strook vloer van b<sub>ond</sub> = 'b_ond' m per strekkende meter. De doorsnede staat op schaal.</i><span class="alleen-scherm"></span>
 #hide
 'Hoogte begrenzen op 110 px, breedte op 200 px.
 o_sc = min(110/max(h_balk/(1 mm); 1); 200/max(b_balk/(1 mm); 1))
@@ -412,7 +432,7 @@ o_b = o_sc*b_balk/(1 mm)
 o_h = o_sc*h_balk/(1 mm)
 o_x = 240 - o_b/2
 #show
-'<svg viewbox="0 0 480 'o_h + 60'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'o_h + 60'px;">
+'<svg class="alleen-scherm" viewbox="0 0 480 'o_h + 60'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'o_h + 60'px;">
 '  <line x1="60" y1="24" x2="420" y2="24" style="stroke:#8B6F47; stroke-width:8; stroke-dasharray:12 30"/>
 '  <text x="60" y="12" style="fill:#8B6F47">balken op de onderslag, belaste breedte 'b_ond' m</text>
 '  <rect x="'o_x'" y="28" width="'o_b'" height="'o_h'" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:1"/>
@@ -420,13 +440,9 @@ o_x = 240 - o_b/2
 '</svg>'
 #end if
 
-# 6b. Statisch schema
-
+'<h6>Statisch schema<span class="alleen-scherm"></span></h6>
 #if schema ≡ 4
-    '<i>Plattegrond van de sparing. De onderbroken balken eindigen op de
-    'raveelbalk; die draagt zijn last af op de twee wisselbalken ernaast. De
-    'tekening staat op schaal.</i>
-
+    '<i>Plattegrond van de sparing, op schaal. De onderbroken balken eindigen op de raveelbalk; die draagt zijn last af op de twee wisselbalken ernaast en staat hieronder als ligger op twee steunpunten.</i><span class="alleen-scherm"></span>
     #hide
     'Tekengebied: de sparing plus anderhalve balkafstand aan weerszijden, en in
     'de lengte de staart plus de helft daarvan om de sparing zelf te tonen.
@@ -448,7 +464,7 @@ o_x = 240 - o_b/2
     p_n = max(1; floor(b_sparing/hoh) - 1)
     p_stap = p_spb/(p_n + 1)
     #show
-    '<svg viewbox="0 0 480 220" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:230px;">
+    '<svg class="alleen-scherm" viewbox="0 0 480 220" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:230px;">
     '  <!-- de muur waar de balken op liggen -->
     '  <line x1="'p_x0 - 10'" y1="'p_y0'" x2="'p_x0 + p_b + 10'" y2="'p_y0'" style="stroke:#374151; stroke-width:2"/>
     #for i = 0 : 20
@@ -482,16 +498,9 @@ o_x = 240 - o_b/2
     '  <circle cx="'p_x0 - 26'" cy="'p_rav'" r="2.6" style="fill:#1E40AF"/>
     '  <text x="'p_x0 - 30'" y="'(p_y0 + p_rav)/2'" text-anchor="end" style="fill:#1E40AF; font-weight:700">l<tspan baseline-shift="sub" font-size="8">staart</tspan> = 'l_staart'</text>
     '</svg>'
-
-    '<i>De raveelbalk overspant de sparing en draagt per strekkende meter een
-    'vloerstrook ter breedte van l<sub>staart</sub>/2. Hieronder staat hij als
-    'gewone ligger op twee steunpunten.</i>
 #end if
 
-'<i>De ligger met de lijnlasten en de geconcentreerde last uit §5. De lasten
-'zijn de karakteristieke waarden per balk; hoe ze over de velden verdeeld
-'worden staat in §7, de combinaties in §8. De tekening staat op schaal.</i>
-
+'<i>De ligger met de karakteristieke lasten per balk, op schaal; de verdeling over de velden staat in §4, de combinaties in §5.</i><span class="alleen-scherm"></span>
 #hide
 'Totale lengte: bij een overstek of een tweede veld hoort daar meer bij dan
 'alleen de overspanning van het eerste veld.
@@ -504,7 +513,7 @@ sy = 124', hoogte van de balk-as
 smid = (sx1 + sx2)/2
 s_stap = (sx3 - sx1)/14', pijlafstand in de lastbanden
 #show
-'<svg viewbox="0 0 480 212" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:232px;">
+'<svg class="alleen-scherm" viewbox="0 0 480 212" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:232px;">
 '  <!-- veranderlijke verdeelde last: bovenste band, met een regel eronder voor het label van de permanente last -->
 #if q_q,k > 0 kN/m
     #for i = 0 : 14
@@ -560,45 +569,21 @@ s_stap = (sx3 - sx1)/14', pijlafstand in de lastbanden
     '  <text x="'(sx2 + sx3)/2'" y="'sy + 48'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">L<tspan baseline-shift="sub" font-size="8">2</tspan> = 'L_veld2'</text>
 #end if
 '</svg>'
-'<span style="display:inline-block; width:14px; border-top:3px solid #475569; vertical-align:middle"></span>&nbsp;permanent &nbsp;&nbsp; <span style="display:inline-block; width:14px; border-top:3px solid #B45309; vertical-align:middle"></span>&nbsp;veranderlijk, verdeeld &nbsp;&nbsp; <span style="display:inline-block; width:14px; border-top:3px solid #B91C1C; vertical-align:middle"></span>&nbsp;veranderlijk, geconcentreerd
+'<span class="alleen-scherm"><span style="display:inline-block; width:14px; border-top:3px solid #475569; vertical-align:middle"></span>&nbsp;permanent &nbsp;&nbsp; <span style="display:inline-block; width:14px; border-top:3px solid #B45309; vertical-align:middle"></span>&nbsp;veranderlijk, verdeeld &nbsp;&nbsp; <span style="display:inline-block; width:14px; border-top:3px solid #B91C1C; vertical-align:middle"></span>&nbsp;veranderlijk, geconcentreerd</span>
 
-'<i>Permanent en veranderlijk staan apart omdat ze met verschillende partiële
-'factoren de UGT-combinatie in gaan (1,20 tegen 1,50) en in de BGT-combinaties
-'elk hun eigen ψ-factor krijgen.</i>'
+# 4. Belastinggevallen
 
-# 7. Belastinggevallen
-
-'<i>De lasten per balk gaan in afzonderlijke belastinggevallen de berekening
-'in, elk met zijn karakteristieke waarde:
-'<ul>
-'<li><b>BG1</b> — permanent P<sub>g,k</sub> op alle velden en het overstek;</li>
-'<li><b>BG2</b> — veranderlijk q<sub>q,k</sub> op veld 1;</li>
-'<li><b>BG3</b> — veranderlijk q<sub>q,k</sub> op veld 2, of op het overstek (alleen bij twee velden of een overstek);</li>
-'<li><b>BG4</b> — puntlast F<sub>Q,k</sub> midden in veld 1;</li>
-'<li><b>BG5</b> — puntlast F<sub>Q,k</sub> midden in veld 2, of op het uiteinde van het overstek (idem).</li>
-'</ul>
-'Bij twee velden en bij een overstek staat de veranderlijke last per deel apart
-'(schaakbordbelasting). Een belast buurveld of overstek trekt het veld via het
-'steunmoment omhoog; blijft dat deel onbelast, dan worden het veldmoment en de
-'doorbuiging van het veld groter dan onder volle belasting. De permanente last
-'gaat altijd met één factor over alle velden: volgens de NB bij tabel NB.4 —
-'A1.2(B) hoeft het onderscheid tussen gunstig en ongunstig alleen voor het
-'totaal van een soort belasting te worden gemaakt.</i>
-
-'<i>Per geval de kenmerkende waarden en de M-, V- en u-lijn, op de lengteschaal
-'van het statische schema. Het moment staat aan de trekzijde (een veldmoment
-'onder de as), de dwarskracht positief boven de as, de zakking omlaag
-'positief. Elke lijn heeft zijn eigen hoogteschaal.</i>
+'<i>Elk belastinggeval is een set van hoogstens vier lasten: een verdeelde last op veld 1 en op het tweede deel (veld 2 of het overstek), een puntlast midden in veld 1 en een op het tweede deel (midden in veld 2, of op het uiteinde van het overstek). BG1 is de permanente last op alle velden, BG2 en BG3 de veranderlijke last op veld 1 en op het tweede deel, BG4 en BG5 de puntlast.</i><span class="alleen-scherm"></span>
+#if s23 ≥ 1
+    '<i>De veranderlijke last staat per deel apart (schaakbordbelasting): een belast buurveld of overstek trekt het veld via het steunmoment omhoog, dus met dat deel onbelast worden het veldmoment en de doorbuiging van het veld groter dan onder volle belasting. De permanente last gaat met één factor over alle velden (NB bij tabel NB.4 — A1.2(B)).</i><span class="alleen-scherm"></span>
+    '<i>Het steunmoment M<sub>B</sub> volgt bij twee velden uit de drie-momentenvergelijking, bij een overstek uit het evenwicht van de kraag. Met M<sub>B</sub> bekend is elk veld een ligger op twee steunpunten met een inklemmend eindmoment; reacties, moment, dwarskracht en zakking volgen dan uit het evenwicht en de vormfuncties.</i><span class="alleen-scherm"></span>
+#end if
 
 #hide
 'Lasten als kaal getal in kN/m en kN.
 g_n = P_g,k/(1 kN/m)
 q_n = q_q,k/(1 kN/m)
 F_n = F_Q,k/(1 kN)
-s2 = bool(schema ≡ 2)
-s3 = bool(schema ≡ 3)
-'Heeft de ligger een tweede deel: veld 2 of een overstek?
-s23 = s2 + s3
 'De lastset van geval k: verdeelde last op veld 1 en op het tweede deel,
 'puntlast midden in veld 1 en op het tweede deel. Het overstek is voor de
 'schaakbordbelasting een tweede deel, net als veld 2: de veranderlijke last
@@ -625,8 +610,9 @@ sb(i) = r_L1 + (r_tot - r_L1)*((i - bool(i > 12))/24 + bool(i ≡ 13)*10^-6 + bo
 su(i) = r_L1*i/16
 sv(i) = r_L1 + (r_tot - r_L1)*i/16
 r_twee = bool(r_tot > r_L1*1.0001)
-'Lengteschaal van het statische schema (§6b).
+'Lengteschaal van het statische schema, en van de kaart per belastinggeval.
 lX(x) = sx1 + (sx3 - sx1)*x/r_tot
+bX(x) = 20 + 230*x/r_tot
 'Plaats van de puntlast op het tweede deel: midden in veld 2 of het uiteinde.
 r_xP2 = if(s2 ≡ 1; r_tot; r_L1 + r_L2/2)
 #show
@@ -634,15 +620,15 @@ r_xP2 = if(s2 ≡ 1; r_tot; r_L1 + r_L2/2)
 #for k = 1 : 5
 #if bg_aan(k) ≡ 1
     #if k ≡ 1
-        '<h6>BG1 — permanent: P<sub>g,k</sub> = 'P_g,k' kN/m op alle velden</h6>
+        '<h6>BG1 — permanent: P<sub>g,k</sub> = 'P_g,k' kN/m op alle velden<span class="alleen-scherm"></span></h6>
     #else if k ≡ 2
-        '<h6>BG2 — veranderlijk: q<sub>q,k</sub> = 'q_q,k' kN/m op veld 1</h6>
+        '<h6>BG2 — veranderlijk: q<sub>q,k</sub> = 'q_q,k' kN/m op veld 1<span class="alleen-scherm"></span></h6>
     #else if k ≡ 3
-        '<h6>BG3 — veranderlijk: q<sub>q,k</sub> = 'q_q,k' kN/m 'if(s2 ≡ 1; "op het overstek"; "op veld 2")'</h6>
+        '<h6>BG3 — veranderlijk: q<sub>q,k</sub> = 'q_q,k' kN/m 'if(s2 ≡ 1; "op het overstek"; "op veld 2")'<span class="alleen-scherm"></span></h6>
     #else if k ≡ 4
-        '<h6>BG4 — puntlast: F<sub>Q,k</sub> = 'F_Q,k' kN midden in veld 1</h6>
+        '<h6>BG4 — puntlast: F<sub>Q,k</sub> = 'F_Q,k' kN midden in veld 1<span class="alleen-scherm"></span></h6>
     #else
-        '<h6>BG5 — puntlast: F<sub>Q,k</sub> = 'F_Q,k' kN 'if(s2 ≡ 1; "op het uiteinde van het overstek"; "midden in veld 2")'</h6>
+        '<h6>BG5 — puntlast: F<sub>Q,k</sub> = 'F_Q,k' kN 'if(s2 ≡ 1; "op het uiteinde van het overstek"; "midden in veld 2")'<span class="alleen-scherm"></span></h6>
     #end if
     #hide
     b_w1 = bw1(k)
@@ -658,37 +644,37 @@ r_xP2 = if(s2 ≡ 1; r_tot; r_L1 + r_L2/2)
     u_veld2 = Um2(b_w2; b_P2; b_m)*mm
     u_eind = Ue(b_w1; b_w2; b_P1; b_P2; b_m)*mm
     #show
-    M_veld1', grootste veldmoment in veld 1'
+    M_veld1', grootste veldmoment in veld 1<span class="alleen-scherm"></span>'
     #if s2 + s3 ≥ 1
-        M_steun', steunmoment, trek aan de bovenzijde'
+        M_steun', steunmoment, trek aan de bovenzijde<span class="alleen-scherm"></span>'
     #end if
     #if s3 ≡ 1
-        M_veld2', grootste veldmoment in veld 2'
+        M_veld2', grootste veldmoment in veld 2<span class="alleen-scherm"></span>'
     #end if
-    V_max', grootste dwarskracht'
-    u_veld1', zakking midden in veld 1'
+    V_max', grootste dwarskracht<span class="alleen-scherm"></span>'
+    u_veld1', zakking midden in veld 1<span class="alleen-scherm"></span>'
     #if s3 ≡ 1
-        u_veld2', zakking midden in veld 2'
+        u_veld2', zakking midden in veld 2<span class="alleen-scherm"></span>'
     #end if
     #if s2 ≡ 1
-        u_eind', zakking van het uiteinde van het overstek'
+        u_eind', zakking van het uiteinde van het overstek<span class="alleen-scherm"></span>'
     #end if
     #hide
-    'Hoogteschalen van de drie lijnen van dit geval.
+    'Hoogteschalen van de drie lijnen van dit geval, in een kaart van 260 breed.
     b_Mv1 = M_veld1/(1 kN*m)
     b_Mv2 = M_veld2/(1 kN*m)
     b_Mp = max(b_Mv1; b_Mv2; 0)
     b_Mn = max(b_m; 0)
-    b_sM = 36/max(b_Mp + b_Mn; 0.00001)
-    b_yM = 30 + b_Mn*b_sM
+    b_sM = 23/max(b_Mp + b_Mn; 0.00001)
+    b_yM = 32 + b_Mn*b_sM
     b_va = v1(0; b_w1; b_P1; b_m)
     b_vb = v1(r_L1; b_w1; b_P1; b_m)
     b_vc = v2(r_tot - r_L1; b_w2; b_P2; b_m)
     b_vd = v2(0; b_w2; b_P2; b_m)
     b_Vp = max(b_va; b_vc*r_twee; 0)
     b_Vn = max(-b_vb; -b_vd*r_twee; 0)
-    b_sV = 36/max(b_Vp + b_Vn; 0.00001)
-    b_yV = b_yM + b_Mp*b_sM + 26 + b_Vp*b_sV
+    b_sV = 20/max(b_Vp + b_Vn; 0.00001)
+    b_yV = b_yM + b_Mp*b_sM + 19 + b_Vp*b_sV
     b_up = 0
     b_un = 0
     #for i = 0 : 16
@@ -697,9 +683,9 @@ r_xP2 = if(s2 ≡ 1; r_tot; r_L1 + r_L2/2)
     b_up = max(b_up; b_u1; b_u2*r_twee)
     b_un = max(b_un; -b_u1; -b_u2*r_twee)
     #loop
-    b_sU = 28/max(b_up + b_un; 0.00001)
-    b_yU = b_yV + b_Vn*b_sV + 26 + b_un*b_sU
-    b_H = b_yU + b_up*b_sU + 22
+    b_sU = 16/max(b_up + b_un; 0.00001)
+    b_yU = b_yV + b_Vn*b_sV + 19 + b_un*b_sU
+    b_H = b_yU + b_up*b_sU + 14
     b_u1m = Um1(b_w1; b_P1; b_m)
     b_u2m = Um2(b_w2; b_P2; b_m)
     b_ue = Ue(b_w1; b_w2; b_P1; b_P2; b_m)
@@ -707,112 +693,125 @@ r_xP2 = if(s2 ≡ 1; r_tot; r_L1 + r_L2/2)
     b_x2 = r_tot - t2t(b_w2; b_P2; b_m)
     b_kleur = if(k ≡ 1; "#475569"; if(k ≤ 3; "#B45309"; "#B91C1C"))
     #show
-    '<svg viewbox="0 0 480 'b_H'" xmlns="http://www.w3.org/2000/svg" style="font-size:10px; width:100%; max-height:'b_H + 10'px;">
+    '<svg class="bg-kaart" viewbox="0 0 260 'b_H'" xmlns="http://www.w3.org/2000/svg" style="font-size:10px; width:100%; max-height:'1.6*b_H'px;">
+    '  <!-- de kop staat op het scherm erboven; op papier staan de kaarten naast elkaar en draagt de kaart hem zelf -->
+    #if k ≡ 1
+        '  <text class="alleen-afdruk" x="2" y="9" style="fill:#374151; font-weight:700">BG1 · permanent, P<tspan baseline-shift="sub" font-size="7">g,k</tspan> = 'P_g,k' kN/m</text>
+    #else if k ≡ 2
+        '  <text class="alleen-afdruk" x="2" y="9" style="fill:#374151; font-weight:700">BG2 · q<tspan baseline-shift="sub" font-size="7">q,k</tspan> = 'q_q,k' kN/m op veld 1</text>
+    #else if k ≡ 3
+        '  <text class="alleen-afdruk" x="2" y="9" style="fill:#374151; font-weight:700">BG3 · q<tspan baseline-shift="sub" font-size="7">q,k</tspan> = 'q_q,k' kN/m 'if(s2 ≡ 1; "op het overstek"; "op veld 2")'</text>
+    #else if k ≡ 4
+        '  <text class="alleen-afdruk" x="2" y="9" style="fill:#374151; font-weight:700">BG4 · F<tspan baseline-shift="sub" font-size="7">Q,k</tspan> = 'F_Q,k' kN midden in veld 1</text>
+    #else
+        '  <text class="alleen-afdruk" x="2" y="9" style="fill:#374151; font-weight:700">BG5 · F<tspan baseline-shift="sub" font-size="7">Q,k</tspan> = 'F_Q,k' kN 'if(s2 ≡ 1; "op het uiteinde"; "midden in veld 2")'</text>
+    #end if
     '  <!-- de belasting van dit geval: een balk boven de belaste velden, een pijl voor de puntlast -->
     #if b_w1 > 0
-        '  <rect x="'lX(0)'" y="6" width="'lX(r_L1) - lX(0)'" height="5" style="fill:'b_kleur'; opacity:0.6"/>
+        '  <rect x="'bX(0)'" y="15" width="'bX(r_L1) - bX(0)'" height="4" style="fill:'b_kleur'; opacity:0.6"/>
     #end if
     #if b_w2*r_twee > 0
-        '  <rect x="'lX(r_L1)'" y="6" width="'lX(r_tot) - lX(r_L1)'" height="5" style="fill:'b_kleur'; opacity:0.6"/>
+        '  <rect x="'bX(r_L1)'" y="15" width="'bX(r_tot) - bX(r_L1)'" height="4" style="fill:'b_kleur'; opacity:0.6"/>
     #end if
     #if b_P1 > 0
-        '  <polygon points="'lX(r_L1/2)','17' 'lX(r_L1/2) - 4.5','5' 'lX(r_L1/2) + 4.5','5'" style="fill:'b_kleur'"/>
+        '  <polygon points="'bX(r_L1/2)','25' 'bX(r_L1/2) - 4','14' 'bX(r_L1/2) + 4','14'" style="fill:'b_kleur'"/>
     #end if
     #if b_P2 > 0
-        '  <polygon points="'lX(r_xP2)','17' 'lX(r_xP2) - 4.5','5' 'lX(r_xP2) + 4.5','5'" style="fill:'b_kleur'"/>
+        '  <polygon points="'bX(r_xP2)','25' 'bX(r_xP2) - 4','14' 'bX(r_xP2) + 4','14'" style="fill:'b_kleur'"/>
     #end if
     '  <!-- opleggingen: stippellijnen door de drie lijnen -->
-    '  <line x1="'lX(0)'" y1="20" x2="'lX(0)'" y2="'b_H - 14'" style="stroke:#d1d5db; stroke-width:0.8; stroke-dasharray:3 3"/>
-    '  <line x1="'lX(r_L1)'" y1="20" x2="'lX(r_L1)'" y2="'b_H - 14'" style="stroke:#d1d5db; stroke-width:0.8; stroke-dasharray:3 3"/>
+    '  <line x1="'bX(0)'" y1="26" x2="'bX(0)'" y2="'b_H - 12'" style="stroke:#d1d5db; stroke-width:0.8; stroke-dasharray:3 3"/>
+    '  <line x1="'bX(r_L1)'" y1="26" x2="'bX(r_L1)'" y2="'b_H - 12'" style="stroke:#d1d5db; stroke-width:0.8; stroke-dasharray:3 3"/>
     #if s3 ≡ 1
-        '  <line x1="'lX(r_tot)'" y1="20" x2="'lX(r_tot)'" y2="'b_H - 14'" style="stroke:#d1d5db; stroke-width:0.8; stroke-dasharray:3 3"/>
+        '  <line x1="'bX(r_tot)'" y1="26" x2="'bX(r_tot)'" y2="'b_H - 12'" style="stroke:#d1d5db; stroke-width:0.8; stroke-dasharray:3 3"/>
     #end if
     '  <!-- M-lijn, aan de trekzijde -->
-    '  <polygon points="'lX(0)','b_yM'
+    '  <polygon points="'bX(0)','b_yM'
     #for i = 0 : 25
-    ' 'lX(sa(i))','b_yM + b_sM*Mx(sa(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+    ' 'bX(sa(i))','b_yM + b_sM*Mx(sa(i); b_w1; b_w2; b_P1; b_P2; b_m)'
     #loop
     #if r_twee ≡ 1
         #for i = 0 : 25
-        ' 'lX(sb(i))','b_yM + b_sM*Mx(sb(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+        ' 'bX(sb(i))','b_yM + b_sM*Mx(sb(i); b_w1; b_w2; b_P1; b_P2; b_m)'
         #loop
     #end if
-    ' 'lX(r_tot)','b_yM'" style="fill:rgba(239,68,68,0.20); stroke:#dc2626; stroke-width:1.4; stroke-linejoin:round"/>
-    '  <line x1="'lX(0) - 6'" y1="'b_yM'" x2="'lX(r_tot) + 6'" y2="'b_yM'" style="stroke:#374151; stroke-width:1"/>
-    '  <text x="8" y="'b_yM + 4'" style="fill:#dc2626; font-weight:700">M [kNm]</text>
+    ' 'bX(r_tot)','b_yM'" style="fill:rgba(239,68,68,0.20); stroke:#dc2626; stroke-width:1.2; stroke-linejoin:round"/>
+    '  <line x1="'bX(0) - 4'" y1="'b_yM'" x2="'bX(r_tot) + 4'" y2="'b_yM'" style="stroke:#374151; stroke-width:0.8"/>
+    '  <text x="2" y="'b_yM + 3.5'" style="fill:#dc2626; font-weight:700">M</text>
     #if b_Mv1 > 0.00001
-        '  <text x="'lX(b_x1)'" y="'b_yM + b_sM*b_Mv1 + 11'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_Mv1'</text>
+        '  <text x="'bX(b_x1)'" y="'b_yM + b_sM*b_Mv1 + 10'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_Mv1'</text>
     #end if
     #if b_Mn > 0.00001
-        '  <text x="'lX(r_L1)'" y="'b_yM - b_sM*b_Mn - 4'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'-b_Mn'</text>
+        '  <text x="'bX(r_L1)'" y="'b_yM - b_sM*b_Mn - 3'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'-b_Mn'</text>
     #end if
     #if b_Mv2 > 0.00001
-        '  <text x="'lX(b_x2)'" y="'b_yM + b_sM*b_Mv2 + 11'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_Mv2'</text>
+        '  <text x="'bX(b_x2)'" y="'b_yM + b_sM*b_Mv2 + 10'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_Mv2'</text>
     #end if
     '  <!-- V-lijn -->
-    '  <polygon points="'lX(0)','b_yV'
+    '  <polygon points="'bX(0)','b_yV'
     #for i = 0 : 25
-    ' 'lX(sa(i))','b_yV - b_sV*Vx(sa(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+    ' 'bX(sa(i))','b_yV - b_sV*Vx(sa(i); b_w1; b_w2; b_P1; b_P2; b_m)'
     #loop
     #if r_twee ≡ 1
         #for i = 0 : 25
-        ' 'lX(sb(i))','b_yV - b_sV*Vx(sb(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+        ' 'bX(sb(i))','b_yV - b_sV*Vx(sb(i); b_w1; b_w2; b_P1; b_P2; b_m)'
         #loop
     #end if
-    ' 'lX(r_tot)','b_yV'" style="fill:rgba(59,130,246,0.18); stroke:#2563eb; stroke-width:1.4; stroke-linejoin:round"/>
-    '  <line x1="'lX(0) - 6'" y1="'b_yV'" x2="'lX(r_tot) + 6'" y2="'b_yV'" style="stroke:#374151; stroke-width:1"/>
-    '  <text x="8" y="'b_yV + 4'" style="fill:#2563eb; font-weight:700">V [kN]</text>
-    '  <text x="'lX(0) + 3'" y="'b_yV - b_sV*b_va + if(b_va < 0; 11; -4)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_va'</text>
-    '  <text x="'lX(r_L1) - 3'" y="'b_yV - b_sV*b_vb + if(b_vb < 0; 11; -4)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_vb'</text>
+    ' 'bX(r_tot)','b_yV'" style="fill:rgba(59,130,246,0.18); stroke:#2563eb; stroke-width:1.2; stroke-linejoin:round"/>
+    '  <line x1="'bX(0) - 4'" y1="'b_yV'" x2="'bX(r_tot) + 4'" y2="'b_yV'" style="stroke:#374151; stroke-width:0.8"/>
+    '  <text x="2" y="'b_yV + 3.5'" style="fill:#2563eb; font-weight:700">V</text>
+    '  <text x="'bX(0) + 2'" y="'b_yV - b_sV*b_va + if(b_va < 0; 10; -3)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_va'</text>
+    '  <text x="'bX(r_L1) - 2'" y="'b_yV - b_sV*b_vb + if(b_vb < 0; 10; -3)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_vb'</text>
     #if r_twee ≡ 1
-        '  <text x="'lX(r_L1) + 3'" y="'b_yV - b_sV*b_vc + if(b_vc < 0; 11; -4)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_vc'</text>
+        '  <text x="'bX(r_L1) + 2'" y="'b_yV - b_sV*b_vc + if(b_vc < 0; 10; -3)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_vc'</text>
     #end if
     #if s3 ≡ 1
-        '  <text x="'lX(r_tot) - 3'" y="'b_yV - b_sV*b_vd + if(b_vd < 0; 11; -4)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_vd'</text>
+        '  <text x="'bX(r_tot) - 2'" y="'b_yV - b_sV*b_vd + if(b_vd < 0; 10; -3)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_vd'</text>
     #end if
     '  <!-- zakkingslijn, omlaag positief -->
     '  <polyline points="
     #for i = 0 : 16
-    ' 'lX(su(i))','b_yU + b_sU*Ux(su(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+    ' 'bX(su(i))','b_yU + b_sU*Ux(su(i); b_w1; b_w2; b_P1; b_P2; b_m)'
     #loop
     #if r_twee ≡ 1
         #for i = 1 : 16
-        ' 'lX(sv(i))','b_yU + b_sU*Ux(sv(i); b_w1; b_w2; b_P1; b_P2; b_m)'
+        ' 'bX(sv(i))','b_yU + b_sU*Ux(sv(i); b_w1; b_w2; b_P1; b_P2; b_m)'
         #loop
     #end if
-    '" style="fill:none; stroke:#2563eb; stroke-width:1.8; stroke-linejoin:round"/>
-    '  <line x1="'lX(0) - 6'" y1="'b_yU'" x2="'lX(r_tot) + 6'" y2="'b_yU'" style="stroke:#9ca3af; stroke-width:1; stroke-dasharray:4 3"/>
-    '  <text x="8" y="'b_yU + 4'" style="fill:#2563eb; font-weight:700">u [mm]</text>
-    '  <text x="'lX(r_L1/2)'" y="'b_yU + b_sU*b_u1m + if(b_u1m < 0; -5; 12)'" text-anchor="middle" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_u1m'</text>
+    '" style="fill:none; stroke:#2563eb; stroke-width:1.5; stroke-linejoin:round"/>
+    '  <line x1="'bX(0) - 4'" y1="'b_yU'" x2="'bX(r_tot) + 4'" y2="'b_yU'" style="stroke:#9ca3af; stroke-width:0.8; stroke-dasharray:4 3"/>
+    '  <text x="2" y="'b_yU + 3.5'" style="fill:#2563eb; font-weight:700">u</text>
+    '  <text x="'bX(r_L1/2)'" y="'b_yU + b_sU*b_u1m + if(b_u1m < 0; -4; 11)'" text-anchor="middle" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_u1m'</text>
     #if s3 ≡ 1
-        '  <text x="'lX(r_L1 + r_L2/2)'" y="'b_yU + b_sU*b_u2m + if(b_u2m < 0; -5; 12)'" text-anchor="middle" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_u2m'</text>
+        '  <text x="'bX(r_L1 + r_L2/2)'" y="'b_yU + b_sU*b_u2m + if(b_u2m < 0; -4; 11)'" text-anchor="middle" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_u2m'</text>
     #end if
     #if s2 ≡ 1
-        '  <text x="'lX(r_tot) - 3'" y="'b_yU + b_sU*b_ue + if(b_ue < 0; -5; 12)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_ue'</text>
+        '  <text x="'bX(r_tot) - 2'" y="'b_yU + b_sU*b_ue + if(b_ue < 0; -4; 11)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke">'b_ue'</text>
     #end if
     '  <!-- opleggingen onder de zakkingslijn -->
-    '  <polygon points="'lX(0)','b_yU' 'lX(0) - 5','b_yU + 8' 'lX(0) + 5','b_yU + 8'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
-    '  <polygon points="'lX(r_L1)','b_yU' 'lX(r_L1) - 5','b_yU + 8' 'lX(r_L1) + 5','b_yU + 8'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    '  <polygon points="'bX(0)','b_yU' 'bX(0) - 4','b_yU + 6' 'bX(0) + 4','b_yU + 6'" style="fill:#fbbf24; stroke:#92400e; stroke-width:0.8"/>
+    '  <polygon points="'bX(r_L1)','b_yU' 'bX(r_L1) - 4','b_yU + 6' 'bX(r_L1) + 4','b_yU + 6'" style="fill:#fbbf24; stroke:#92400e; stroke-width:0.8"/>
     #if s3 ≡ 1
-        '  <polygon points="'lX(r_tot)','b_yU' 'lX(r_tot) - 5','b_yU + 8' 'lX(r_tot) + 5','b_yU + 8'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+        '  <polygon points="'bX(r_tot)','b_yU' 'bX(r_tot) - 4','b_yU + 6' 'bX(r_tot) + 4','b_yU + 6'" style="fill:#fbbf24; stroke:#92400e; stroke-width:0.8"/>
     #end if
     '</svg>'
 #end if
 #loop
+'M aan de trekzijde (kNm), V positief boven de as (kN), u omlaag positief (mm); elke lijn op een eigen schaal, de lasten karakteristiek.
 
-# 8. Combinaties
+# 5. Combinaties
 
-'<i>De gevolgklasse staat in de projectgegevens en geldt voor alle bladen van
-'dit project. De partiële factoren komen uit tabel NB.4 (CC2) of NB.5 (CC1 en
-'CC3) van NEN-EN 1990; ψ<sub>0</sub> en ψ<sub>2</sub> horen bij de
-'belastingcategorie uit §3. Volgens de NB bij tabel A1.2(B) gelden 6.10a en
-'6.10b allebei: per UGT-combinatie telt de ongunstigste van de twee.</i>
-γ_G = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))', blijvend, ongunstig — 6.10b'
-γ_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))', veranderlijk — 6.10b'
-γ_G,a = if(CC ≡ 1; 1.2; if(CC ≡ 3; 1.5; 1.35))', blijvend, ongunstig — 6.10a'
-γ_Q,a = γ_Q*ψ_0', veranderlijk — 6.10a, γ_Q·ψ_0'
-q_Ed = γ_G*P_g,k + γ_Q*q_q,k to kN/m', rekenwaarde lijnlast op een belast veld (6.10b)'
-g_Ed = γ_G*P_g,k to kN/m', rekenwaarde lijnlast op een onbelast veld (6.10b)'
+'Gevolgklasse CC'CC', factoren uit NEN-EN 1990 tabel 'if(CC ≡ 2; "NB.4"; "NB.5")'; per UGT-combinatie telt de ongunstigste van 6.10a en 6.10b<span class="alleen-scherm"> (NB bij tabel A1.2(B)). De ψ-factoren horen bij de belastingcategorie uit §3</span>.
+#hide
+γ_G = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))
+γ_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))
+γ_G,a = if(CC ≡ 1; 1.2; if(CC ≡ 3; 1.5; 1.35))
+γ_Q,a = γ_Q*ψ_0
+#show
+γ_G', 6.10b<span class="kolom-4"></span>'
+γ_Q', 6.10b<span class="kolom-4"></span>'
+γ_G,a', 6.10a<span class="kolom-4"></span>'
+γ_Q,a', γ<sub>Q</sub>·ψ<sub>0</sub><span class="kolom-4"></span>'
 
 #hide
 'Lastset per UGT-combinatie, als optelling van de belastinggevallen. Rij r
@@ -905,16 +904,8 @@ vet_a(x; y) = if(x > y; 700; 400)
 vet_b(x; y) = if(x ≥ y; 700; 400)
 #show
 
-'<h6>8.1 Zakking per veld</h6>
-'<i>De combinaties voor de doorbuiging tellen de zakkingen van de
-'belastinggevallen op in één punt per veld: waar de eindstand w<sub>fin</sub>
-'het grootst is. Dat punt is langs de hele lijn van het veld gezocht, in 49
-'punten en daarna verfijnd met een parabool door het hoogste punt en zijn
-'buren. Bij een inklemmend eindmoment (schema 2 en 3) ligt het naast het
-'midden. Komt een veld over de hele lengte omhoog, dan ligt het punt op de
-'oplegging en is de zakking daar nul. Bij een overstek telt daarnaast het
-'uiteinde, met de veranderlijke last op het overstek (BG3, of BG5 voor de
-'puntlast).</i>
+'<h6>5.1 Zakking per veld, in het punt met de grootste eindstand w<sub>fin</sub> (x vanaf de eerste oplegging)</h6>
+'<i>Dat punt is langs de hele lijn van het veld gezocht, in 49 punten en daarna verfijnd met een parabool door het hoogste punt en zijn buren. Bij een inklemmend eindmoment (schema 2 en 3) ligt het naast het midden; komt een veld over de hele lengte omhoog, dan ligt het op de oplegging en is de zakking daar nul.</i><span class="alleen-scherm"></span>
 #hide
 'Zakking van geval k op afstand x van het begin, en de eindstand onder BG1
 'plus het veranderlijke geval k: (1 + k_def)·u_g + (1 + ψ_2·k_def)·u_var.
@@ -943,7 +934,7 @@ x_qr = xtop(i_q; r_L1/48; 0; 2)
 x_q = if(Ufk(x_qr; 2) ≥ z_q; x_qr; r_L1*i_q/48)
 x_Fr = xtop(i_F; r_L1/48; 0; 4)
 x_F = if(Ufk(x_Fr; 4) ≥ z_F; x_Fr; r_L1*i_F/48)
-'In de norm-stand telt de puntlast als die de grootste eindstand geeft (register punt 9).
+'In de norm-stand telt de puntlast als die de grootste eindstand geeft.
 kies_F1 = bool(rekenwijze ≡ 0)*bool(Ufk(x_F; 4) > Ufk(x_q; 2))
 r_x1 = if(kies_F1 ≡ 1; x_F; x_q)
 'Het tweede deel: bij een overstek het uiteinde, bij twee velden hieronder gezocht.
@@ -971,20 +962,38 @@ r_x2 = r_tot
     r_x2 = if(bool(rekenwijze ≡ 0)*bool(Ufk(x_F; 5) > Ufk(x_q; 3)) ≡ 1; x_F; x_q)
     #show
 #end if
-x_w1 = r_x1*m', plaats in veld 1, vanaf de eerste oplegging'
-u_g,k = Ubg(r_x1; 1)*mm', veld 1 — BG1, permanent'
-u_q,k = Ubg(r_x1; 2)*mm', veld 1 — BG2, veranderlijk'
-u_Q,k = Ubg(r_x1; 4)*mm', veld 1 — BG4, puntlast'
+#hide
+x_w1 = r_x1*m
+u_g,k = Ubg(r_x1; 1)*mm
+u_q,k = Ubg(r_x1; 2)*mm
+u_Q,k = Ubg(r_x1; 4)*mm
+#show
+x_w1', veld 1<span class="kolom-4"></span>'
+u_g,k'<span class="alleen-scherm">, BG1</span><span class="kolom-4"></span>'
+u_q,k'<span class="alleen-scherm">, BG2</span><span class="kolom-4"></span>'
+u_Q,k'<span class="alleen-scherm">, BG4</span><span class="kolom-4"></span>'
 #if s3 ≡ 1
-    x_w2 = r_x2*m', plaats in veld 2, vanaf de eerste oplegging'
-    u_g,k,2 = Ubg(r_x2; 1)*mm', veld 2 — BG1, permanent'
-    u_q,k,2 = Ubg(r_x2; 3)*mm', veld 2 — BG3, veranderlijk'
-    u_Q,k,2 = Ubg(r_x2; 5)*mm', veld 2 — BG5, puntlast'
+    #hide
+    x_w2 = r_x2*m
+    u_g,k,2 = Ubg(r_x2; 1)*mm
+    u_q,k,2 = Ubg(r_x2; 3)*mm
+    u_Q,k,2 = Ubg(r_x2; 5)*mm
+    #show
+    x_w2', veld 2<span class="kolom-4"></span>'
+    u_g,k,2'<span class="alleen-scherm">, BG1</span><span class="kolom-4"></span>'
+    u_q,k,2'<span class="alleen-scherm">, BG3</span><span class="kolom-4"></span>'
+    u_Q,k,2'<span class="alleen-scherm">, BG5</span><span class="kolom-4"></span>'
 #else if s2 ≡ 1
-    x_w2 = r_x2*m', uiteinde van het overstek, vanaf de eerste oplegging'
-    u_g,k,2 = Ubg(r_x2; 1)*mm', uiteinde overstek — BG1, permanent'
-    u_q,k,2 = Ubg(r_x2; 3)*mm', uiteinde overstek — BG3, veranderlijk op het overstek'
-    u_Q,k,2 = Ubg(r_x2; 5)*mm', uiteinde overstek — BG5, puntlast op het uiteinde'
+    #hide
+    x_w2 = r_x2*m
+    u_g,k,2 = Ubg(r_x2; 1)*mm
+    u_q,k,2 = Ubg(r_x2; 3)*mm
+    u_Q,k,2 = Ubg(r_x2; 5)*mm
+    #show
+    x_w2', uiteinde<span class="kolom-4"></span>'
+    u_g,k,2'<span class="alleen-scherm">, BG1</span><span class="kolom-4"></span>'
+    u_q,k,2'<span class="alleen-scherm">, BG3</span><span class="kolom-4"></span>'
+    u_Q,k,2'<span class="alleen-scherm">, BG5</span><span class="kolom-4"></span>'
 #else
     #hide
     x_w2 = r_x2*m
@@ -993,14 +1002,29 @@ u_Q,k = Ubg(r_x1; 4)*mm', veld 1 — BG4, puntlast'
     u_Q,k,2 = 0 mm
     #show
 #end if
-'Splitspunt — welke veranderlijke doorbuiging meetelt (register punt 9).
-u_var_xc = u_q,k to mm', de referentie-uitwerking: alleen de gelijkmatig verdeelde variant'
-u_var_nb = max(u_q,k; u_Q,k) to mm', de norm: de maatgevende van de twee'
-u_var = if(rekenwijze ≡ 1; u_var_xc; u_var_nb) to mm', gehanteerd, veld 1'
+#hide
+'Welke veranderlijke doorbuiging meetelt: in de referentiestand alleen de
+'gelijkmatig verdeelde last, in de norm-stand de maatgevende van de twee.
+u_var_xc = u_q,k to mm
+u_var_nb = max(u_q,k; u_Q,k) to mm
+u_var = if(rekenwijze ≡ 1; u_var_xc; u_var_nb) to mm
+#show
+#if rekenwijze ≡ 1
+    u_var', veranderlijk, veld 1: u<sub>q,k</sub><span class="alleen-scherm"></span>'
+#else
+    u_var', veranderlijk, veld 1: de grootste van u<sub>q,k</sub> en u<sub>Q,k</sub><span class="alleen-scherm"></span>'
+#end if
 #if s23 ≥ 1
-    u_var2_xc = u_q,k,2 to mm', idem tweede deel, de referentie-uitwerking'
-    u_var2_nb = max(u_q,k,2; u_Q,k,2) to mm', idem tweede deel, de norm'
-    u_var,2 = if(rekenwijze ≡ 1; u_var2_xc; u_var2_nb) to mm', gehanteerd, tweede deel'
+    #hide
+    u_var2_xc = u_q,k,2 to mm
+    u_var2_nb = max(u_q,k,2; u_Q,k,2) to mm
+    u_var,2 = if(rekenwijze ≡ 1; u_var2_xc; u_var2_nb) to mm
+    #show
+    #if rekenwijze ≡ 1
+        u_var,2', idem tweede deel: u<sub>q,k,2</sub><span class="alleen-scherm"></span>'
+    #else
+        u_var,2', idem tweede deel, de grootste van de twee<span class="alleen-scherm"></span>'
+    #end if
 #else
     #hide
     u_var,2 = 0 mm
@@ -1012,217 +1036,366 @@ pv1 = bool(u_var > u_q,k)
 pv2 = bool(u_var,2 > u_q,k,2)
 #show
 
-'<h6>8.2 Combinatietabel</h6>
-'<i>Per combinatie de factor waarmee elk belastinggeval meetelt, en rechts de
-'uitkomst: bij de UGT het maatgevende moment en de grootste dwarskracht, bij de
-'BGT de zakking in het punt uit §8.1. Elke UGT-combinatie staat er twee keer:
-'als 6.10a en als 6.10b; vet is de ongunstigste, en die telt. In de BGT telt de
-'puntlast mee in plaats van de verdeelde last als die de grootste zakking geeft
-'(norm-stand, §8.1).</i>
+'<h6>5.2 Combinatietabel</h6>
+'Factor per belastinggeval; vet de ongunstigste van 6.10a en 6.10b, de zakking u in het punt uit 5.1<span class="alleen-scherm">. In de BGT telt de puntlast mee in plaats van de verdeelde last als die de grootste zakking geeft (norm-stand)</span>.
 #if s23 ≥ 1
-    '<table style="width:100%; border-collapse:collapse; font-size:0.92em;">
-    '<tr style="border-bottom:2px solid #374151;">
-    '<th style="padding:4px 6px; text-align:left;">Combinatie</th>
-    '<th style="padding:4px 6px; text-align:left;">Formule</th>
-    '<th style="padding:4px 6px; text-align:center;">BG1</th>
-    '<th style="padding:4px 6px; text-align:center;">BG2</th>
-    '<th style="padding:4px 6px; text-align:center;">BG3</th>
-    '<th style="padding:4px 6px; text-align:center;">BG4</th>
-    '<th style="padding:4px 6px; text-align:center;">BG5</th>
-    '<th style="padding:4px 6px; text-align:right;">Uitkomst</th></tr>
+    '<table style="width:100%; border-collapse:collapse; font-size:0.85em; line-height:1.25;">
+    '<tr style="border-bottom:1.5px solid #374151;">
+    '<th style="padding:1px 4px; text-align:left;">Combinatie</th>
+    '<th style="padding:1px 4px; text-align:left;"></th>
+    '<th style="padding:1px 4px; text-align:center;">BG1</th>
+    '<th style="padding:1px 4px; text-align:center;">BG2</th>
+    '<th style="padding:1px 4px; text-align:center;">BG3</th>
+    '<th style="padding:1px 4px; text-align:center;">BG4</th>
+    '<th style="padding:1px 4px; text-align:center;">BG5</th>
+    '<th style="padding:1px 4px; text-align:right;">M<sub>Ed</sub> [kNm]</th>
+    '<th style="padding:1px 4px; text-align:right;">V<sub>Ed</sub> [kN]</th></tr>
     '<tr style="border-bottom:1px solid #f3f4f6;">
-    '<td style="padding:4px 6px;" rowspan="2">UGT veld 1</td>
-    '<td style="padding:4px 6px;">6.10a</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G,a'</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q,a'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_a(M_Ed,veld1,a; M_Ed,veld1,b)'">M<sub>Ed</sub> = 'M_Ed,veld1,a' kNm</span><br/><span style="font-weight:'vet_a(V_Ed,veld1,a; V_Ed,veld1,b)'">V<sub>Ed</sub> = 'V_Ed,veld1,a' kN</span></td></tr>
+    '<td style="padding:0 4px;" rowspan="2">UGT veld 1</td>
+    '<td style="padding:0 4px;">6.10a</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G,a'</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q,a'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(M_Ed,veld1,a; M_Ed,veld1,b)';">'M_Ed,veld1,a'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(V_Ed,veld1,a; V_Ed,veld1,b)';">'V_Ed,veld1,a'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">6.10b</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G'</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_b(M_Ed,veld1,b; M_Ed,veld1,a)'">M<sub>Ed</sub> = 'M_Ed,veld1,b' kNm</span><br/><span style="font-weight:'vet_b(V_Ed,veld1,b; V_Ed,veld1,a)'">V<sub>Ed</sub> = 'V_Ed,veld1,b' kN</span></td></tr>
+    '<td style="padding:0 4px;">6.10b</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G'</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(M_Ed,veld1,b; M_Ed,veld1,a)';">'M_Ed,veld1,b'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(V_Ed,veld1,b; V_Ed,veld1,a)';">'V_Ed,veld1,b'</td></tr>
     '<tr style="border-bottom:1px solid #f3f4f6;">
-    '<td style="padding:4px 6px;" rowspan="2">UGT steun</td>
-    '<td style="padding:4px 6px;">6.10a</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G,a'</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q,a'</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q,a'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_a(M_Ed,steun,a; M_Ed,steun,b)'">M<sub>Ed</sub> = 'M_Ed,steun,a' kNm</span><br/><span style="font-weight:'vet_a(V_Ed,steun,a; V_Ed,steun,b)'">V<sub>Ed</sub> = 'V_Ed,steun,a' kN</span></td></tr>
+    '<td style="padding:0 4px;" rowspan="2">UGT steun</td>
+    '<td style="padding:0 4px;">6.10a</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G,a'</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q,a'</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q,a'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(M_Ed,steun,a; M_Ed,steun,b)';">'M_Ed,steun,a'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(V_Ed,steun,a; V_Ed,steun,b)';">'V_Ed,steun,a'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">6.10b</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G'</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q'</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_b(M_Ed,steun,b; M_Ed,steun,a)'">M<sub>Ed</sub> = 'M_Ed,steun,b' kNm</span><br/><span style="font-weight:'vet_b(V_Ed,steun,b; V_Ed,steun,a)'">V<sub>Ed</sub> = 'V_Ed,steun,b' kN</span></td></tr>
+    '<td style="padding:0 4px;">6.10b</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G'</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q'</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(M_Ed,steun,b; M_Ed,steun,a)';">'M_Ed,steun,b'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(V_Ed,steun,b; V_Ed,steun,a)';">'V_Ed,steun,b'</td></tr>
     '<tr style="border-bottom:1px solid #f3f4f6;">
-    '<td style="padding:4px 6px;" rowspan="2">UGT 'if(s2 ≡ 1; "overstek"; "veld 2")'</td>
-    '<td style="padding:4px 6px;">6.10a</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G,a'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q,a'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_a(M_Ed,veld2,a; M_Ed,veld2,b)'">M<sub>Ed</sub> = 'M_Ed,veld2,a' kNm</span><br/><span style="font-weight:'vet_a(V_Ed,veld2,a; V_Ed,veld2,b)'">V<sub>Ed</sub> = 'V_Ed,veld2,a' kN</span></td></tr>
+    '<td style="padding:0 4px;" rowspan="2">UGT 'if(s2 ≡ 1; "overstek"; "veld 2")'</td>
+    '<td style="padding:0 4px;">6.10a</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G,a'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q,a'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(M_Ed,veld2,a; M_Ed,veld2,b)';">'M_Ed,veld2,a'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(V_Ed,veld2,a; V_Ed,veld2,b)';">'V_Ed,veld2,a'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">6.10b</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_b(M_Ed,veld2,b; M_Ed,veld2,a)'">M<sub>Ed</sub> = 'M_Ed,veld2,b' kNm</span><br/><span style="font-weight:'vet_b(V_Ed,veld2,b; V_Ed,veld2,a)'">V<sub>Ed</sub> = 'V_Ed,veld2,b' kN</span></td></tr>
+    '<td style="padding:0 4px;">6.10b</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(M_Ed,veld2,b; M_Ed,veld2,a)';">'M_Ed,veld2,b'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(V_Ed,veld2,b; V_Ed,veld2,a)';">'V_Ed,veld2,b'</td></tr>
     '<tr style="border-bottom:1px solid #f3f4f6;">
-    '<td style="padding:4px 6px;" rowspan="2">UGT puntlast veld 1</td>
-    '<td style="padding:4px 6px;">6.10a</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G,a'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q,a'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_a(M_Ed,F1,a; M_Ed,F1,b)'">M<sub>Ed</sub> = 'M_Ed,F1,a' kNm</span><br/><span style="font-weight:'vet_a(V_Ed,F1,a; V_Ed,F1,b)'">V<sub>Ed</sub> = 'V_Ed,F1,a' kN</span></td></tr>
+    '<td style="padding:0 4px;" rowspan="2">UGT puntlast veld 1</td>
+    '<td style="padding:0 4px;">6.10a</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G,a'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q,a'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(M_Ed,F1,a; M_Ed,F1,b)';">'M_Ed,F1,a'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(V_Ed,F1,a; V_Ed,F1,b)';">'V_Ed,F1,a'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">6.10b</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_b(M_Ed,F1,b; M_Ed,F1,a)'">M<sub>Ed</sub> = 'M_Ed,F1,b' kNm</span><br/><span style="font-weight:'vet_b(V_Ed,F1,b; V_Ed,F1,a)'">V<sub>Ed</sub> = 'V_Ed,F1,b' kN</span></td></tr>
+    '<td style="padding:0 4px;">6.10b</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(M_Ed,F1,b; M_Ed,F1,a)';">'M_Ed,F1,b'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(V_Ed,F1,b; V_Ed,F1,a)';">'V_Ed,F1,b'</td></tr>
     '<tr style="border-bottom:1px solid #f3f4f6;">
-    '<td style="padding:4px 6px;" rowspan="2">UGT puntlast 'if(s2 ≡ 1; "uiteinde"; "veld 2")'</td>
-    '<td style="padding:4px 6px;">6.10a</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G,a'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q,a'</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_a(M_Ed,F2,a; M_Ed,F2,b)'">M<sub>Ed</sub> = 'M_Ed,F2,a' kNm</span><br/><span style="font-weight:'vet_a(V_Ed,F2,a; V_Ed,F2,b)'">V<sub>Ed</sub> = 'V_Ed,F2,a' kN</span></td></tr>
+    '<td style="padding:0 4px;" rowspan="2">UGT puntlast 'if(s2 ≡ 1; "uiteinde"; "veld 2")'</td>
+    '<td style="padding:0 4px;">6.10a</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G,a'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q,a'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(M_Ed,F2,a; M_Ed,F2,b)';">'M_Ed,F2,a'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(V_Ed,F2,a; V_Ed,F2,b)';">'V_Ed,F2,a'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">6.10b</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q'</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_b(M_Ed,F2,b; M_Ed,F2,a)'">M<sub>Ed</sub> = 'M_Ed,F2,b' kNm</span><br/><span style="font-weight:'vet_b(V_Ed,F2,b; V_Ed,F2,a)'">V<sub>Ed</sub> = 'V_Ed,F2,b' kN</span></td></tr>
+    '<td style="padding:0 4px;">6.10b</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(M_Ed,F2,b; M_Ed,F2,a)';">'M_Ed,F2,b'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(V_Ed,F2,b; V_Ed,F2,a)';">'V_Ed,F2,b'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">BGT karakteristiek veld 1</td>
-    '<td style="padding:4px 6px;">6.14b</td>
-    '<td style="padding:4px 6px; text-align:center;">1.0</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv1 ≡ 1; "–"; "1.0")'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv1 ≡ 1; "1.0"; "–")'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;">u = 'u_g,k + u_var' mm</td></tr>
+    '<td style="padding:0 4px;">BGT karakteristiek veld 1</td>
+    '<td style="padding:0 4px;">6.14b</td>
+    '<td style="padding:0 4px; text-align:center;">1.0</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv1 ≡ 1; "–"; "1.0")'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv1 ≡ 1; "1.0"; "–")'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right;" colspan="2">u = 'u_g,k + u_var' mm</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">BGT karakteristiek 'if(s2 ≡ 1; "uiteinde"; "veld 2")'</td>
-    '<td style="padding:4px 6px;">6.14b</td>
-    '<td style="padding:4px 6px; text-align:center;">1.0</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv2 ≡ 1; "–"; "1.0")'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv2 ≡ 1; "1.0"; "–")'</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;">u = 'u_g,k,2 + u_var,2' mm</td></tr>
+    '<td style="padding:0 4px;">BGT karakteristiek 'if(s2 ≡ 1; "uiteinde"; "veld 2")'</td>
+    '<td style="padding:0 4px;">6.14b</td>
+    '<td style="padding:0 4px; text-align:center;">1.0</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv2 ≡ 1; "–"; "1.0")'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv2 ≡ 1; "1.0"; "–")'</td>
+    '<td style="padding:0 4px; text-align:right;" colspan="2">u = 'u_g,k,2 + u_var,2' mm</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">BGT quasi-blijvend veld 1</td>
-    '<td style="padding:4px 6px;">6.16b</td>
-    '<td style="padding:4px 6px; text-align:center;">1.0</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv1 ≡ 1; "–"; ψ_2)'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv1 ≡ 1; ψ_2; "–")'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;">u = 'u_g,k + ψ_2*u_var' mm</td></tr>
+    '<td style="padding:0 4px;">BGT quasi-blijvend veld 1</td>
+    '<td style="padding:0 4px;">6.16b</td>
+    '<td style="padding:0 4px; text-align:center;">1.0</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv1 ≡ 1; "–"; ψ_2)'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv1 ≡ 1; ψ_2; "–")'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right;" colspan="2">u = 'u_g,k + ψ_2*u_var' mm</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">BGT quasi-blijvend 'if(s2 ≡ 1; "uiteinde"; "veld 2")'</td>
-    '<td style="padding:4px 6px;">6.16b</td>
-    '<td style="padding:4px 6px; text-align:center;">1.0</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv2 ≡ 1; "–"; ψ_2)'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv2 ≡ 1; ψ_2; "–")'</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;">u = 'u_g,k,2 + ψ_2*u_var,2' mm</td></tr>
+    '<td style="padding:0 4px;">BGT quasi-blijvend 'if(s2 ≡ 1; "uiteinde"; "veld 2")'</td>
+    '<td style="padding:0 4px;">6.16b</td>
+    '<td style="padding:0 4px; text-align:center;">1.0</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv2 ≡ 1; "–"; ψ_2)'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv2 ≡ 1; ψ_2; "–")'</td>
+    '<td style="padding:0 4px; text-align:right;" colspan="2">u = 'u_g,k,2 + ψ_2*u_var,2' mm</td></tr>
     '</table>
 #else
-    '<table style="width:100%; border-collapse:collapse; font-size:0.92em;">
-    '<tr style="border-bottom:2px solid #374151;">
-    '<th style="padding:4px 6px; text-align:left;">Combinatie</th>
-    '<th style="padding:4px 6px; text-align:left;">Formule</th>
-    '<th style="padding:4px 6px; text-align:center;">BG1</th>
-    '<th style="padding:4px 6px; text-align:center;">BG2</th>
-    '<th style="padding:4px 6px; text-align:center;">BG4</th>
-    '<th style="padding:4px 6px; text-align:right;">Uitkomst</th></tr>
+    '<table style="width:100%; border-collapse:collapse; font-size:0.85em; line-height:1.25;">
+    '<tr style="border-bottom:1.5px solid #374151;">
+    '<th style="padding:1px 4px; text-align:left;">Combinatie</th>
+    '<th style="padding:1px 4px; text-align:left;"></th>
+    '<th style="padding:1px 4px; text-align:center;">BG1</th>
+    '<th style="padding:1px 4px; text-align:center;">BG2</th>
+    '<th style="padding:1px 4px; text-align:center;">BG4</th>
+    '<th style="padding:1px 4px; text-align:right;">M<sub>Ed</sub> [kNm]</th>
+    '<th style="padding:1px 4px; text-align:right;">V<sub>Ed</sub> [kN]</th></tr>
     '<tr style="border-bottom:1px solid #f3f4f6;">
-    '<td style="padding:4px 6px;" rowspan="2">UGT veld</td>
-    '<td style="padding:4px 6px;">6.10a</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G,a'</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q,a'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_a(M_Ed,veld1,a; M_Ed,veld1,b)'">M<sub>Ed</sub> = 'M_Ed,veld1,a' kNm</span><br/><span style="font-weight:'vet_a(V_Ed,veld1,a; V_Ed,veld1,b)'">V<sub>Ed</sub> = 'V_Ed,veld1,a' kN</span></td></tr>
+    '<td style="padding:0 4px;" rowspan="2">UGT veld</td>
+    '<td style="padding:0 4px;">6.10a</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G,a'</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q,a'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(M_Ed,veld1,a; M_Ed,veld1,b)';">'M_Ed,veld1,a'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(V_Ed,veld1,a; V_Ed,veld1,b)';">'V_Ed,veld1,a'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">6.10b</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G'</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_b(M_Ed,veld1,b; M_Ed,veld1,a)'">M<sub>Ed</sub> = 'M_Ed,veld1,b' kNm</span><br/><span style="font-weight:'vet_b(V_Ed,veld1,b; V_Ed,veld1,a)'">V<sub>Ed</sub> = 'V_Ed,veld1,b' kN</span></td></tr>
+    '<td style="padding:0 4px;">6.10b</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G'</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(M_Ed,veld1,b; M_Ed,veld1,a)';">'M_Ed,veld1,b'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(V_Ed,veld1,b; V_Ed,veld1,a)';">'V_Ed,veld1,b'</td></tr>
     '<tr style="border-bottom:1px solid #f3f4f6;">
-    '<td style="padding:4px 6px;" rowspan="2">UGT puntlast</td>
-    '<td style="padding:4px 6px;">6.10a</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G,a'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q,a'</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_a(M_Ed,F1,a; M_Ed,F1,b)'">M<sub>Ed</sub> = 'M_Ed,F1,a' kNm</span><br/><span style="font-weight:'vet_a(V_Ed,F1,a; V_Ed,F1,b)'">V<sub>Ed</sub> = 'V_Ed,F1,a' kN</span></td></tr>
+    '<td style="padding:0 4px;" rowspan="2">UGT puntlast</td>
+    '<td style="padding:0 4px;">6.10a</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G,a'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q,a'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(M_Ed,F1,a; M_Ed,F1,b)';">'M_Ed,F1,a'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_a(V_Ed,F1,a; V_Ed,F1,b)';">'V_Ed,F1,a'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">6.10b</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_G'</td>
-    '<td style="padding:4px 6px; text-align:center; color:#9ca3af;">–</td>
-    '<td style="padding:4px 6px; text-align:center;">'γ_Q'</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;"><span style="font-weight:'vet_b(M_Ed,F1,b; M_Ed,F1,a)'">M<sub>Ed</sub> = 'M_Ed,F1,b' kNm</span><br/><span style="font-weight:'vet_b(V_Ed,F1,b; V_Ed,F1,a)'">V<sub>Ed</sub> = 'V_Ed,F1,b' kN</span></td></tr>
+    '<td style="padding:0 4px;">6.10b</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_Q'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(M_Ed,F1,b; M_Ed,F1,a)';">'M_Ed,F1,b'</td>
+    '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(V_Ed,F1,b; V_Ed,F1,a)';">'V_Ed,F1,b'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">BGT karakteristiek</td>
-    '<td style="padding:4px 6px;">6.14b</td>
-    '<td style="padding:4px 6px; text-align:center;">1.0</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv1 ≡ 1; "–"; "1.0")'</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv1 ≡ 1; "1.0"; "–")'</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;">u = 'u_g,k + u_var' mm</td></tr>
+    '<td style="padding:0 4px;">BGT karakteristiek</td>
+    '<td style="padding:0 4px;">6.14b</td>
+    '<td style="padding:0 4px; text-align:center;">1.0</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv1 ≡ 1; "–"; "1.0")'</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv1 ≡ 1; "1.0"; "–")'</td>
+    '<td style="padding:0 4px; text-align:right;" colspan="2">u = 'u_g,k + u_var' mm</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
-    '<td style="padding:4px 6px;">BGT quasi-blijvend</td>
-    '<td style="padding:4px 6px;">6.16b</td>
-    '<td style="padding:4px 6px; text-align:center;">1.0</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv1 ≡ 1; "–"; ψ_2)'</td>
-    '<td style="padding:4px 6px; text-align:center;">'if(pv1 ≡ 1; ψ_2; "–")'</td>
-    '<td style="padding:4px 6px; text-align:right; white-space:nowrap;">u = 'u_g,k + ψ_2*u_var' mm</td></tr>
+    '<td style="padding:0 4px;">BGT quasi-blijvend</td>
+    '<td style="padding:0 4px;">6.16b</td>
+    '<td style="padding:0 4px; text-align:center;">1.0</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv1 ≡ 1; "–"; ψ_2)'</td>
+    '<td style="padding:0 4px; text-align:center;">'if(pv1 ≡ 1; ψ_2; "–")'</td>
+    '<td style="padding:0 4px; text-align:right;" colspan="2">u = 'u_g,k + ψ_2*u_var' mm</td></tr>
     '</table>
 #end if
+'Bij de puntlast zijn de maxima van BG1 en BG4 (of BG5) opgeteld, ook waar ze niet samenvallen: een veilige bovengrens.
 
-'<i>Bij de puntlast zijn de maxima van BG1 en BG4 (of BG5) opgeteld, ook waar
-'ze niet samenvallen: een veilige bovengrens. M<sub>y,Ed</sub> en
-'V<sub>z,Ed</sub> in §10 zijn de grootste uitkomsten van de UGT-rijen; de
-'zakkingen gaan per veld naar de toetsing in §9.</i>
+'<h6>5.3 Omhullende (UGT)</h6>
+'<i>De grootste uitkomsten van de UGT-combinaties (6.10a en 6.10b) uit de tabel in 5.2. De doorsnede is prismatisch, dus alleen de grootte telt: veld of steun.</i><span class="alleen-scherm"></span>
+#if s23 ≥ 1
+    M_y,Ed = max(M_Ed,veld1; M_Ed,steun; M_Ed,veld2; M_Ed,F1; M_Ed,F2) to kN*m', maatgevend<span class="alleen-scherm"></span>'
+    V_z,Ed = max(V_Ed,veld1; V_Ed,steun; V_Ed,veld2; V_Ed,F1; V_Ed,F2) to kN', maatgevend<span class="alleen-scherm"></span>'
+#else
+    M_y,Ed = max(M_Ed,veld1; M_Ed,F1) to kN*m', maatgevend<span class="alleen-scherm"></span>'
+    V_z,Ed = max(V_Ed,veld1; V_Ed,F1) to kN', maatgevend<span class="alleen-scherm"></span>'
+#end if
+'<i>Per plaats het grootste en het kleinste moment en de grootste en kleinste dwarskracht over de UGT-combinaties uit 5.2, met de puntlast op zijn plaats uit BG4 en BG5: doorgetrokken de grootste waarde, onderbroken de kleinste. Het moment staat aan de trekzijde. Valt M<sub>y,Ed</sub> of V<sub>z,Ed</sub> hoger uit dan de lijn, dan is dat de opgetelde bovengrens bij de puntlast.</i><span class="alleen-scherm"></span>
+M_y,Ed'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+V_z,Ed'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
 
-# 9. Toetsing BGT — doorbuiging (§7.2)
+#hide
+'Moment en dwarskracht van combinatie 1 tot en met 5 op afstand x, met de
+'lastsets uit §5: c voor 6.10b, a voor 6.10a. De puntlastcombinaties dragen de
+'permanente last met γ_G (of γ_G,a) op alle velden.
+Mo1(x) = Mx(x; c1_w1; c1_w2; 0; 0; c1_m)
+Mo2(x) = Mx(x; c2_w1; c2_w2; 0; 0; c2_m)
+Mo3(x) = Mx(x; c3_w1; c3_w2; 0; 0; c3_m)
+Mo4(x) = Mx(x; c4_w1; c4_w2; c4_P1; 0; c4_m)
+Mo5(x) = Mx(x; c4_w1; c4_w2; 0; c5_P2; c5_m)
+Ma1(x) = Mx(x; a1_w1; a1_w2; 0; 0; a1_m)
+Ma2(x) = Mx(x; a2_w1; a2_w2; 0; 0; a2_m)
+Ma3(x) = Mx(x; a3_w1; a3_w2; 0; 0; a3_m)
+Ma4(x) = Mx(x; a4_w1; a4_w2; a4_P1; 0; a4_m)
+Ma5(x) = Mx(x; a4_w1; a4_w2; 0; a5_P2; a5_m)
+Vo1(x) = Vx(x; c1_w1; c1_w2; 0; 0; c1_m)
+Vo2(x) = Vx(x; c2_w1; c2_w2; 0; 0; c2_m)
+Vo3(x) = Vx(x; c3_w1; c3_w2; 0; 0; c3_m)
+Vo4(x) = Vx(x; c4_w1; c4_w2; c4_P1; 0; c4_m)
+Vo5(x) = Vx(x; c4_w1; c4_w2; 0; c5_P2; c5_m)
+Va1(x) = Vx(x; a1_w1; a1_w2; 0; 0; a1_m)
+Va2(x) = Vx(x; a2_w1; a2_w2; 0; 0; a2_m)
+Va3(x) = Vx(x; a3_w1; a3_w2; 0; 0; a3_m)
+Va4(x) = Vx(x; a4_w1; a4_w2; a4_P1; 0; a4_m)
+Va5(x) = Vx(x; a4_w1; a4_w2; 0; a5_P2; a5_m)
+'De omhullende: per plaats het grootste en het kleinste.
+Mo_max(x) = max(Mo1(x); Mo2(x); Mo3(x); Mo4(x); Mo5(x); Ma1(x); Ma2(x); Ma3(x); Ma4(x); Ma5(x))
+Mo_min(x) = min(Mo1(x); Mo2(x); Mo3(x); Mo4(x); Mo5(x); Ma1(x); Ma2(x); Ma3(x); Ma4(x); Ma5(x))
+Vo_max(x) = max(Vo1(x); Vo2(x); Vo3(x); Vo4(x); Vo5(x); Va1(x); Va2(x); Va3(x); Va4(x); Va5(x))
+Vo_min(x) = min(Vo1(x); Vo2(x); Vo3(x); Vo4(x); Vo5(x); Va1(x); Va2(x); Va3(x); Va4(x); Va5(x))
+'Kenmerkende waarden van de omhullende. Het grootste veldmoment in veld 1 komt
+'uit combinatie 1 of 4, in veld 2 uit 3 of 5, elk met 6.10a of 6.10b; het
+'steunmoment is overal het grootst bij de tussenoplegging. De dwarskracht
+'daalt binnen elk veld, dus de uitersten liggen aan de randen.
+o_M1a = max(Mv1(c1_w1; 0; c1_m); Mv1(a1_w1; 0; a1_m))
+o_x1a = if(Mv1(a1_w1; 0; a1_m) > Mv1(c1_w1; 0; c1_m); x1t(a1_w1; 0; a1_m); x1t(c1_w1; 0; c1_m))
+o_M1b = max(Mv1(c4_w1; c4_P1; c4_m); Mv1(a4_w1; a4_P1; a4_m))
+o_x1b = if(Mv1(a4_w1; a4_P1; a4_m) > Mv1(c4_w1; c4_P1; c4_m); x1t(a4_w1; a4_P1; a4_m); x1t(c4_w1; c4_P1; c4_m))
+o_M1 = max(o_M1a; o_M1b)
+o_x1 = if(o_M1b > o_M1a; o_x1b; o_x1a)
+o_M2a = max(Mv2(c3_w2; 0; c3_m); Mv2(a3_w2; 0; a3_m))
+o_x2a = if(Mv2(a3_w2; 0; a3_m) > Mv2(c3_w2; 0; c3_m); t2t(a3_w2; 0; a3_m); t2t(c3_w2; 0; c3_m))
+o_M2b = max(Mv2(c4_w2; c5_P2; c5_m); Mv2(a4_w2; a5_P2; a5_m))
+o_x2b = if(Mv2(a4_w2; a5_P2; a5_m) > Mv2(c4_w2; c5_P2; c5_m); t2t(a4_w2; a5_P2; a5_m); t2t(c4_w2; c5_P2; c5_m))
+o_M2 = max(o_M2a; o_M2b)
+o_x2 = r_tot - if(o_M2b > o_M2a; o_x2b; o_x2a)
+o_Ms = max(c1_m; c2_m; c3_m; c4_m; c5_m; a1_m; a2_m; a3_m; a4_m; a5_m; 0)
+o_Mp = max(o_M1; o_M2; 0.0001)
+o_V0 = Vo_max(0)
+o_VL = Vo_min(r_L1)
+o_VR = Vo_max(r_L1 + (r_tot - r_L1)*10^-6)
+o_VE = Vo_min(r_tot*(1 - 10^-9))
+o_Vp = max(o_V0; o_VR*r_twee; 0.0001)
+o_Vn = max(-o_VL; -o_VE*r_twee; 0)
+'Schaal: het deel onder en boven de as past per lijn samen in 48 px.
+m_s = 48/max(o_Mp + o_Ms; 0.0001)
+my = 30 + o_Ms*m_s', as van de M-lijn'
+v_s = 48/max(o_Vp + o_Vn; 0.0001)
+vy2 = my + o_Mp*m_s + 50 + o_Vp*v_s', as van de V-lijn'
+svg_mv = vy2 + o_Vn*v_s + 24
+#show
+'<svg class="omhullende" viewbox="0 0 480 'svg_mv'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'svg_mv + 10'px;">
+'  <!-- M-lijn: de grootste en de kleinste waarde, elk als gevuld vlak aan de trekzijde -->
+'  <polygon points="'lX(0)','my'
+#for i = 0 : 25
+' 'lX(sa(i))','my + m_s*Mo_max(sa(i))'
+#loop
+#if r_twee ≡ 1
+    #for i = 0 : 25
+    ' 'lX(sb(i))','my + m_s*Mo_max(sb(i))'
+    #loop
+#end if
+' 'lX(r_tot)','my'" style="fill:rgba(239,68,68,0.22); stroke:#dc2626; stroke-width:2; stroke-linejoin:round"/>
+'  <polygon points="'lX(0)','my'
+#for i = 0 : 25
+' 'lX(sa(i))','my + m_s*Mo_min(sa(i))'
+#loop
+#if r_twee ≡ 1
+    #for i = 0 : 25
+    ' 'lX(sb(i))','my + m_s*Mo_min(sb(i))'
+    #loop
+#end if
+' 'lX(r_tot)','my'" style="fill:rgba(239,68,68,0.12); stroke:#dc2626; stroke-width:1.4; stroke-dasharray:5 3; stroke-linejoin:round"/>
+'  <line x1="'lX(0) - 10'" y1="'my'" x2="'lX(r_tot) + 10'" y2="'my'" style="stroke:#374151; stroke-width:1.4"/>
+'  <text x="'lX(0) - 10'" y="'my - o_Ms*m_s - 14'" style="fill:#dc2626; font-weight:700">M-lijn [kNm]</text>
+'  <text x="'lX(r_tot) + 10'" y="'my - o_Ms*m_s - 14'" text-anchor="end" style="fill:#374151">M<tspan baseline-shift="sub" font-size="8">y,Ed</tspan> = 'M_y,Ed' kNm (maatgevend)</text>
+#if o_M1 > 0.00001
+    '  <circle cx="'lX(o_x1)'" cy="'my + m_s*o_M1'" r="2.4" style="fill:#dc2626"/>
+    '  <text x="'lX(o_x1)'" y="'my + m_s*o_M1 + 14'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_M1'</text>
+#end if
+#if o_M2 > 0.00001
+    '  <circle cx="'lX(o_x2)'" cy="'my + m_s*o_M2'" r="2.4" style="fill:#dc2626"/>
+    '  <text x="'lX(o_x2)'" y="'my + m_s*o_M2 + 14'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_M2'</text>
+#end if
+#if o_Ms > 0.00001
+    '  <circle cx="'lX(r_L1)'" cy="'my - m_s*o_Ms'" r="2.4" style="fill:#dc2626"/>
+    '  <text x="'lX(r_L1)'" y="'my - m_s*o_Ms - 6'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'-o_Ms'</text>
+#end if
+'  <!-- V-lijn: de grootste en de kleinste waarde -->
+'  <polygon points="'lX(0)','vy2'
+#for i = 0 : 25
+' 'lX(sa(i))','vy2 - v_s*Vo_max(sa(i))'
+#loop
+#if r_twee ≡ 1
+    #for i = 0 : 25
+    ' 'lX(sb(i))','vy2 - v_s*Vo_max(sb(i))'
+    #loop
+#end if
+' 'lX(r_tot)','vy2'" style="fill:rgba(59,130,246,0.20); stroke:#2563eb; stroke-width:2; stroke-linejoin:round"/>
+'  <polygon points="'lX(0)','vy2'
+#for i = 0 : 25
+' 'lX(sa(i))','vy2 - v_s*Vo_min(sa(i))'
+#loop
+#if r_twee ≡ 1
+    #for i = 0 : 25
+    ' 'lX(sb(i))','vy2 - v_s*Vo_min(sb(i))'
+    #loop
+#end if
+' 'lX(r_tot)','vy2'" style="fill:rgba(59,130,246,0.12); stroke:#2563eb; stroke-width:1.4; stroke-dasharray:5 3; stroke-linejoin:round"/>
+'  <line x1="'lX(0) - 10'" y1="'vy2'" x2="'lX(r_tot) + 10'" y2="'vy2'" style="stroke:#374151; stroke-width:1.4"/>
+'  <text x="'lX(0) - 10'" y="'vy2 - o_Vp*v_s - 14'" style="fill:#2563eb; font-weight:700">V-lijn [kN]</text>
+'  <text x="'lX(r_tot) + 10'" y="'vy2 - o_Vp*v_s - 14'" text-anchor="end" style="fill:#374151">V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan> = 'V_z,Ed' kN (maatgevend)</text>
+'  <text x="'lX(0) + 5'" y="'vy2 - v_s*o_V0 + if(o_V0 < 0; 14; -5)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_V0'</text>
+'  <text x="'lX(r_L1) - 5'" y="'vy2 - v_s*o_VL + if(o_VL < 0; 14; -5)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VL'</text>
+#if r_twee ≡ 1
+    '  <text x="'lX(r_L1) + 5'" y="'vy2 - v_s*o_VR + if(o_VR < 0; 14; -5)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VR'</text>
+#end if
+#if s3 ≡ 1
+    '  <text x="'lX(r_tot) - 5'" y="'vy2 - v_s*o_VE + if(o_VE < 0; 14; -5)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VE'</text>
+#end if
+'  <!-- opleggingen onder beide assen -->
+'  <polygon points="'lX(0)','my' 'lX(0) - 6','my + 11' 'lX(0) + 6','my + 11'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+'  <polygon points="'lX(r_L1)','my' 'lX(r_L1) - 6','my + 11' 'lX(r_L1) + 6','my + 11'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+'  <polygon points="'lX(0)','vy2' 'lX(0) - 6','vy2 + 11' 'lX(0) + 6','vy2 + 11'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+'  <polygon points="'lX(r_L1)','vy2' 'lX(r_L1) - 6','vy2 + 11' 'lX(r_L1) + 6','vy2 + 11'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+#if s3 ≡ 1
+    '  <polygon points="'lX(r_tot)','my' 'lX(r_tot) - 6','my + 11' 'lX(r_tot) + 6','my + 11'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+    '  <polygon points="'lX(r_tot)','vy2' 'lX(r_tot) - 6','vy2 + 11' 'lX(r_tot) + 6','vy2 + 11'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
+#end if
+'</svg>'
 
-'<i>De BGT kent twee combinaties die hier meedoen (EN 1990 §6.5.3):
-'<ul>
-'<li><b>Karakteristiek (6.14b)</b> — G<sub>k</sub> "+" Q<sub>k,1</sub> "+" Σψ<sub>0,i</sub>·Q<sub>k,i</sub>.
-'Dit is de momentane doorbuiging w<sub>inst</sub>, zonder kruip: het doorzakken
-'dat je meteen na het aanbrengen van de belasting ziet.</li>
-'<li><b>Quasi-blijvend (6.16b)</b> — G<sub>k</sub> "+" Σψ<sub>2,i</sub>·Q<sub>k,i</sub>.
-'Dit is het deel dat langdurig aanwezig blijft en dus kruipt. Met de kruipfactor
-'k<sub>def</sub> (Tabel 3.2) volgt de eindstand w<sub>fin</sub>.</li>
-'</ul>
-'De eindstand combineert beide: w<sub>fin</sub> = (1+k<sub>def</sub>)·u<sub>g</sub>
-'+ (1+ψ<sub>2</sub>·k<sub>def</sub>)·u<sub>var</sub> — de permanente last kruipt
-'volledig, de veranderlijke alleen voor het quasi-blijvende deel ψ<sub>2</sub>.</i>
+# 6. Toetsing BGT — doorbuiging (§7.2)
+
+'<span class="alleen-scherm"></span>w<sub>inst</sub> uit de karakteristieke combinatie (6.14b), kruip k<sub>def</sub>·w<sub>qp</sub> uit de quasi-blijvende (6.16b), w<sub>fin</sub> = w<sub>inst</sub> + w<sub>kruip</sub> (7.2)<span class="alleen-scherm">. De permanente last kruipt volledig, de veranderlijke alleen voor het quasi-blijvende deel ψ<sub>2</sub>; w<sub>fin</sub> is dus gelijk aan (1 + k<sub>def</sub>)·u<sub>g</sub> + (1 + ψ<sub>2</sub>·k<sub>def</sub>)·u<sub>var</sub></span>.
 
 @select controleer "Controleer doorbuiging"
   Ja = 1
@@ -1236,60 +1409,50 @@ pv2 = bool(u_var,2 > u_q,k,2)
 @end
 
 #if controleer ≡ 1
-    '<i>De zakkingen per veld komen uit §8.1; de opbouw van de combinaties staat in
-    'de tabel van §8.2.</i>
-    '<h6>9.1 Karakteristieke combinatie (6.14b) — momentane doorbuiging</h6>
-    'w<sub>inst</sub> = 1,0·u<sub>g</sub> + 1,0·u<sub>var</sub>, zonder kruip, per veld:
-    w_inst = u_g,k + u_var to mm', veld 1'
+    '<i>De zakkingen per veld komen uit 5.1; de opbouw van de combinaties staat in de tabel van 5.2.</i><span class="alleen-scherm"></span>
+    w_inst = u_g,k + u_var to mm', 6.14b, veld 1'
     #if s23 ≥ 1
-        w_inst,2 = u_g,k,2 + u_var,2 to mm', tweede deel: veld 2 of het uiteinde van het overstek'
+        w_inst,2 = u_g,k,2 + u_var,2 to mm', 6.14b, tweede deel'
     #end if
-
-    '<h6>9.2 Quasi-blijvende combinatie (6.16b) — kruipdeel</h6>
-    'Alleen het deel dat langdurig blijft staan kruipt: de volledige permanente
-    'last plus ψ<sub>2</sub> maal de veranderlijke. Als lijnlast op een belast veld:
-    q_qp = 1.0*P_g,k + ψ_2*q_q,k to kN/m', lijnlast die langdurig blijft staan'
-    'Als zakking is dat de optelling van de belastinggevallen, per veld:
-    w_qp = 1.0*u_g,k + ψ_2*u_var to mm', veld 1'
-    w_kruip = k_def*w_qp to mm', bijkomende doorbuiging door kruip, veld 1'
+    q_qp = 1.0*P_g,k + ψ_2*q_q,k to kN/m', 6.16b: lijnlast die langdurig blijft staan'
+    w_qp = 1.0*u_g,k + ψ_2*u_var to mm', 6.16b, veld 1'
     #if s23 ≥ 1
-        w_qp,2 = 1.0*u_g,k,2 + ψ_2*u_var,2 to mm', tweede deel'
-        w_kruip,2 = k_def*w_qp,2 to mm', bijkomende doorbuiging door kruip, tweede deel'
+        w_qp,2 = 1.0*u_g,k,2 + ψ_2*u_var,2 to mm', 6.16b, tweede deel'
     #end if
-
-    '<h6>9.3 Eindstand (§7.2, formule 7.2)</h6>
-    'w<sub>fin</sub> = w<sub>inst</sub> + w<sub>kruip</sub>, gelijk aan
-    '(1 + k<sub>def</sub>)·u<sub>g</sub> + (1 + ψ<sub>2</sub>·k<sub>def</sub>)·u<sub>var</sub>:
+    w_kruip = k_def*w_qp to mm', kruip, veld 1'
+    #if s23 ≥ 1
+        w_kruip,2 = k_def*w_qp,2 to mm', kruip, tweede deel'
+    #end if
     w_fin = w_inst + w_kruip to mm', veld 1'
+    #if s23 ≥ 1
+        w_fin,2 = w_inst,2 + w_kruip,2 to mm', tweede deel'
+    #end if
     w_lim = grensfactor*L_th', grens veld 1'
     #if s3 ≡ 1
-        w_fin,2 = w_inst,2 + w_kruip,2 to mm', veld 2'
         w_lim,2 = grensfactor*L_veld2', grens veld 2'
-        UC_doorbuiging = max(w_fin/w_lim; w_fin,2/w_lim,2)', het ongunstigste veld'
+        UC_doorbuiging = max(w_fin/w_lim; w_fin,2/w_lim,2)'<span class="alleen-scherm"></span>'
     #else if s2 ≡ 1
-        w_fin,2 = w_inst,2 + w_kruip,2 to mm', uiteinde van het overstek'
-        'Het uiteinde van een overstek met lengte a toetsen we als een ligger
-        'met een overspanning van 2·a.
-        w_lim,2 = grensfactor*2*a_over', grens uiteinde overstek'
-        UC_doorbuiging = max(w_fin/w_lim; w_fin,2/w_lim,2)', het ongunstigste deel'
+        w_lim,2 = grensfactor*2*a_over', grens uiteinde, als overspanning 2·a'
+        UC_doorbuiging = max(w_fin/w_lim; w_fin,2/w_lim,2)'<span class="alleen-scherm"></span>'
     #else
-        UC_doorbuiging = w_fin/w_lim
+        UC_doorbuiging = w_fin/w_lim'<span class="alleen-scherm"></span>'
+    #end if
+    #if s23 ≥ 1
+        UC_doorbuiging' (de grootste van w<sub>fin</sub>/w<sub>lim</sub> per veld)<span class="alleen-afdruk"></span>'
+    #else
+        UC_doorbuiging' (w<sub>fin</sub>/w<sub>lim</sub>)<span class="alleen-afdruk"></span>'
     #end if
     #if UC_doorbuiging ≤ 1.0
-        'UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+        '<span class="alleen-scherm">UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
     #else
-        'UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+        '<span class="alleen-scherm">UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'</span><span class="oordeel" style="color: red"> > 1.0 → <b>voldoet niet</b></span>
     #end if
 
-    '<h6>9.4 Doorbuigingslijn</h6>
-    '<i>De onderbroken lijn is de momentane zakking (6.14b), de doorgetrokken
-    'de eindstand inclusief kruip (6.16b). Beide op dezelfde schaal, zodat het
-    'verschil laat zien wat de kruip er nog bovenop doet. Per veld, en op het
-    'overstek, staat de veranderlijke last op dat deel (schaakbordbelasting);
-    'de stippen staan in de punten uit §8.1, met de waarden uit §9.3.</i>
+    '<h6>Doorbuigingslijn<span class="alleen-scherm"></span></h6>
+    '<i>De onderbroken lijn is de momentane zakking (6.14b), de doorgetrokken de eindstand inclusief kruip, op dezelfde schaal. Per veld, en op het overstek, staat de veranderlijke last op dat deel (schaakbordbelasting); de stippen staan in de punten uit 5.1.</i><span class="alleen-scherm"></span>
     #hide
     'Welk veranderlijk geval per deel meetelt: de verdeelde last, of in de
-    'norm-stand de puntlast als die de grootste zakking geeft (§8.1).
+    'norm-stand de puntlast als die de grootste zakking geeft (5.1).
     kv1 = if(pv1 ≡ 1; 4; 2)
     kv2 = if(pv2 ≡ 1; 5; 3)
     kvx(x) = if(s23*bool(x > r_L1) ≡ 1; kv2; kv1)
@@ -1310,7 +1473,7 @@ pv2 = bool(u_var,2 > u_q,k,2)
     uas = 30 + w_lo*w_s', hoogte van de onvervormde as'
     w_H = uas + w_hi*w_s + 30 + (2 + s23)*15
     #show
-    '<svg viewbox="0 0 480 'w_H'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'w_H + 10'px;">
+    '<svg class="alleen-scherm" viewbox="0 0 480 'w_H'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'w_H + 10'px;">
     '  <line x1="'lX(0) - 8'" y1="'uas'" x2="'lX(r_tot) + 8'" y2="'uas'" style="stroke:#9ca3af; stroke-width:1; stroke-dasharray:4 4"/>
     '  <polyline points="
     #for i = 0 : 24
@@ -1363,25 +1526,17 @@ pv2 = bool(u_var,2 > u_q,k,2)
     '</svg>'
 #else
     'Doorbuiging wordt niet getoetst (Controleer doorbuiging = Nee).
-    UC_doorbuiging = 0
+    UC_doorbuiging = 0'<span class="alleen-scherm"></span>'
 #end if
 
-# 9b. Toetsing BGT — trillingen (§7.3.3)
+# 7. Toetsing BGT — trillingen (§7.3.3)
 
-'<i>De trillingstoets voor woonvloeren kent twee criteria naast de
-'frequentie-eis: de stijfheid onder een puntlast van 1 kN (formule 7.3) en
-'de responssnelheid op een eenheidsimpuls (formule 7.4). Beide gelden alleen
-'als f<sub>1</sub> ≥ 8 Hz; daaronder vraagt de norm een volledige
-'trillingsanalyse (§7.3.3(2)).</i>
+'<span class="alleen-scherm"></span>Eigenfrequentie (7.5), stijfheid onder 1 kN (7.3) en responssnelheid (7.4); de laatste twee gelden bij f<sub>1</sub> ≥ 8 Hz<span class="alleen-scherm">. Daaronder vraagt §7.3.3(2) een volledige trillingsanalyse</span>.
 
 @select controleer_trilling "Controleer trilling"
   Ja = 1
   Nee = 0
 @end
-
-ζ = ?', dempingsratio (§7.3.1: 0,01 voor vloeren zonder afwerklaag)'
-a_tril = ?*(mm/kN)', grenswaarde stijfheid a (Tabel NB — 1,0 mm/kN)'
-b_tril = ?', parameter b bij de snelheidseis (Figuur 7.2, ca. 120)'
 
 #hide
 'De trillingstoets hoort bij de balklaag zelf. Een onderslag draagt de balken;
@@ -1390,280 +1545,117 @@ b_tril = ?', parameter b bij de snelheidseis (Figuur 7.2, ca. 120)'
 tril_aan = controleer_trilling*(1 - ond)
 #show
 #if tril_aan ≡ 1
-    '<h6>9b.1 Stijfheden</h6>
-    'Beschot, per meter vloerbreedte — draagt loodrecht op de balken:
-    I_beschot = 1 m*t_vloer^3/12 to m^4
-    EI_l = E_beschot*I_beschot/(1 m) to N*m^2/m', (EI)_l — beschot'
-    'Balklaag, per meter vloerbreedte — de balken dragen in de overspanning:
-    EI_b = E_mean*I_y/hoh to N*m^2/m', (EI)_b — balken'
-
-    '<h6>9b.2 Eigenfrequentie (formule 7.5)</h6>
-    'Trillende massa per m² — alleen het permanente gewicht (§7.3.3): de
-    'veranderlijke belasting telt niet mee, want de vloer trilt in de staat
-    'waarin hij normaal wordt gebruikt, niet onder vol belastingsontwerp.
-    m_opp = (G_k + g_balk/hoh)/(9.81 m/s^2) to kg/m^2
-    'Bij twee velden telt het langste veld, als ligger op twee steunpunten: dat
-    'geeft de laagste eigenfrequentie, een veilige benadering.
-    L_tril = if(schema ≡ 3; max(L_th; L_veld2); L_th)', overspanning voor de trillingstoets'
+    '<span class="alleen-afdruk"></span>
+    b_vloer = ?*(m)'<span class="alleen-scherm">, breedte van het vloerveld</span><span class="kolom-4"></span>'
+    ζ = ?'<span class="alleen-scherm">, dempingsratio (§7.3.1: 0,01 zonder afwerklaag)</span><span class="kolom-4"></span>'
+    a_tril = ?*(mm/kN)'<span class="alleen-scherm">, grenswaarde stijfheid (NB)</span><span class="kolom-4"></span>'
+    b_tril = ?'<span class="alleen-scherm">, parameter bij de snelheidseis (figuur 7.2)</span><span class="kolom-4"></span>'
+    '<h6>7.1 Stijfheden en eigenfrequentie (7.5)<span class="alleen-scherm"></span></h6>
+    '<i>Het beschot draagt loodrecht op de balken, de balken in de overspanning; beide per meter vloerbreedte. De trillende massa is alleen het permanente gewicht (§7.3.3): de vloer trilt in de staat waarin hij normaal wordt gebruikt.</i><span class="alleen-scherm"></span>
+    I_beschot = 1 m*t_vloer^3/12 to m^4'<span class="alleen-scherm"></span>'
+    EI_l = E_beschot*I_beschot/(1 m) to N*m^2/m', beschot<span class="alleen-scherm"></span>'
+    EI_b = E_mean*I_y/hoh to N*m^2/m', balken<span class="alleen-scherm"></span>'
+    m_opp = (G_k + g_balk/hoh)/(9.81 m/s^2) to kg/m^2', trillende massa<span class="alleen-scherm"></span>'
+    #if schema ≡ 3
+        L_tril = max(L_th; L_veld2)', langste veld<span class="alleen-scherm"></span>'
+    #else
+        L_tril = L_th', overspanning<span class="alleen-scherm"></span>'
+    #end if
+    EI_l'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    EI_b'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    m_opp'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    L_tril'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
     f_1 = π/(2*L_tril^2)*sqrt(EI_b/m_opp) to Hz
     #if f_1 ≥ 8 Hz
-        'f<sub>1</sub> = 'f_1'<span style="color: green"> ≥ 8 Hz → de twee criteria hieronder zijn van toepassing</span>
+        '<span class="alleen-scherm">f<sub>1</sub> = 'f_1'</span><span class="oordeel" style="color: green"> ≥ 8 Hz → 7.3 en 7.4 gelden</span>
     #else
-        'f<sub>1</sub> = 'f_1'<span style="color: red"> < 8 Hz → de vereenvoudigde toets vervalt; §7.3.3(2) vraagt een volledige trillingsanalyse</span>
+        '<span class="alleen-scherm">f<sub>1</sub> = 'f_1'</span><span class="oordeel" style="color: red"> < 8 Hz → de vereenvoudigde toets vervalt; §7.3.3(2) vraagt een volledige trillingsanalyse</span>
     #end if
 
-    '<h6>9b.3 Criterium 1 — stijfheid onder 1 kN (formule 7.3)</h6>
-    'De puntlast spreidt over meerdere balken; k<sub>r</sub> uit §5 geeft het
-    'deel dat op de zwaarst belaste balk komt.
-    F_tril = 1 kN*k_r to kN', effectieve puntlast op één balk'
+    '<h6>7.2 Criterium 1 — stijfheid onder 1 kN (formule 7.3)<span class="alleen-scherm"></span></h6>
+    '<i>De puntlast spreidt over meerdere balken; k<sub>r</sub> uit §3 geeft het deel dat op de zwaarst belaste balk komt.</i><span class="alleen-scherm"></span>
+    F_tril = 1 kN*k_r to kN', puntlast op één balk<span class="alleen-scherm"></span>'
     #if s3 ≡ 1
-        'De eenheidslast staat midden in het langste veld. Het andere veld houdt de
-        'ligger boven de tussenoplegging in: het steunmoment uit de
-        'drie-momentenvergelijking (§4b) verkleint de zakking.
-        M_B,tril = 3*F_tril*L_tril^2/(16*(L_th + L_veld2)) to kN*m', steunmoment onder de eenheidslast'
-        w_1kN = F_tril*L_tril^3/(48*E_mean*I_y) - M_B,tril*L_tril^2/(16*E_mean*I_y) to mm
+        '<i>De eenheidslast staat midden in het langste veld. Het andere veld houdt de ligger boven de tussenoplegging in: het steunmoment uit de drie-momentenvergelijking verkleint de zakking.</i><span class="alleen-scherm"></span>
+        M_B,tril = 3*F_tril*L_tril^2/(16*(L_th + L_veld2)) to kN*m', steunmoment onder de eenheidslast<span class="alleen-scherm"></span>'
+        w_1kN = F_tril*L_tril^3/(48*E_mean*I_y) - M_B,tril*L_tril^2/(16*E_mean*I_y) to mm'<span class="alleen-scherm"></span>'
     #else
-        w_1kN = F_tril*L_tril^3/(48*E_mean*I_y) to mm
+        w_1kN = F_tril*L_tril^3/(48*E_mean*I_y) to mm'<span class="alleen-scherm"></span>'
     #end if
-    w_per_kN = w_1kN/(1 kN) to mm/kN
-    UC_tril_a = w_per_kN/a_tril
+    w_per_kN = w_1kN/(1 kN) to mm/kN'<span class="alleen-scherm"></span>'
+    '<span class="alleen-afdruk"></span>
+    #if s3 ≡ 1
+        F_tril'<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+        M_B,tril'<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+        w_per_kN'<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+    #else
+        F_tril'<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
+        w_per_kN'<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
+    #end if
+    UC_tril_a = w_per_kN/a_tril'<span class="alleen-scherm"></span>'
+    UC_tril_a' (w<sub>per,kN</sub>/a<sub>tril</sub>)<span class="alleen-afdruk"></span>'
     #if UC_tril_a ≤ 1.0
-        'UC<sub>w/F</sub> = 'UC_tril_a'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+        '<span class="alleen-scherm">UC<sub>w/F</sub> = 'UC_tril_a'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>stijfheid voldoet</b></span>
     #else
-        'UC<sub>w/F</sub> = 'UC_tril_a'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+        '<span class="alleen-scherm">UC<sub>w/F</sub> = 'UC_tril_a'</span><span class="oordeel" style="color: red"> > 1.0 → <b>stijfheid voldoet niet</b></span>
     #end if
 
-    '<h6>9b.4 Criterium 2 — responssnelheid (formules 7.4, 7.6, 7.7)</h6>
-    'Aantal eigenmodi onder 40 Hz (formule 7.7). Bij een zeer stijve vloer
-    'ligt f_1 al boven 40 Hz; dan is er geen enkele eigenmode onder de 40 Hz
-    'en wordt de term onder de wortel op nul afgekapt.
-    n_40_arg = max(0; (40 Hz/f_1)^2 - 1)
-    n_40 = (n_40_arg*(b_vloer/L_tril)^4*EI_l/EI_b)^0.25
-    'Responssnelheid op een eenheidsimpuls (formule 7.6):
-    v_resp = 4*(0.4 + 0.6*n_40)/(m_opp*b_vloer*L_tril + 200 kg) to m/(N*s^2)
-    'Grenswaarde (formule 7.4): b^(f_1·ζ − 1)
-    v_lim = b_tril^(f_1*ζ/(1 Hz) - 1)*1 m/(N*s^2)
-    UC_tril_v = v_resp/v_lim
+    '<h6>7.3 Criterium 2 — responssnelheid (formules 7.4, 7.6, 7.7)<span class="alleen-scherm"></span></h6>
+    '<i>Aantal eigenmodi onder 40 Hz (formule 7.7). Bij een zeer stijve vloer ligt f<sub>1</sub> al boven 40 Hz; dan is er geen enkele eigenmode onder de 40 Hz en wordt de term onder de wortel op nul afgekapt.</i><span class="alleen-scherm"></span>
+    n_40_arg = max(0; (40 Hz/f_1)^2 - 1)'<span class="alleen-scherm"></span>'
+    n_40 = (n_40_arg*(b_vloer/L_tril)^4*EI_l/EI_b)^0.25', formule 7.7<span class="alleen-scherm"></span>'
+    v_resp = 4*(0.4 + 0.6*n_40)/(m_opp*b_vloer*L_tril + 200 kg) to m/(N*s^2)', formule 7.6<span class="alleen-scherm"></span>'
+    v_lim = b_tril^(f_1*ζ/(1 Hz) - 1)*1 m/(N*s^2)', formule 7.4<span class="alleen-scherm"></span>'
+    '<span class="alleen-afdruk"></span>
+    n_40', (7.7)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+    v_resp', (7.6)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+    v_lim', (7.4)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+    UC_tril_v = v_resp/v_lim'<span class="alleen-scherm"></span>'
+    UC_tril_v' (v<sub>resp</sub>/v<sub>lim</sub>)<span class="alleen-afdruk"></span>'
     #if UC_tril_v ≤ 1.0
-        'UC<sub>v</sub> = 'UC_tril_v'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+        '<span class="alleen-scherm">UC<sub>v</sub> = 'UC_tril_v'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>responssnelheid voldoet</b></span>
     #else
-        'UC<sub>v</sub> = 'UC_tril_v'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+        '<span class="alleen-scherm">UC<sub>v</sub> = 'UC_tril_v'</span><span class="oordeel" style="color: red"> > 1.0 → <b>responssnelheid voldoet niet</b></span>
     #end if
 
+    '<span class="alleen-afdruk"></span>
     UC_trilling = max(UC_tril_a; UC_tril_v)
     #if UC_trilling ≤ 1.0
-        '<b>Trillingen voldoen</b> (maatgevende UC = 'UC_trilling')
+        '<span class="alleen-scherm">UC<sub>trilling</sub> = 'UC_trilling'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>trillingen voldoen</b></span>
     #else
-        '<b><span style="color: red">Trillingen voldoen niet</span></b> (maatgevende UC = 'UC_trilling')
+        '<span class="alleen-scherm">UC<sub>trilling</sub> = 'UC_trilling'</span><span class="oordeel" style="color: red"> > 1.0 → <b>trillingen voldoen niet</b></span>
     #end if
 #else if controleer_trilling ≡ 1
-    'Trilling wordt niet getoetst: bij een onderslag niet van toepassing. De
-    'toets hoort bij de balklaag die op de onderslag rust.
-    UC_trilling = 0
+    'Trilling wordt niet getoetst: bij een onderslag niet van toepassing. De toets hoort bij de balklaag die op de onderslag rust.
+    UC_trilling = 0'<span class="alleen-scherm"></span>'
 #else
     'Trilling wordt niet getoetst (Controleer trilling = Nee).
-    UC_trilling = 0
+    UC_trilling = 0'<span class="alleen-scherm"></span>'
 #end if
 
-# 10. Toetsing UGT
+# 8. Toetsing UGT
 
-'<h6>10.1 Maatgevende krachten</h6>
-'<i>De grootste uitkomsten van de UGT-combinaties (6.10a en 6.10b) uit de tabel in §8.2.
-'De doorsnede is prismatisch, dus alleen de grootte telt: veld of steun.</i>
-#if s23 ≥ 1
-    M_y,Ed = max(M_Ed,veld1; M_Ed,steun; M_Ed,veld2; M_Ed,F1; M_Ed,F2) to kN*m', maatgevend'
-    V_z,Ed = max(V_Ed,veld1; V_Ed,steun; V_Ed,veld2; V_Ed,F1; V_Ed,F2) to kN', maatgevend'
-#else
-    M_y,Ed = max(M_Ed,veld1; M_Ed,F1) to kN*m', maatgevend'
-    V_z,Ed = max(V_Ed,veld1; V_Ed,F1) to kN', maatgevend'
-#end if
-
-'<h6>10.1b Omhullende momenten- en dwarskrachtenlijn (UGT)</h6>
-
-'<i>Per plaats het grootste en het kleinste moment en de grootste en kleinste
-'dwarskracht over de UGT-combinaties uit §8.2 (6.10a en 6.10b), met de puntlast op zijn plaats
-'uit BG4 en BG5: doorgetrokken de grootste waarde, onderbroken de kleinste. Het
-'moment staat aan de trekzijde: een veldmoment onder de as, een steunmoment
-'erboven. Bij de puntlast rekent §8 met de opgetelde maxima van
-'BG1 en de puntlast; valt M<sub>y,Ed</sub> of V<sub>z,Ed</sub> daardoor hoger
-'uit dan de lijn, dan is dat die veilige bovengrens.</i>
-
-#hide
-'Moment en dwarskracht van combinatie 1 tot en met 5 op afstand x, met de
-'lastsets uit §8: c voor 6.10b, a voor 6.10a. De puntlastcombinaties dragen de
-'permanente last met γ_G (of γ_G,a) op alle velden.
-Mo1(x) = Mx(x; c1_w1; c1_w2; 0; 0; c1_m)
-Mo2(x) = Mx(x; c2_w1; c2_w2; 0; 0; c2_m)
-Mo3(x) = Mx(x; c3_w1; c3_w2; 0; 0; c3_m)
-Mo4(x) = Mx(x; c4_w1; c4_w2; c4_P1; 0; c4_m)
-Mo5(x) = Mx(x; c4_w1; c4_w2; 0; c5_P2; c5_m)
-Ma1(x) = Mx(x; a1_w1; a1_w2; 0; 0; a1_m)
-Ma2(x) = Mx(x; a2_w1; a2_w2; 0; 0; a2_m)
-Ma3(x) = Mx(x; a3_w1; a3_w2; 0; 0; a3_m)
-Ma4(x) = Mx(x; a4_w1; a4_w2; a4_P1; 0; a4_m)
-Ma5(x) = Mx(x; a4_w1; a4_w2; 0; a5_P2; a5_m)
-Vo1(x) = Vx(x; c1_w1; c1_w2; 0; 0; c1_m)
-Vo2(x) = Vx(x; c2_w1; c2_w2; 0; 0; c2_m)
-Vo3(x) = Vx(x; c3_w1; c3_w2; 0; 0; c3_m)
-Vo4(x) = Vx(x; c4_w1; c4_w2; c4_P1; 0; c4_m)
-Vo5(x) = Vx(x; c4_w1; c4_w2; 0; c5_P2; c5_m)
-Va1(x) = Vx(x; a1_w1; a1_w2; 0; 0; a1_m)
-Va2(x) = Vx(x; a2_w1; a2_w2; 0; 0; a2_m)
-Va3(x) = Vx(x; a3_w1; a3_w2; 0; 0; a3_m)
-Va4(x) = Vx(x; a4_w1; a4_w2; a4_P1; 0; a4_m)
-Va5(x) = Vx(x; a4_w1; a4_w2; 0; a5_P2; a5_m)
-'De omhullende: per plaats het grootste en het kleinste.
-Mo_max(x) = max(Mo1(x); Mo2(x); Mo3(x); Mo4(x); Mo5(x); Ma1(x); Ma2(x); Ma3(x); Ma4(x); Ma5(x))
-Mo_min(x) = min(Mo1(x); Mo2(x); Mo3(x); Mo4(x); Mo5(x); Ma1(x); Ma2(x); Ma3(x); Ma4(x); Ma5(x))
-Vo_max(x) = max(Vo1(x); Vo2(x); Vo3(x); Vo4(x); Vo5(x); Va1(x); Va2(x); Va3(x); Va4(x); Va5(x))
-Vo_min(x) = min(Vo1(x); Vo2(x); Vo3(x); Vo4(x); Vo5(x); Va1(x); Va2(x); Va3(x); Va4(x); Va5(x))
-'Kenmerkende waarden van de omhullende. Het grootste veldmoment in veld 1 komt
-'uit combinatie 1 of 4, in veld 2 uit 3 of 5, elk met 6.10a of 6.10b; het
-'steunmoment is overal het grootst bij de tussenoplegging. De dwarskracht
-'daalt binnen elk veld, dus de uitersten liggen aan de randen.
-o_M1a = max(Mv1(c1_w1; 0; c1_m); Mv1(a1_w1; 0; a1_m))
-o_x1a = if(Mv1(a1_w1; 0; a1_m) > Mv1(c1_w1; 0; c1_m); x1t(a1_w1; 0; a1_m); x1t(c1_w1; 0; c1_m))
-o_M1b = max(Mv1(c4_w1; c4_P1; c4_m); Mv1(a4_w1; a4_P1; a4_m))
-o_x1b = if(Mv1(a4_w1; a4_P1; a4_m) > Mv1(c4_w1; c4_P1; c4_m); x1t(a4_w1; a4_P1; a4_m); x1t(c4_w1; c4_P1; c4_m))
-o_M1 = max(o_M1a; o_M1b)
-o_x1 = if(o_M1b > o_M1a; o_x1b; o_x1a)
-o_M2a = max(Mv2(c3_w2; 0; c3_m); Mv2(a3_w2; 0; a3_m))
-o_x2a = if(Mv2(a3_w2; 0; a3_m) > Mv2(c3_w2; 0; c3_m); t2t(a3_w2; 0; a3_m); t2t(c3_w2; 0; c3_m))
-o_M2b = max(Mv2(c4_w2; c5_P2; c5_m); Mv2(a4_w2; a5_P2; a5_m))
-o_x2b = if(Mv2(a4_w2; a5_P2; a5_m) > Mv2(c4_w2; c5_P2; c5_m); t2t(a4_w2; a5_P2; a5_m); t2t(c4_w2; c5_P2; c5_m))
-o_M2 = max(o_M2a; o_M2b)
-o_x2 = r_tot - if(o_M2b > o_M2a; o_x2b; o_x2a)
-o_Ms = max(c1_m; c2_m; c3_m; c4_m; c5_m; a1_m; a2_m; a3_m; a4_m; a5_m; 0)
-o_Mp = max(o_M1; o_M2; 0.0001)
-o_V0 = Vo_max(0)
-o_VL = Vo_min(r_L1)
-o_VR = Vo_max(r_L1 + (r_tot - r_L1)*10^-6)
-o_VE = Vo_min(r_tot*(1 - 10^-9))
-o_Vp = max(o_V0; o_VR*r_twee; 0.0001)
-o_Vn = max(-o_VL; -o_VE*r_twee; 0)
-'Schaal: het deel onder en boven de as past per lijn samen in 80 px.
-m_s = 80/max(o_Mp + o_Ms; 0.0001)
-my = 50 + o_Ms*m_s', as van de M-lijn'
-v_s = 80/max(o_Vp + o_Vn; 0.0001)
-vy2 = my + o_Mp*m_s + 76 + o_Vp*v_s', as van de V-lijn'
-svg_mv = vy2 + o_Vn*v_s + 40
-#show
-'<svg viewbox="0 0 480 'svg_mv'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'svg_mv + 10'px;">
-'  <!-- M-lijn: de grootste en de kleinste waarde, elk als gevuld vlak aan de trekzijde -->
-'  <polygon points="'lX(0)','my'
-#for i = 0 : 25
-' 'lX(sa(i))','my + m_s*Mo_max(sa(i))'
-#loop
-#if r_twee ≡ 1
-    #for i = 0 : 25
-    ' 'lX(sb(i))','my + m_s*Mo_max(sb(i))'
-    #loop
-#end if
-' 'lX(r_tot)','my'" style="fill:rgba(239,68,68,0.22); stroke:#dc2626; stroke-width:2; stroke-linejoin:round"/>
-'  <polygon points="'lX(0)','my'
-#for i = 0 : 25
-' 'lX(sa(i))','my + m_s*Mo_min(sa(i))'
-#loop
-#if r_twee ≡ 1
-    #for i = 0 : 25
-    ' 'lX(sb(i))','my + m_s*Mo_min(sb(i))'
-    #loop
-#end if
-' 'lX(r_tot)','my'" style="fill:rgba(239,68,68,0.12); stroke:#dc2626; stroke-width:1.4; stroke-dasharray:5 3; stroke-linejoin:round"/>
-'  <line x1="'lX(0) - 10'" y1="'my'" x2="'lX(r_tot) + 10'" y2="'my'" style="stroke:#374151; stroke-width:1.4"/>
-'  <text x="'lX(0) - 10'" y="'my - o_Ms*m_s - 30'" style="fill:#dc2626; font-weight:700">M-lijn, omhullende</text>
-'  <text x="'lX(r_tot) + 10'" y="'my - o_Ms*m_s - 30'" text-anchor="end" style="fill:#374151">M<tspan baseline-shift="sub" font-size="8">y,Ed</tspan> = 'M_y,Ed' kNm (maatgevend)</text>
-#if o_M1 > 0.00001
-    '  <circle cx="'lX(o_x1)'" cy="'my + m_s*o_M1'" r="2.4" style="fill:#dc2626"/>
-    '  <text x="'lX(o_x1)'" y="'my + m_s*o_M1 + 15'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_M1' kNm</text>
-#end if
-#if o_M2 > 0.00001
-    '  <circle cx="'lX(o_x2)'" cy="'my + m_s*o_M2'" r="2.4" style="fill:#dc2626"/>
-    '  <text x="'lX(o_x2)'" y="'my + m_s*o_M2 + 15'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_M2' kNm</text>
-#end if
-#if o_Ms > 0.00001
-    '  <circle cx="'lX(r_L1)'" cy="'my - m_s*o_Ms'" r="2.4" style="fill:#dc2626"/>
-    '  <text x="'lX(r_L1)'" y="'my - m_s*o_Ms - 8'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'-o_Ms' kNm</text>
-#end if
-'  <!-- V-lijn: de grootste en de kleinste waarde -->
-'  <polygon points="'lX(0)','vy2'
-#for i = 0 : 25
-' 'lX(sa(i))','vy2 - v_s*Vo_max(sa(i))'
-#loop
-#if r_twee ≡ 1
-    #for i = 0 : 25
-    ' 'lX(sb(i))','vy2 - v_s*Vo_max(sb(i))'
-    #loop
-#end if
-' 'lX(r_tot)','vy2'" style="fill:rgba(59,130,246,0.20); stroke:#2563eb; stroke-width:2; stroke-linejoin:round"/>
-'  <polygon points="'lX(0)','vy2'
-#for i = 0 : 25
-' 'lX(sa(i))','vy2 - v_s*Vo_min(sa(i))'
-#loop
-#if r_twee ≡ 1
-    #for i = 0 : 25
-    ' 'lX(sb(i))','vy2 - v_s*Vo_min(sb(i))'
-    #loop
-#end if
-' 'lX(r_tot)','vy2'" style="fill:rgba(59,130,246,0.12); stroke:#2563eb; stroke-width:1.4; stroke-dasharray:5 3; stroke-linejoin:round"/>
-'  <line x1="'lX(0) - 10'" y1="'vy2'" x2="'lX(r_tot) + 10'" y2="'vy2'" style="stroke:#374151; stroke-width:1.4"/>
-'  <text x="'lX(0) - 10'" y="'vy2 - o_Vp*v_s - 30'" style="fill:#2563eb; font-weight:700">V-lijn, omhullende</text>
-'  <text x="'lX(r_tot) + 10'" y="'vy2 - o_Vp*v_s - 30'" text-anchor="end" style="fill:#374151">V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan> = 'V_z,Ed' kN (maatgevend)</text>
-'  <text x="'lX(0) + 5'" y="'vy2 - v_s*o_V0 + if(o_V0 < 0; 15; -7)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_V0' kN</text>
-'  <text x="'lX(r_L1) - 5'" y="'vy2 - v_s*o_VL + if(o_VL < 0; 15; -7)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VL' kN</text>
-#if r_twee ≡ 1
-    '  <text x="'lX(r_L1) + 5'" y="'vy2 - v_s*o_VR + if(o_VR < 0; 15; -7)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VR' kN</text>
-#end if
-#if s3 ≡ 1
-    '  <text x="'lX(r_tot) - 5'" y="'vy2 - v_s*o_VE + if(o_VE < 0; 15; -7)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VE' kN</text>
-#end if
-'  <!-- opleggingen onder beide assen -->
-'  <polygon points="'lX(0)','my' 'lX(0) - 8','my + 15' 'lX(0) + 8','my + 15'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
-'  <line x1="'lX(0) - 12'" y1="'my + 15'" x2="'lX(0) + 12'" y2="'my + 15'" style="stroke:#92400e; stroke-width:1.2"/>
-'  <polygon points="'lX(r_L1)','my' 'lX(r_L1) - 8','my + 12' 'lX(r_L1) + 8','my + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
-'  <circle cx="'lX(r_L1) - 3.6'" cy="'my + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
-'  <circle cx="'lX(r_L1) + 3.6'" cy="'my + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
-'  <line x1="'lX(r_L1) - 12'" y1="'my + 17.6'" x2="'lX(r_L1) + 12'" y2="'my + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
-'  <polygon points="'lX(0)','vy2' 'lX(0) - 8','vy2 + 15' 'lX(0) + 8','vy2 + 15'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
-'  <line x1="'lX(0) - 12'" y1="'vy2 + 15'" x2="'lX(0) + 12'" y2="'vy2 + 15'" style="stroke:#92400e; stroke-width:1.2"/>
-'  <polygon points="'lX(r_L1)','vy2' 'lX(r_L1) - 8','vy2 + 12' 'lX(r_L1) + 8','vy2 + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
-'  <circle cx="'lX(r_L1) - 3.6'" cy="'vy2 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
-'  <circle cx="'lX(r_L1) + 3.6'" cy="'vy2 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
-'  <line x1="'lX(r_L1) - 12'" y1="'vy2 + 17.6'" x2="'lX(r_L1) + 12'" y2="'vy2 + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
-#if s3 ≡ 1
-    '  <polygon points="'lX(r_tot)','my' 'lX(r_tot) - 8','my + 12' 'lX(r_tot) + 8','my + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
-    '  <circle cx="'lX(r_tot) - 3.6'" cy="'my + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
-    '  <circle cx="'lX(r_tot) + 3.6'" cy="'my + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
-    '  <line x1="'lX(r_tot) - 12'" y1="'my + 17.6'" x2="'lX(r_tot) + 12'" y2="'my + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
-    '  <polygon points="'lX(r_tot)','vy2' 'lX(r_tot) - 8','vy2 + 12' 'lX(r_tot) + 8','vy2 + 12'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1.2"/>
-    '  <circle cx="'lX(r_tot) - 3.6'" cy="'vy2 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
-    '  <circle cx="'lX(r_tot) + 3.6'" cy="'vy2 + 14.6'" r="2.6" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>
-    '  <line x1="'lX(r_tot) - 12'" y1="'vy2 + 17.6'" x2="'lX(r_tot) + 12'" y2="'vy2 + 17.6'" style="stroke:#92400e; stroke-width:1.2"/>
-#end if
-'</svg>'
-
-'<h6>10.2 Buiging — §6.1.6 (6.11)</h6>
-σ_m,y,d = M_y,Ed/W_y to N/mm^2
-σ_m,y,d
-UC_buiging = σ_m,y,d/f_m,d
+'<h6>8.1 Buiging — §6.1.6 (6.11)</h6>
+σ_m,y,d = M_y,Ed/W_y to N/mm^2'<span class="kolom-2"></span>'
+UC_buiging = σ_m,y,d/f_m,d'<span class="alleen-scherm"></span>'
+UC_buiging' (σ<sub>m,y,d</sub>/f<sub>m,d</sub>)<span class="alleen-afdruk"></span>'
 #if UC_buiging ≤ 1.0
-    'UC<sub>buiging</sub> = σ<sub>m,y,d</sub>/f<sub>m,d</sub> = 'UC_buiging'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+    '<span class="alleen-scherm">UC<sub>buiging</sub> = σ<sub>m,y,d</sub>/f<sub>m,d</sub> = 'UC_buiging'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
 #else
-    'UC<sub>buiging</sub> = σ<sub>m,y,d</sub>/f<sub>m,d</sub> = 'UC_buiging'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+    '<span class="alleen-scherm">UC<sub>buiging</sub> = σ<sub>m,y,d</sub>/f<sub>m,d</sub> = 'UC_buiging'</span><span class="oordeel" style="color: red"> > 1.0 → <b>voldoet niet</b></span>
 #end if
 
-'<h6>10.3 Afschuiving — §6.1.7 (6.13)</h6>
+'<h6>8.2 Afschuiving — §6.1.7 (6.13)</h6>
 τ_d = V_z,Ed*S_y/(b_balk*I_y) to N/mm^2
-UC_afsch = τ_d/f_v,d
+UC_afsch = τ_d/f_v,d'<span class="alleen-scherm"></span>'
+UC_afsch' (τ<sub>d</sub>/f<sub>v,d</sub>)<span class="alleen-afdruk"></span>'
 #if UC_afsch ≤ 1.0
-    'UC<sub>afschuiving</sub> = τ<sub>d</sub>/f<sub>v,d</sub> = 'UC_afsch'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+    '<span class="alleen-scherm">UC<sub>afschuiving</sub> = τ<sub>d</sub>/f<sub>v,d</sub> = 'UC_afsch'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
 #else
-    'UC<sub>afschuiving</sub> = τ<sub>d</sub>/f<sub>v,d</sub> = 'UC_afsch'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+    '<span class="alleen-scherm">UC<sub>afschuiving</sub> = τ<sub>d</sub>/f<sub>v,d</sub> = 'UC_afsch'</span><span class="oordeel" style="color: red"> > 1.0 → <b>voldoet niet</b></span>
 #end if
 
-# 11. Samenvatting — alle unity checks
-
-UC_max = max(UC_doorbuiging; UC_buiging; UC_afsch; UC_trilling)
+# 9. Samenvatting
 
 #hide
 'Kleur per regel: rood zodra een toets boven 1,0 uitkomt, oranje vanaf 0,90
@@ -1685,73 +1677,57 @@ oordeel_door = if(UC_doorbuiging ≤ 1; "voldoet"; "voldoet niet")
 oordeel_tril = if(UC_trilling ≤ 1; "voldoet"; "voldoet niet")
 #show
 
-'<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
+'<table class="alleen-scherm" style="width:100%; border-collapse:collapse; font-size:0.95em;">
 '<tr style="border-bottom:2px solid #374151;">
-'<th style="text-align:left; padding:5px 8px;">Toets</th>
-'<th style="text-align:left; padding:5px 8px;">Norm</th>
-'<th style="text-align:right; padding:5px 8px;">UC</th>
-'<th style="text-align:left; padding:5px 8px;">Oordeel</th></tr>
+'<th style="text-align:left; padding:2px 8px;">Toets</th>
+'<th style="text-align:left; padding:2px 8px;">Norm</th>
+'<th style="text-align:right; padding:2px 8px;">UC</th>
+'<th style="text-align:left; padding:2px 8px;">Oordeel</th></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;">
-'<td style="padding:5px 8px;">Buiging</td>
-'<td style="padding:5px 8px;">§6.1.6 (6.11)</td>
-'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_buig'">'UC_buiging'</td>
-'<td style="padding:5px 8px; color:'kleur_buig'">'oordeel_buig'</td></tr>
+'<td style="padding:2px 8px;">Buiging</td>
+'<td style="padding:2px 8px;">§6.1.6 (6.11)</td>
+'<td style="padding:2px 8px; text-align:right; font-weight:700; color:'kleur_buig'">'UC_buiging'</td>
+'<td style="padding:2px 8px; color:'kleur_buig'">'oordeel_buig'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;">
-'<td style="padding:5px 8px;">Afschuiving</td>
-'<td style="padding:5px 8px;">§6.1.7 (6.13)</td>
-'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_afsch'">'UC_afsch'</td>
-'<td style="padding:5px 8px; color:'kleur_afsch'">'oordeel_afsch'</td></tr>
+'<td style="padding:2px 8px;">Afschuiving</td>
+'<td style="padding:2px 8px;">§6.1.7 (6.13)</td>
+'<td style="padding:2px 8px; text-align:right; font-weight:700; color:'kleur_afsch'">'UC_afsch'</td>
+'<td style="padding:2px 8px; color:'kleur_afsch'">'oordeel_afsch'</td></tr>
 #if controleer ≡ 1
 '<tr style="border-bottom:1px solid #e5e7eb;">
-'<td style="padding:5px 8px;">Doorbuiging</td>
-'<td style="padding:5px 8px;">§7.2 (7.2)</td>
-'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_door'">'UC_doorbuiging'</td>
-'<td style="padding:5px 8px; color:'kleur_door'">'oordeel_door'</td></tr>
+'<td style="padding:2px 8px;">Doorbuiging</td>
+'<td style="padding:2px 8px;">§7.2 (7.2)</td>
+'<td style="padding:2px 8px; text-align:right; font-weight:700; color:'kleur_door'">'UC_doorbuiging'</td>
+'<td style="padding:2px 8px; color:'kleur_door'">'oordeel_door'</td></tr>
 #else
 '<tr style="border-bottom:1px solid #e5e7eb;">
-'<td style="padding:5px 8px;">Doorbuiging</td>
-'<td style="padding:5px 8px;">§7.2</td>
-'<td style="padding:5px 8px; text-align:right; color:#9ca3af;">—</td>
-'<td style="padding:5px 8px; color:#9ca3af;">niet getoetst</td></tr>
+'<td style="padding:2px 8px;">Doorbuiging</td>
+'<td style="padding:2px 8px;">§7.2</td>
+'<td style="padding:2px 8px; text-align:right; color:#9ca3af;">—</td>
+'<td style="padding:2px 8px; color:#9ca3af;">niet getoetst</td></tr>
 #end if
 #if tril_aan ≡ 1
 '<tr style="border-bottom:1px solid #e5e7eb;">
-'<td style="padding:5px 8px;">Trilling</td>
-'<td style="padding:5px 8px;">§7.3.3 (7.3, 7.4)</td>
-'<td style="padding:5px 8px; text-align:right; font-weight:700; color:'kleur_tril'">'UC_trilling'</td>
-'<td style="padding:5px 8px; color:'kleur_tril'">'oordeel_tril'</td></tr>
+'<td style="padding:2px 8px;">Trilling</td>
+'<td style="padding:2px 8px;">§7.3.3 (7.3, 7.4)</td>
+'<td style="padding:2px 8px; text-align:right; font-weight:700; color:'kleur_tril'">'UC_trilling'</td>
+'<td style="padding:2px 8px; color:'kleur_tril'">'oordeel_tril'</td></tr>
 #else
 '<tr style="border-bottom:1px solid #e5e7eb;">
-'<td style="padding:5px 8px;">Trilling</td>
-'<td style="padding:5px 8px;">§7.3.3</td>
-'<td style="padding:5px 8px; text-align:right; color:#9ca3af;">—</td>
-'<td style="padding:5px 8px; color:#9ca3af;">'if(controleer_trilling ≡ 1; "n.v.t. bij een onderslag"; "niet getoetst")'</td></tr>
+'<td style="padding:2px 8px;">Trilling</td>
+'<td style="padding:2px 8px;">§7.3.3</td>
+'<td style="padding:2px 8px; text-align:right; color:#9ca3af;">—</td>
+'<td style="padding:2px 8px; color:#9ca3af;">'if(controleer_trilling ≡ 1; "n.v.t. bij een onderslag"; "niet getoetst")'</td></tr>
 #end if
 '</table>
 
+UC_max = max(UC_doorbuiging; UC_buiging; UC_afsch; UC_trilling)'<span class="alleen-scherm"></span>'
+UC_max'<span class="alleen-afdruk"></span>'
 #if UC_max ≤ 1.0
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1.0 → <b>Balklaag voldoet</b></span>
+    '<span class="alleen-scherm"><b>Maatgevende UC = 'UC_max'</b></span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>Balklaag voldoet</b></span>
 #else
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1.0 → <b>Balklaag voldoet niet</b></span>
+    '<span class="alleen-scherm"><b>Maatgevende UC = 'UC_max'</b></span><span class="oordeel" style="color: red"> > 1.0 → <b>Balklaag voldoet niet</b></span>
 #end if
 
-'<hr/>
-'<i>Aandachtspunten / vereenvoudigingen:
-'<ul>
-'<li>Eigengewicht balk met EN 338 ρ<sub>mean</sub> (C24 = 420 kg/m³) en
-'g = 9,81 m/s². de referentie-uitwerking hanteert een vaste 550 kg/m³ met g = 10; resultaten
-'hier daardoor iets gunstiger.</li>
-'<li>Concentratiefactor k<sub>r</sub> geverifieerd op vier referentiebladen
-'(beschot 18 en 25 mm, hoh 600 en 1000, twee profielen).</li>
-'<li>Hoogtefactor k<sub>h</sub> geverifieerd in beide takken: gelijmd
-'gelamineerd (GL24h, 221 mm → 1,10) en massief (71×146 → 1,005).</li>
-'<li>Afschuiving met volle balkbreedte b (geen k<sub>cr</sub>-reductie), conform
-'de referentie-uitwerking.</li>
-'<li>Trillingstoets (§7.3) en kip zijn niet opgenomen (vloerbalk zijdelings
-'gesteund door het beschot). Let op: bij overspanningen rond 5 m ligt f<sub>1</sub>
-'onder de 8 Hz en is §7.3.3 wél van toepassing.</li>
-'<li>Oplegdruk (§6.1.5) wordt niet getoetst, net zomin als in de referentie-uitwerking. Op het
-'basisgeval is die u.c. 0,89 met k<sub>c,90</sub> = 1,25 — krap genoeg om apart
-'na te lopen.</li>
-'</ul></i>
+'Niet getoetst: de oplegdruk (§6.1.5) en kip; de balk is zijdelings gesteund door het beschot. De afschuiving rekent met de volle balkbreedte, zonder k<sub>cr</sub> (§6.1.7(2)).
 `;

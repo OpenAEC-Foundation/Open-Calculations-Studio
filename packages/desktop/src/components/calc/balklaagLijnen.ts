@@ -1,7 +1,7 @@
 /**
  * De lijnen van de balklaag voor het parametrische beeld: moment, dwarskracht
  * en zakking van een lastset, dezelfde statica als het rekenmodel in
- * `templates/balklaag.ts` (§4b). Hier wordt niets getoetst — de getallen die
+ * `templates/balklaag.ts` (§4). Hier wordt niets getoetst — de getallen die
  * tellen (unity checks, M_y,Ed, V_z,Ed, w_fin) komen uit het blad zelf. Dit
  * bestand tekent alleen de vorm, met de lasten en factoren uit dat blad.
  *
@@ -67,7 +67,7 @@ export function steunmoment(g: Ligger, s: Lastset): number {
 
 /**
  * De belastinggevallen BG1 … BG5 uit de lasten per balk, zoals het blad ze
- * definieert (§7): BG1 permanent overal, BG2 veranderlijk op veld 1, BG3
+ * definieert (§4): BG1 permanent overal, BG2 veranderlijk op veld 1, BG3
  * veranderlijk op het tweede deel (veld 2 of het overstek), BG4 puntlast
  * midden in veld 1, BG5 puntlast op het tweede deel (midden in veld 2 of op
  * het uiteinde van het overstek). Het overstek is voor de schaakbordbelasting
@@ -96,7 +96,7 @@ export interface Factoren {
   gQa?: number;
 }
 
-/** Eén UGT-combinatie: de rij uit de tabel van het blad (§8.2), de formule en de lastset. */
+/** Eén UGT-combinatie: de rij uit de tabel van het blad (5.2), de formule en de lastset. */
 export interface Combinatie {
   rij: 1 | 2 | 3 | 4 | 5;
   formule: "6.10a" | "6.10b";
@@ -104,7 +104,7 @@ export interface Combinatie {
 }
 
 /**
- * De UGT-combinaties van §8 als lastset: vijf rijen (veld 1, steun, veld 2 of
+ * De UGT-combinaties van §5 als lastset: vijf rijen (veld 1, steun, veld 2 of
  * overstek, en de twee puntlasten), elk met 6.10a en 6.10b.
  */
 export function ugtCombinaties(bg: Record<1 | 2 | 3 | 4 | 5, Lastset>, f: Factoren): Combinatie[] {

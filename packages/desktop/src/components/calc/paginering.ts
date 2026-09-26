@@ -145,6 +145,10 @@ export function meetBlokken(bron: HTMLElement): Blok[] {
     let eerste = true;
     for (const kind of Array.from(sectie.children) as HTMLElement[]) {
       for (const item of vlakUit(kind)) {
+        // Wat niet op papier komt (`display: none`) heeft geen vak. Het neemt
+        // geen plaats in en hoort niet op een vel; gemeten zou het als bovenkant
+        // de rand van het venster krijgen en een hoogte van een halve uitdraai.
+        if (item.el.getClientRects().length === 0) continue;
         rijen.push({ el: item.el, nieuwePagina: eerste, sectie: sectie.className, wikkels: item.wikkels });
         eerste = false;
       }
@@ -154,13 +158,25 @@ export function meetBlokken(bron: HTMLElement): Blok[] {
   // Meten via de afstand tot het vólgende blok in plaats van via de eigen
   // hoogte: zo tellen marges — en het inklappen daarvan — vanzelf mee.
   const bronOnder = bron.getBoundingClientRect().bottom;
-  const toppen = rijen.map((r) => r.el.getBoundingClientRect().top);
+  const vakken = rijen.map((r) => r.el.getBoundingClientRect());
+
+  // Blokken naast elkaar (kolommen, kaarten, het oordeel achter zijn
+  // toetsregel) vormen samen één regel: een blok dat begint voordat het vorige
+  // eindigt, staat ernaast. Die regel gaat als geheel naar een vel; zijn
+  // hoogte telt bij het eerste blok, de andere tellen nul.
+  const regelStart: number[] = [];
+  vakken.forEach((v, i) => {
+    const ernaast = i > 0 && !rijen[i].nieuwePagina && v.top < vakken[i - 1].bottom - 1;
+    regelStart.push(ernaast ? regelStart[i - 1] : i);
+  });
 
   return rijen.map((r, i) => {
-    const onder = i + 1 < toppen.length ? toppen[i + 1] : bronOnder;
+    let volgende = i + 1;
+    while (volgende < rijen.length && regelStart[volgende] === regelStart[i]) volgende++;
+    const onder = volgende < rijen.length ? vakken[volgende].top : bronOnder;
     return {
       el: r.el,
-      hoogte: Math.max(0, onder - toppen[i]),
+      hoogte: regelStart[i] === i ? Math.max(0, onder - vakken[i].top) : 0,
       nieuwePagina: r.nieuwePagina,
       // Een kop, of een regel die zich zo gedraagt: de kopregel van een tabel
       // in het rapport is geen <h*>, maar hoort evenmin los onderaan een vel.
