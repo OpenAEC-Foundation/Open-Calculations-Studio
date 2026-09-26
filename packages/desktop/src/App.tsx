@@ -78,6 +78,10 @@ export default function App() {
   const printBezig = usePrintStore((s) => s.bezig);
   const printVoorbeeld = usePrintStore((s) => s.voorbeeld);
   const printKlaar = usePrintStore((s) => s.klaar);
+  const toonVoorbeeld = usePrintStore((s) => s.toonVoorbeeld);
+  const sluitVoorbeeld = usePrintStore((s) => s.sluitVoorbeeld);
+  const printSelectie = usePrintStore((s) => s.selectie);
+  const kiesSelectie = usePrintStore((s) => s.kiesSelectie);
   // Alleen het échte printen zet de app weg. Het afdrukvoorbeeld is een paneel
   // binnen de applicatie: lint, projectboom en statusbalk blijven staan.
   const afdrukmodus = printBezig;
@@ -108,6 +112,15 @@ export default function App() {
     };
   }, [printBezig, printKlaar]);
 
+  // Staat het afdrukvoorbeeld op één blad en open je een ander blad, dan volgt
+  // het voorbeeld mee. Een keuze voor het hele project blijft staan.
+  useEffect(() => {
+    if (!printVoorbeeld || !actief) return;
+    if (printSelectie && printSelectie.length === 1 && printSelectie[0] !== actief.id) {
+      kiesSelectie([actief.id]);
+    }
+  }, [printVoorbeeld, actief, printSelectie, kiesSelectie]);
+
   const designerPane = designerVoor(source);
   // Het projectgegevens-formulier is geen rekenblad: geen editor, geen
   // uitwerking, geen splitsing — alleen het formulier.
@@ -116,6 +129,24 @@ export default function App() {
   const mode = hasDesigner ? splitMode : "cu";
   const leftPane = mode === "vu" ? designerPane : <Editor />;
   const rightPane = mode === "cv" ? designerPane : <Preview />;
+
+  // De weergaven van een geopend blad, met het afdrukvoorbeeld als laatste tab.
+  const kiesWeergave = (m: "cv" | "cu" | "vu") => {
+    sluitVoorbeeld();
+    setSplitMode(m);
+  };
+  const tabBalk = actief && !toontProjectGegevens ? (
+    <div className="split-tabs">
+      {hasDesigner && (
+        <button className={`split-tab${!printVoorbeeld && mode === "cv" ? " active" : ""}`} onClick={() => kiesWeergave("cv")}>Code + Visueel</button>
+      )}
+      <button className={`split-tab${!printVoorbeeld && mode === "cu" ? " active" : ""}`} onClick={() => kiesWeergave("cu")}>Code + Uitwerking</button>
+      {hasDesigner && (
+        <button className={`split-tab${!printVoorbeeld && mode === "vu" ? " active" : ""}`} onClick={() => kiesWeergave("vu")}>Visueel + Uitwerking</button>
+      )}
+      <button className={`split-tab${printVoorbeeld ? " active" : ""}`} onClick={() => toonVoorbeeld([actief.id])}>Afdrukvoorbeeld</button>
+    </div>
+  ) : null;
 
   const handleBrowse = useCallback(async () => {
     try {
@@ -167,7 +198,10 @@ export default function App() {
         <ProjectBrowser />
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           {printVoorbeeld ? (
-            <AfdrukVoorbeeld />
+            <>
+              {tabBalk}
+              <AfdrukVoorbeeld />
+            </>
           ) : activeView === "ifc" ? (
             <IfcViewerPanel />
           ) : toontProjectGegevens ? (
@@ -183,13 +217,7 @@ export default function App() {
             </div>
           ) : (
             <>
-              {hasDesigner && (
-                <div className="split-tabs">
-                  <button className={`split-tab${mode === "cv" ? " active" : ""}`} onClick={() => setSplitMode("cv")}>Code + Visueel</button>
-                  <button className={`split-tab${mode === "cu" ? " active" : ""}`} onClick={() => setSplitMode("cu")}>Code + Uitwerking</button>
-                  <button className={`split-tab${mode === "vu" ? " active" : ""}`} onClick={() => setSplitMode("vu")}>Visueel + Uitwerking</button>
-                </div>
-              )}
+              {tabBalk}
               <div style={{ flex: 1, minHeight: 0 }}>
                 <SplitPane left={leftPane} right={rightPane} />
               </div>
