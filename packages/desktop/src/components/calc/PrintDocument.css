@@ -406,6 +406,19 @@ html.afdrukmodus .print-loopvoet {
   height: auto;
 }
 
+/* De titelkop van de uitwerking ("Balklaag — houten vloerbalken volgens …")
+   herhaalt wat de bladkop al zegt. Waar de kop de grondslag toont (PrintBlad,
+   `titelInKop`) vervalt hij, maar alleen als hij bovenaan staat: een blad dat
+   met een paragraafkop begint, houdt die. Weg met `display: none`, zodat de
+   verdeling over de vellen (paginering.ts) hem ook overslaat. De uitkomst in
+   de kop leest de rekenkern zelf, niet deze regel (bladResultaat.ts).
+   Bewust alleen op de sectie zelf (`section`): het afdrukvoorbeeld zet de
+   sectieklasse ook op elk vel (een div), en bovenaan een vel is de eerste kop
+   gewoon een paragraafkop die moet blijven staan. */
+.print-opmaak section.print-titel-in-kop > .ifc-calc > .ifc-calc > h1:first-child {
+  display: none;
+}
+
 /* De kernopmaak houdt de uitwerking smal voor de leesbaarheid op een breed
    scherm, met 28px lucht eromheen. Op een A4 is de bladspiegel al bepaald door
    de paginamarge, dus die beperking is daar alleen verspilde ruimte naast de

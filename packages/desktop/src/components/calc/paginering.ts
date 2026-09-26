@@ -102,6 +102,18 @@ export function pxPerMm(doc: Document = document): number {
 const OVERSLAAN = ["print-loopkop", "print-loopvoet", "rpa-voet"];
 
 /**
+ * Regels die zich als kop gedragen zonder een `<h*>` te zijn: het kopblok van
+ * een rekenblad, de sectiekop op het voorblad en de kopregel van een tabel in
+ * het rapport. Geen van alle hoort los onderaan een vel te staan.
+ */
+const KOPKLASSEN = ["print-blad-kop", "print-sectiekop", "rpa-houd"];
+
+/** Hoort dit blok bij het blok eronder: een kop (h1–h6) of een regel die zich zo gedraagt. */
+export function houdtBijVolgende(el: Pick<Element, "tagName" | "classList">): boolean {
+  return /^H[1-6]$/.test(el.tagName) || KOPKLASSEN.some((k) => el.classList.contains(k));
+}
+
+/**
  * Wikkels die alleen groeperen: `.ifc-calc` om de uitwerking van een blad en
  * `.rpa-vlak` om de regels van het rapport. Wat erin zit, wordt los verdeeld.
  */
@@ -178,9 +190,7 @@ export function meetBlokken(bron: HTMLElement): Blok[] {
       el: r.el,
       hoogte: regelStart[i] === i ? Math.max(0, onder - vakken[i].top) : 0,
       nieuwePagina: r.nieuwePagina,
-      // Een kop, of een regel die zich zo gedraagt: de kopregel van een tabel
-      // in het rapport is geen <h*>, maar hoort evenmin los onderaan een vel.
-      houdBijVolgende: /^H[1-6]$/.test(r.el.tagName) || r.el.classList.contains("rpa-houd"),
+      houdBijVolgende: houdtBijVolgende(r.el),
       sectie: r.sectie,
       wikkels: r.wikkels,
     };
@@ -227,11 +237,18 @@ export function verdeelPerSectie(blokken: Blok[], hoogteVoor: (sectie: string) =
  * loopt daar over; splitsen kan niet zonder de inhoud te beschadigen (een
  * tekening doormidden knippen helpt niemand). De weergave kapt het af, precies
  * zoals een printer dat doet — dan zíé je tenminste dat het niet past.
+ *
+ * Een kop gaat nooit alleen onderaan een vel staan: past hij samen met wat
+ * erop volgt niet meer, dan begint hij het volgende vel (zie `metVervolg`).
+ * Dat wordt hier vooraf beslist en niet achteraf rechtgezet. Achteraf kan een
+ * achtergebleven kop alleen door naar een vel dat nog ruimte heeft, en het
+ * vel na een kop is meestal net vol: dan bleef hij toch staan.
  */
 export function verdeelInPaginas(blokken: Blok[], paginaHoogte: number): Blok[][] {
   const paginas: Blok[][] = [];
   let huidig: Blok[] = [];
   let gebruikt = 0;
+  const past = (hoogte: number) => hoogte <= paginaHoogte + AFRONDING;
 
   const sluit = () => {
     if (huidig.length > 0) paginas.push(huidig);
@@ -239,37 +256,38 @@ export function verdeelInPaginas(blokken: Blok[], paginaHoogte: number): Blok[][
     gebruikt = 0;
   };
 
-  for (const blok of blokken) {
+  blokken.forEach((blok, i) => {
     if (blok.nieuwePagina) sluit();
-    else if (gebruikt > 0 && gebruikt + blok.hoogte > paginaHoogte + AFRONDING) sluit();
+    else if (gebruikt > 0) {
+      // Past de kop met zijn vervolg hier niet meer, maar op een vers vel wel,
+      // dan nu al een nieuw vel. Is het vervolg hoger dan een heel vel, dan
+      // helpt doorschuiven niet: dat blok krijgt toch een vel voor zich alleen.
+      const kop = blok.houdBijVolgende ? metVervolg(blokken, i) : 0;
+      const kopNaarVolgende = kop > 0 && !past(gebruikt + kop) && past(kop);
+      if (kopNaarVolgende || !past(gebruikt + blok.hoogte)) sluit();
+    }
     huidig.push(blok);
     gebruikt += blok.hoogte;
-  }
+  });
   sluit();
 
-  return trekKoppenDoor(paginas, paginaHoogte);
+  return paginas;
 }
 
 /**
- * Haalt koppen weg die alleen onderaan een pagina zouden achterblijven.
- *
- * Een paragraafkop los onder aan een vel, met de tekst op het volgende, leest
- * als een fout in het rapport. Verplaatsen mag alleen als de kop op de
- * volgende pagina ook echt past — anders schuift het probleem alleen op.
+ * De hoogte die een kop op zijn vel nodig heeft: hijzelf, de koppen direct
+ * eronder (een paragraafkop onder een hoofdstukkop) en het eerste blok met
+ * inhoud. Een regel naast elkaar telt als geheel; zijn hoogte staat op het
+ * eerste blok. Aan het eind van een sectie is er geen vervolg om bij te
+ * houden: de volgende sectie begint toch op een eigen vel.
  */
-function trekKoppenDoor(paginas: Blok[][], paginaHoogte: number): Blok[][] {
-  for (let i = 0; i < paginas.length - 1; i++) {
-    const pagina = paginas[i];
-    const volgende = paginas[i + 1];
-    const verplaats: Blok[] = [];
-    while (pagina.length > 1 && pagina[pagina.length - 1].houdBijVolgende) {
-      verplaats.unshift(pagina.pop() as Blok);
-    }
-    if (verplaats.length === 0) continue;
-    const erbij = verplaats.reduce((som, b) => som + b.hoogte, 0);
-    const bezet = volgende.reduce((som, b) => som + b.hoogte, 0);
-    if (bezet + erbij <= paginaHoogte + AFRONDING) volgende.unshift(...verplaats);
-    else pagina.push(...verplaats); // past niet; laat hem dan maar staan
+function metVervolg(blokken: Blok[], i: number): number {
+  let som = 0;
+  for (let j = i; j < blokken.length; j++) {
+    const b = blokken[j];
+    if (j > i && b.nieuwePagina) break;
+    som += b.hoogte;
+    if (!b.houdBijVolgende && b.hoogte > 0) break;
   }
-  return paginas;
+  return som;
 }

@@ -6,6 +6,8 @@ import { normaliseerRapport, standaardRapport, type Rapport } from "../rapport/m
 import { leesPad, zetOpPad } from "../rapport/pad";
 import { datumTekst } from "../rapport/revisies";
 import { standaardTeksten } from "../rapport/standaardteksten";
+import { rekenversie } from "../components/calc/bladVersie";
+import { normaliseerExemplaren } from "./projectBestand";
 
 const STORE_KEY = "projectState";
 
@@ -39,6 +41,17 @@ export interface Exemplaar {
   naam: string;
   templateId: string;
   source: string;
+  /**
+   * De rekenversie van de moduletekst waaruit dit blad is ingevoegd, of
+   * waarnaar het voor het laatst is bijgewerkt (components/calc/bladVersie.ts).
+   * Zo is te onderscheiden of de module intussen een nieuwere rekenversie
+   * heeft (bronVersie ≠ die van de module) of dat de gebruiker de rekentekst
+   * zelf heeft aangepast (bronVersie ≠ die van `source`).
+   *
+   * Ontbreekt bij bladen van vóór dit veld en bij een los geopend blad zonder
+   * module; die vergelijken hun tekst rechtstreeks met de module.
+   */
+  bronVersie?: string;
   /** Invoerwaarden van dit exemplaar, per variabelenaam. */
   waarden: Record<string, string>;
   /**
@@ -93,7 +106,8 @@ interface ProjectState {
   seedWaarden: (id: string, defaults: Record<string, string>) => void;
   /**
    * Zet bladen over op een nieuwe rekentekst, elk met zijn bijgewerkte
-   * invoer: "Bijwerken" in het vergelijkingsscherm. Eén stap in de
+   * invoer: "Bijwerken" in het vergelijkingsscherm. De rekenversie van die
+   * tekst wordt de nieuwe bronversie van het blad. Eén stap in de
    * geschiedenis, ook voor meerdere bladen tegelijk. Zie
    * components/calc/bladVersie.ts.
    */
@@ -235,6 +249,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           naam: vrijeNaam(s.exemplaren, basisNaam),
           templateId,
           source,
+          // De tekst is die van de module: zijn rekenversie is de bron.
+          bronVersie: rekenversie(source),
           waarden: {},
         },
       ],
@@ -340,7 +356,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ...metGeschiedenis(s, null),
         exemplaren: s.exemplaren.map((e) => {
           const w = per.get(e.id);
-          return w ? { ...e, source: w.source, waarden: { ...w.waarden } } : e;
+          return w ? { ...e, source: w.source, bronVersie: rekenversie(w.source), waarden: { ...w.waarden } } : e;
         }),
         dirty: true,
       };
@@ -476,11 +492,14 @@ void getSetting<Persisted | null>(STORE_KEY, null).then((saved) => {
   const nu = useProjectStore.getState();
   const onaangeroerd = nu.exemplaren.length === 0 && !nu.dirty;
   if (saved && Array.isArray(saved.exemplaren) && onaangeroerd) {
+    const projectNaam = saved.projectNaam ?? "Nieuw project";
     useProjectStore.setState({
-      projectNaam: saved.projectNaam ?? "Nieuw project",
+      projectNaam,
       bestandspad: saved.bestandspad ?? null,
       gegevens: { ...legeGegevens(), ...(saved.gegevens ?? {}) },
-      exemplaren: saved.exemplaren,
+      // Net zo aangevuld als een ingelezen bestand: de opslag kan van een
+      // oudere versie van de app zijn, met bladen zonder tekst of invoer.
+      exemplaren: normaliseerExemplaren(saved.exemplaren, projectNaam),
       rapport: rapportUit(saved.rapport),
       activeId: saved.activeId ?? PROJECT_ID,
       dirty: false,

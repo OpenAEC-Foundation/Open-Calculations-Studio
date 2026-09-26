@@ -5,7 +5,7 @@ import { useProjectStore, PROJECT_ID, RAPPORT_ID, type Exemplaar } from "../../s
 import { useModuleKiezer } from "../../store/moduleKiezer";
 import { useBladBijwerken } from "../../store/bladBijwerken";
 import { templates } from "../../templates";
-import { huidigeModuletekst, isVerouderd, rekenversie } from "./bladVersie";
+import { heeftEigenCode, huidigeModuletekst, isVerouderd, rekenversie } from "./bladVersie";
 import "./ProjectBrowser.css";
 import "./BladVersie.css";
 
@@ -38,9 +38,11 @@ function ExemplaarRij({
   const info = modulesPerTemplate[ex.templateId];
   const status = info?.status;
   const bolletje = status === "concept" ? "○" : status ? "●" : "○";
-  // Modulestatus en rekenversie in de tooltip; een blad met een nieuwere
-  // rekenversie krijgt daarnaast een teken achter zijn naam.
+  // Modulestatus en rekenversie in de tooltip, en een eigen aanpassing van de
+  // rekentekst; een blad met een nieuwere rekenversie krijgt daarnaast een
+  // teken achter zijn naam.
   const verouderd = isVerouderd(ex, templates);
+  const eigen = heeftEigenCode(ex);
   const nieuweVersie = verouderd ? rekenversie(huidigeModuletekst(ex, templates) ?? "") : "";
   const versieRegel = [
     status ? t(`bladVersie.status.${status}`) : "",
@@ -80,6 +82,7 @@ function ExemplaarRij({
         onDoubleClick={() => setZelfBewerken(true)}
         title={
           `${ex.naam}${info ? ` — ${info.label}` : ""}\n${versieRegel}` +
+          (eigen ? `\n${t("bladVersie.eigenUitleg", { bron: ex.bronVersie })}` : "") +
           (verouderd ? `\n${t("bladVersie.rijVerouderd", { nieuw: nieuweVersie })}` : "") +
           "\nDubbelklik om te hernoemen"
         }

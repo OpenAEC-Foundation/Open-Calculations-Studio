@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Modal from "../Modal";
 import {
   moduleCatalogus,
   bibliotheek,
-  STATUS_UITLEG,
   PUBLICATIE_UITLEG,
-  type ModuleStatus,
   type TreeNode,
 } from "./projectTree";
 import { templates } from "../../templates";
@@ -49,12 +48,6 @@ function filter(groep: Groep, zoek: string): Groep | null {
 
 const aantal = (g: Groep): number => g.items.length + g.subgroepen.reduce((s, sg) => s + aantal(sg), 0);
 
-const STATUS_KORT: Record<ModuleStatus, string> = {
-  gereed: "gecalibreerd",
-  controleren: "nog controleren",
-  concept: "nog uit te werken",
-};
-
 const TABS = [
   { id: "modules", label: "Modules", bron: moduleCatalogus },
   { id: "bibliotheek", label: "Bibliotheek", bron: bibliotheek },
@@ -67,12 +60,15 @@ function Tegel({ item, gekozen, onKies, onVoegToe }: {
   onKies: () => void;
   onVoegToe: () => void;
 }) {
+  // De teksten van de modulestatus staan in de vertalingen (bladVersie.status
+  // en .statusUitleg), dezelfde als in de kop van een geopend blad.
+  const { t } = useTranslation();
   const beschikbaar = !!item.templateId && !!templates[item.templateId];
   const status = item.status;
   const uitleg = !beschikbaar
     ? `${item.label} — nog niet beschikbaar`
     : status
-      ? `${item.label} — ${STATUS_UITLEG[status]}\n${item.gepubliceerd ? PUBLICATIE_UITLEG.gepubliceerd : PUBLICATIE_UITLEG.onuitgegeven}`
+      ? `${item.label}\n${t(`bladVersie.statusUitleg.${status}`)}\n${item.gepubliceerd ? PUBLICATIE_UITLEG.gepubliceerd : PUBLICATIE_UITLEG.onuitgegeven}`
       : item.label;
   return (
     <button
@@ -91,7 +87,7 @@ function Tegel({ item, gekozen, onKies, onVoegToe }: {
       </span>
       {(status || item.gepubliceerd) && (
         <span className="mk-onder">
-          {status && <span className="mk-status">{STATUS_KORT[status]}</span>}
+          {status && <span className="mk-status">{t(`bladVersie.status.${status}`)}</span>}
           {item.gepubliceerd && <span className="tree-vlag">gepubliceerd</span>}
         </span>
       )}
@@ -132,6 +128,24 @@ function GroepBlok({ groep, niveau, gekozen, onKies, onVoegToe }: {
   );
 }
 
+/** De betekenis van de statusbolletjes en van "gepubliceerd", onder in het scherm. */
+function Legenda() {
+  const { t } = useTranslation();
+  return (
+    <span className="mk-legenda">
+      {(["gereed", "controleren", "concept"] as const).map((status) => (
+        <span key={status} title={t(`bladVersie.statusUitleg.${status}`)}>
+          <span className={`tree-item-icon tree-status-${status}`}>{status === "concept" ? "○" : "●"}</span>{" "}
+          {t(`bladVersie.status.${status}`)}
+        </span>
+      ))}
+      <span title={PUBLICATIE_UITLEG.gepubliceerd}>
+        <span className="tree-vlag">gepubliceerd</span> nagekeken en vrijgegeven
+      </span>
+    </span>
+  );
+}
+
 export default function ModuleKiezer() {
   const open = useModuleKiezer((s) => s.open);
   const sluiten = useModuleKiezer((s) => s.sluiten);
@@ -164,16 +178,7 @@ export default function ModuleKiezer() {
 
   const footer = (
     <>
-      <span className="mk-legenda">
-        {(["gereed", "controleren", "concept"] as const).map((s) => (
-          <span key={s} title={STATUS_UITLEG[s]}>
-            <span className={`tree-item-icon tree-status-${s}`}>{s === "concept" ? "○" : "●"}</span> {STATUS_KORT[s]}
-          </span>
-        ))}
-        <span title={PUBLICATIE_UITLEG.gepubliceerd}>
-          <span className="tree-vlag">gepubliceerd</span> nagekeken en vrijgegeven
-        </span>
-      </span>
+      <Legenda />
       <button className="settings-btn settings-btn-secondary" onClick={afbreken}>Annuleren</button>
       <button
         className="settings-btn settings-btn-primary"

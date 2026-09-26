@@ -15,6 +15,11 @@
  * `templateId` matcht een sleutel in `src/templates/index.ts`.
  */
 
+/**
+ * Hoe ver de toetsing van een module is. De teksten die de gebruiker ziet
+ * (kort en met uitleg) staan in de vertalingen: `bladVersie.status` en
+ * `bladVersie.statusUitleg` in i18n/locales/{nl,en}/common.json.
+ */
 export type ModuleStatus =
   /** Toetsing uitgewerkt én nagerekend op referentiebladen. */
   | "gereed"
@@ -22,12 +27,6 @@ export type ModuleStatus =
   | "controleren"
   /** Alleen invoer en parametrisch beeld — de toetsing moet nog worden gemaakt. */
   | "concept";
-
-export const STATUS_UITLEG: Record<ModuleStatus, string> = {
-  gereed: "Gecalibreerd — toetsing nagerekend op referentiebladen",
-  controleren: "Toetsing uitgewerkt, nog niet tegen referentiebladen gecontroleerd",
-  concept: "Nog uit te werken — alleen invoer en parametrisch beeld, geen toetsing",
-};
 
 /**
  * Publicatie staat los van de status hierboven.

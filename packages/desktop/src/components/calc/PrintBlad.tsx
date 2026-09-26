@@ -30,9 +30,14 @@ export function Oordeel({ r }: { r: Resultaat }) {
  * De rekenversie van het blad (bladVersie.ts) staat één keer op papier: in de
  * projectregel als die er is (een losse berekening), anders achter de
  * grondslag in de kop.
+ *
+ * `titelInKop`: de titelkop bovenaan de uitwerking vervalt, omdat de kop al
+ * naam en grondslag noemt (bijlage A van het rapport). Alleen als er een
+ * grondslag is: zonder staat de titel van de module nergens anders.
  */
-export function PrintBlad({ ex, html, nummer, resultaat, projectregel }: {
+export function PrintBlad({ ex, html, nummer, resultaat, projectregel, titelInKop = false }: {
   ex: Exemplaar; html: string; nummer: number | string; resultaat: Resultaat; projectregel?: ReactNode;
+  titelInKop?: boolean;
 }) {
   // Het beeld tekent zichzelf uit de waarden van dít exemplaar, niet uit het
   // blad dat toevallig openstaat. `alleenLezen` houdt tegen dat het afdrukken
@@ -42,7 +47,7 @@ export function PrintBlad({ ex, html, nummer, resultaat, projectregel }: {
     .filter(Boolean)
     .join(" · ");
   return (
-    <section className="print-blad">
+    <section className={titelInKop && resultaat.norm ? "print-blad print-titel-in-kop" : "print-blad"}>
       <header className="print-blad-kop">
         <span className="print-blad-nr">{nummer}</span>
         <span className="print-blad-titel">

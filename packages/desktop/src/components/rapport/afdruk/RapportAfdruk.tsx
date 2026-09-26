@@ -88,8 +88,9 @@ export default function RapportAfdruk() {
           <h1 className="rpa-h1">Bijlage A {titelA}</h1>
         </section>
       )}
+      {/* De kop (A.x) noemt naam en grondslag al; de titelkop van de uitwerking zou die herhalen. */}
       {inBijlage.map((b) => (
-        <PrintBlad key={b.ex.id} ex={b.ex} html={b.html} nummer={b.nummer} resultaat={b.resultaat} />
+        <PrintBlad key={b.ex.id} ex={b.ex} html={b.html} nummer={b.nummer} resultaat={b.resultaat} titelInKop />
       ))}
     </div>
   );
