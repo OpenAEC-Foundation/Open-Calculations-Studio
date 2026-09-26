@@ -333,39 +333,38 @@ async function hoofd() {
     log(`project "${geladenProject.naam}" geladen: ${geladenProject.bladen} bladen` +
       (geladenProject.bureau ? `, bureau "${geladenProject.bureau}"` : ", bureau uit het live profiel"));
 
-    await evalueer(`(() => {
-      const { usePrintStore } = window.__ocs;
-      // App.tsx roept na 250 ms window.print() en daarna klaar() aan; klaar()
-      // haalt de afdrukweergave weg. Beide uit, dan blijft hij staan tot de PDF er is.
-      usePrintStore.setState({ klaar: () => {} });
-      window.print = () => {};
-      usePrintStore.getState().afdrukken(null, "rapport");
+    // Zelfde weg als "Rapport (PDF)" in de app: het afdrukvoorbeeld bouwt de
+    // vellen, en een kopie daarvan gaat naar de printer (drukvellen.ts).
+    await evalueer(`(async () => {
+      const { useProjectStore, usePrintStore, wachtOpVellen, zetDrukvellenKlaar } = window.__ocs;
+      useProjectStore.getState().selecteer("__rapport__");
+      usePrintStore.getState().toonVoorbeeld(null, "rapport");
+      await document.fonts.ready;
+      await new Promise((r) => setTimeout(r, 1500));
+      zetDrukvellenKlaar(await wachtOpVellen(20000));
       return true;
-    })()`, "het afdrukken starten");
-    await wachtTot("!!document.querySelector('.print-root .rpa-wortel')", 15000,
-      "de afdrukweergave van het rapport (.print-root .rpa-wortel) verscheen niet. Rendert afdrukken(null, \"rapport\") het rapport? " +
-      "Kreeg de app net een hot update, herstart dan de dev-server.");
+    })()`, "de vellen van het rapport klaarzetten");
 
     const staat = await evalueer(`(async () => {
       await document.fonts.ready;
-      await Promise.all([...document.querySelectorAll(".print-root img")]
+      await Promise.all([...document.querySelectorAll(".rpa-drukvellen img")]
         .map((b) => (b.complete ? null : b.decode().catch(() => null))));
       // De parametrische beelden meten zich met een ResizeObserver: die vuurt
       // pas na een opmaakronde. Twee frames plus een halve seconde; zonder
       // zichtbaar venster valt requestAnimationFrame terug op de timer.
       await new Promise((r) => { requestAnimationFrame(() => requestAnimationFrame(r)); setTimeout(r, 1000); });
       await new Promise((r) => setTimeout(r, 500));
-      const wortel = document.querySelector(".print-root .rpa-wortel");
+      const wortel = document.querySelector(".rpa-drukvellen");
       return {
-        afdrukmodus: document.documentElement.classList.contains("afdrukmodus"),
-        secties: wortel ? wortel.querySelectorAll("section").length : 0,
-        tekens: wortel ? wortel.innerText.length : 0,
+        afdrukmodus: document.documentElement.classList.contains("rapportdruk"),
+        secties: wortel ? wortel.querySelectorAll(".av-pagina").length : 0,
+        tekens: wortel ? wortel.textContent.length : 0,
         lettertypen: [...new Set([...document.fonts].filter((f) => f.status === "loaded").map((f) => f.family))],
       };
     })()`, "wachten op lettertypen en beelden");
-    if (!staat.afdrukmodus) stop("html.afdrukmodus staat niet meer aan: de afdrukweergave is al gesloten.");
+    if (!staat.afdrukmodus) stop("html.rapportdruk staat niet aan: de vellen staan niet klaar.");
     if (staat.tekens === 0) stop("de afdrukweergave van het rapport is leeg.");
-    log(`afdrukweergave klaar: ${staat.secties} secties, lettertypen ${staat.lettertypen.join(", ") || "(systeem)"}`);
+    log(`vellen klaar: ${staat.secties} vellen, lettertypen ${staat.lettertypen.join(", ") || "(systeem)"}`);
 
     // Als stroom: een rapport met twintig bladen en beelden past niet prettig
     // in één base64-antwoord.

@@ -13,6 +13,7 @@ import { designerVoor } from "./components/calc/designerKeuze";
 import ProjectGegevensPanel from "./components/calc/ProjectGegevensPanel";
 import RapportPanel from "./components/rapport/RapportPanel";
 import PrintDocument from "./components/calc/PrintDocument";
+import { wachtOpVellen, zetDrukvellenKlaar } from "./components/rapport/afdruk/drukvellen";
 import AfdrukVoorbeeld from "./components/calc/AfdrukVoorbeeld";
 import ModuleKiezer from "./components/calc/ModuleKiezer";
 import IfcViewerPanel from "./components/calc/IfcViewerPanel";
@@ -87,7 +88,9 @@ export default function App() {
   const printSoort = usePrintStore((s) => s.soort);
   // Alleen het échte printen zet de app weg. Het afdrukvoorbeeld is een paneel
   // binnen de applicatie: lint, projectboom en statusbalk blijven staan.
-  const afdrukmodus = printBezig;
+  // Het rapport gaat via de vellen van het afdrukvoorbeeld (drukvellen.ts);
+  // de app blijft daarbij staan, want het voorbeeld moet die vellen bouwen.
+  const afdrukmodus = printBezig && printSoort !== "rapport";
 
   // De afdrukopmaak hangt aan een klasse op <html> in plaats van aan
   // `@media print`, zodat het voorbeeld op het scherm er precies zo uitziet.
@@ -99,7 +102,32 @@ export default function App() {
   }, [afdrukmodus]);
 
   useEffect(() => {
-    if (!printBezig) return;
+    if (!printBezig || printSoort !== "rapport") return;
+    let afgebroken = false;
+    useProjectStore.getState().selecteer(RAPPORT_ID);
+    toonVoorbeeld(null, "rapport");
+    wachtOpVellen()
+      .then((vellen) => {
+        if (afgebroken) return;
+        const opruimen = zetDrukvellenKlaar(vellen);
+        try {
+          window.print();
+        } finally {
+          opruimen();
+          printKlaar();
+        }
+      })
+      .catch((err) => {
+        alert((err as Error).message);
+        printKlaar();
+      });
+    return () => {
+      afgebroken = true;
+    };
+  }, [printBezig, printSoort, printKlaar, toonVoorbeeld]);
+
+  useEffect(() => {
+    if (!printBezig || printSoort === "rapport") return;
     let afgebroken = false;
     const id = window.setTimeout(() => {
       if (afgebroken) return;
@@ -113,7 +141,7 @@ export default function App() {
       afgebroken = true;
       clearTimeout(id);
     };
-  }, [printBezig, printKlaar]);
+  }, [printBezig, printSoort, printKlaar]);
 
   // Staat het afdrukvoorbeeld op één blad en open je een ander blad, dan volgt
   // het voorbeeld mee. Een keuze voor het hele project blijft staan.

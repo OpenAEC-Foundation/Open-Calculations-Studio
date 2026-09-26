@@ -69,6 +69,19 @@
   page: rapport;
 }
 
+/*
+ * In de echte afdruk precies zo breed als de bladspiegel (MATEN.rapport).
+ * In de afdrukmodus is .print-root op het scherm zo breed als het venster;
+ * de parametrische beelden meten hun breedte met een ResizeObserver en zouden
+ * dan de vensterbreedte aannemen. Bij het printen is alles wat breder is dan
+ * de bladspiegel voor de browser reden om het hele document te verkleinen,
+ * en dan valt niets meer op het raster.
+ */
+.print-root > .rpa-wortel {
+  width: 190.25mm;
+  max-width: 190.25mm;
+}
+
 .rpa-wortel .rpa-sectie {
   font-family: var(--rpa-font);
   font-size: 10pt;
@@ -157,8 +170,10 @@
 
 .rpa-wortel .rpa-tekst {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0 var(--rpa-cel);
+  /* Rechts geen celmarge: in de referentie loopt tekst tot de rand van de
+     bladspiegel door (567,2 pt), over lege cellen heen. */
+  margin: 0 -0.5mm 0 0;
+  padding: 0 0 0 var(--rpa-cel);
   min-height: var(--rpa-rij);
   line-height: var(--rpa-rij);
   overflow-wrap: break-word;
@@ -453,4 +468,54 @@ html.afdrukmodus .rpa-wortel .rpa-voet {
   font-size: 8pt;
   line-height: 1.2;
   color: #6b6b73;
+}
+
+/* ─── Afdrukken via de vellen van het voorbeeld (drukvellen.ts) ─────────── */
+
+.rpa-drukvellen {
+  display: none;
+}
+
+html.rapportdruk,
+html.rapportdruk body {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
+html.rapportdruk body > *:not(.rpa-drukvellen) {
+  display: none !important;
+}
+
+html.rapportdruk .rpa-drukvellen {
+  display: block;
+}
+
+html.rapportdruk .rpa-drukvellen .av-pagina {
+  page: rapportvel;
+  margin: 0;
+  box-shadow: none;
+  break-after: page;
+  page-break-after: always;
+}
+
+html.rapportdruk .rpa-drukvellen .av-pagina:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+/* De vellen dragen hun eigen voet en paginanummer: geen marges, geen nummer van de browser. */
+@page rapportvel {
+  size: A4 portrait;
+  margin: 0;
+  @bottom-center {
+    content: none;
+  }
+  @bottom-right {
+    content: none;
+  }
 }

@@ -6,6 +6,7 @@ import { useProjectStore } from "./store/projectStore";
 import { usePrintStore } from "./store/printStore";
 import { useBureauStore } from "./store/bureauProfiel";
 import { leesProjectBestand } from "./store/projectBestand";
+import { wachtOpVellen, zetDrukvellenKlaar } from "./components/rapport/afdruk/drukvellen";
 import "./themes.css";
 import "./App.css";
 
@@ -15,7 +16,7 @@ import "./App.css";
 // vernieuwd: de app laadt dan `…/projectStore.ts?t=…`, een losse kopie met een
 // eigen store. In een productiebouw valt dit blok weg.
 if (import.meta.env.DEV) {
-  window.__ocs = { useProjectStore, usePrintStore, useBureauStore, leesProjectBestand };
+  window.__ocs = { useProjectStore, usePrintStore, useBureauStore, leesProjectBestand, wachtOpVellen, zetDrukvellenKlaar };
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

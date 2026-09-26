@@ -16,5 +16,7 @@ interface Window {
     usePrintStore: typeof import("./store/printStore").usePrintStore;
     useBureauStore: typeof import("./store/bureauProfiel").useBureauStore;
     leesProjectBestand: typeof import("./store/projectBestand").leesProjectBestand;
+    wachtOpVellen: typeof import("./components/rapport/afdruk/drukvellen").wachtOpVellen;
+    zetDrukvellenKlaar: typeof import("./components/rapport/afdruk/drukvellen").zetDrukvellenKlaar;
   };
 }
