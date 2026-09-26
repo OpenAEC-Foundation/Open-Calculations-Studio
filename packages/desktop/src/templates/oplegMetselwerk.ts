@@ -17,7 +17,8 @@
  *
  * K, α en β komen uit tabel NB-2 (NEN-EN 1996-1-1 NB:2018). De grens
  * f_m ≤ 2·f_b bij metselmortel past het referentieprogramma niet toe; die geldt
- * alleen in de norm-stand (register punt 14).
+ * alleen in de norm-stand, en de referentiestand meldt het verschil in rood
+ * (register punt 14).
  *
  * Het belaste vlak A_b: de referentie-uitwerking neemt de hele plaat a_L·a_t,
  * ook als die breder is dan de wand (referentie 2: a_t = 160 op t = 150).
@@ -37,6 +38,9 @@
  *     plaat dat op de wand ligt (min(a_L; a_t,ef)). Trek keurt af.
  *   • De toets op halve hoogte (§6.1.3(5), volgens §6.1.2) staat niet in dit
  *     blad; die hoort in de module Dragende metselwerkwand.
+ *   • Een langsvoeg (mortelvoeg evenwijdig aan het wandvlak) geeft K maal 0,8
+ *     (§3.6.1.2(6)). De factor geldt voor metselmortel; met lijmmortel meldt
+ *     het blad dat de norm geen f_k geeft.
  */
 
 export const oplegMetselwerk = `"Oplegging op metselwerk — geconcentreerde last (EN 1996-1-1 §6.1.3)
@@ -60,7 +64,12 @@ f_b = ?', genormaliseerde druksterkte steen f_b [N/mm²] — fb-waarde (baksteen
   Lijmmortel = 2
 @end
 
-f_m = ?', mortelsterkte f_m [N/mm²] — M-klasse (metselmortel) of L-klasse (lijmmortel); bij lijmmortel niet van invloed op f_k (β=0)'
+f_m = ?', mortelsterkte f_m [N/mm²] — M-klasse (metselmortel) of L-klasse (lijmmortel); bij lijmmortel alleen van invloed bij baksteen ≤ 25 % (β = 0,1, tabel NB-2)'
+
+@select langsvoeg "Mortelvoeg evenwijdig aan het wandvlak (langsvoeg)"
+  geen: in elke laag reikt één steen over de volle wanddikte = 1
+  wel, over de hele wandlengte of een deel ervan (bijvoorbeeld een steense wand met strekkenlagen) = 2
+@end
 
 @select steencategorie "Steencategorie (γ_M, tabel NB-1)"
   Categorie I = 1
@@ -74,7 +83,8 @@ steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.80; 0.70; 
 groep = hlookup(steenmat; steensoort; 1; 6)
 K_metsel = hlookup(steenmat; steensoort; 1; 2)
 K_lijm = hlookup(steenmat; steensoort; 1; 3)
-K = if(morteltype ≡ 2; K_lijm; K_metsel)
+'§3.6.1.2(6): met een langsvoeg K maal 0,8.
+K = if(morteltype ≡ 2; K_lijm; K_metsel)*if(langsvoeg ≡ 2; 0.8; 1)
 α = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 4); 0.65)
 β_exp = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 5); 0.25)
 'γ_M uit tabel NB-1: categorie I 1,7 en II 2,2 bij CC2 en CC3; bij CC1 0,2 lager.
@@ -90,7 +100,19 @@ f_m_eff_nb = min(f_m; 20; if(morteltype ≡ 1; 2*f_b_eff; 20))
 f_m_eff = if(rekenwijze ≡ 1; f_m_eff_XC; f_m_eff_nb)
 #show
 
+#if langsvoeg ≡ 2
+    K', factor K: tabel NB-2 maal 0,8 voor de langsvoeg (§3.6.1.2(6))'
+    #if morteltype ≡ 2
+        '<span style="color: #b45309"><b>Let op:</b> §3.6.1.2(6) geeft de factor 0,8 alleen voor metselmortel;
+        'voor lijmmortel met een langsvoeg geeft de norm geen f<sub>k</sub>. Dit blad rekent ook dan met 0,8·K.</span>
+    #end if
+#end if
 f_k = K*f_b_eff^α*f_m_eff^β_exp', karakteristieke druksterkte metselwerk (form. 3.2) [N/mm²]'
+#if rekenwijze ≡ 1 and f_m_eff_XC > f_m_eff_nb
+    '<span style="color: red"><b>Let op:</b> f<sub>m</sub> is groter dan 2·f<sub>b</sub>. Met de rekenwijze "de
+    'referentie-uitwerking volgen" rekent het blad met f<sub>m</sub> = 'f_m_eff_XC' N/mm², volgens de NB bij 3.6.1.2
+    'met 2·f<sub>b</sub> = 'f_m_eff_nb' N/mm²: f<sub>k</sub> is te hoog en de uitkomst te gunstig.</span>
+#end if
 f_d = f_k/γ_M', rekenwaarde druksterkte (3.1) [N/mm²]'
 
 # 2. Geometrie

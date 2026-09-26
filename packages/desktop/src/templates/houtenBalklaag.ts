@@ -5,12 +5,12 @@
  * Niet in gebruik: het blad staat niet in templates/index.ts en is vervangen
  * door balklaag.ts. Opbouw:
  *   1. Geometrie + materiaal
- *   2. Belastingen (G_k + q_k + Q_k)
+ *   2. Belastingen (G_k + q_k + Q_k, met k_r volgens (NB.5.1))
  *   3. Belastingscombinaties (UGT 6.10a/b en alleen blijvend, BGT 6.14b)
  *   4. Krachtsverdeling (M, V, u)
  *   5. UGT-toetsing (buiging §6.1.6, dwarskracht §6.1.7, oplegging §6.1.5)
  *   6. Kip §6.3.3
- *   7. BGT-doorbuiging §7.2
+ *   7. BGT-doorbuiging §7.2, grenzen uit de NB bij NEN-EN 1990 (A1.4.3)
  */
 
 export const houtenBalklaag = `"Houten balklaag — toetsing EN 1995-1-1
@@ -112,6 +112,8 @@ I_y
 
 l_ov = ?*(m)', overspanning van de balk (m)'
 hoh = ?*(m)', hart-op-hart afstand tussen balken (m)'
+t_beschot = ?*(mm)', dikte van het beschot, voor k_r (mm)'
+E_beschot = ?*(N/mm^2)', E-modulus van het beschot, voor k_r (N/mm²)'
 
 # 2. Belastingen
 
@@ -134,8 +136,14 @@ q_k = q_k,vlak*hoh', variabele lijnlast (kN/m)'
 γ_G,6.10b = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))
 γ_Q,6.10b = γ_Q,6.10a
 ψ_0 = 0.40', categorie A — Tabel NB.2 — A1.1'
-k_r = 0.7', puntlast-spreiding 0.5×0.5 m (vereenvoudigd)'
+ψ_1 = 0.50
+ψ_2 = 0.30
 #show
+
+'Concentratiefactor van de puntlast (NB.5.1), geldig voor 0 &lt; k<sub>r</sub> ≤ 1; daarbuiten geen reductie (k<sub>r</sub> = 1).
+'Binnen het gebied een ondergrens van 1/3, als in de balklaag.
+k_r,0 = 0.37 + 0.8*hoh/(1 m) - E_beschot*t_beschot^3/12/(5*10^7 N*mm)
+k_r = if(k_r,0 ≤ 0; 1; min(1; max(k_r,0; 1/3)))
 
 'UGT 6.10a (G overheerst): q<sub>d,a</sub> = γ<sub>G</sub>·G + γ<sub>Q</sub>·ψ<sub>0</sub>·q
 q_d,a = γ_G,6.10a*G_k + γ_Q,6.10a*ψ_0*q_k
@@ -275,27 +283,28 @@ UC_kip = σ_m,d/f_m,kip,d
 # 9. BGT — doorbuiging §7.2
 
 '<i>u<sub>inst</sub> = 5qL⁴/(384·EI) + FL³/(48·EI)
-'u<sub>fin</sub> = u<sub>inst</sub>·(1 + k<sub>def</sub>) (kruip)
-'Grens u<sub>max</sub> = L/250 (algemeen); u<sub>bij</sub> = L/333 (bijkomend)</i>
+'u<sub>fin</sub> = u<sub>inst</sub>·(1 + k<sub>def</sub>) (kruip, ook op het veranderlijke deel: veilige kant)
+'u<sub>bij</sub> = w<sub>2</sub> + w<sub>3</sub>: kruip k<sub>def</sub>·(u<sub>G</sub> + ψ<sub>2</sub>·u<sub>Q</sub>) plus ψ<sub>1</sub>·u<sub>Q</sub> (frequent)
+'Grenzen volgens NB 7.2(2) in de NB bij NEN-EN 1990: u<sub>max</sub> ≤ L/250 (A1.4.3(4)), u<sub>bij</sub> ≤ 0,003·L of 0,002·L (A1.4.3(3))</i>
 
-u_inst,kar = 5*q_sls*l_ov^4/(384*E_0,mean*I_y) + F_sls*l_ov^3/(48*E_0,mean*I_y)
-u_fin = (1 + k_def)*u_inst,kar
-u_bij = u_inst,kar', alleen variabele deel zou strikt u_bij zijn; vereenvoudigd'
+u_inst,kar = 5*q_sls*l_ov^4/(384*E_0,mean*I_y) + F_sls*l_ov^3/(48*E_0,mean*I_y) to mm
+u_fin = (1 + k_def)*u_inst,kar to mm
+u_G = 5*G_k*l_ov^4/(384*E_0,mean*I_y) to mm
+u_Q = u_inst,kar - u_G to mm
+u_bij = k_def*(u_G + ψ_2*u_Q) + ψ_1*u_Q to mm', w_2 + w_3 (NB bij NEN-EN 1990, A1.4.3(2) en (3))'
 
-@select doorbuigGrensFin "Doorbuigingsgrens u_fin (Tabel 7.2)"
-  L/250 (vloer/dak standaard) = 250
-  L/200 (rougher) = 200
-  L/300 (gevoelig) = 300
+@select doorbuigGrensFin "Doorbuigingsgrens u_fin"
+  L/250 (NB bij NEN-EN 1990, A1.4.3(4)) = 250
+  L/300 (strenger) = 300
 @end
 
-@select doorbuigGrensBij "Doorbuigingsgrens u_bij (bijkomend)"
-  L/333 (vloer comfort) = 333
-  L/300 = 300
-  L/500 (zeer strict) = 500
+@select grens_bij "Doorbuigingsgrens u_bij (NB bij NEN-EN 1990, A1.4.3(3))"
+  0,003·L (vloer) = 0.003
+  0,002·L (vloer met scheurgevoelige scheidingswanden) = 0.002
 @end
 
-u_fin,lim = l_ov/doorbuigGrensFin
-u_bij,lim = l_ov/doorbuigGrensBij
+u_fin,lim = l_ov/doorbuigGrensFin to mm
+u_bij,lim = grens_bij*l_ov to mm
 
 UC_u,fin = u_fin/u_fin,lim
 UC_u,bij = u_bij/u_bij,lim
@@ -328,7 +337,7 @@ UC_max = max(UC_M; UC_V; UC_C90; UC_kip; UC_u,fin; UC_u,bij)
 'blijvende belasting rekent met k<sub>mod</sub> blijvend (§3.1.3(2)).</li>
 '<li>Eigen gewicht balk via ρ<sub>mean</sub>·b·h·g (zonder veiligheid). De aansluitende afwerking
 '(plafond, vloer-finish) verdisconteer je in G<sub>k,vlak</sub>.</li>
-'<li>Lastreductie k<sub>r</sub> voor puntlast op 0.5×0.5 m belastingvlak gefixeerd op 0.7.</li>
+'<li>Concentratiefactor k<sub>r</sub> voor de puntlast volgens (NB.5.1), met een ondergrens van 1/3.</li>
 '<li>Trillingscontrole §7.3 (vloer-resonantie f<sub>1</sub> ≥ 8 Hz) niet in deze sheet.</li>
 '<li>Kiplengte 0,9·l + 2h (Tabel 6.1, last op de drukrand). Voor andere ondersteuningstypen: Tabel 6.1.</li>
 '</ul></i>

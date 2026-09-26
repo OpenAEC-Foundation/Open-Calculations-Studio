@@ -11,9 +11,11 @@
  *   buiging     z = d(1 − ζ/2) met ζ = λx/d; M_Rd uit de aanwezige A_s, ook als
  *               het staal niet vloeit (rekverdeling)
  *   dwarskracht k ≤ 2, ρ_l ≤ 0,02, σ_cp ≤ 0,2 f_cd, V_Rd,c = max((6.2a); (6.2b))
+ *   beugels     s_l,max = min(0,75d; 300 mm) (NB bij 9.2.2(6))
  *   scheur      x uit de gescheurde doorsnede (langdurend met α_e,eff = α_e(1 + φ)),
- *               h_c,ef = min(2,5(h−d); (h−x)/3; h/2)
- *   betonbalk   dezelfde regels, z = 0,9d voor de beugels, M_qp als invoer
+ *               h_c,ef = min(2,5(h−d); (h−x)/3; h/2), s_r,max ≤ max((50 − 0,8f_ck)Ø; 15Ø)
+ *               en w_max = 0,2 mm voor XD/XS (NB bij 7.3.1(5))
+ *   betonbalk   dezelfde regels, z = 0,9d voor de beugels, M_fr (frequent) als invoer
  *   alle bladen UC_max zichtbaar en een slotzin die daarmee klopt
  *
  * Draaien:  node scripts/check-en1992.mjs
@@ -99,7 +101,17 @@ const SETS = [
   // ── Dwarskracht met beugels ───────────────────────────────────────────
   { blad: "ec2DwarskrachtMet", naam: "beugels — Ø6 tweesnedig h.o.h. 200, cot θ = 2,5",
     // V_Rd,s = 56,6/200·495·434,8·2,5 = 152,3 · V_Rd,max = 300·495·0,552·13,33/2,9 = 376,9
-    verwacht: { V_Rds: "152.3", V_Rdmax: "376.9", UC_max: "1.97" } },
+    // s_l,max = min(0,75·550; 300) = 300 · UC_s = 200/300 = 0,667
+    verwacht: { V_Rds: "152.3", V_Rdmax: "376.9", s_max: "300", UC_s: "0.667", UC_max: "1.97" } },
+  { blad: "ec2DwarskrachtMet", naam: "beugels — d = 350: s_l,max = 0,75d",
+    invoer: { h: "400 mm", d: "350 mm" },
+    // s_l,max = min(262,5; 300) = 262,5 · UC_s = 200/262,5 = 0,762
+    verwacht: { s_max: "262.5", UC_s: "0.762" } },
+  { blad: "ec2DwarskrachtMet", naam: "beugels — s = 350 > 300 mm (NB bij 9.2.2(6))",
+    select: { sterkteklasse: "30", beugeldia: "78.5" }, invoer: { s: "350 mm", V_Ed: "150 kN" },
+    // V_Rd,s = 157/350·495·434,8·2,5 = 241,4 · V_Rd,max = 300·495·0,528·20/2,9 = 540,7
+    // UC_s = 350/300 = 1,167 (met 0,75d = 412,5 zou het 0,849 zijn)
+    verwacht: { V_Rds: "241.4", V_Rdmax: "540.7", UC_Vrds: "0.6215", s_max: "300", UC_max: "1.167" } },
 
   // ── Scheurwijdte ──────────────────────────────────────────────────────
   { blad: "ec2Scheurwijdte", naam: "scheur — kortdurend, α_e = E_s/E_cm", select: { belastingduur: "0.6" },
@@ -114,6 +126,19 @@ const SETS = [
     // ρ_p,eff = 0,04405 · s_r,max = 119 + 2,72/0,04405 = 180,7
     // ε = (252,3 − 0,4·2,21/0,04405·1,294)/2e5 = 1,131e-3 (α_e = 6,675 in (7.9)) → w_k = 0,2045
     verwacht: { alpha_eL: "23.36", x: "214.7", sigma_s: "252.3", h_cef: "95.1", s_rmax: "180.7", w_k: "0.2045" } },
+  { blad: "ec2Scheurwijdte", naam: "scheur — langdurend, XD/XS: w_max = 0,2 mm (NB)",
+    select: { belastingduur: "0.4", milieuklasse: "0.2" },
+    // w_k = 0,2045 (set hierboven) · UC = 0,2045/0,2 = 1,022
+    verwacht: { w_max: "0.2", UC_max: "1.022" } },
+  { blad: "ec2Scheurwijdte", naam: "scheur — plaat C30/37, Ø16, ρ_p,eff klein: bovengrens (7.11)",
+    select: { sterkteklasse: "30", belastingduur: "0.6" },
+    invoer: { b: "1000 mm", h: "300 mm", d: "250 mm", phi: "16 mm", c: "35 mm",
+              A_s: "670 mm^2", M_Ed_bgt: "40 kN*m" },
+    // α_e = 2e5/32837 = 6,091 · α_e·ρ = 0,01632 → x = 250(√(0,01632² + 0,03265) − 0,01632) = 41,3
+    // h_c,ef = min(125; 258,7/3; 150) = 86,2 · ρ_p,eff = 670/86240 = 0,00777
+    // 119 + 0,17·16/0,00777 = 469,1 > max((50 − 24)·16; 15·16) = 416 → s_r,max = 416
+    // σ_s = 40e6/((250 − 13,76)·670) = 252,7 · ε = 0,6·252,7/2e5 = 7,58e-4 → w_k = 0,315
+    verwacht: { x: "41.3", h_cef: "86.2", sigma_s: "252.7", s_rmax: "416", w_k: "0.315" } },
   { blad: "ec2Scheurwijdte", naam: "scheur — plaat h = 200, d = 165, Ø10-150, σ_s = 250",
     select: { belastingduur: "0.6" },
     invoer: { b: "1000 mm", h: "200 mm", d: "165 mm", phi: "10 mm", c: "30 mm",
@@ -123,7 +148,7 @@ const SETS = [
     verwacht: { x: "30.6", h_cef: "56.5", s_rmax: "285", w_k: "0.214" } },
 
   // ── Volledige betonbalk ───────────────────────────────────────────────
-  { blad: "ec2BetonBalk", naam: "betonbalk — 300×600, 4Ø20, L = 7 m, q_d = 30, q_qp = 20",
+  { blad: "ec2BetonBalk", naam: "betonbalk — 300×600, 4Ø20, L = 7 m, q_d = 30, q_fr = 20",
     // λx = 1257·434,8/(13,33·300) = 136,6 → x = 170,7 · z = 550 − 68,3 = 481,7
     // M_Rd = 1257·434,8·481,7 = 263,2 · UC = 183,75/263,2 = 0,698
     // V_Rd,s = 100,5/200·495·434,8·2,5 = 270,5 (z = 0,9d)
@@ -132,6 +157,9 @@ const SETS = [
     verwacht: { x_u: "170.7", z: "481.7", M_Rd: "263.2", UC_buiging: "0.698",
                 V_Rdc: "78.68", V_Rds: "270.5", x_bgt: "244.5", sigma_s: "208.1",
                 h_cef: "118.5", w_k: "0.191", UC_max: "0.852" } },
+  { blad: "ec2BetonBalk", naam: "betonbalk — XD/XS: w_max = 0,2 mm (NB)", select: { milieuklasse: "0.2" },
+    // w_k = 0,191 (set hierboven) · UC_scheur = 0,1906/0,2 = 0,953 > UC_doorbuiging = 0,852
+    verwacht: { w_max: "0.2", UC_scheur: "0.953", UC_max: "0.953" } },
   { blad: "ec2BetonBalk", naam: "betonbalk — 6Ø25: het staal vloeit niet",
     invoer: { phi: "25 mm", n_staven: "6" },
     // λx = 2945·434,8/(13,33·300) = 320 → x/d = 0,73 > 0,617: rekverdeling

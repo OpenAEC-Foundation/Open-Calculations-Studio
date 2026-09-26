@@ -344,7 +344,7 @@ nu_1 = 0.6 * (1 - f_ck / (250 N/mm^2))', (6.6N), NB: ν_1 = ν'
 
 V_Rdmax = alpha_cw * b_w * z * nu_1 * f_cd / (cot_theta + tan_theta) to kN', drukdiagonaal (6.9)'
 
-s_max = 0.75 * d to mm', art. 9.2.2(6)'
+s_max = min(0.75 * d; 300 mm) to mm', NB bij 9.2.2(6), verticale beugels'
 
 ## Toetsing
 
@@ -516,7 +516,7 @@ A_s = 1257 mm^2', aanwezige trekwapening'
 
 ## Belasting (BGT)
 
-M_Ed_bgt = 120 kN*m
+M_Ed_bgt = 120 kN*m', frequente combinatie (NB bij 7.3.1(5))'
 
 @select belastingduur "Type belasting"
 Langdurend (k_t = 0.4) = 0.4
@@ -551,17 +551,17 @@ k_2 = 0.5
 k_3 = 3.4
 k_4 = 0.425
 
-s_rmax = k_3 * c + k_1 * k_2 * k_4 * phi / rho_peff to mm', (7.11)'
+s_rmax = min(k_3 * c + k_1 * k_2 * k_4 * phi / rho_peff; max(50 - 0.8 * sterkteklasse; 15) * phi) to mm', (7.11) met de bovengrens van de NB: max((50 − 0,8·f_ck)·Ø; 15·Ø)'
 eps_sm = max((sigma_s - k_t * f_cteff / rho_peff * (1 + alpha_e * rho_peff)) / E_s; 0.6 * sigma_s / E_s)', ε_sm − ε_cm (7.9)'
 w_k = s_rmax * eps_sm to mm', (7.8)'
 
 @select milieuklasse "Milieuklasse"
 X0 / XC1 (w_max = 0.4 mm) = 0.4
 XC2 / XC3 / XC4 (w_max = 0.3 mm) = 0.3
-XD1 / XD2 / XD3 / XS1 / XS2 / XS3 (w_max = 0.3 mm) = 0.3
+XD1 / XD2 / XD3 / XS1 / XS2 / XS3 (w_max = 0.2 mm) = 0.2
 @end
 
-w_max = milieuklasse * 1 mm', tabel 7.1N'
+w_max = milieuklasse * 1 mm', tabel 7.1N volgens de NB bij 7.3.1(5), betonstaal'
 
 ## Toetsing
 
@@ -712,11 +712,11 @@ A_s = n_staven * pi / 4 * phi^2 to mm^2
 
 L = 7000 mm', vrij opgelegde overspanning'
 q_d = 30 kN/m', UGT'
-q_qp = 20 kN/m', quasi-blijvend: g_k + ψ_2·q_k (NEN-EN 1990, 6.16b)'
+q_fr = 20 kN/m', frequent: g_k + ψ_1·q_k (NEN-EN 1990, 6.15b), voor de scheurwijdte (NB bij 7.3.1(5))'
 
 M_Ed = q_d * L^2 / 8 to kN*m
 V_Ed = q_d * L / 2 to kN
-M_qp = q_qp * L^2 / 8 to kN*m
+M_fr = q_fr * L^2 / 8 to kN*m
 
 ---
 
@@ -790,10 +790,10 @@ UC_Vrdmax = V_Ed / V_Rdmax
 @select milieuklasse "Milieuklasse"
 X0 / XC1 (w_max = 0.4 mm) = 0.4
 XC2 / XC3 / XC4 (w_max = 0.3 mm) = 0.3
-XD / XS (w_max = 0.3 mm) = 0.3
+XD / XS (w_max = 0.2 mm) = 0.2
 @end
 
-w_max = milieuklasse * 1 mm', tabel 7.1N'
+w_max = milieuklasse * 1 mm', tabel 7.1N volgens de NB bij 7.3.1(5), betonstaal'
 c_nom = 35 mm', dekking op de langswapening'
 phi_kr = 2.5', kruipcoëfficiënt φ(∞,t_0) (bijlage B)'
 
@@ -801,7 +801,7 @@ alpha_e = E_s / E_cm
 alpha_eL = alpha_e * (1 + phi_kr)', E_s/E_c,eff (art. 7.4.3(5))'
 rho_s = A_s / (b * d)
 x_bgt = d * (sqrt((alpha_eL * rho_s)^2 + 2 * alpha_eL * rho_s) - alpha_eL * rho_s) to mm', gescheurde doorsnede'
-sigma_s = M_qp / ((d - x_bgt / 3) * A_s) to N/mm^2
+sigma_s = M_fr / ((d - x_bgt / 3) * A_s) to N/mm^2', frequente combinatie'
 
 h_cef = min(2.5 * (h - d); (h - x_bgt) / 3; h / 2) to mm', art. 7.3.2(3)'
 rho_peff = A_s / (b * h_cef)', (7.10)'
@@ -814,7 +814,7 @@ k_2 = 0.5
 k_3 = 3.4
 k_4 = 0.425
 
-s_rmax = k_3 * c_nom + k_1 * k_2 * k_4 * phi / rho_peff to mm', (7.11)'
+s_rmax = min(k_3 * c_nom + k_1 * k_2 * k_4 * phi / rho_peff; max(50 - 0.8 * sterkteklasse; 15) * phi) to mm', (7.11) met de bovengrens van de NB: max((50 − 0,8·f_ck)·Ø; 15·Ø)'
 w_k = s_rmax * eps_sm to mm', (7.8)'
 
 UC_scheur = w_k / w_max

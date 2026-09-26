@@ -12,11 +12,17 @@
  * - Psi-factoren per belastingcategorie
  *
  * Elke veranderlijke belasting heeft een eigen categorie, dus eigen ψ-factoren
- * (tabel NB.2 – A1.1); een vaste ψ = 0 liet Q_k2 eerder stil wegvallen. Waar
+ * (tabel NB.2 – A1.1); een vaste ψ = 0 liet Q_k2 eerder stil wegvallen. Bij
+ * categorie C is ψ0 = 0,6 voor delen die bij een calamiteit zwaar door een
+ * menigte kunnen worden belast (vluchtroutes, trappen) en 0,4 voor de overige
+ * (voetnoot a); beide staan als keuze in de lijsten. Waar
  * het ertoe doet zijn beide veranderlijke belastingen om beurten overheersend.
  * Werkt Q_k1 tegen de blijvende belasting in (windzuiging op een licht dak),
  * dan volgt ook de combinatie met γ_G,inf = 0,9 op G_k,inf; het overzicht geeft
  * dan ook de bruikbaarheidscombinaties met G_k,inf en Q_k1 tegen G in.
+ * Buitengewoon: Q_k1 met ψ2,1, behalve wind bij brand (ψ1,1), voetnoot a bij
+ * tabel NB.10 – A1.3. De referentieperiode is ten minste 15 jaar (tabel
+ * NB.1 – 2.1 en 4.1.2(7a) van de NB).
  * scripts/check-en1990-combinaties.mjs rekent de uitkomsten met de hand na.
  */
 
@@ -44,7 +50,8 @@ Q_k2 = ?*(kN)', veranderlijk, gelijktijdig; 0 als die er niet is'
 @select belastingcategorie "Categorie van Q_k1"
 Categorie A -- woon- en verblijfsruimtes = 1
 Categorie B -- kantoorruimtes = 2
-Categorie C -- bijeenkomstruimtes = 3
+Categorie C -- bijeenkomstruimtes, overige delen = 3
+Categorie C -- vluchtroutes en trappen, zwaar belast door een menigte bij calamiteit = 11
 Categorie D -- winkelruimtes = 4
 Categorie E -- opslagruimtes = 5
 Categorie F -- verkeersruimte, voertuig <= 25 kN = 6
@@ -57,7 +64,8 @@ Windbelasting = 10
 @select categorie_2 "Categorie van Q_k2"
 Categorie A -- woon- en verblijfsruimtes = 1
 Categorie B -- kantoorruimtes = 2
-Categorie C -- bijeenkomstruimtes = 3
+Categorie C -- bijeenkomstruimtes, overige delen = 3
+Categorie C -- vluchtroutes en trappen, zwaar belast door een menigte bij calamiteit = 11
 Categorie D -- winkelruimtes = 4
 Categorie E -- opslagruimtes = 5
 Categorie F -- verkeersruimte, voertuig <= 25 kN = 6
@@ -70,8 +78,8 @@ Windbelasting = 10
 # 2. Factoren (tabel NB.2 – A1.1, NB.4 en NB.5)
 
 #hide
-'Tabel NB.2 – A1.1: categorie | ψ0 | ψ1 | ψ2
-psi = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 | 0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 | 0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 | 0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
+'Tabel NB.2 – A1.1: categorie | ψ0 | ψ1 | ψ2; 11 is C met ψ0 = 0,6 (voetnoot a)
+psi = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11 | 0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0; 0.6 | 0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2; 0.7 | 0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0; 0.6]
 ψ_0,1 = hlookup(psi; belastingcategorie; 1; 2)
 ψ_0,2 = hlookup(psi; categorie_2; 1; 2)
 #show
@@ -126,7 +134,8 @@ Q_kidst = ?*(kN)', veranderlijk, destabiliserend, gelijktijdig'
 @select belastingcategorie "Categorie van Q_ki"
 Categorie A -- woon- en verblijfsruimtes (psi_0 = 0.4) = 0.4
 Categorie B -- kantoorruimtes (psi_0 = 0.5) = 0.5
-Categorie C -- bijeenkomstruimtes (psi_0 = 0.4) = 0.4
+Categorie C -- bijeenkomstruimtes, overige delen (psi_0 = 0.4) = 0.4
+Categorie C -- vluchtroutes en trappen (psi_0 = 0.6) = 0.6
 Categorie D -- winkelruimtes (psi_0 = 0.4) = 0.4
 Categorie E -- opslagruimtes (psi_0 = 1.0) = 1.0
 Categorie H -- daken (psi_0 = 0) = 0
@@ -173,9 +182,9 @@ export const en1990Buitengewoon = `"Buitengewone combinatie — NEN-EN 1990 §6.
 # 1. Belastingen
 
 @select type_buitengewoon "Type buitengewone situatie"
-Brand -- psi_1,1 * Q_k,1 = 1
+Brand -- psi_2,1 * Q_k,1; bij wind psi_1,1 = 1
 Schok of ontploffing -- psi_2,1 * Q_k,1 = 2
-Overige buitengewone situatie -- psi_1,1 * Q_k,1 = 3
+Overige buitengewone situatie -- psi_2,1 * Q_k,1 = 3
 @end
 
 G_k = ?*(kN)', blijvend, karakteristiek'
@@ -209,20 +218,16 @@ Wind (psi_2=0) = 0
 psi = [1; 2; 3; 4; 5; 6; 7 | 0.5; 0.5; 0.7; 0.7; 0.9; 0.2; 0.2 | 0.3; 0.3; 0.6; 0.6; 0.8; 0; 0]
 ψ_1,1 = hlookup(psi; belastingcategorie; 1; 2)
 ψ_2,1 = hlookup(psi; belastingcategorie; 1; 3)
-#show
-#if type_buitengewoon ≡ 2
-    ψ_2,1', Q_k1, schok of ontploffing (tabel NB.2 – A1.1)'
-#else
-    ψ_1,1', Q_k1, brand of overig (tabel NB.2 – A1.1)'
-#end if
-#hide
 ψ_2,2 = categorie_2*1
 #show
-ψ_2,2', Q_k2'
-#if type_buitengewoon ≡ 2
-    E_d = G_k + A_d + ψ_2,1*Q_k1 + ψ_2,2*Q_k2 to kN', alle γ = 1,0'
-#else
+#if type_buitengewoon ≡ 1 and belastingcategorie ≡ 7
+    ψ_1,1', Q_k1: wind bij brand (tabel NB.10 – A1.3, voetnoot a)'
+    ψ_2,2', Q_k2'
     E_d = G_k + A_d + ψ_1,1*Q_k1 + ψ_2,2*Q_k2 to kN', alle γ = 1,0'
+#else
+    ψ_2,1', Q_k1: ψ_1,1 alleen voor wind bij brand (tabel NB.10 – A1.3, voetnoot a)'
+    ψ_2,2', Q_k2'
+    E_d = G_k + A_d + ψ_2,1*Q_k1 + ψ_2,2*Q_k2 to kN', alle γ = 1,0'
 #end if
 `;
 
@@ -289,7 +294,8 @@ Q_k2 = ?*(kN)', veranderlijk, gelijktijdig; 0 als die er niet is'
 @select belastingcategorie "Categorie van Q_k1"
 Categorie A -- woon (psi_0=0.4, psi_1=0.5, psi_2=0.3) = 1
 Categorie B -- kantoor (psi_0=0.5, psi_1=0.5, psi_2=0.3) = 2
-Categorie C -- bijeenkomst (psi_0=0.4, psi_1=0.7, psi_2=0.6) = 3
+Categorie C -- bijeenkomst, overige delen (psi_0=0.4, psi_1=0.7, psi_2=0.6) = 3
+Categorie C -- vluchtroutes en trappen (psi_0=0.6, psi_1=0.7, psi_2=0.6) = 11
 Categorie D -- winkel (psi_0=0.4, psi_1=0.7, psi_2=0.6) = 4
 Categorie E -- opslag (psi_0=1.0, psi_1=0.9, psi_2=0.8) = 5
 Categorie F -- verkeer <= 25 kN (psi_0=0.7, psi_1=0.7, psi_2=0.6) = 6
@@ -302,7 +308,8 @@ Wind (psi_0=0, psi_1=0.2, psi_2=0) = 10
 @select categorie_2 "Categorie van Q_k2"
 Categorie A -- woon (psi_0=0.4, psi_1=0.5, psi_2=0.3) = 1
 Categorie B -- kantoor (psi_0=0.5, psi_1=0.5, psi_2=0.3) = 2
-Categorie C -- bijeenkomst (psi_0=0.4, psi_1=0.7, psi_2=0.6) = 3
+Categorie C -- bijeenkomst, overige delen (psi_0=0.4, psi_1=0.7, psi_2=0.6) = 3
+Categorie C -- vluchtroutes en trappen (psi_0=0.6, psi_1=0.7, psi_2=0.6) = 11
 Categorie D -- winkel (psi_0=0.4, psi_1=0.7, psi_2=0.6) = 4
 Categorie E -- opslag (psi_0=1.0, psi_1=0.9, psi_2=0.8) = 5
 Categorie F -- verkeer <= 25 kN (psi_0=0.7, psi_1=0.7, psi_2=0.6) = 6
@@ -313,8 +320,8 @@ Wind (psi_0=0, psi_1=0.2, psi_2=0) = 10
 @end
 
 #hide
-'Tabel NB.2 – A1.1: categorie | ψ0 | ψ1 | ψ2
-psi = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 | 0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 | 0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 | 0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
+'Tabel NB.2 – A1.1: categorie | ψ0 | ψ1 | ψ2; 11 is C met ψ0 = 0,6 (voetnoot a)
+psi = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11 | 0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0; 0.6 | 0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2; 0.7 | 0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0; 0.6]
 ψ_0,1 = hlookup(psi; belastingcategorie; 1; 2)
 ψ_1,1 = hlookup(psi; belastingcategorie; 1; 3)
 ψ_2,1 = hlookup(psi; belastingcategorie; 1; 4)
@@ -355,7 +362,8 @@ Q_k2 = ?*(kN)', veranderlijk, gelijktijdig; 0 als die er niet is'
 @select belastingcategorie "Categorie van Q_k1"
 Categorie A -- woon- en verblijfsruimtes = 1
 Categorie B -- kantoorruimtes = 2
-Categorie C -- bijeenkomstruimtes = 3
+Categorie C -- bijeenkomstruimtes, overige delen = 3
+Categorie C -- vluchtroutes en trappen, zwaar belast door een menigte bij calamiteit = 11
 Categorie D -- winkelruimtes = 4
 Categorie E -- opslagruimtes = 5
 Categorie F -- verkeersruimte, voertuig <= 25 kN = 6
@@ -368,7 +376,8 @@ Windbelasting = 10
 @select categorie_2 "Categorie van Q_k2"
 Categorie A -- woon- en verblijfsruimtes = 1
 Categorie B -- kantoorruimtes = 2
-Categorie C -- bijeenkomstruimtes = 3
+Categorie C -- bijeenkomstruimtes, overige delen = 3
+Categorie C -- vluchtroutes en trappen, zwaar belast door een menigte bij calamiteit = 11
 Categorie D -- winkelruimtes = 4
 Categorie E -- opslagruimtes = 5
 Categorie F -- verkeersruimte, voertuig <= 25 kN = 6
@@ -381,8 +390,8 @@ Windbelasting = 10
 # 2. Factoren (tabel NB.2 – A1.1, NB.4 en NB.5)
 
 #hide
-'Tabel NB.2 – A1.1: categorie | ψ0 | ψ1 | ψ2
-psi = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 | 0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 | 0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 | 0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
+'Tabel NB.2 – A1.1: categorie | ψ0 | ψ1 | ψ2; 11 is C met ψ0 = 0,6 (voetnoot a)
+psi = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11 | 0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0; 0.6 | 0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2; 0.7 | 0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0; 0.6]
 ψ_0,1 = hlookup(psi; belastingcategorie; 1; 2)
 ψ_1,1 = hlookup(psi; belastingcategorie; 1; 3)
 ψ_2,1 = hlookup(psi; belastingcategorie; 1; 4)
@@ -455,7 +464,8 @@ Q_k2 = ?*(kN)', veranderlijk, gelijktijdig'
 @select categorie_2 "Categorie van Q_k2"
 Categorie A -- woon (psi_0 = 0.4) = 0.4
 Categorie B -- kantoor (psi_0 = 0.5) = 0.5
-Categorie C -- bijeenkomst (psi_0 = 0.4) = 0.4
+Categorie C -- bijeenkomst, overige delen (psi_0 = 0.4) = 0.4
+Categorie C -- vluchtroutes en trappen (psi_0 = 0.6) = 0.6
 Categorie D -- winkel (psi_0 = 0.4) = 0.4
 Categorie E -- opslag (psi_0 = 1.0) = 1.0
 Categorie H -- daken (psi_0 = 0) = 0
@@ -508,7 +518,8 @@ export const en1990Referentieperiode = `"Aanpassing referentieperiode — NEN-EN
 @select belastingcategorie "Belastingcategorie (voor psi_0)"
 Categorie A -- woon (psi_0 = 0.4) = 0.4
 Categorie B -- kantoor (psi_0 = 0.5) = 0.5
-Categorie C -- bijeenkomst (psi_0 = 0.4) = 0.4
+Categorie C -- bijeenkomst, overige delen (psi_0 = 0.4) = 0.4
+Categorie C -- vluchtroutes en trappen (psi_0 = 0.6) = 0.6
 Categorie D -- winkel (psi_0 = 0.4) = 0.4
 Categorie E -- opslag (psi_0 = 1.0) = 1.0
 @end
@@ -518,7 +529,7 @@ F_t0 = ?*(kN/m^2)', gelijkmatig verdeelde veranderlijke belasting bij 50 jaar'
 ψ_0 = belastingcategorie*1
 #show
 ψ_0', tabel NB.2 – A1.1'
-t = DesignLife', ontwerplevensduur in jaren, uit de projectgegevens'
+t = max(DesignLife; 15)', ontwerplevensduur in jaren uit de projectgegevens, ten minste 15 (tabel NB.1 – 2.1 en 4.1.2(7a) van de NB)'
 t_0 = 50', basisreferentieperiode in jaren'
 factor = 1 + (1 - ψ_0)/9*log(t/t_0)', formule NB.1 (A1.1(2))'
 F_t = factor*F_t0 to kN/m^2

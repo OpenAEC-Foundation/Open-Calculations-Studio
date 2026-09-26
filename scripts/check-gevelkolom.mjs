@@ -36,7 +36,7 @@ const STANDAARD = {
   windbron: 1, z_wind: 7, d_geb: 20, a_hoek: 10, q_wind_hand: 0.8, w_d_hand: 0.9, w_z_hand: 0.7,
   N_Ed: 30, N_Ed_max: 0, VerplGrens: 300,
 };
-const PROJECT = { CC: 2, K_FI: 1, windgebied: 2, terreincategorie: 2 };
+const PROJECT = { CC: 2, K_FI: 1, windgebied: 2, terreincategorie: 2, DesignLife: 50 };
 
 /** id → h, b, t_w, t_f, r (mm); A (cm²); I_y, I_z (cm⁴); W_el,y, W_pl,y (cm³); I_t (cm⁴). */
 const PROFIEL = {
@@ -58,7 +58,11 @@ function wind(v, P) {
     const vb0 = { 1: 29.5, 2: 27.0, 3: 24.5 }[P.windgebied];
     const [z0, zmin] = { 1: [0.005, 1], 2: [0.2, 4], 3: [0.5, 7] }[P.terreincategorie];
     const z = Math.max(v.z_wind, zmin);
-    const vm = 0.19 * (z0 / 0.05) ** 0.07 * Math.log(z / z0) * vb0; // c_o = c_dir = c_season = 1
+    // c_prob bij een ontwerplevensduur boven 50 jaar: opmerking 4 bij 4.2, K uit tabel NB.2, n = 0,5, p = 1/t
+    const K = { 1: 0.2, 2: 0.234, 3: 0.281 }[P.windgebied];
+    const t = Math.max(P.DesignLife, 50);
+    const cprob = Math.sqrt((1 - K * Math.log(-Math.log(1 - 1 / t))) / (1 - K * Math.log(-Math.log(0.98))));
+    const vm = 0.19 * (z0 / 0.05) ** 0.07 * Math.log(z / z0) * cprob * vb0; // c_o = c_dir = c_season = 1
     const Iv = 1 / Math.log(z / z0); // k_l = 1
     qp = ((1 + 7 * Iv) * 0.5 * 1.25 * vm * vm) / 1000;
   }
@@ -325,6 +329,16 @@ const SETS = [
     // λ̄ = √(5380·355/801 300) = 1,544, Φ = 1,920 → χ_TF = 0,3266 (maatgevend, χ_y =
     // 0,8783). N_b,Rd = 0,3266·5268·355 = 610,8 kN → UC_N = 450/610,8 = 0,7368.
     handwerk: { ρ_w: "0.9366", A_eff: "52.68", χ_TF: "0.3266", N_b_Rd: "610.8", UC_N: "0.7368" },
+  },
+  {
+    naam: "12 — standaard, ontwerplevensduur 100 jaar: q_p met c_prob",
+    project: { DesignLife: 100 },
+    invoer: {},
+    // Met de hand (A1.1(2) van de NB bij NEN-EN 1990, opmerking 4 bij 4.2, tabel NB.2):
+    // windgebied II, K = 0,234, p = 0,01: c_prob² = (1 + 0,234·4,6001)/(1 + 0,234·3,9019)
+    // = 2,0764/1,9131 = 1,0854 → c_prob = 1,042; q_p = 1,0854·0,7495 = 0,8135 kN/m².
+    // w_d = (0,8 + 0,3)·0,8135 = 0,8948; w_z = (0,2 + 0,8)·0,8135 = 0,8135 (bij 50 jaar 0,8244 en 0,7495).
+    handwerk: { c_prob: "1.042", q_p: "0.8135", w_d_k: "0.8948", w_z_k: "0.8135" },
   },
 ];
 

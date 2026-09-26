@@ -52,7 +52,7 @@ const FUB = { 4.6: 400, 5.6: 500, 8.8: 800, 10.9: 1000 };
 function uitwerking(v) {
   const p = PROFIEL[v.profile];
   // Tabel 3.1 (EN 10025-2): t ≤ 40 mm voor de kolom; de plaat naar haar dikte.
-  const fy = v.staalsoort, fu = { 235: 360, 275: 430, 355: 510 }[fy], bw = { 235: 0.8, 275: 0.85, 355: 0.9 }[fy];
+  const fy = v.staalsoort, fu = { 235: 360, 275: 430, 355: 490 }[fy], bw = { 235: 0.8, 275: 0.85, 355: 0.9 }[fy];
   const fyp = v.t_p <= 40 ? fy : fy - 20, fup = v.t_p <= 40 ? fu : { 235: 360, 275: 410, 355: 470 }[fy];
   const flush = v.ank_opzet === 1 || v.ank_opzet === 6;
   const na = v.ank_opzet === 1 ? 2 : v.ank_opzet === 2 || v.ank_opzet === 6 ? 4 : 6;
@@ -137,14 +137,15 @@ function uitwerking(v) {
 
   // afschuiving
   const Ff = v.wrijving === 1 ? 0.2 * Math.max(N, 0) : 0;
-  const F2vb = ((0.44 - 0.0003 * fyb) * fub * As) / 1.25;
+  // §3.3(1): ankers op afschuiving hebben f_yb ≤ 640 N/mm²; 10.9 telt daar niet mee.
+  const F2vb = fyb <= 640 ? ((0.44 - 0.0003 * fyb) * fub * As) / 1.25 : 0;
   // EN 1090-2 tabel 11: normale speling 1/2/3 mm, vergrote gaten 3/4/6/8 mm.
   const d0 = d + (v.gatspeling === 1 ? (d <= 14 ? 1 : d <= 24 ? 2 : 3) : (d <= 12 ? 3 : d <= 22 ? 4 : d <= 24 ? 6 : 8));
   const e1 = dp / 2 - xmax, e2 = bp / 2 - ymax;
   const ab = Math.min(e1 / (3 * d0), fub / fup, 1), k1s = Math.max(Math.min((2.8 * e2) / d0 - 1.7, 2.5), 0);
   const F1vb = (k1s * ab * fup * d * v.t_p) / 1.25;
   const Fvb = Math.min(F1vb, F2vb);
-  const nv = v.gatspeling === 1 ? na : 0;
+  const nv = v.gatspeling === 1 && fyb <= 640 ? na : 0;
   const Vrd = Ff + nv * Fvb;
   // Geen dwarskracht is UC 0, ook zonder weerstand; dwarskracht zonder weerstand voldoet niet.
   const UCv = V > 0 ? V / Vrd : 0;
@@ -179,11 +180,13 @@ const ruim = (x) => ({ waarde: s4(x), tol: Math.max(Math.abs(x) * 0.002, 1e-6) }
 function verwachtingen(r, v) {
   const uit = {
     k_j: ruim(r.kj), f_jd: ruim(r.fjd), c: ruim(r.c), F_c_pl_Rd: ruim(r.Fcpl / 1e3), N_j_Rd: ruim(r.Njrd / 1e3),
-    F_C_Rd: ruim(r.FCrd / 1e3), F_t_Rd: ruim(r.Ftrd / 1e3), F_2_vb_Rd: ruim(r.F2vb / 1e3), F_1_vb_Rd: ruim(r.F1vb / 1e3),
+    F_C_Rd: ruim(r.FCrd / 1e3), F_t_Rd: ruim(r.Ftrd / 1e3), F_1_vb_Rd: ruim(r.F1vb / 1e3),
     V_Rd: ruim(r.Vrd / 1e3), UC_v: ruim(r.UCv), UC_las: ruim(r.UClas), UC_max: ruim(r.UCmax),
   };
   // Een toets die in deze situatie niet speelt, staat in het blad niet als getal.
   for (const [k, x] of [["UC_c", r.UCc], ["UC_t", r.UCt], ["UC_kegel", r.UCk], ["UC_tv", r.UCtv]]) if (x > 0) uit[k] = ruim(x);
+  // Ankers 10.9 werken niet op afschuiving: dan staat (6.2) niet in het blad.
+  if (r.F2vb > 0) uit.F_2_vb_Rd = ruim(r.F2vb / 1e3);
   if (r.FTrd !== null) uit.F_T_Rd = ruim(r.FTrd / 1e3);
   if (r.FT > 0) uit.F_T = ruim(r.FT / 1e3);
   // Dwarskracht zonder weerstand: het blad geeft een melding in plaats van een oneindige UC.
@@ -211,10 +214,11 @@ const SETS = [
   {
     naam: "3 — groot moment met weinig druk, S355, 6 ankers (opzet 5), ongescheurd",
     invoer: { staalsoort: 355, ank_opzet: 5, N_Ed: 50, M_Ed: 90, V_Ed: 30, t_p: 30, gescheurd: 0, hoeklas: 8 },
-    // S355 met t ≤ 40 mm: f_u = 510 N/mm² (tabel 3.1; eerder 490). Stuik:
-    // α_b = min(40/(3·26); 800/510; 1) = 0,5128, k_1 = min(2,8·40/26 − 1,7; 2,5) = 2,5 →
-    // F_1,vb,Rd = 2,5·0,5128·510·24·30/1,25 = 376,6 kN. V_Rd blijft 0,2·50 + 6·56,0 = 346,2 kN.
-    handwerk: { F_1_vb_Rd: "376.6", V_Rd: "346.2" },
+    // S355 volgens EN 10025-2 met t ≤ 40 mm: f_u = 490 N/mm² (tabel 3.1 van de A1:2014-versie;
+    // 510 geldt alleen voor buisprofielen S355H). Stuik: α_b = min(40/(3·26); 800/490; 1) = 0,5128,
+    // k_1 = min(2,8·40/26 − 1,7; 2,5) = 2,5 → F_1,vb,Rd = 2,5·0,5128·490·24·30/1,25 = 361,8 kN.
+    // V_Rd blijft 0,2·50 + 6·56,0 = 346,2 kN.
+    handwerk: { f_u: "490", F_1_vb_Rd: "361.8", V_Rd: "346.2" },
   },
   {
     naam: "4 — opwaartse kracht met klein moment: beide ankerrijen getrokken, M20 5.6",
@@ -308,6 +312,28 @@ const SETS = [
     // zonder rand gerekend, dus de verbinding is niet volledig getoetst.
     handwerk: { k_j: "1", f_jd: "11.11" },
     melding: /niet volledig getoetst/,
+  },
+  {
+    naam: "19 — HEB 300, S355, plaat 500 × 400 × 30, M = 190 kNm: de hoeklas met f_u = 490",
+    invoer: { staalsoort: 355, t_p: 30, d_p: 500, b_p: 400, e_d: 50, e_b: 50, N_Ed: 200, M_Ed: 190, V_Ed: 60, hoeklas: 3.2 },
+    // Met de hand: F_M = 190 000/(300 − 19) = 676,2 kN, F_N = 200·300·19/14 900 = 76,5 kN →
+    // F_fl = 599,6 kN; a_fl,req = √2·599 600/(2·300 − 11)·0,9·1,25/490 = 3,306 mm → UC_las =
+    // 3,306/3,2 = 1,033: voldoet niet (met 510 was het 3,176 mm en UC 0,993). Stuik:
+    // α_b = min(50/78; 800/490; 1) = 0,6410, k_1 = 2,5 → F_1,vb,Rd = 2,5·0,6410·490·24·30/1,25
+    // = 452,3 kN (470,8 kN met 510).
+    handwerk: { a_fl_req: "3.306", UC_las: "1.033", F_1_vb_Rd: "452.3" },
+  },
+  {
+    naam: "20 — ankers 10.9 met dwarskracht: f_yb > 640 N/mm², alleen de wrijving telt (§3.3(1))",
+    invoer: { kwaliteit: 10.9, M_Ed: 60, V_Ed: 50 },
+    // Met de hand: n_v = 0 en F_2,vb,Rd = 0; V_Rd = F_f,Rd = 0,2·300 = 60 kN → UC_v = 50/60 = 0,833.
+    // Eerder telde (6.2) met α_bc = 0,44 − 0,0003·900 = 0,17 doorgetrokken: V_Rd = 60 + 4·48,0 = 252 kN.
+    handwerk: { n_v: "0", V_Rd: "60.0", UC_v: "0.833" },
+  },
+  {
+    naam: "21 — ankers 10.9, opwaarts met dwarskracht: geen afschuifweerstand",
+    invoer: { kwaliteit: 10.9, N_Ed: -100, V_Ed: 20 },
+    melding: /Geen afschuifweerstand/,
   },
 ];
 

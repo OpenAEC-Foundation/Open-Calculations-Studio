@@ -10,7 +10,8 @@
  * waarden staan als voorbeeld in de bladtekst en zijn daar aan te passen.
  * K, α en β komen uit tabel NB-2 en γ_M uit tabel NB-1, net als in de modules
  * Dragende metselwerkwand en Oplegging op metselwerk; dezelfde wand geeft in
- * een normblad en in een module dus dezelfde f_k.
+ * een normblad en in een module dus dezelfde f_k. Ook net als daar: een
+ * langsvoeg geeft K maal 0,8 (§3.6.1.2(6)), en φ_∞ volgt uit tabel NB-3.
  *
  * Het blad Wand op druk staat met zijn voorbeeldwaarden gelijk aan
  * referentieset 1 van de wandmodule; scripts/check-en1996.mjs houdt dat vast.
@@ -43,8 +44,13 @@ export const en1996Druksterkte = `# Druksterkte metselwerk — EN 1996-1-1 §3.6
   Lijmmortel = 2
 @end
 
-f_b = 12', genormaliseerde druksterkte van de steen [N/mm²] (NEN-EN 772-1)'
+f_b = 12', genormaliseerde druksterkte van de steen [N/mm²] (bijlage NB-A)'
 f_m = 15', mortelsterkte [N/mm²]: M-klasse bij metselmortel, L-klasse bij lijmmortel'
+
+@select langsvoeg "Mortelvoeg evenwijdig aan het wandvlak (langsvoeg)"
+  geen: in elke laag reikt één steen over de volle wanddikte = 1
+  wel, over de hele wandlengte of een deel ervan (bijvoorbeeld een steense wand met strekkenlagen) = 2
+@end
 
 @select steencategorie "Steencategorie (γ_M, tabel NB-1)"
   Categorie I = 1
@@ -53,7 +59,8 @@ f_m = 15', mortelsterkte [N/mm²]: M-klasse bij metselmortel, L-klasse bij lijmm
 
 #hide
 steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.80; 0.70; 0.80; 0.65; 0.80; 0.65; 0.80 |0.75; 0.70; 0.85; 0.85; 0.85; 0.85; 0.85 |0.10; 0; 0; 0; 0; 0; 0 |1; 2; 1; 2; 1; 2; 1]
-K = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 3); hlookup(steenmat; steensoort; 1; 2))
+'§3.6.1.2(6): met een langsvoeg K maal 0,8.
+K = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 3); hlookup(steenmat; steensoort; 1; 2))*if(langsvoeg ≡ 2; 0.8; 1)
 alfa = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 4); 0.65)
 bexp = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 5); 0.25)
 groep = hlookup(steenmat; steensoort; 1; 6)
@@ -66,7 +73,15 @@ gam_M = if(steencategorie ≡ 1; 1.7; 2.2) - if(CC ≡ 1; 0.2; 0)
 
 ## Karakteristieke druksterkte — formule (3.2)
 
-K', tabel NB-2'
+#if langsvoeg ≡ 2
+    K', tabel NB-2 maal 0,8 voor de langsvoeg (§3.6.1.2(6))'
+    #if morteltype ≡ 2
+        '<span style="color: #b45309"><b>Let op:</b> §3.6.1.2(6) geeft de factor 0,8 alleen voor metselmortel;
+        'voor lijmmortel met een langsvoeg geeft de norm geen f<sub>k</sub>. Dit blad rekent ook dan met 0,8·K.</span>
+    #end if
+#else
+    K', tabel NB-2'
+#end if
 alfa', exponent α'
 bexp', exponent β'
 f_beff', f_b na de grens van de NB'
@@ -112,29 +127,44 @@ export const en1996Drukwand = `# Wand op druk — EN 1996-1-1 §6.1.2
 f_b = 12', genormaliseerde druksterkte van de steen [N/mm²]'
 f_m = 15', mortelsterkte [N/mm²]'
 
+@select langsvoeg "Mortelvoeg evenwijdig aan het wandvlak (langsvoeg)"
+  geen: in elke laag reikt één steen over de volle wanddikte = 1
+  wel, over de hele wandlengte of een deel ervan (bijvoorbeeld een steense wand met strekkenlagen) = 2
+@end
+
 @select steencategorie "Steencategorie (γ_M, tabel NB-1)"
   Categorie I = 1
   Categorie II = 2
 @end
 
-phi_inf = 1.5', eindkruipcoëfficiënt φ_∞ (tabel NB-3), telt alleen boven λ_c = 27'
-
 #hide
-steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.80; 0.70; 0.80; 0.65; 0.80; 0.65; 0.80 |0.75; 0.70; 0.85; 0.85; 0.85; 0.85; 0.85 |0.10; 0; 0; 0; 0; 0; 0 |1; 2; 1; 2; 1; 2; 1]
-K = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 3); hlookup(steenmat; steensoort; 1; 2))
+'Kolommen: id, K (metselmortel, lijmmortel), α en β bij lijmmortel, steengroep
+'(tabel NB-2) en φ_∞ (metselmortel, lijmmortel; tabel NB-3).
+steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.80; 0.70; 0.80; 0.65; 0.80; 0.65; 0.80 |0.75; 0.70; 0.85; 0.85; 0.85; 0.85; 0.85 |0.10; 0; 0; 0; 0; 0; 0 |1; 2; 1; 2; 1; 2; 1 |0.7; 0.7; 1.1; 1.1; 1.9; 1.9; 0.6 |0.5; 0.5; 0.8; 0.8; 1.7; 1.7; 0.5]
+'§3.6.1.2(6): met een langsvoeg K maal 0,8.
+K = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 3); hlookup(steenmat; steensoort; 1; 2))*if(langsvoeg ≡ 2; 0.8; 1)
 alfa = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 4); 0.65)
 bexp = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 5); 0.25)
 groep = hlookup(steenmat; steensoort; 1; 6)
+phi_inf = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 8); hlookup(steenmat; steensoort; 1; 7))
 'NB bij 3.6.1.2: f_b hoogstens 75 (metselmortel) of 50 N/mm² (lijmmortel);
 'f_m hoogstens 20 N/mm², bij metselmortel ook hoogstens 2·f_b.
 f_beff = min(f_b; if(morteltype ≡ 1; 75; 50))
 f_meff = min(f_m; 20; if(morteltype ≡ 1; 2*f_beff; 20))
 gam_M = if(steencategorie ≡ 1; 1.7; 2.2) - if(CC ≡ 1; 0.2; 0)
 #show
+#if langsvoeg ≡ 2
+    K', tabel NB-2 maal 0,8 voor de langsvoeg (§3.6.1.2(6))'
+    #if morteltype ≡ 2
+        '<span style="color: #b45309"><b>Let op:</b> §3.6.1.2(6) geeft de factor 0,8 alleen voor metselmortel;
+        'voor lijmmortel met een langsvoeg geeft de norm geen f<sub>k</sub>. Dit blad rekent ook dan met 0,8·K.</span>
+    #end if
+#end if
 f_k = K*f_beff^alfa*f_meff^bexp*N/mm^2', karakteristieke druksterkte (3.2), tabel NB-2'
 gam_M', tabel NB-1'
 f_d = f_k/gam_M', rekenwaarde druksterkte'
 E_mw = 700*f_k', elasticiteitsmodulus (NB bij 3.7.2(2))'
+phi_inf', eindkruipcoëfficiënt φ_∞ (NB bij 3.7.4(2), tabel NB-3), telt alleen boven λ_c = 27'
 
 ## Wand en belasting
 
@@ -313,9 +343,11 @@ export const en1996Afschuiving = `# Afschuiving metselwerk — EN 1996-1-1 §6.2
 f_b = 12', genormaliseerde druksterkte van de steen [N/mm²]'
 f_vk0 = 0.20', initiële schuifsterkte f_vk0 [N/mm²]'
 '<i>De Nederlandse bijlage laat f<sub>vk0</sub> bepalen met NEN-EN 1052-3 of, zonder
-'afschuifproeven, gelijk nemen aan f<sub>xk1</sub>: de hechtsterkte uit de proef volgens
-'NEN-EN 1052-5 (NB bij 3.6.2(6) en 3.6.4(5)). Bij cellenbeton is f<sub>xk1</sub> = 0,1·f<sub>k</sub>
-'met metselmortel en 0,15·f<sub>k</sub> met lijmmortel (NB bij 3.6.4(7)).</i>
+'afschuifproeven, gelijk nemen aan f<sub>xk1</sub> (NB bij 3.6.2(6)). f<sub>xk1</sub> volgt uit NEN-EN 1052-2
+'(NB bij 3.6.4(3)); voor baksteen, kalkzandsteen en betonsteen mag ook de hechtsterkte uit de proef
+'volgens NEN-EN 1052-5 (NB bij 3.6.4(4) en (5)). Bij cellenbeton met 1 ≤ f<sub>k</sub> ≤ 5 N/mm² en een
+'verband volgens 8.1.4 is f<sub>xk1</sub> = 0,1·f<sub>k</sub> met metselmortel en 0,15·f<sub>k</sub> met lijmmortel
+'(NB bij 3.6.4(7)).</i>
 
 @select stootvoegen "Stootvoegen"
   gevuld, formule (3.5) = 1

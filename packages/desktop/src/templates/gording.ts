@@ -19,7 +19,12 @@
  * - combinatie 7 (plat dak): winddruk in zone I, c_pe = +0,2 met c_pi = −0,3,
  *   ook in de BGT;
  * - de netto opwaartse doorbuiging in de BGT;
- * - oplegdruk §6.1.5.
+ * - oplegdruk §6.1.5;
+ * - winddruk op een schuin dak boven 60° oplopend naar +0,8 bij 75° (tabel
+ *   NB.10 – 7.4a);
+ * - ontwerplevensduur boven 50 jaar (A1.1(2) van de NB bij NEN-EN 1990): q_p
+ *   met c_prob (opmerking 4 bij 4.2, tabel NB.2) en de NL-grondwaarde van de
+ *   sneeuw volgens bijlage D (V = 0,8); een zelf ingevulde q_p of s_k niet.
  * Splitspunten via rekenwijze: eigen gewicht (register punt 8), 6.10a
  * (punt 10) en de maatgevende combinatie voor 6.11/6.12 (punt 13).
  */
@@ -155,6 +160,12 @@ q_var = ?*(kN/m^2)', verdeelde veranderlijke belasting (grondvlak)'
 @end
 #if sk_manual ≡ 1
     s_k = ?*(kN/m^2)', karakteristieke sneeuwbelasting (grondvlak)'
+#else if DesignLife > 50
+    #hide
+    f_sn = (1 - 0.8*sqrt(6)/pi*(log(-log(1 - 1/DesignLife)) + 0.57722))/(1 + 2.5923*0.8)
+    #show
+    f_sn', ontwerplevensduur boven 50 jaar: (D.1) met V = 0,8 (NB bij bijlage D van NEN-EN 1991-1-3) en P_n = 1/t'
+    s_k = f_sn*0.70 kN/m^2', grondwaarde 0,70 (NB bij NEN-EN 1991-1-3), aangepast volgens A1.1(2) van de NB bij NEN-EN 1990'
 #else
     s_k = 0.70 kN/m^2', grondwaarde (NB bij NEN-EN 1991-1-3)'
 #end if
@@ -179,10 +190,17 @@ zmin_ruw = if(terreincategorie ≡ 1; 1; if(terreincategorie ≡ 2; 4; 7))
 zw_ruw = z_wind/(1*m)
 ze_ruw = max(zw_ruw; zmin_ruw)
 verh = ze_ruw/z0_ruw
-vm_ruw = 0.19*(z0_ruw/0.05)^0.07*log(verh)*vb0_ruw
+'Opmerking 4 bij 4.2 en tabel NB.2: c_prob bij een ontwerplevensduur boven 50 jaar, p = 1/t, n = 0,5.
+K_prob = if(windgebied ≡ 1; 0.2; if(windgebied ≡ 2; 0.234; 0.281))
+t_prob = max(DesignLife; 50)
+cprob_ruw = sqrt((1 - K_prob*log(-log(1 - 1/t_prob)))/(1 - K_prob*log(-log(0.98))))
+vm_ruw = 0.19*(z0_ruw/0.05)^0.07*log(verh)*cprob_ruw*vb0_ruw
 #show
 #if windbron ≡ 1
     v_b0 = vb0_ruw*(m/s)', basiswindsnelheid (tabel NB.1); c_dir = c_season = 1'
+    #if DesignLife > 50
+        c_prob = cprob_ruw', ontwerplevensduur boven 50 jaar: (4.2) met p = 1/t, K uit tabel NB.2 en n = 0,5 (opmerking 4 bij 4.2)'
+    #end if
     z_e = ze_ruw*(m)', ten minste z_min'
     k_r_w = 0.19*(z0_ruw/0.05)^0.07', terreinfactor (4.5)'
     c_r = k_r_w*log(verh)', ruwheidsfactor (4.4); c_o = 1'
@@ -287,8 +305,10 @@ V_sz = q_sz*L_th/2 to kN
 'Wind werkt loodrecht op het dakvlak (⊥, sterke as).
 #if dakType ≡ 1
     C_pe = -0.70', plat dak, zuiging'
-#else
+#else if α_deg ≤ 60
     C_pe = 0.70', schuin dak, druk'
+#else
+    C_pe = min(0.70 + 0.10*(α_deg - 60)/15; 0.80)', schuin dak, druk: +0,7 bij 60° en +0,8 bij 75° (tabel NB.10 – 7.4a)'
 #end if
 C_pi = -0.30
 P_w = (C_pe - C_pi)*q_wind', winddruk op het dakvlak'

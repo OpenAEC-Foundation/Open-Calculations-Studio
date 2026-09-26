@@ -8,15 +8,18 @@
  *      stuiksterkte (8.15), (8.16), (8.20), (8.22), NB.8.1, NB.8.2 en voor de
  *      boutregels (8.31)–(8.33); vloeimoment (8.14)/(8.30); Johansen (8.6),
  *      (8.7), (8.9)–(8.11) met interpolatie tussen dunne en dikke plaat; het
- *      koordeffect met de grenzen van §8.2.2(2) en de restcapaciteit van de NB
- *      bij §8.2.2(5); axiaal (8.23)–(8.26) en (8.38)–(8.41), met een
- *      vierkante of gegroefde nagel zonder profilering als gladde nagel; de
- *      groep met tabel 8.1 of (8.34)/(8.35) en de scherpe hoek tussen kracht en
- *      vezel; de combinatie (8.27)/(8.28); splijten (8.2)–(8.4) naar de belaste
- *      rand, bij een onbelaste rand a_4 de rand aan de overkant; de afstanden
- *      uit tabel 8.2, 8.4 en 8.6, ook tot die overkant, en de
- *      detailleringseisen. Het blad moet daar op vier significante cijfers mee
- *      overeenkomen, en het eindoordeel moet gelijk zijn.
+ *      koordeffect met de grenzen van §8.2.2(2) (vierkante en geprofileerde
+ *      nagels 25 %) en de restcapaciteit van de NB bij §8.2.2(5); axiaal
+ *      (8.23)–(8.26) en (8.38)–(8.41), het staal van de schroef met k_mod en
+ *      γ_M = 1,3 volgens (2.17), met een vierkante of gegroefde nagel zonder
+ *      profilering als gladde nagel; de groep met tabel 8.1 of (8.34)/(8.35)
+ *      en de scherpe hoek tussen kracht en vezel; de combinatie (8.27)/(8.28);
+ *      splijten (8.2)–(8.4) naar de belaste rand, bij een onbelaste rand a_4
+ *      de rand aan de overkant; de afstanden uit tabel 8.2, 8.4 en 8.6, ook
+ *      tot die overkant, en de detailleringseisen, met gipsplaat volgens de NB
+ *      bij 3.8 (type A en F alleen in klimaatklasse 1, minimaal 12,5 mm). Het
+ *      blad moet daar op vier significante cijfers mee overeenkomen, en het
+ *      eindoordeel moet gelijk zijn.
  *   2. Voor een aantal gevallen een paar getallen die met de hand zijn
  *      nagerekend, zodat een fout die in beide uitwerkingen zit niet
  *      onopgemerkt blijft.
@@ -52,8 +55,10 @@ const KMOD_PLAAT = [null, OSB, OSB,
   [[0.3, 0.45, 0.65, 0.85, 1.1], [0.2, 0.3, 0.45, 0.6, 0.8], null],
   [[0.6, 0.7, 0.8, 0.9, 1.1], [0.6, 0.7, 0.8, 0.9, 1.1], [0.5, 0.55, 0.65, 0.7, 0.9]],
   GIPS, GIPS];
-const KOORD = [null, 0.15, 0.25, 0.5, 1.0];
-const GM = 1.3, GM2 = 1.25;
+/** §8.2.2(2): gladde 15 %, vierkante en geprofileerde nagels (ook ring- en schroefnagels) 25 %, schroeven 100 %. */
+const KOORD = [null, 0.15, 0.25, 0.25, 1.0];
+/** γ_M voor verbindingen (tabel 2.3); ook het staal van de schroef volgt (2.17). */
+const GM = 1.3;
 
 const rad = (g) => (g * Math.PI) / 180;
 
@@ -65,7 +70,9 @@ function uitwerking(v) {
   const rhoZij = RHO[op === 3 || op === 4 ? v.klasse_2 : v.klasse_1];
   const rhoMid = RHO[op === 5 ? v.klasse_1 : v.klasse_2];
   const kh = KMOD_HOUT[v.klimaat][v.duur - 1];
-  const kp = op === 3 ? (KMOD_PLAAT[v.plaat][v.klimaat - 1]?.[v.duur - 1] ?? 0) : null;
+  // Gipskarton type A en F (gips_type 1, de eerste keuze) alleen in klimaatklasse 1 (NB bij 3.8(1)).
+  const gipsAF = v.plaat === 5 && (v.gips_type ?? 1) === 1 && v.klimaat >= 2;
+  const kp = op === 3 ? (gipsAF ? 0 : KMOD_PLAAT[v.plaat][v.klimaat - 1]?.[v.duur - 1] ?? 0) : null;
   const kmod = op === 3 ? Math.sqrt(kh * kp) : kh;
 
   const dEf = mid === 4 ? 1.1 * v.d_1 : d;
@@ -134,7 +141,7 @@ function uitwerking(v) {
   }
   const n = Math.max(v.n_1 * v.n_2, 1);
   const nAx = mid === 4 ? n ** 0.9 : n;
-  const FaxRdGroep = Math.min((nAx * kmod * FaxRk) / GM, (nAx * Ft) / GM2); // N
+  const FaxRdGroep = (nAx * kmod * Math.min(FaxRk, Ft)) / GM; // N
   const koordRest = Math.min(FaxRk, Ft) * Math.max(0, 1 - (v.F_ax_Ed * 1000) / Math.max(FaxRdGroep, 1));
 
   // ── afschuiving, per verbindingsmiddel en per snede ──
@@ -201,7 +208,7 @@ function uitwerking(v) {
   }
   let UCax = 0, UCc = UCv;
   if (v.F_ax_Ed > 0) {
-    const Rd = Math.min((nAx * kmod * FaxRk) / GM, mid === 4 ? (nAx * Ft) / GM2 : Infinity);
+    const Rd = (nAx * kmod * Math.min(FaxRk, Ft)) / GM;
     UCax = (v.F_ax_Ed * 1000) / Rd;
     UCc = mid <= 2 ? UCax + UCv : UCax ** 2 + UCv ** 2;
   }
@@ -280,6 +287,7 @@ function uitwerking(v) {
     v.voorboren || (mid === 4 ? d <= 6 : rhoMax <= 500 && d <= 6),
     mid === 4 || v.n_1 * v.n_2 >= 2,
     !(op === 3 && v.plaat <= 4) || v.d_h >= 2 * d,
+    !gips || v.t_1 >= 12.5,
     mid === 4 || v.M_y_in > 0 || v.f_u >= 600,
     !axSchroef || asN >= 30,
     !axSchroef || tElem >= 12 * d,
@@ -512,6 +520,52 @@ const SETS = [
     // 75 − 25 − 25 − 3,4 = 21,6 < 23,8: de detaillering voldoet niet (zonder de 1d: 25).
     handwerk: { h_e: "50", F_90_Rd: "4.010", UC_90: "0.4988", k_ef: "1" },
   },
+  {
+    naam: "26 — ringnagels 4 × 100 in C24 38 + 71, kort: koordeffect ten hoogste 25 %",
+    invoer: {
+      middel: 3, d_v: 4, l_v: 100, d_h: 9, l_g: 60, f_ax_nk: 10, f_head_nk: 20, duur: 4,
+      n_1: 4, n_2: 1, a_1: 60, a_3: 80, a_4: 30, F_v_Ed: 2,
+    },
+    // Met de hand: f_h = 0,082·350·4^-0,3 = 18,93; M_y = 0,3·600·4^2,6 = 6617;
+    // t_pen = 62, geprofileerd deel 60 ≥ 8d: F_ax,a = 10·4·60 = 2400, F_ax,b = 20·9² = 1620.
+    // (f): 1,15·√(2·6617·18,93·4) = 1151,2; koord min(1620/4; 0,25·1151,2) = 287,8 → 1439,0
+    // (met 50 % was het min(405; 575,6) = 405 → 1556, 8 % hoger). F_v,Rd = 0,9·1439,1/1,3 = 996,3.
+    handwerk: { f_h_1: "18.93", M_y_Rk: "6617", F_ax_Rk: "1620", F_v_Rk: "1439", F_v_Rd: "996.3" },
+  },
+  {
+    naam: "27 — schroeven als set 2 met f_tens,k = 1,2 kN: het staal is maatgevend op trek",
+    invoer: {
+      middel: 4, d_v: 6, d_1: 4, l_v: 100, l_g: 60, d_h: 12, f_u: 800, f_head_k: 10.5, f_tens_k: 1.2,
+      t_1: 45, t_2: 120, a_1: 80, a_2: 30, a_3: 100, a_4: 30, F_ax_Ed: 3, F_v_Ed: 5,
+    },
+    // Met de hand, (2.17) met γ_M = 1,3 (tabel 2.3) en k_mod = 0,8: F_t,Rd = 7,943·0,8·1200/1,3
+    // = 5866 N (met γ_M2 = 1,25 en zonder k_mod was het 7,625 kN); UC_ax = 3/5,866 = 0,5114.
+    // Koordeffect: min(1512; 1200)·(1 − 3000/5866) = 586,3.
+    handwerk: { F_t_Rd: "5.866", UC_ax: "0.5114", F_ax_koord: "586.3" },
+  },
+  {
+    naam: "28 — gipskarton type A of F in klimaatklasse 2: niet toegestaan",
+    invoer: {
+      opbouw: 3, plaat: 5, t_1: 12.5, middel: 4, d_v: 3.9, d_1: 2.6, l_v: 40, l_g: 22, d_h: 8, duur: 4,
+      n_1: 10, n_2: 1, a_1: 100, a_3: 40, a_4: 40, F_v_Ed: 2, klimaat: 2,
+    },
+  },
+  {
+    naam: "29 — gipskarton type H of FH in klimaatklasse 2, kort",
+    invoer: {
+      opbouw: 3, plaat: 5, gips_type: 2, t_1: 12.5, middel: 4, d_v: 3.9, d_1: 2.6, l_v: 40, l_g: 22, d_h: 8,
+      duur: 4, n_1: 10, n_2: 1, a_1: 100, a_3: 40, a_4: 40, F_v_Ed: 2, klimaat: 2,
+    },
+    // Met de hand: k_mod,p = 0,60 (tabel NB.2, klimaatklasse 2, kort); k_mod = √(0,9·0,6) = 0,7348.
+    handwerk: { k_mod_p: "0.60", k_mod: "0.7348" },
+  },
+  {
+    naam: "30 — gipskarton type H of FH van 12 mm: te dun",
+    invoer: {
+      opbouw: 3, plaat: 5, gips_type: 2, t_1: 12, middel: 4, d_v: 3.9, d_1: 2.6, l_v: 40, l_g: 22, d_h: 8,
+      duur: 4, n_1: 10, n_2: 1, a_1: 100, a_3: 40, a_4: 40, F_v_Ed: 2,
+    },
+  },
 ];
 
 let fouten = 0;
@@ -558,6 +612,8 @@ const MELDINGEN = [
   [22, "randafstand aan de overkant te klein", /Randafstand aan de overkant, h − a 4 − \(n 2 − 1\)·a 2 20 23\.8 voldoet niet/],
   [23, "hoogte voor splijten ontbreekt bij een onbelaste rand", /Splijten §8\.1\.4 — hoogte h ontbreekt .*voldoet niet: splijten is niet getoetst/],
   [25, "randafstand aan de overkant met een verspringende rij", /Randafstand aan de overkant, h − a 4 − \(n 2 − 1\)·a 2 − d 21\.6 23\.8 voldoet niet/],
+  [28, "gipskarton type A in klimaatklasse 2", /mag in klimaatklasse 2 niet worden toegepast \(tabel 3\.1, NB bij 3\.8\(1\) en \(2\)\)/],
+  [30, "gipsplaat dunner dan 12,5 mm", /Dikte gipsplaat \(NB bij 3\.8\(3\)\) 12 12\.5 voldoet niet/],
 ];
 for (const [nr, naam, patroon] of MELDINGEN) {
   const v = { ...STANDAARD, ...SETS[nr - 1].invoer };

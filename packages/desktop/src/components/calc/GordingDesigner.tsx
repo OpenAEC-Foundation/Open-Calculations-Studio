@@ -145,7 +145,9 @@ export default function GordingDesigner() {
   const klim = Math.round(d("klimaatklasse"));
   const Qk = d("Q_k"), qVar = d("q_var");
   const skManual = Math.round(d("sk_manual"));
-  const skAuto = 0.70;                                  // NL uniforme grondwaarde (NEN-EN 1991-1-3 NB)
+  // NL uniforme grondwaarde (NEN-EN 1991-1-3 NB); het veld toont de s_k van het
+  // blad, want boven 50 jaar ontwerplevensduur rekent het blad met bijlage D.
+  const skAuto = 0.70;
   const mu1Manual = Math.round(d("mu1_manual"));
   const zWind = d("z_wind");
   const cpeZuig = d("c_pe_zuig");
@@ -347,7 +349,7 @@ export default function GordingDesigner() {
                     <input type="checkbox" checked={skManual === 1} onChange={(e) => setVal("sk_manual", e.target.checked ? 1 : 0)} />
                     Sneeuwbelasting s<sub>k</sub> (kN/m²)
                   </span>
-                  <input type="number" step={0.05} value={skManual === 1 ? d("s_k") : skAuto} disabled={skManual !== 1} onChange={(e) => setVal("s_k", parseFloat(e.target.value))} />
+                  <input type="number" step={0.05} value={skManual === 1 ? d("s_k") : (g.s_k ?? skAuto)} disabled={skManual !== 1} onChange={(e) => setVal("s_k", parseFloat(e.target.value))} />
                 </label>
                 <label style={{ gap: 6 }}>
                   <span className="gd-chk">

@@ -557,6 +557,12 @@ Sneeuwbelasting = 9
 Windbelasting = 10
 @end
 
+@select toepassing "Grens bijkomende doorbuiging (NB bij NEN-EN 1990, A1.4.3(3))"
+Vloer, of dak dat intensief door personen wordt gebruikt — 0,003·L = 1
+Vloer met scheurgevoelige scheidingswanden — L/500 = 2
+Overig dak — L/250 = 3
+@end
+
 #hide
 'Materiaalmatrix: [id | f_m,k | f_v,k | f_c,0,k | f_c,90,k | E_0,mean | E_0,05 | γ_M | gelamineerd]
 materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |18; 21; 23; 24; 28; 32 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |1.3; 1.3; 1.3; 1.25; 1.25; 1.25 |0; 0; 0; 1; 1; 1]
@@ -564,7 +570,13 @@ materialen = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5;
 psi_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 |0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 |0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 |0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
 E_mean = hlookup(materialen; sterkteklasse; 1; 6)*N/mm^2
 k_def = if(klimaatklasse ≡ 1; 0.60; if(klimaatklasse ≡ 2; 0.80; 2.00))
+psi_1 = hlookup(psi_tabel; belastingcat; 1; 3)
 psi_2 = hlookup(psi_tabel; belastingcat; 1; 4)
+'Bijkomende doorbuiging w_2 + w_3 (A1.4.3(3)): bij een vloer of een intensief gebruikt dak
+'de frequente combinatie (6.15b), dus w_3 = ψ_1·w_inst,Q; bij een overig dak de
+'karakteristieke (6.14b), dus w_3 = w_inst,Q.
+psi_w3 = if(toepassing ≡ 3; 1; psi_1)
+grens_bij = if(toepassing ≡ 2; 1/500; if(toepassing ≡ 3; 1/250; 0.003))
 #show
 
 'Gemiddelde elasticiteitsmodulus (EN 338 / EN 14080), kruipfactor (tabel 3.2) en quasi-blijvende factor (NEN-EN 1990 tabel NB.2 — A1.1):
@@ -606,10 +618,6 @@ Doorbuiging onder veranderlijke belasting:
 
 w_inst_Q = 5 * q_k * L^4 / (384 * E_mean * I_y) to mm
 
-Totale ogenblikkelijke doorbuiging:
-
-w_inst = w_inst_G + w_inst_Q to mm
-
 ## Uiteindelijke doorbuiging met kruip (formule 2.3-2.4)
 
 Uiteindelijke doorbuiging onder G (formule 2.3):
@@ -628,32 +636,38 @@ Netto doorbuiging (formule 7.2, zonder zeeg):
 
 w_netfin = w_fin to mm
 
-## Grenswaarden (tabel 7.2 / NEN-EN 1990 NB)
+## Bijkomende doorbuiging (NB bij NEN-EN 1990, A1.4.3(2) en (3))
 
-Grenswaarde w_inst (L/300):
+'Kruipdeel onder de quasi-blijvende combinatie (w<sub>2</sub>) en deel door de veranderlijke belasting (w<sub>3</sub>, met ψ = ψ<sub>1</sub> frequent of 1,0 karakteristiek):
 
-w_inst_lim = L / 300 to mm
+psi_w3
 
-Grenswaarde w_net,fin (L/250):
+w_2 = k_def * (w_inst_G + psi_2 * w_inst_Q) to mm
+
+w_3 = psi_w3 * w_inst_Q to mm
+
+w_bij = w_2 + w_3 to mm
+
+## Grenswaarden (NB 7.2(2): NB bij NEN-EN 1990, A1.4.3)
+
+'Grenswaarde w<sub>bij</sub> (A1.4.3(3)):
+
+w_bij_lim = grens_bij * L to mm
+
+'Grenswaarde w<sub>net,fin</sub> als het uiterlijk van belang is (L/250, A1.4.3(4)):
 
 w_netfin_lim = L / 250 to mm
 
-Grenswaarde w_fin (L/150):
-
-w_fin_lim = L / 150 to mm
-
 ## Unity checks
 
-UC_inst = w_inst / w_inst_lim
+UC_bij = w_bij / w_bij_lim
 
 UC_netfin = w_netfin / w_netfin_lim
 
-UC_fin = w_fin / w_fin_lim
-
-#if UC_inst ≤ 1
-  w_inst voldoet ({{w_inst}} mm < {{w_inst_lim}} mm).
+#if UC_bij ≤ 1
+  w_bij voldoet ({{w_bij}} mm < {{w_bij_lim}} mm).
 #else
-  w_inst voldoet NIET!
+  w_bij voldoet NIET!
 #end if
 
 #if UC_netfin ≤ 1
@@ -662,13 +676,7 @@ UC_fin = w_fin / w_fin_lim
   w_net,fin voldoet NIET!
 #end if
 
-#if UC_fin ≤ 1
-  w_fin voldoet ({{w_fin}} mm < {{w_fin_lim}} mm).
-#else
-  w_fin voldoet NIET!
-#end if
-
-UC_max = max(UC_inst; UC_netfin; UC_fin)
+UC_max = max(UC_bij; UC_netfin)
 
 #if UC_max ≤ 1
   '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>doorbuiging voldoet</b></span>
@@ -788,11 +796,22 @@ Sneeuwbelasting = 9
 Windbelasting = 10
 @end
 
+@select toepassing "Grens bijkomende doorbuiging (NB bij NEN-EN 1990, A1.4.3(3))"
+Vloer, of dak dat intensief door personen wordt gebruikt — 0,003·L = 1
+Vloer met scheurgevoelige scheidingswanden — L/500 = 2
+Overig dak — L/250 = 3
+@end
+
 #hide
 'ψ-factoren (NEN-EN 1990 tabel NB.2 — A1.1): [categorie | ψ_0 | ψ_1 | ψ_2]
 psi_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 |0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 |0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 |0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0]
 psi_0 = hlookup(psi_tabel; belastingcat; 1; 2)
+psi_1 = hlookup(psi_tabel; belastingcat; 1; 3)
 psi_2 = hlookup(psi_tabel; belastingcat; 1; 4)
+'w_3 in de bijkomende doorbuiging (A1.4.3(3)): frequent (6.15b) bij een vloer of een
+'intensief gebruikt dak, karakteristiek (6.14b) bij een overig dak.
+psi_w3 = if(toepassing ≡ 3; 1; psi_1)
+grens_bij = if(toepassing ≡ 2; 1/500; if(toepassing ≡ 3; 1/250; 0.003))
 gamma_Ga = if(CC ≡ 1; 1.2; if(CC ≡ 3; 1.5; 1.35))
 gamma_Gb = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))
 gamma_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))
@@ -962,11 +981,27 @@ w_fin_G = w_inst_G * (1 + k_def) to mm
 w_fin_Q = w_inst_Q * (1 + psi_2 * k_def) to mm
 w_netfin = w_fin_G + w_fin_Q to mm
 
-Grenswaarde (tabel 7.2):
+'Bijkomende doorbuiging w<sub>2</sub> + w<sub>3</sub> (NB bij NEN-EN 1990, A1.4.3(2) en (3)), met ψ = ψ<sub>1</sub> frequent of 1,0 karakteristiek:
+
+psi_w3
+
+w_bij = k_def * (w_inst_G + psi_2 * w_inst_Q) + psi_w3 * w_inst_Q to mm
+
+'Grenswaarden (NB 7.2(2): NB bij NEN-EN 1990, A1.4.3(3) en (4)):
+
+w_bij_lim = grens_bij * L to mm
 
 w_netfin_lim = L / 250 to mm
 
+UC_bij = w_bij / w_bij_lim
+
 UC_doorbuiging = w_netfin / w_netfin_lim
+
+#if UC_bij ≤ 1
+  [OK] Bijkomende doorbuiging voldoet ({{w_bij}} mm < {{w_bij_lim}} mm).
+#else
+  [NIET OK] Bijkomende doorbuiging voldoet NIET!
+#end if
 
 #if UC_doorbuiging ≤ 1
   [OK] Doorbuiging voldoet ({{w_netfin}} mm < {{w_netfin_lim}} mm).
@@ -979,7 +1014,7 @@ UC_doorbuiging = w_netfin / w_netfin_lim
 ## Samenvatting
 
 #hide
-UC_max = max(UC_buiging; UC_afschuiving; UC_c90; UC_kip; UC_doorbuiging)
+UC_max = max(UC_buiging; UC_afschuiving; UC_c90; UC_kip; UC_doorbuiging; UC_bij)
 kleur(u) = if(u > 1; "#b91c1c"; if(u > 0.9; "#b45309"; "#047857"))
 oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
 #show
@@ -989,7 +1024,8 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Afschuiving</td><td style="padding:4px 8px;">§6.1.7</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_afschuiving)'">'UC_afschuiving'</td><td style="padding:4px 8px; color:'kleur(UC_afschuiving)'">'oordeel(UC_afschuiving)'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Druk loodrecht</td><td style="padding:4px 8px;">§6.1.5</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_c90)'">'UC_c90'</td><td style="padding:4px 8px; color:'kleur(UC_c90)'">'oordeel(UC_c90)'</td></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Kip</td><td style="padding:4px 8px;">§6.3.3</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_kip)'">'UC_kip'</td><td style="padding:4px 8px; color:'kleur(UC_kip)'">'oordeel(UC_kip)'</td></tr>
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Doorbuiging w<sub>net,fin</sub></td><td style="padding:4px 8px;">§7.2</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_doorbuiging)'">'UC_doorbuiging'</td><td style="padding:4px 8px; color:'kleur(UC_doorbuiging)'">'oordeel(UC_doorbuiging)'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Doorbuiging w<sub>net,fin</sub></td><td style="padding:4px 8px;">§7.2, A1.4.3(4)</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_doorbuiging)'">'UC_doorbuiging'</td><td style="padding:4px 8px; color:'kleur(UC_doorbuiging)'">'oordeel(UC_doorbuiging)'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Bijkomende doorbuiging w<sub>bij</sub></td><td style="padding:4px 8px;">A1.4.3(3)</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_bij)'">'UC_bij'</td><td style="padding:4px 8px; color:'kleur(UC_bij)'">'oordeel(UC_bij)'</td></tr>
 '</table>
 
 #if UC_max ≤ 1

@@ -34,7 +34,8 @@ const DEFAULTS: Record<string, number> = {
 };
 
 // Ontwerplevensduurklassen zoals elders in het project (EN 1990 NB tabel NB.1-2.1),
-// met de regenintensiteit uit Tabel NB.1. Alle vier tegen een referentie geverifieerd.
+// met de regenintensiteit uit Tabel NB.1 zoals de referentie-uitwerking die afrondt.
+// Alle vier tegen een referentie geverifieerd.
 const LEVENSDUUR: { v: number; label: string; ir: number }[] = [
   { v: 5, label: "5 jaar (tijdelijk)", ir: 0.000027 },
   { v: 15, label: "15 jaar (landbouw)", ir: 0.000041 },
@@ -117,7 +118,9 @@ export default function SpuwerDesigner() {
   const h_sp = Math.max(1, d("h_sp"));
   const h_nd = Math.max(0, d("h_nd"));
   const t_ref = Math.round(d("t_ref"));
-  const i_r = (LEVENSDUUR.find((o) => o.v === t_ref) ?? LEVENSDUUR[2]).ir;   // Tabel NB.1
+  // Tabel NB.1: de waarde van het blad zelf, want die volgt de rekenwijze
+  // (register punt 20); de lijst hierboven alleen zolang het blad nog niet rekent.
+  const i_r = uitkomst?.getallen.i_r ?? (LEVENSDUUR.find((o) => o.v === t_ref) ?? LEVENSDUUR[2]).ir;
 
   // ── toetsing (zelfde regels als templates/spuwer.ts) ──────────────────────
   const b_tot = n_sp * b_sp;                        // mm — som van de spuwerbreedten

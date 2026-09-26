@@ -62,12 +62,12 @@ export const houtenKolom = `"Houten kolom — knikcheck EN 1995-1-1 §6.3.2
   III — vol weersbelast = 3
 @end
 
-@select belastingsduur "Belasting-duur (Tabel 3.1)"
+@select belastingsduur "Belasting-duur (Tabel 3.1, toekenning volgens NB tabel 2.2)"
   Permanent = 1
   Lang (> 6 mnd) = 2
   Middellang (1 wk – 6 mnd) = 3
-  Kort (< 1 wk) = 4
-  Zeer kort (wind/aardbeving) = 5
+  Kort (< 1 wk, sneeuw en wind) = 4
+  Zeer kort (bijzondere belasting) = 5
 @end
 
 #hide

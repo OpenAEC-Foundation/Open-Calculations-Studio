@@ -38,9 +38,14 @@ const STENEN: Record<number, Steen> = {
 const MORTELTYPE: { v: number; label: string }[] = [
   { v: 1, label: "Metselmortel" }, { v: 2, label: "Lijmmortel" },
 ];
-// Voeg-sterkteklassen per morteltype → f_m (bij lijmmortel niet van invloed, β=0)
+// Voeg-sterkteklassen per morteltype → f_m. Bij lijmmortel telt f_m alleen bij
+// baksteen ≤ 25 % mee (β = 0,1, tabel NB-2); bij de andere stenen is β = 0.
 const VOEG_METSEL = [5, 10, 15];
 const VOEG_LIJM = [10, 12.5];
+// Mortelvoeg evenwijdig aan het wandvlak: K maal 0,8 (§3.6.1.2(6)), in het blad.
+const LANGSVOEG: { v: number; label: string }[] = [
+  { v: 1, label: "geen" }, { v: 2, label: "wel (K × 0,8)" },
+];
 // Sterkteklasse-opties per aanduiding → genormaliseerde druksterkte f_b (N/mm²)
 const KWALITEIT: Record<Steen["kwal"], { v: number; label: string }[]> = {
   fb: [5, 10, 15, 20, 25, 30, 35, 40].map((v) => ({ v, label: `fb ${v}` })),
@@ -63,7 +68,7 @@ const CATEGORIE: { v: number; label: string }[] = [
 // M15, t=150, a_t=100 → UC ≈ 12,66.
 const DEFAULTS: Record<string, number> = {
   steensoort: 7, steencategorie: 1,
-  morteltype: 1, f_b: 2, f_m: 15,
+  morteltype: 1, f_b: 2, f_m: 15, langsvoeg: 1,
   N_Edc: 360, q_Edc: 5.5,
   h: 2800, t: 150, a_L: 200, a_t: 100, h_k: 250, a_1: 300, L_r: 2220, exc: 0,
 };
@@ -137,6 +142,7 @@ export default function OplegMetselwerkDesigner() {
   const isLijm = morteltype === 2;
   const fb = d("f_b");
   const fmRaw = d("f_m");
+  const langsvoeg = Math.round(d("langsvoeg"));        // 1 = geen, 2 = wel
   const N_Edc = d("N_Edc");   // kN
   const q_Edc = d("q_Edc");   // kN/m
   const h = d("h");           // mm — wandhoogte tot last
@@ -305,6 +311,11 @@ export default function OplegMetselwerkDesigner() {
               {(isLijm ? VOEG_LIJM : VOEG_METSEL).map((m) => (
                 <option key={m} value={m}>{isLijm ? `L_${m}` : `M${m}`}</option>
               ))}
+            </select>
+          </label>
+          <label title="Mortelvoeg evenwijdig aan het wandvlak, over de hele wandlengte of een deel ervan (bijvoorbeeld een steense wand met strekkenlagen): K maal 0,8 (§3.6.1.2(6))">Langsvoeg
+            <select value={langsvoeg} onChange={(e) => setVal("langsvoeg", parseInt(e.target.value))}>
+              {LANGSVOEG.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
             </select>
           </label>
 

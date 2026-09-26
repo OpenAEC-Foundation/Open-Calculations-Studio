@@ -376,7 +376,8 @@ Daarbovenop rekent de referentie-uitwerking met **g = 10 m/s²** in plaats van 9
 8,63 kg/m × 9,81 = 0,0847 kN/m  →  zou 0,085 zijn geweest
 ```
 
-Dezelfde g = 10 duikt op bij de spuwer (water met 10 kN/m³).
+De spuwer rekent water ook met 10 kN/m³, maar daar is het geen afwijking: de
+NB bij NEN-EN 1991-1-3 schrijft γ_w = 10 kN/m³ voor (7.2(1) en 7.2(8)).
 
 **Gevolg** — het verschil zit alleen in de permanente lijnlast en werkt door in
 u_g,k, w_fin en de UGT. Op het basisgeval (document1, 71×221 C24):
@@ -535,6 +536,12 @@ drukgeval. In werkelijkheid heeft een schuin dak beide: de loefzijde kan bij
 lage hellingen negatief zijn en de lijzijde is dat altijd. Voor een licht dak
 is opwaartse zuiging vaak maatgevend — hij keert de buiging om en ontlast het
 eigen gewicht, waardoor de bevestiging het knelpunt wordt.
+
+Boven 60° loopt C_pe in beide rekenwijzen op tot +0,8 bij 75°, lineair
+(tabel NB.10 – 7.4a: +0,7 tot 60°, +0,8 bij 75° in de zones F, G en H); bij
+75° is P_w dan 1,1·q_p in plaats van 1,0·q_p, en M_wy 10 % hoger. Onder 60°
+ligt +0,70 gelijk aan of boven de tabel. De referentiebladen (33,7° en 53,1°)
+veranderen niet; `check-gording-aanvullend.mjs` toetst het (geval L).
 
 Combinatie 4 (1,2·G + 1,5·W) volgt de referentie-uitwerking; het daktype
 stuurt het teken (document4: P_w = −0,329 kN/m²). Daarnaast toetst ons blad in
@@ -702,9 +709,32 @@ referentie:  f_k = 0,6 × 5^0,65 × 15^0,25 = 3,36 N/mm²
 norm:        f_k = 0,6 × 5^0,65 × 10^0,25 = 3,04 N/mm²    (f_m = 2 × 5)
 ```
 
-Het scheelt 10 % op f_k, en alleen bij een zwakke steen met een sterke mortel
-(f_m > 2·f_b). In de referentiestand rekent het blad met f_m = min(f_m; 20),
-in de norm-stand bij metselmortel met min(f_m; 20; 2·f_b).
+Het verschil treedt alleen op bij een zwakke steen met een sterke mortel
+(f_m > 2·f_b). De referentie-uitwerking geeft dan een f_k die
+(min(f_m; 20) / 2·f_b)^0,25 keer te hoog is. In referentie 2 is dat 10 %,
+maar het kan veel meer zijn:
+
+| steen en mortel | f_k referentie | f_k norm | verschil |
+|---|---|---|---|
+| baksteen fb 5, M15 (referentie 2) | 3,36 | 3,04 | +10 % |
+| baksteen fb 5, M20 | 3,61 | 3,04 | +19 % |
+| cellenbeton G2, M15 (standaardinvoer van het oplegbeeld) | 1,853 | 1,331 | +39 % |
+
+Cellenbeton met metselmortel valt er snel onder: met M15 geven G2 tot en met
+G6 een verschil, alleen G8 niet. De standaardinvoer van het oplegbeeld (CC2)
+geeft u.c. 12,66 in de referentiestand en 17,61 in de norm-stand. Het verschil
+kan ook het oordeel omdraaien. Voorbeeld: baksteen fb 5 + M20, categorie I,
+CC2, t = 200, h = 2800, h_k = 250, a_L = 200, a_t = 150, a_1 = 300,
+q_Edc = 5,5 kN/m, N_Edc = 70 kN. De referentie komt uit op N_Rdc = 83,4 kN en
+u.c. 0,85 (voldoet), de norm op N_Rdc = 70,2 kN en u.c. 1,01 (voldoet niet).
+
+De tabel voor de druksterkte in de NB bij NEN-EN 1996-3 past de grens ook toe:
+bij f_b = 5 geven M10, M15 en M20 daar dezelfde f_k.
+
+In de referentiestand rekent het blad met f_m = min(f_m; 20), in de norm-stand
+bij metselmortel met min(f_m; 20; 2·f_b). Treedt het verschil op, dan meldt de
+referentiestand in rood dat f_k te hoog is en de uitkomst te gunstig, net als
+bij punt 15. Beide modules doen dat.
 
 ---
 
@@ -852,10 +882,85 @@ een hogere sterkte en lagere u.c.'s. In beide standen rekent het blad de
 sterkte per paneel: n volle platen plus een restpaneel met een eigen c_i, en
 een paneel smaller dan h/4 telt niet. De hefboom in (9.23) is de meetellende
 lengte Σ b_i·c_i gedeeld door c_i van de breedste plaat. Dat is geen
-splitspunt. De vroegere berekening met de volle wandlengte en de c_i van één
-plaat was onveilig bij een restpaneel smaller dan h/2 of een wand korter dan
-een plaat (b = 1800: 9,46 in plaats van 6,41 kN; b = 600: 3,15 kN in plaats
-van 0).
+splitspunt. Ook in beide standen: bij een horizontale naad telt een paneel
+smaller dan 0,5·h voor 0,85 mee (NB bij 9.2.4.2(17)), en gipsplaat moet
+minstens 12,5 mm dik zijn en in een toegestane klimaatklasse staan (NB bij
+3.8). De referentiestand blijft zo 1/1,2 van de norm-stand; met een naad bij
+de startwaarden is dat 31,68 tegen 38,02 kN. De vroegere berekening met de
+volle wandlengte en de c_i van één plaat was onveilig bij een restpaneel
+smaller dan h/2 of een wand korter dan een plaat (b = 1800: 9,46 in plaats van
+6,41 kN; b = 600: 3,15 kN in plaats van 0).
+
+---
+
+## 19. Funderingsstrook — inclinatiefactoren volgens bijlage D in plaats van 6.5.2.2(j)
+
+| | |
+|---|---|
+| Module | Funderingsstrook (`templates/en1997.ts`, `en1997Funderingsstrook`) |
+| Norm | NEN 9997-1 6.5.2.2(a) en (j), bijlage D (D.4) |
+| Referenties | geen referentieblad; handberekening in `check-en1997.mjs` |
+| Status | **vastgesteld** |
+
+Volgens 6.5.2.2(a) gelden voor de draagkracht de bepalingen (b) t/m (s);
+bijlage D is informatief en wijkt er op punten van af. Het blad rekent de
+inclinatiefactoren toch met D.4, met m = 2 (strook, H evenwijdig aan B′) en
+zonder de term A′·c′·cot φ′ in de noemer:
+
+```
+i_q = (1 − H_d/V_Ed)²      i_γ = (1 − H_d/V_Ed)³      i_c = i_q − (1 − i_q)/(N_c·tan φ′_d)
+```
+
+Dit is geen splitspunt: er is geen referentie-uitwerking, en beide standen van
+`rekenwijze` rekenen zo. In het algemeen ligt het aan de veilige kant: de
+OPMERKING bij 6.5.2.2(j) zegt dat de factoren van (j) in het algemeen een iets
+hogere draagkracht geven dan bijlage D, en het weglaten van A′·c′·cot φ′ maakt
+i_q en i_γ bij c′ > 0 nog kleiner. Hoe groot het verschil is, valt niet vast te
+stellen: de formules van (j), geval II, staan in de normtekst als afbeelding.
+"In het algemeen" sluit een geval met een lagere draagkracht volgens (j) ook
+niet uit; komen die formules beschikbaar, dan hoort (j) in de norm-stand.
+
+Standaardinvoer met H_d = 5 kN/m op V_Ed = 80 kN/m: i_q = 0,879 en
+i_γ = 0,824. Met het grondwater op maaiveld geeft dat UC = 2,356 (zonder H_d
+2,043).
+
+Verwant, en ook niet in de toets: de kier onder de zool bij een grote
+excentriciteit (6.5.4(a), figuur 6.j). Bij |e_B| > B/6 meldt het blad de
+bijzondere maatregelen van 6.5.4(1)P en telt het de plaatsingsafwijking van
+0,1 m mee (6.5.4(2)). De OPMERKING bij 6.5.4(a) noemt naast het glijvlak g1
+een glijvlak g2 onder alleen V_d, met σ′_v;z;d = 0 door de kier, dat bij een
+kleine b′ en een diepe aanleg maatgevend kan zijn. De ligging van g2 staat
+alleen in de figuur; het blad rekent g2 niet. Het oordeel is daarom boven
+B/6 hooguit "niet aangetoond", nooit "voldoet".
+
+---
+
+## 20. Spuwer — regenintensiteit uit tabel NB.1 afgerond
+
+| | |
+|---|---|
+| Module | Spuwer (`templates/spuwer.ts`) |
+| Norm | NEN-EN 1991-1-3 NB, 7.2(4), tabel NB.1 |
+| Referenties | 6S, 7S en 8S (spuwer) |
+| Status | **vastgesteld** — splitspunt: de referentiestand rekent met de afgeronde waarden, de norm-stand met de tabel zelf |
+
+Tabel NB.1 geeft i_r = 0,0215 / 0,0406 / 0,0500 / 0,0561 × 10⁻³ m/s bij 1, 15,
+50 en 100 jaar, met lineaire interpolatie daartussen. De referentie-uitwerking
+rekent met 0,000027 (5 jaar, geïnterpoleerd en afgerond), 0,000041, 0,00005 en
+0,000056. Bij 5 en 15 jaar ligt dat aan de veilige kant, bij 100 jaar 0,2 %
+eronder. Het blad rekent `i_r_xc` en `i_r_nb` en meldt in de referentiestand
+de tabelwaarde zodra die verschilt.
+
+n 3 · b 600 · h 80 · h_nd 30, A = 600 m²:
+
+| t | i_r referentie | i_r norm | d_nd | UC referentie | UC norm |
+|---|---|---|---|---|---|
+| 5 jaar | 0,000027 | 0,00002696 | 30,29 / 30,26 | 0,754 | 0,753 |
+| 15 jaar | 0,000041 | 0,0000406 | 40,01 / 39,75 | 0,875 | 0,872 |
+| 100 jaar | 0,000056 | 0,0000561 | 49,26 / 49,32 | 0,991 | 0,992 |
+
+Bij 100 jaar is de referentiestand dus aan de onveilige kant, maar het scheelt
+0,06 mm waterhoogte. `check-spuwer.mjs` toetst beide standen.
 
 ---
 

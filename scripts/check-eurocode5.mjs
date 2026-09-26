@@ -8,7 +8,8 @@
  * γ_M per houttype (tabel 2.3 NB), k_cr = 1,0 (NB art. 6.1.7(2)), k_c,90 en l_ef bij
  * een eind- of tussenoplegging (6.1.5), k_crit volgens (6.34) met l_ef + 2h,
  * in de houten balk de combinatie met alleen blijvende belasting (3.1.3(2)) en
- * in de doorbuiging ψ_2 per belastingcategorie. Per blad leest één set ook het
+ * in de doorbuiging ψ_2 per belastingcategorie en de grenzen uit de NB bij
+ * NEN-EN 1990 (A1.4.3(3) en (4), via NB 7.2(2)). Per blad leest één set ook het
  * oordeel zoals de afdruk dat doet, uit de slotzin "Maatgevende UC = …".
  *
  * De bladen dragen hun invoer als voorbeeldwaarden in de tekst; dit script
@@ -184,23 +185,51 @@ let fouten = 0;
 
 // ── Doorbuiging ──────────────────────────────────────────────────────────
 // 70×200, L = 4000: I_y = 46,67·10⁶ mm⁴; g_k 1,0 en q_k 2,5 kN/m.
+// Grenzen volgens NB 7.2(2), dus de NB bij NEN-EN 1990: w_bij = w_2 + w_3 ≤ 0,003·L,
+// L/500 of L/250 (A1.4.3(3)) en w_net,fin ≤ L/250 (A1.4.3(4)). De voorbeelden uit
+// tabel 7.2 (w_inst ≤ L/300, w_fin ≤ L/150) gelden niet meer.
+// w_2 = k_def·(w_G + ψ_2·w_Q); w_3 = ψ_1·w_Q (frequent, 6.15b) of w_Q (karakteristiek, 6.14b).
 {
   const tpl = bladen.ec5Doorbuiging;
-  // Standaard: C18, klimaatklasse 1, categorie A (ψ_2 0,3).
-  // w_G = 5·1,0·4000⁴/(384·9000·46,67·10⁶) = 7,937; w_Q = 19,84; w_inst = 27,78;
-  // w_fin = 7,937·1,6 + 19,84·(1 + 0,3·0,6) = 12,70 + 23,41 = 36,11;
-  // UC: 27,78/13,33 = 2,083; 36,11/16 = 2,257; 36,11/26,67 = 1,354.
-  fouten += toetsMetOordeel("doorbuiging — standaard (C18, klimaatklasse 1, categorie A)",
+  // Standaard: C18, klimaatklasse 1, categorie A (ψ_1 0,5, ψ_2 0,3), vloer.
+  // w_G = 5·1,0·4000⁴/(384·9000·46,67·10⁶) = 7,937; w_Q = 19,84;
+  // w_fin = 7,937·1,6 + 19,84·(1 + 0,3·0,6) = 12,70 + 23,41 = 36,11; UC = 36,11/16 = 2,257.
+  // w_2 = 0,6·(7,937 + 0,3·19,84) = 8,333; w_3 = 0,5·19,84 = 9,921; w_bij = 18,25;
+  // UC_bij = 18,25/12 = 1,521.
+  fouten += toetsMetOordeel("doorbuiging — standaard (C18, klimaatklasse 1, categorie A, vloer)",
     reken(tpl, {}, PROJECT),
-    { E_mean: "9000", k_def: "0.60", psi_2: "0.3", w_inst: "27.78", w_fin: "36.11",
-      UC_inst: "2.083", UC_netfin: "2.257", UC_fin: "1.354", UC_max: "2.257", UC_slot: "2.257", voldoet: "0" });
-  // GL32h (E_0,mean 14 200 volgens EN 14080, was 13 700), klimaatklasse 2, opslag (ψ_2 0,8, was vast 0,3):
+    { E_mean: "9000", k_def: "0.60", psi_2: "0.3", psi_w3: "0.5", w_fin: "36.11",
+      w_2: "8.333", w_3: "9.921", w_bij: "18.25", w_bij_lim: "12.0",
+      UC_bij: "1.521", UC_netfin: "2.257", UC_max: "2.257", UC_slot: "2.257", voldoet: "0" });
+  // GL32h (E_0,mean 14 200 volgens EN 14080, was 13 700), klimaatklasse 2, opslag (ψ_1 0,9, ψ_2 0,8):
   // w_G = 7,937·9000/14 200 = 5,030; w_Q = 12,58; w_fin,Q = 12,58·(1 + 0,8·0,8) = 20,62;
-  // w_net,fin = 5,030·1,8 + 20,62 = 29,68; UC = 29,68/16 = 1,855 (was 1,597).
+  // w_net,fin = 5,030·1,8 + 20,62 = 29,68; UC = 29,68/16 = 1,855.
+  // w_bij = 0,8·(5,030 + 0,8·12,58) + 0,9·12,58 = 12,07 + 11,32 = 23,39; UC = 23,39/12 = 1,949.
   fouten += toets("doorbuiging — GL32h, klimaatklasse 2, categorie E",
     reken(tpl, { sterkteklasse: GL32h, klimaatklasse: "2", belastingcat: "5" }, PROJECT),
     { E_mean: "14200", k_def: "0.80", psi_2: "0.8", w_inst_G: "5.030", w_fin_Q: "20.62", w_netfin: "29.68",
-      UC_netfin: "1.855" });
+      UC_netfin: "1.855", w_bij: "23.39", UC_bij: "1.949", UC_max: "1.949" });
+  // Lichte opslagvloer 70×250 C24, g_k 0,5 en q_k 2,6 kN/m, klimaatklasse 1, categorie E:
+  // I_y = 91,15·10⁶; w_G = 5·0,5·4000⁴/(384·11 000·91,15·10⁶) = 1,662; w_Q = 8,644;
+  // w_net,fin = 1,662·1,6 + 8,644·1,48 = 15,45; UC = 0,966 (dat was eerder het hele oordeel).
+  // w_2 = 0,6·(1,662 + 0,8·8,644) = 5,147.
+  const licht = met(tpl, { h: "250 mm", g_k: "0.5 kN/m", q_k: "2.6 kN/m" });
+  const lichtInvoer = { sterkteklasse: C24, belastingcat: "5" };
+  // Vloer: w_3 = 0,9·8,644 = 7,780; w_bij = 12,93 > 0,003·4000 = 12; UC = 1,077: voldoet niet.
+  fouten += toetsMetOordeel("doorbuiging — lichte opslagvloer, 0,003·L",
+    reken(licht, lichtInvoer, PROJECT),
+    { w_netfin: "15.45", UC_netfin: "0.966", w_2: "5.147", w_3: "7.780", w_bij: "12.93", UC_bij: "1.077",
+      UC_slot: "1.077", voldoet: "0" });
+  // Scheurgevoelige scheidingswanden: grens 4000/500 = 8,0; UC = 12,93/8 = 1,616.
+  fouten += toets("doorbuiging — lichte opslagvloer, scheurgevoelige wanden L/500",
+    reken(licht, { ...lichtInvoer, toepassing: "2" }, PROJECT),
+    { w_bij_lim: "8.0", UC_bij: "1.616", UC_max: "1.616" });
+  // Overig dak, karakteristiek: w_3 = w_Q = 8,644; w_bij = 13,79; grens 16; UC = 0,862;
+  // w_net,fin maatgevend met 0,966.
+  fouten += toetsMetOordeel("doorbuiging — overig dak L/250, karakteristiek",
+    reken(licht, { ...lichtInvoer, toepassing: "3" }, PROJECT),
+    { psi_w3: "1.0", w_3: "8.644", w_bij: "13.79", w_bij_lim: "16.0", UC_bij: "0.862", UC_max: "0.966",
+      UC_slot: "0.966", voldoet: "1" });
 }
 
 // ── Volledige toetsing houten balk ───────────────────────────────────────
@@ -216,23 +245,33 @@ let fouten = 0;
   // λ = √(18/28,67) = 0,792; k_crit = 1,56 − 0,75·0,792 = 0,966; UC = 20,57/(0,966·8,31) = 2,564.
   // w_G = 5·1,5·4000⁴/(384·9000·46,67·10⁶) = 11,90; w_Q = 15,87;
   // w_net,fin = 11,90·1,6 + 15,87·(1 + 0,3·0,6) = 37,78; UC = 37,78/16 = 2,361.
-  // Maatgevend is kip: UC_max = 2,564, de balk voldoet niet.
+  // w_bij = 0,6·(11,90 + 0,3·15,87) + 0,5·15,87 = 10,00 + 7,94 = 17,94 (A1.4.3(3), frequent);
+  // UC = 17,94/12 = 1,495. Maatgevend is kip: UC_max = 2,564, de balk voldoet niet.
   fouten += toetsMetOordeel("houten balk — standaard (C18, blijvend, CC2, categorie A)",
     reken(tpl, {}, PROJECT),
     { q_da: "3.225", q_db: "4.80", q_d: "4.80", M_Ed: "9.60", f_md: "8.31", UC_buiging: "2.476",
       tau_d: "1.029", UC_afschuiving: "0.6555", L_ef: "130", UC_c90: "0.693",
       l_ef: "4000", sigma_mcrit: "28.67", lambda_relm: "0.792", k_crit: "0.966", UC_kip: "2.564",
-      w_netfin: "37.78", UC_doorbuiging: "2.361", UC_slot: "2.564", voldoet: "0" });
+      w_netfin: "37.78", UC_doorbuiging: "2.361", w_bij: "17.94", UC_bij: "1.495", UC_slot: "2.564", voldoet: "0" });
   // C24 100×300, middellang: q_d = 4,80 met k_mod 0,80 (2,025/0,6 = 3,375 < 4,8/0,8 = 6,0).
   // σ = 9,60·10⁶/1,5·10⁶ = 6,40; f_m,d = 14,77; UC = 0,433.
   // τ = 1,5·9600/(100·300) = 0,480; f_v,d = 2,462; UC = 0,195.
   // σ_c,90 = 9600/(100·130) = 0,738; UC = 0,738/(1,5·1,538) = 0,320.
   // l_ef = 3600 + 600 = 4200; σ_crit = 0,78·100²·7400/(300·4200) = 45,81; λ = 0,724 → k_crit 1.
-  // w = 2,020·1,6 + 2,694·1,18 = 6,411; UC = 0,401. UC_max = 0,433: de balk voldoet.
+  // w = 2,020·1,6 + 2,694·1,18 = 6,411; UC = 0,401.
+  // w_bij = 0,6·(2,020 + 0,3·2,694) + 0,5·2,694 = 1,697 + 1,347 = 3,044; UC = 0,254.
+  // UC_max = 0,433: de balk voldoet.
   fouten += toetsMetOordeel("houten balk — C24 100×300, middellang: voldoet",
     reken(met(tpl, { b: "100 mm", h: "300 mm" }), { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
     { UC_buiging: "0.433", UC_afschuiving: "0.195", UC_c90: "0.320", k_crit: "1.0", UC_kip: "0.433",
-      w_netfin: "6.41", UC_doorbuiging: "0.401", UC_slot: "0.433", voldoet: "1" });
+      w_netfin: "6.41", UC_doorbuiging: "0.401", w_bij: "3.044", UC_bij: "0.254", UC_slot: "0.433", voldoet: "1" });
+  // Lichte opslagvloer 70×250 C24, g_k 0,5 en q_k 2,6 kN/m, middellang, categorie E: alle
+  // sterktetoetsen en w_net,fin (15,45/16 = 0,966) voldoen, de bijkomende doorbuiging niet:
+  // w_bij = 0,6·(1,662 + 0,8·8,644) + 0,9·8,644 = 12,93 > 12; UC = 1,077 (was het oordeel 0,966).
+  fouten += toetsMetOordeel("houten balk — lichte opslagvloer: bijkomende doorbuiging maatgevend",
+    reken(met(tpl, { h: "250 mm", g_k: "0.5 kN/m", q_k: "2.6 kN/m" }),
+      { sterkteklasse: C24, belastingduurklasse: MIDDELLANG, belastingcat: "5" }, PROJECT),
+    { UC_doorbuiging: "0.966", w_bij: "12.93", UC_bij: "1.077", UC_slot: "1.077", voldoet: "0" });
   // C24, middellang, q_d = 5 kN/m (alleen q_k = 10/3).
   // σ_crit = 0,78·4900·7400/(200·4000) = 35,35; λ = 0,824; k_crit = 0,942;
   // UC_kip = 21,43/(0,942·14,77) = 1,54 (was 1,45 met k_crit = 1 en l_ef = 0,9·L).

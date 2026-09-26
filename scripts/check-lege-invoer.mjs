@@ -166,7 +166,7 @@ meld(afwijkend === 0, `${bladen} rekenbladen met invoervelden: leeg en 0 geven d
 console.log("\nGemelde gevallen — één veld leeg tussen ingevulde waarden:");
 {
   const tpl = laadTemplate("stalenGevelkolom.ts");
-  const PROJECT = { CC: 2, K_FI: 1, windgebied: 2, terreincategorie: 2 };
+  const PROJECT = { CC: 2, K_FI: 1, windgebied: 2, terreincategorie: 2, DesignLife: 50 };
   const invoer = {
     profile: "11", staalkwaliteit: "235", L: "6", b_belast: "5", n_r: "2", regelsteun: "1",
     windbron: "1", z_wind: "7", d_geb: "20", a_hoek: "10", q_wind_hand: "0.8", w_d_hand: "0.9",

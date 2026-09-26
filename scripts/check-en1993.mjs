@@ -15,8 +15,11 @@
  *   2. Getallen van een handberekening, als commentaar bij de set.
  *
  * Elk toetsblad sluit af met de slotzin "Maatgevende UC = … → voldoet", die de
- * rapportkop leest; het script controleert dat oordeel tegen de UC. Klasse 4
- * en een lijf dat op plooi door afschuiving moet worden getoetst keuren af.
+ * rapportkop leest; het script controleert dat oordeel tegen de UC. Klasse 4,
+ * een lijf dat op plooi door afschuiving moet worden getoetst, een plaat dikker
+ * dan 80 mm (buiten tabel 3.1) en bij kip h/t_w > 75 (k_red, NB.NB.4.2(2))
+ * keuren af. f_y volgt tabel 3.1 naar t = max(t_f; t_w); een last op de
+ * getrokken flens grijpt aan in het zwaartepunt van die flens (NB.NB.4.3(1)).
  *
  * De bladen hebben vaste profielgegevens in de bron; een set die een ander
  * profiel toetst, vervangt die regels (`vervang`).
@@ -106,7 +109,8 @@ function kip(v) {
   const klasse = Math.max(kf <= 9 ? 1 : kf <= 10 ? 2 : kf <= 14 ? 3 : 4, kw <= 72 ? 1 : kw <= 83 ? 2 : kw <= 124 ? 3 : 4);
   const Wy = klasse <= 2 ? Wpl : Wel;
   const C2 = C1 === 1.13 ? 0.45 : C1 === 1.35 ? 0.55 : 0;
-  const zg = (aangrijping * h) / 2;
+  // NB.NB.4.3(1): op de getrokken flens in het zwaartepunt van die flens.
+  const zg = aangrijping === -1 ? -(h - tf) / 2 : (aangrijping * h) / 2;
   const P = (Math.PI ** 2 * E * Iz) / L ** 2;
   const Mcr = C1 * P * (Math.sqrt(Iw / Iz + (L * L * G * It) / (Math.PI ** 2 * E * Iz) + (C2 * zg) ** 2) - C2 * zg);
   const lam = Math.sqrt((Wy * fy) / Mcr);
@@ -197,7 +201,7 @@ function ligger(v) {
   let Mcr = null, lam = null, x;
   if (nst === 0) {
     // Geen kipsteunen: tabel NB.NB.1 geval 2, C_1 = 1,13 en C_2 = 0,45.
-    Mcr = McrF(L, 1.13, 0.45 * (v.aangrijping * h) / 2);
+    Mcr = McrF(L, 1.13, 0.45 * (v.aangrijping === -1 ? -(h - tf) / 2 : (v.aangrijping * h) / 2));
     lam = Math.sqrt((Wy * fy) / Mcr);
     x = chi(lam, aLT, 0.4, 0.75, true);
   } else {
@@ -296,6 +300,25 @@ const SETS = [
     // het effectieve zwaartepunt verschuift (e_N), en dat extra moment rekent het blad niet.
     handwerk: { chi_z: "0.2517", N_bRd: "284.0", UC_knik: "0.3522" },
   },
+  {
+    naam: "Knik 8 — zwaar H-profiel, t_f = 52,6 mm, S355, 8 m: f_y voor 40 < t ≤ 80 mm (tabel 3.1)",
+    blad: "ec3Knik", invoer: { staalsoort: 355 },
+    vervang: { A: "53700 mm^2", I_y: "1708000000 mm^4", I_z: "598000000 mm^4", h: "425 mm", b: "409 mm", t_w: "32.8 mm", t_f: "52.6 mm", L_cry: "8000 mm", L_crz: "8000 mm", N_Ed: "10200 kN" },
+    narekening: knik({ A: 53700, Iy: 1.708e9, Iz: 5.98e8, h: 425, b: 409, tw: 32.8, tf: 52.6, r: 15, fy: 335, Ly: 8000, Lz: 8000, doorsnede: 1, N: 10200e3 }),
+    // Met de hand: f_y = 335 N/mm² (was 355). h/b ≤ 1,2 en t_f ≤ 100 → kromme c om z.
+    // i_z = √(598e6/53 700) = 105,5 mm; λ₁ = π·√(210 000/335) = 78,66; λ̄_z = 8000/(105,5·78,66)
+    // = 0,9638; Φ = 0,5·(1 + 0,49·0,7638 + 0,9289) = 1,1516; χ_z = 0,5612;
+    // N_b,Rd = 0,5612·53 700·335 = 10 096 kN, op vier cijfers 10 100 → UC = 1,010: voldoet niet
+    // (met 355: 10 380 kN, UC 0,983).
+    handwerk: { f_y: "335", chi_z: "0.5612", N_bRd: "10100", UC_knik: "1.010" },
+  },
+  {
+    naam: "Knik 9 — flens van 90 mm: buiten tabel 3.1, f_y uit de productnorm (NB bij 3.2.1(1)) kent het blad niet",
+    blad: "ec3Knik", invoer: {}, vervang: { t_f: "90 mm", N_Ed: "200 kN" },
+    narekening: knik({ ...IPE300, tf: 90, fy: 215, Ly: 6000, Lz: 6000, doorsnede: 1, N: 200e3 }),
+    // UC onder 1,0: het blad moet afkeuren op t > 80 mm, niet op de UC.
+    afkeur: true,
+  },
   // Kip
   {
     naam: "Kip 1 — standaard: methode 6.3.2.2, constant moment, 4 m → kromme a (tabel 6.4)",
@@ -341,6 +364,23 @@ const SETS = [
     blad: "ec3Kip", invoer: { staalsoort: 355, methode: 2 },
     vervang: { h: "290 mm", b: "300 mm", t_w: "8.5 mm", t_f: "14 mm", r: "27 mm", I_z: "63100000 mm^4", I_t: "852000 mm^4", I_w: "1200000000000 mm^6", W_ply: "1383000 mm^3", W_ely: "1260000 mm^3" },
     narekening: kip({ h: 290, b: 300, tw: 8.5, tf: 14, r: 27, Iz: 63.1e6, It: 852000, Iw: 1.2e12, Wpl: 1383000, Wel: 1260000, fy: 355, L: 4000, C1: 1.0, aangrijping: 1, methode: 2, fabricage: 1, M: 80e6 }),
+  },
+  {
+    naam: "Kip 7 — IPE 300, gelijkmatige last op de getrokken flens: z_g in het zwaartepunt van die flens",
+    blad: "ec3Kip", invoer: { C1_factor: 1.13, aangrijping: -1 },
+    narekening: kip({ ...IPE300, Iz: 6.038e6, It: 201000, Iw: 126e9, Wpl: 628400, Wel: 557300, fy: 235, L: 4000, C1: 1.13, aangrijping: -1, methode: 1, fabricage: 1, M: 80e6 }),
+    // Met de hand: z_g = −(300 − 10,7)/2 = −144,65 mm (NB.NB.4.3(1)), C_2·z_g = −65,09 mm;
+    // π²EI_z/L² = 782,2 kN; √(20 868 + 20 816 + 65,09²) + 65,09 = 279,4 mm → M_cr = 1,13·782,2·279,4
+    // = 246,9 kNm. Met z_g = −h/2 was het 249,7 kNm.
+    handwerk: { M_cr: "246.9" },
+  },
+  {
+    naam: "Kip 8 — gelast 800 × 8: h/t_w = 100 > 75, k_red (NB.NB.4.2(2)) valt buiten het blad",
+    blad: "ec3Kip", invoer: { fabricage: 2 }, vervang: { h: "800 mm", t_w: "8 mm", M_Ed: "50 kN*m" },
+    narekening: kip({ ...IPE300, h: 800, tw: 8, Iz: 6.038e6, It: 201000, Iw: 126e9, Wpl: 628400, Wel: 557300, fy: 235, L: 4000, C1: 1.0, aangrijping: 1, methode: 1, fabricage: 2, M: 50e6 }),
+    melding: /dat rekent dit blad niet/,
+    // UC onder 1,0: het blad moet afkeuren op k_red, niet op de UC.
+    afkeur: true,
   },
   // Classificatie
   {
@@ -401,6 +441,28 @@ const SETS = [
     // UC = 60/392,5 = 0,1529.
     handwerk: { UC_dwarskracht: "0.1529" },
     plooi: true,
+  },
+  {
+    naam: "Dwarskracht 3 — flens van 50 mm: f_y voor 40 < t ≤ 80 mm (tabel 3.1)",
+    blad: "ec3Dwarskracht", invoer: {}, vervang: { t_f: "50 mm" },
+    // Met de hand: f_y = 215 N/mm²; h_w = 300 − 100 = 200 mm; A_v = max(5381 − 2·150·50 +
+    // (7,1 + 30)·50; 200·7,1) = 1420 mm²; V_pl,Rd = 1420·215/√3 = 176,3 kN → UC = 60/176,3 = 0,3404.
+    handwerk: { f_y: "215", V_plRd: "176.3", UC_dwarskracht: "0.3404" },
+  },
+  {
+    naam: "Dwarskracht 4 — flens van 90 mm: buiten tabel 3.1, afkeur bij een UC onder 1,0",
+    blad: "ec3Dwarskracht", invoer: {}, vervang: { t_f: "90 mm" },
+    afkeur: true,
+  },
+  {
+    naam: "N+M 3 — flens van 90 mm: buiten tabel 3.1, afkeur bij een UC onder 1,0",
+    blad: "ec3BuigingNormaalkracht", invoer: {}, vervang: { t_f: "90 mm", N_Ed: "20 kN", M_yEd: "10 kN*m", M_zEd: "1 kN*m" },
+    afkeur: true,
+  },
+  {
+    naam: "Kip 9 — flens van 90 mm: buiten tabel 3.1, afkeur bij een UC onder 1,0",
+    blad: "ec3Kip", invoer: {}, vervang: { t_f: "90 mm" },
+    afkeur: true,
   },
   // Doorbuiging
   {
@@ -467,6 +529,12 @@ const SETS = [
     // = 147,4 kNm → UC = 0,1311.
     handwerk: { M_x0: "19.33", M_VRd: "147.4", UC_MV: "0.1311" },
   },
+  {
+    naam: "Ligger 8 — IPE 600, L = 2,5 m: L/h = 4,2 < 5, bijlage NB.NB geldt niet (NB.NB.1(2))",
+    blad: "ec3StalenLigger", invoer: { profiel: 600 }, vervang: { L: "2500 mm" },
+    narekening: ligger({ profiel: 600, staalsoort: 235, aangrijping: 1, grens_bij: 0.003, L: 2500 }),
+    melding: /gelden hier niet \(NB\.NB\.1\(2\)\)/,
+  },
 ];
 
 let fouten = 0;
@@ -482,20 +550,28 @@ for (const set of SETS) {
   const { tekst, ...verwacht } = set.narekening ?? {};
   if (set.narekening) fouten += toets(`${set.naam} — narekening`, got, verwacht, {}, afgeleid);
   if (set.handwerk) fouten += toets(`${set.naam} — handberekening`, got, set.handwerk, {}, afgeleid);
+  if (!set.narekening && !set.handwerk) console.log(`\n${set.naam}`);
   if (tekst) {
     const ok = got.text.includes(tekst);
     if (!ok) fouten++;
     console.log(`  ${ok ? "OK    " : "FOUT  "} tekst      "${tekst}"`);
   }
   if (!["ec3Materiaal", "ec3Classificatie"].includes(set.blad)) {
-    // Klasse 4 en een lijf dat op plooi moet worden getoetst keuren af, ook bij een UC onder 1,0.
-    const blok = /valt in klasse 4|op plooi door afschuiving worden getoetst/.test(zin);
+    // Klasse 4, een lijf dat op plooi moet worden getoetst, t > 80 mm en k_red keuren af, ook bij
+    // een UC onder 1,0.
+    const blok = /valt in klasse 4|op plooi door afschuiving worden getoetst|buiten tabel 3\.1|NB\.NB\.4\.2\(2\)/.test(zin);
     const voldoet = !/voldoe[nt] niet/.test(zin) && /voldoe[nt]/.test(zin);
     // Een set die plooi verwacht, moet de plooiregel ook in de slotzin krijgen, en andersom.
     const plooiOk = !!set.plooi === /op plooi door afschuiving/.test(zin);
-    const ok = i >= 0 && plooiOk && voldoet === (!blok && !!slot && parseFloat(slot[1]) <= 1);
+    // Een set die afkeur verwacht, moet die afkeur ook in de slotzin krijgen.
+    const ok = i >= 0 && plooiOk && (!set.afkeur || blok) && voldoet === (!blok && !!slot && parseFloat(slot[1]) <= 1);
     if (!ok) fouten++;
-    console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ${voldoet ? "voldoet" : "voldoet niet"} bij UC = ${slot ? slot[1] : "—"}${blok ? ", afgekeurd op klasse 4 of plooi" : ""}`);
+    console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ${voldoet ? "voldoet" : "voldoet niet"} bij UC = ${slot ? slot[1] : "—"}${blok ? ", afgekeurd (klasse 4, plooi, t > 80 mm of k_red)" : ""}`);
+  }
+  if (set.melding) {
+    const ok = set.melding.test(got.text);
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} melding    ${set.melding.source}`);
   }
   if (/Error|NaN|niet gedefinieerd/.test(got.text)) {
     fouten++;

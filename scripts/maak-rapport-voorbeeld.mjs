@@ -28,6 +28,7 @@ import { isDeepStrictEqual } from "node:util";
 import { balklaag } from "../packages/desktop/src/templates/balklaag.ts";
 import { spuwer } from "../packages/desktop/src/templates/spuwer.ts";
 import { legeGegevens } from "../packages/desktop/src/store/projectGegevens.ts";
+import { PROJECT_FORMAAT_VERSIE } from "../packages/desktop/src/store/projectBestand.ts";
 import { leegBureau, normaliseerRapport, standaardRapport } from "../packages/desktop/src/rapport/model.ts";
 import { standaardTeksten } from "../packages/desktop/src/rapport/standaardteksten.ts";
 import { gevelOpbouw, vlakOpbouw } from "../packages/desktop/src/rapport/opbouw.ts";
@@ -45,14 +46,6 @@ const SPUWER_ID = "ex-voorbeeld-spuwer";
 
 /** De sommen die de afdruk moet tonen (zelfde getallen als scripts/check-rapport.mjs). */
 const VERWACHTE_SOMMEN = { Dak: 0.7, Verdiepingsvloer: 0.6, Gevel: 11.03 };
-
-/** Leest het versienummer uit store/projectBestand.ts; dat bestand zelf laadt niet in Node. */
-function formaatVersie() {
-  const bron = readFileSync(join(REPO, "packages/desktop/src/store/projectBestand.ts"), "utf8");
-  const m = bron.match(/export const PROJECT_FORMAAT_VERSIE = (\d+);/);
-  if (!m) throw new Error("PROJECT_FORMAAT_VERSIE niet gevonden in packages/desktop/src/store/projectBestand.ts");
-  return Number(m[1]);
-}
 
 function bouwProject() {
   const gegevens = {
@@ -155,7 +148,7 @@ function bouwProject() {
   // Zelfde vorm als bouwProjectBestand() in store/projectBestand.ts, zonder
   // IFCX-inhoud en zonder `source` (de rekentekst van het eerste blad voor
   // lezers die één blad verwachten): bij het openen telt alleen `project`.
-  return { project: { versie: formaatVersie(), naam: gegevens.project_naam, gegevens, exemplaren, rapport } };
+  return { project: { versie: PROJECT_FORMAAT_VERSIE, naam: gegevens.project_naam, gegevens, exemplaren, rapport } };
 }
 
 /** Paden waarop twee waarden verschillen, als leesbare regels. */

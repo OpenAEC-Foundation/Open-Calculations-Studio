@@ -8,14 +8,22 @@
  *
  * De theorie komt uit het boek; waar een blad een oordeel geeft, toetst het
  * tegen de Eurocode en niet tegen een vaste toelaatbare spanning:
+ * - staal: f_y uit tabel 3.1 van NEN-EN 1993-1-1 naar de dikte t: de kleinste
+ *   zijde b of h, de diameter D of de wanddikte (aanname; de tabel zegt niet
+ *   hoe t bij een massieve staaf wordt gemeten). t ≤ 40 mm of 40 < t ≤ 80 mm;
+ *   daarboven geeft tabel 3.1 geen waarde (productnorm, NB bij 3.2.1(1)) en
+ *   keurt het blad af;
  * - schuifspanning: staal f_y/(√3·γ_M0) (NEN-EN 1993-1-1 6.2.6), hout f_v,d
  *   met b_ef = k_cr·b (NEN-EN 1995-1-1 6.1.7): k_cr = 1,0 bij een
  *   prismatische doorsnede, 0,8 als ondergrens bij een I-, T- of kokerprofiel
  *   (NB art. 6.1.7(2)); voor andere materialen alleen τ;
  * - knik: staal met χ (NEN-EN 1993-1-1 6.3.1.2) en hout met k_c en E_0,05
  *   (NEN-EN 1995-1-1 6.3.2); de Eulerlast is alleen de theoretische grens;
- * - Mohr: veld getoetst aan L/250, overstek aan 2a/250 (dubbele lengte als
- *   overspanning); a_1 en a_C horen bij hetzelfde lastgeval;
+ * - doorbuiging, Mohr en vakwerk: grens naar keuze 0,004, 0,003 of 0,002 × ℓ
+ *   (A1.4.3(3) en (4) van de NB bij NEN-EN 1990); een overstek met ℓ = 2a.
+ *   Standaard 0,004 (daken; w_max bij uiterlijk), bij het vakwerk 0,003 (de
+ *   vroegere vaste L/300 was geen NB-waarde). Mohr: a_1 en a_C horen bij
+ *   hetzelfde lastgeval;
  * - eigenfrequentie: de randvoorwaarde bepaalt c_1; geen eigen oordeel, alleen
  *   de 8 Hz-grens van NEN-EN 1995-1-1 7.3.3 als signaal;
  * - vakwerk: Warrenvakwerk zonder verticalen met een even aantal velden, de
@@ -93,11 +101,27 @@ Hout GL24h = 5
 Ander materiaal (geen toets) = 0
 @end
 
+#hide
+t_st = 0 mm
+#show
 #if materiaal ≥ 1 and materiaal ≤ 3
     #hide
-    f_y = if(materiaal ≡ 1; 235; if(materiaal ≡ 2; 275; 355))*(N/mm^2)
+    #if profieltype ≡ 1
+        t_st = min(b; h)
+    #else if profieltype ≡ 3
+        t_st = D
+    #else
+        t_st = t
+    #end if
+    f_y = (if(materiaal ≡ 1; 235; if(materiaal ≡ 2; 275; 355)) - if(t_st ≤ 40 mm; 0; 20))*(N/mm^2)
     #show
-    f_y', t ≤ 40 mm (tabel 3.1)'
+    #if t_st ≤ 40 mm
+        f_y', tabel 3.1, t ≤ 40 mm'
+    #else if t_st ≤ 80 mm
+        f_y', tabel 3.1, 40 < t ≤ 80 mm; t = kleinste maat of wanddikte'
+    #else
+        '<b style="color:#b91c1c">t = 't_st' mm > 80 mm: tabel 3.1 van NEN-EN 1993-1-1 geeft geen f<sub>y</sub>; die volgt dan uit de productnorm (NB bij 3.2.1(1)) en valt buiten dit blad.</b>
+    #end if
     γ_M0 = 1.0', NB'
     τ_Rd = f_y/(sqrt(3)*γ_M0) to N/mm^2', NEN-EN 1993-1-1 (6.19)'
     UC_max = τ_max/τ_Rd
@@ -132,7 +156,9 @@ Ander materiaal (geen toets) = 0
     '<i>Geen materiaaltoets: alleen de schuifspanning.</i>
 #end if
 #if materiaal ≥ 1
-    #if UC_max ≤ 1.0
+    #if t_st > 80 mm
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>voldoet niet</b>: t > 80 mm ligt buiten tabel 3.1 van NEN-EN 1993-1-1 (f<sub>y</sub> uit de productnorm, NB bij 3.2.1(1))</span>
+    #else if UC_max ≤ 1.0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
     #else
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
@@ -211,12 +237,17 @@ p_V = v_1/v_totaal*100', aandeel van de dwarskracht in %'
 #if p_V < 3
     '<i>Het aandeel van de dwarskracht is kleiner dan 3 %.</i>
 #end if
-v_toel = L/250 to mm
+@select grensfactor "Doorbuigingsgrens (A1.4.3(3) en (4) van de NB bij NEN-EN 1990)"
+0.004 × L -- overige daken (karakteristiek), of w_max als het uiterlijk van belang is = 0.004
+0.003 × L -- vloeren en intensief gebruikte daken (frequent) = 0.003
+0.002 × L -- vloeren met scheurgevoelige scheidingswanden (frequent) = 0.002
+@end
+v_toel = grensfactor*L to mm
 UC_max = v_totaal/v_toel
 #if UC_max ≤ 1.0
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: v ≤ L/250</span>
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: v ≤ v<sub>toel</sub></span>
 #else
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: v > L/250</span>
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: v > v<sub>toel</sub></span>
 #end if
 `;
 
@@ -245,10 +276,8 @@ Hout GL24h = 5
     d (alpha = 0.76) = 0.76
     @end
     #hide
-    f_y = if(materiaal ≡ 1; 235; if(materiaal ≡ 2; 275; 355))*(N/mm^2)
     α_imp = knikkromme*1
     #show
-    f_y', t ≤ 40 mm (tabel 3.1)'
     E = 210000 N/mm^2
     α_imp', imperfectiefactor (tabel 6.1)'
     γ_M1 = 1.0', NB'
@@ -301,6 +330,28 @@ Buis D x t = 3
     I_min = π/64*(D^4 - d_i^4) to mm^4
 #end if
 i_min = sqrt(I_min/A) to mm
+#hide
+t_st = 0 mm
+#show
+#if materiaal ≤ 3
+    #hide
+    #if doorsnedevorm ≡ 1
+        t_st = min(b; h)
+    #else if doorsnedevorm ≡ 2
+        t_st = D
+    #else
+        t_st = t_w
+    #end if
+    f_y = (if(materiaal ≡ 1; 235; if(materiaal ≡ 2; 275; 355)) - if(t_st ≤ 40 mm; 0; 20))*(N/mm^2)
+    #show
+    #if t_st ≤ 40 mm
+        f_y', tabel 3.1, t ≤ 40 mm'
+    #else if t_st ≤ 80 mm
+        f_y', tabel 3.1, 40 < t ≤ 80 mm; t = kleinste maat of wanddikte'
+    #else
+        '<b style="color:#b91c1c">t = 't_st' mm > 80 mm: tabel 3.1 van NEN-EN 1993-1-1 geeft geen f<sub>y</sub>; die volgt dan uit de productnorm (NB bij 3.2.1(1)) en valt buiten dit blad.</b>
+    #end if
+#end if
 
 # 3. Kniklengte (Hfd. 5, art. 5.4)
 
@@ -337,7 +388,9 @@ N_Ed = ?*(kN)', drukkracht, rekenwaarde'
     N_bRd = k_c*A*f_c0d to kN', NEN-EN 1995-1-1 (6.23)'
 #end if
 UC_max = N_Ed/N_bRd
-#if UC_max ≤ 1.0
+#if t_st > 80 mm
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>voldoet niet</b>: t > 80 mm ligt buiten tabel 3.1 van NEN-EN 1993-1-1 (f<sub>y</sub> uit de productnorm, NB bij 3.2.1(1))</span>
+#else if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: knik</span>
 #else
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: knik</span>
@@ -435,8 +488,13 @@ Gelijkmatige q op veld en overstek = 4
 
 # 3. Toetsing
 
-v_veld = L/250 to mm', veld'
-v_overstek = 2*a/250 to mm', overstek: de dubbele lengte als overspanning'
+@select grensfactor "Doorbuigingsgrens (A1.4.3(3) en (4) van de NB bij NEN-EN 1990)"
+0.004 × L -- overige daken (karakteristiek), of w_max als het uiterlijk van belang is = 0.004
+0.003 × L -- vloeren en intensief gebruikte daken (frequent) = 0.003
+0.002 × L -- vloeren met scheurgevoelige scheidingswanden (frequent) = 0.002
+@end
+v_veld = grensfactor*L to mm', veld'
+v_overstek = grensfactor*2*a to mm', overstek: ℓ_rep = 2a'
 UC_veld = abs(a_1)/v_veld
 UC_overstek = abs(a_C)/v_overstek
 UC_max = max(UC_veld; UC_overstek)
@@ -552,6 +610,11 @@ A_boven = ?*(mm^2)
 A_onder = ?*(mm^2)
 A_diag = ?*(mm^2)
 F = ?*(kN)', puntlast midden op de onderrand (BGT)'
+@select grensfactor "Doorbuigingsgrens (A1.4.3(3) en (4) van de NB bij NEN-EN 1990)"
+0.003 × L -- vloeren en intensief gebruikte daken (frequent) = 0.003
+0.004 × L -- overige daken (karakteristiek), of w_max als het uiterlijk van belang is = 0.004
+0.002 × L -- vloeren met scheurgevoelige scheidingswanden (frequent) = 0.002
+@end
 
 #if n_v < 2 or mod(n_v; 2) ≠ 0
     '<span style="color: red">Vul een even aantal velden in: de puntlast staat op het middelste knooppunt van de onderrand.</span>
@@ -581,7 +644,7 @@ F = ?*(kN)', puntlast midden op de onderrand (BGT)'
     # 4. Doorbuiging en toetsing
 
     δ_totaal = δ_boven + δ_onder + δ_diag to mm
-    v_toel = L/300 to mm
+    v_toel = grensfactor*L to mm
     UC_max = δ_totaal/v_toel
 #end if
 #if UC_max ≤ 1.0

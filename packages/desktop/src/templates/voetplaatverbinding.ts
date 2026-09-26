@@ -11,7 +11,9 @@
  * volgens tabel 6.7 (§6.2.8.3), afschuiving met wrijving en de ankerbouten
  * (§6.2.2), trek en afschuiving samen (tabel 3.4), de hoeklassen (§4.5.3.2) en
  * de kegelbreuk van het beton (EN 1992-4 §7.2.1.4). f_y en f_u van de plaat
- * volgen tabel 3.1 naar dikte.
+ * volgen tabel 3.1 (EN 10025-2) naar dikte; S355 heeft bij t ≤ 40 mm
+ * f_u = 490 N/mm². Ankers 10.9 (f_yb > 640 N/mm²) tellen niet mee op
+ * afschuiving (§3.3(1)).
  *
  * Het T-stuk rond het lijf rekent als een rij zonder verstijving (tabel 6.4):
  * de flenzen vergroten l_eff alleen, dus dat ligt aan de veilige kant.
@@ -86,10 +88,10 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
 hoeklas = ?*(mm)', keeldikte van de hoeklas'
 f_y = staalsoort*N/mm^2', tabel 3.1, t ≤ 40 mm'
 #hide
-fu_tab = if(staalsoort ≡ 235; 360; if(staalsoort ≡ 275; 430; 510))
+fu_tab = if(staalsoort ≡ 235; 360; if(staalsoort ≡ 275; 430; 490))
 bw_tab = if(staalsoort ≡ 235; 0.8; if(staalsoort ≡ 275; 0.85; 0.9))
 #show
-f_u = fu_tab*N/mm^2', tabel 3.1, t ≤ 40 mm'
+f_u = fu_tab*N/mm^2', tabel 3.1 (EN 10025-2), t ≤ 40 mm'
 β_w = bw_tab', correlatiefactor, tabel 4.1'
 γ_M0 = 1.0
 γ_M2 = 1.25', NB bij EN 1993-1-8, tabel 2.1'
@@ -480,11 +482,15 @@ N_c,Ed = max(N_Ed; 0 kN)', drukkracht, bij trek nul'
 #else
     F_f,Rd = 0 kN', wrijving niet meegenomen'
 #end if
-α_bc = 0.44 - 0.0003*fyb_tab', (6.2)'
-#if fyb_tab > 640
-    '<i>(6.2) geldt voor f<sub>yb</sub> tot 640 N/mm²; voor klasse 10.9 is α<sub>bc</sub> hier met de werkelijke f<sub>yb</sub> doorgetrokken.</i>
+#if fyb_tab ≤ 640
+    α_bc = 0.44 - 0.0003*fyb_tab', (6.2)'
+    F_2,vb,Rd = α_bc*f_ub*A_s/γ_M2 to kN', (6.2)'
+#else
+    '<i>Ankers 10.9: f<sub>yb</sub> > 640 N/mm², dus niet op afschuiving (§3.3(1), (6.2)); alleen de wrijving telt.</i>
+    #hide
+    F_2,vb,Rd = 0 kN
+    #show
 #end if
-F_2,vb,Rd = α_bc*f_ub*A_s/γ_M2 to kN', (6.2)'
 #hide
 spel = if(gatspeling ≡ 1; if(d_anker ≤ 14; 1; if(d_anker ≤ 24; 2; 3)); if(d_anker ≤ 12; 3; if(d_anker ≤ 22; 4; if(d_anker ≤ 24; 6; 8))))
 ok_e = 1
@@ -507,8 +513,10 @@ e_2 = b_pl/2 - y_max', randafstand loodrecht erop'
 k_1s = max(min(2.8*e_2/d_0 - 1.7; 2.5); 0)
 F_1,vb,Rd = k_1s*α_b*f_u,p*d_a*t_p/γ_M2 to kN', stuik van de plaat (tabel 3.4)'
 F_vb,Rd = min(F_1,vb,Rd; F_2,vb,Rd)
-#if gatspeling ≡ 1
+#if gatspeling ≡ 1 and fyb_tab ≤ 640
     n_v = n_a', ankers die meedoen: alleen bij normale gatspeling (§6.2.2(5))'
+#else if gatspeling ≡ 1
+    n_v = 0', ankers die meedoen: geen, f_yb > 640 N/mm² (§3.3(1))'
 #else
     n_v = 0', ankers die meedoen: alleen bij normale gatspeling (§6.2.2(5))'
 #end if
@@ -523,7 +531,7 @@ UC_v = 0
     #hide
     ok_v = 0
     #show
-    '<b style="color:#b91c1c">Geen afschuifweerstand: geen wrijving en vergrote gaten. Pas een schuifprop of gaten met normale speling toe.</b>
+    '<b style="color:#b91c1c">Geen afschuifweerstand: geen wrijving en geen ankers op afschuiving (vergrote gaten of klasse 10.9). Pas een schuifprop, gaten met normale speling of ankers tot 8.8 toe.</b>
 #else
     UC_v', geen dwarskracht'
 #end if

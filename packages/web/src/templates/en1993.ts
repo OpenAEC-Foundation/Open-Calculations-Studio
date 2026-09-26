@@ -8,7 +8,20 @@
  * Partiele factoren conform Nederlandse Nationale Bijlage:
  *   gamma_M0 = 1,00   gamma_M1 = 1,00   gamma_M2 = 1,25
  *
- * scripts/check-en1993.mjs rekent de knik-, kip-, klasse- en liggerbladen na.
+ * Tabel 3.1 van de A1:2014-versie: S355 volgens EN 10025-2 (t ≤ 40 mm) heeft
+ * f_u = 490 N/mm²; 510 N/mm² geldt alleen voor buisprofielen (EN 10210-1 en
+ * EN 10219-1). Bladen met vrije profielmaten nemen f_y naar t = max(t_f; t_w):
+ * t ≤ 40 mm of 40 < t ≤ 80 mm. Daarboven geeft tabel 3.1 geen waarde; f_y komt
+ * dan uit de productnorm (NB bij 3.2.1(1)) en die bladen keuren af. Bladen
+ * zonder plaatdikte gaan uit van t ≤ 40 mm.
+ *
+ * Kip (bijlage NB.NB): een last op de getrokken flens grijpt aan in het
+ * zwaartepunt van die flens (NB.NB.4.3(1)). Bij h/t_w > 75 vraagt M_cr de
+ * factor k_red (NB.NB.4.2(2)); die valt buiten ec3Kip, dat dan afkeurt. Bij
+ * L/h < 5 melden de kipbladen dat bijlage NB.NB niet geldt (NB.NB.1(2)).
+ *
+ * Elk toetsblad sluit af met de slotzin "Maatgevende UC = …", die de rapportkop
+ * als oordeel leest. scripts/check-en1993.mjs rekent de toetsbladen na.
  */
 
 // ---------------------------------------------------------------------------
@@ -58,7 +71,7 @@ Poisson-verhouding:
 
 nu = 0.3
 
-## Partiele factoren (art. 6.1, NB tabel NB.2)
+## Partiele factoren (art. 6.1(1), NB)
 
 gamma_M0 = 1.00
 gamma_M1 = 1.00
@@ -91,10 +104,6 @@ S355 — f_y=355 = 355
 S450 — f_y=440 = 440
 @end
 
-f_y = staalsoort * 1 N/mm^2
-
-epsilon = sqrt(235 / f_y * 1 N/mm^2)
-
 ## Profielgegevens (I/H-profiel)
 
 h = 300 mm
@@ -102,6 +111,23 @@ b = 150 mm
 t_w = 7.1 mm
 t_f = 10.7 mm
 r = 15 mm
+
+#hide
+t_max = max(t_f; t_w)
+fy_80 = if(staalsoort == 440; 410; staalsoort - 20)
+#show
+#if t_max ≤ 40 mm
+f_y = staalsoort * 1 N/mm^2', tabel 3.1, t ≤ 40 mm'
+#else if t_max ≤ 80 mm
+f_y = fy_80 * 1 N/mm^2', tabel 3.1, 40 < t ≤ 80 mm, t = max(t_f; t_w)'
+#else
+'<b style="color:#b91c1c">t = 't_max' mm > 80 mm: tabel 3.1 geeft geen f<sub>y</sub>; die volgt dan uit de productnorm (NB bij 3.2.1(1)) en valt buiten dit blad.</b>
+#hide
+f_y = fy_80 * 1 N/mm^2
+#show
+#end if
+
+epsilon = sqrt(235 / f_y * 1 N/mm^2)
 
 ## Belasting
 
@@ -170,7 +196,7 @@ export const ec3Trek = `# Trekweerstand — EN 1993-1-1 art. 6.2.3
 
 ## Staalsoort
 
-@select staalsoort "Staalsoort (tabel 3.1)"
+@select staalsoort "Staalsoort (tabel 3.1, t <= 40 mm)"
 S235 — f_y=235, f_u=360 = 235
 S275 — f_y=275, f_u=430 = 275
 S355 — f_y=355, f_u=490 = 355
@@ -235,7 +261,7 @@ export const ec3Druk = `# Drukweerstand — EN 1993-1-1 art. 6.2.4
 
 ## Staalsoort
 
-@select staalsoort "Staalsoort (tabel 3.1)"
+@select staalsoort "Staalsoort (tabel 3.1, t <= 40 mm)"
 S235 — f_y=235 = 235
 S275 — f_y=275 = 275
 S355 — f_y=355 = 355
@@ -291,7 +317,7 @@ export const ec3Buiging = `# Buigweerstand — EN 1993-1-1 art. 6.2.5
 
 ## Staalsoort
 
-@select staalsoort "Staalsoort (tabel 3.1)"
+@select staalsoort "Staalsoort (tabel 3.1, t <= 40 mm)"
 S235 — f_y=235 = 235
 S275 — f_y=275 = 275
 S355 — f_y=355 = 355
@@ -365,7 +391,6 @@ S355 — f_y=355 = 355
 S450 — f_y=440 = 440
 @end
 
-f_y = staalsoort * 1 N/mm^2
 gamma_M0 = 1.00
 
 ## Profielgegevens (I/H-profiel)
@@ -375,6 +400,21 @@ b = 150 mm
 t_w = 7.1 mm
 t_f = 10.7 mm
 r = 15 mm
+
+#hide
+t_max = max(t_f; t_w)
+fy_80 = if(staalsoort == 440; 410; staalsoort - 20)
+#show
+#if t_max ≤ 40 mm
+f_y = staalsoort * 1 N/mm^2', tabel 3.1, t ≤ 40 mm'
+#else if t_max ≤ 80 mm
+f_y = fy_80 * 1 N/mm^2', tabel 3.1, 40 < t ≤ 80 mm, t = max(t_f; t_w)'
+#else
+'<b style="color:#b91c1c">t = 't_max' mm > 80 mm: tabel 3.1 geeft geen f<sub>y</sub>; die volgt dan uit de productnorm (NB bij 3.2.1(1)) en valt buiten dit blad.</b>
+#hide
+f_y = fy_80 * 1 N/mm^2
+#show
+#end if
 
 Profieloppervlak:
 
@@ -407,16 +447,17 @@ epsilon = sqrt(235 / f_y * 1 N/mm^2)
 
 UC_dwarskracht = V_Ed / V_plRd
 
-#if h_w / t_w > 72 * epsilon / eta
+#if UC_dwarskracht > 0.5
+'<b style="color:#b45309">V<sub>Ed</sub> > 0,5·V<sub>pl,Rd</sub>: de interactie met buiging (6.2.8) moet apart worden getoetst.</b>
+#end if
+#if t_max > 80 mm
+'<b>Maatgevende UC = 'UC_dwarskracht'</b><span style="color: red"> → <b>voldoet niet</b>: t > 80 mm ligt buiten tabel 3.1; f<sub>y</sub> uit de productnorm (NB bij 3.2.1(1)) valt buiten dit blad.</span>
+#else if h_w / t_w > 72 * epsilon / eta
 '<b>Maatgevende UC = 'UC_dwarskracht'</b><span style="color: red"> → <b>voldoet niet</b>: h<sub>w</sub>/t<sub>w</sub> > 72ε/η, dus het lijf moet op plooi door afschuiving worden getoetst (NEN-EN 1993-1-5 hoofdstuk 5); dat valt buiten dit blad.</span>
 #else if UC_dwarskracht ≤ 1
 '<b>Maatgevende UC = 'UC_dwarskracht'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
 '<b>Maatgevende UC = 'UC_dwarskracht'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
-#end if
-
-#if UC_dwarskracht > 0.5
-'<b style="color:#b45309">V<sub>Ed</sub> > 0,5·V<sub>pl,Rd</sub>: de interactie met buiging (6.2.8) moet apart worden getoetst.</b>
 #end if
 `;
 
@@ -436,9 +477,7 @@ S355 — f_y=355 = 355
 S450 — f_y=440 = 440
 @end
 
-f_y = staalsoort * 1 N/mm^2
 gamma_M0 = 1.00
-epsilon = sqrt(235 / f_y * 1 N/mm^2)
 
 ## Profielgegevens (gewalst I/H-profiel)
 
@@ -454,6 +493,22 @@ W_ply = 628400 mm^3
 W_plz = 98520 mm^3
 W_ely = 557300 mm^3
 W_elz = 80500 mm^3
+
+#hide
+t_max = max(t_f; t_w)
+fy_80 = if(staalsoort == 440; 410; staalsoort - 20)
+#show
+#if t_max ≤ 40 mm
+f_y = staalsoort * 1 N/mm^2', tabel 3.1, t ≤ 40 mm'
+#else if t_max ≤ 80 mm
+f_y = fy_80 * 1 N/mm^2', tabel 3.1, 40 < t ≤ 80 mm, t = max(t_f; t_w)'
+#else
+'<b style="color:#b91c1c">t = 't_max' mm > 80 mm: tabel 3.1 geeft geen f<sub>y</sub>; die volgt dan uit de productnorm (NB bij 3.2.1(1)) en valt buiten dit blad.</b>
+#hide
+f_y = fy_80 * 1 N/mm^2
+#show
+#end if
+epsilon = sqrt(235 / f_y * 1 N/mm^2)
 
 ## Belasting
 
@@ -519,6 +574,8 @@ UC_MN = N_Ed / N_plRd + M_yEd / M_elyRd + M_zEd / M_elzRd', (6.42)'
 
 #if klasse ≡ 4
 '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>voldoet niet</b>: de doorsnede valt in klasse 4. Daarvoor is een effectieve doorsnede volgens NEN-EN 1993-1-5 nodig, die dit blad niet uitrekent.</span>
+#else if t_max > 80 mm
+'<b>Maatgevende UC = 'UC_MN'</b><span style="color: red"> → <b>voldoet niet</b>: t > 80 mm ligt buiten tabel 3.1; f<sub>y</sub> uit de productnorm (NB bij 3.2.1(1)) valt buiten dit blad.</span>
 #else if UC_MN ≤ 1
 '<b>Maatgevende UC = 'UC_MN'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
@@ -542,9 +599,7 @@ S355 — f_y=355 = 355
 S450 — f_y=440 = 440
 @end
 
-f_y = staalsoort * 1 N/mm^2
 gamma_M1 = 1.00
-epsilon = sqrt(235 / f_y * 1 N/mm^2)
 
 ## Profielgegevens (I/H-profiel)
 
@@ -567,6 +622,22 @@ W_ely = 557300 mm^3
 
 E = 210000 N/mm^2
 G = 81000 N/mm^2
+
+#hide
+t_max = max(t_f; t_w)
+fy_80 = if(staalsoort == 440; 410; staalsoort - 20)
+#show
+#if t_max ≤ 40 mm
+f_y = staalsoort * 1 N/mm^2', tabel 3.1, t ≤ 40 mm'
+#else if t_max ≤ 80 mm
+f_y = fy_80 * 1 N/mm^2', tabel 3.1, 40 < t ≤ 80 mm, t = max(t_f; t_w)'
+#else
+'<b style="color:#b91c1c">t = 't_max' mm > 80 mm: tabel 3.1 geeft geen f<sub>y</sub>; die volgt dan uit de productnorm (NB bij 3.2.1(1)) en valt buiten dit blad.</b>
+#hide
+f_y = fy_80 * 1 N/mm^2
+#show
+#end if
+epsilon = sqrt(235 / f_y * 1 N/mm^2)
 
 ## Doorsnedeklasse (tabel 5.2, buiging)
 
@@ -609,15 +680,22 @@ Op de getrokken flens (stabiliserend) = -1
 #hide
 C_1 = C1_factor * 1
 C_2 = if(C1_factor == 1.13; 0.45; if(C1_factor == 1.35; 0.55; 0))
-z_g = aangrijping * h / 2
+'NB.NB.4.3(1): onder het dwarskrachtcentrum niet verder dan het zwaartepunt van de getrokken flens.
+z_g = if(aangrijping == -1; -(h - t_f) / 2; aangrijping * h / 2)
 #show
 #if C_2 > 0
-'Ligger met gaffels: C<sub>1</sub> = 'C_1' en C<sub>2</sub> = 'C_2'; de last grijpt aan op z<sub>g</sub> = 'z_g' mm van het dwarskrachtcentrum, positief naar de gedrukte flens.
+'Ligger met gaffels: C<sub>1</sub> = 'C_1' en C<sub>2</sub> = 'C_2'; de last grijpt aan op z<sub>g</sub> = 'z_g' mm van het dwarskrachtcentrum, positief naar de gedrukte flens; op de getrokken flens in het zwaartepunt van die flens (NB.NB.4.3(1)).
 #else
 'Ligger met gaffels, constant moment zonder dwarsbelasting: C<sub>1</sub> = 'C_1' en C<sub>2</sub>·z<sub>g</sub> = 0.
 #end if
 
 M_cr = C_1 * pi^2 * E * I_z / L_cr^2 * (sqrt(I_w / I_z + L_cr^2 * G * I_t / (pi^2 * E * I_z) + (C_2 * z_g)^2) - C_2 * z_g) to kN*m
+#if h / t_w > 75
+'<b style="color:#b91c1c">h/t<sub>w</sub> = 'h / t_w' > 75: M<sub>cr</sub> moet met k<sub>red</sub> worden verminderd (NB.NB.4.2(2)); dat rekent dit blad niet.</b>
+#end if
+#if L_cr < 5 * h
+'<b style="color:#b45309">L/h &lt; 5: de rekenregels van bijlage NB.NB gelden hier niet (NB.NB.1(2)); toets de gedrukte rand volgens NB.NB.4.2(3).</b>
+#end if
 
 ## Relatieve slankheid (art. 6.3.2.2(1))
 
@@ -662,6 +740,10 @@ UC_kip = M_Ed / M_bRd
 
 #if klasse ≡ 4
 '<b>Maatgevende UC = 'UC_kip'</b><span style="color: red"> → <b>voldoet niet</b>: de doorsnede valt in klasse 4, en die valt buiten dit blad.</span>
+#else if t_max > 80 mm
+'<b>Maatgevende UC = 'UC_kip'</b><span style="color: red"> → <b>voldoet niet</b>: t > 80 mm ligt buiten tabel 3.1; f<sub>y</sub> uit de productnorm (NB bij 3.2.1(1)) valt buiten dit blad.</span>
+#else if h / t_w > 75
+'<b>Maatgevende UC = 'UC_kip'</b><span style="color: red"> → <b>voldoet niet</b>: h/t<sub>w</sub> > 75, dus M<sub>cr</sub> vraagt k<sub>red</sub> (NB.NB.4.2(2)); dat valt buiten dit blad.</span>
 #else if UC_kip ≤ 1
 '<b>Maatgevende UC = 'UC_kip'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
@@ -685,7 +767,6 @@ S355 — f_y=355 = 355
 S450 — f_y=440 = 440
 @end
 
-f_y = staalsoort * 1 N/mm^2
 gamma_M1 = 1.00
 E = 210000 N/mm^2
 
@@ -699,6 +780,21 @@ b = 150 mm
 t_w = 7.1 mm
 t_f = 10.7 mm
 r = 15 mm
+
+#hide
+t_max = max(t_f; t_w)
+fy_80 = if(staalsoort == 440; 410; staalsoort - 20)
+#show
+#if t_max ≤ 40 mm
+f_y = staalsoort * 1 N/mm^2', tabel 3.1, t ≤ 40 mm'
+#else if t_max ≤ 80 mm
+f_y = fy_80 * 1 N/mm^2', tabel 3.1, 40 < t ≤ 80 mm, t = max(t_f; t_w)'
+#else
+'<b style="color:#b91c1c">t = 't_max' mm > 80 mm: tabel 3.1 geeft geen f<sub>y</sub>; die volgt dan uit de productnorm (NB bij 3.2.1(1)) en valt buiten dit blad.</b>
+#hide
+f_y = fy_80 * 1 N/mm^2
+#show
+#end if
 
 Traagheidsstralen:
 
@@ -751,7 +847,13 @@ rho_f = if(c_f / t_f ≤ 14 * epsilon; 1; min(1; (lambda_pf - 0.188) / lambda_pf
 'Lijf: c/t = 'c_w / t_w' tegen 42ε = '42 * epsilon'; flens: c/t = 'c_f / t_f' tegen 14ε = '14 * epsilon'.
 #if min(rho_w; rho_f) < 1
 'Klasse 4: effectieve breedte volgens NEN-EN 1993-1-5 §4.4, ψ = 1 en k<sub>σ</sub> = 4 (lijf) of 0,43 (flens): ρ<sub>w</sub> = 'rho_w', ρ<sub>f</sub> = 'rho_f'.
+#if rho_f ≡ 1
+A_eff = A - (1 - rho_w) * c_w * t_w to mm^2
+#else if rho_w ≡ 1
+A_eff = A - 4 * (1 - rho_f) * c_f * t_f to mm^2
+#else
 A_eff = A - (1 - rho_w) * c_w * t_w - 4 * (1 - rho_f) * c_f * t_f to mm^2
+#end if
 #else
 'Klasse 1, 2 of 3: het bruto oppervlak telt.
 #hide
@@ -824,7 +926,11 @@ N_bRd = chi * A * f_y / gamma_M1 to kN
 
 UC_knik = N_Ed / N_bRd
 
-#if UC_knik ≤ 1
+#if t_max > 80 mm
+'<b>Maatgevende UC = 'UC_knik'</b><span style="color: red"> → <b>voldoet niet</b>: t > 80 mm ligt buiten tabel 3.1; f<sub>y</sub> uit de productnorm (NB bij 3.2.1(1)) valt buiten dit blad.</span>
+#else if doorsnede ≥ 5 and A_eff < A
+'<b>Maatgevende UC = 'UC_knik'</b><span style="color: red"> → <b>voldoet niet</b>: de doorsnede valt in klasse 4 en is niet dubbelsymmetrisch; het extra moment ΔM = N<sub>Ed</sub>·e<sub>N</sub> (6.3.1.1(2)) valt buiten dit blad.</span>
+#else if UC_knik ≤ 1
 '<b>Maatgevende UC = 'UC_knik'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
 #else
 '<b>Maatgevende UC = 'UC_knik'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
@@ -1046,14 +1152,17 @@ UC_MV = M_x0 / M_VRd
 alpha_LT = if(h_p / b_p ≤ 2; 0.34; 0.49)
 #show
 'Kipkromme 'if(h_p / b_p ≤ 2; "b"; "c")' (tabel 6.5, gewalst I-profiel, h/b = 'h_p / b_p'): α<sub>LT</sub> = 'alpha_LT'; λ̄<sub>LT,0</sub> = 0,4 en β = 0,75 (NB bij 6.3.2.3(1)).
+#if L < 5 * h_p
+'<b style="color:#b45309">L/h &lt; 5: de rekenregels van bijlage NB.NB gelden hier niet (NB.NB.1(2)); toets de gedrukte rand volgens NB.NB.4.2(3).</b>
+#end if
 
-#if n_st ≡ 0
+#if n_st < 1
 #hide
 C_1 = 1.13
 C_2 = 0.45
-z_g = aangrijping * h_p / 2
+z_g = if(aangrijping == -1; -(h_p - t_f) / 2; aangrijping * h_p / 2)
 #show
-'Gelijkmatige last, gaffels aan de einden, geen kipsteunen: C<sub>1</sub> = 1,13 en C<sub>2</sub> = 0,45 (tabel NB.NB.1, geval 2); de last grijpt aan op z<sub>g</sub> = 'z_g' mm van het dwarskrachtcentrum, positief naar de gedrukte flens.
+'Gelijkmatige last, gaffels aan de einden, geen kipsteunen: C<sub>1</sub> = 1,13 en C<sub>2</sub> = 0,45 (tabel NB.NB.1, geval 2); de last grijpt aan op z<sub>g</sub> = 'z_g' mm van het dwarskrachtcentrum, positief naar de gedrukte flens; op de onderflens in het zwaartepunt van die flens (NB.NB.4.3(1)).
 
 M_cr = C_1 * pi^2 * E * I_z / L^2 * (sqrt(I_w / I_z + L^2 * G * I_t / (pi^2 * E * I_z) + (C_2 * z_g)^2) - C_2 * z_g) to kN*m
 
@@ -1063,10 +1172,12 @@ Phi_LT = 0.5 * (1 + alpha_LT * (lambda_LT - 0.4) + 0.75 * lambda_LT^2)
 
 chi_LT = min(1; 1 / lambda_LT^2; 1 / (Phi_LT + sqrt(Phi_LT^2 - 0.75 * lambda_LT^2)))', (6.57)'
 #else
-L_st = L / (n_st + 1) to mm', afstand tussen de kipsteunen'
+#hide
+N_v = floor(n_st) + 1
+#show
+L_st = L / N_v to mm', afstand tussen de kipsteunen'
 'Per veld: L<sub>kip</sub> = (1,4 − 0,8·β)·L<sub>st</sub>, tussen 1,0 en 1,4·L<sub>st</sub>; C<sub>1</sub> = 1,75 − 1,05·β + 0,3·β² ≤ 2,3 en C<sub>2</sub> = 0 (NB.NB.4.3, tabel NB.NB.1 geval 1), met β de verhouding van de eindmomenten van het veld. De kleinste χ<sub>LT</sub> geldt (NB.NB.2); de ligger is symmetrisch.
 #hide
-N_v = n_st + 1
 Mcr(Lk; C1) = C1 * pi^2 * E * I_z / Lk^2 * sqrt(I_w / I_z + Lk^2 * G * I_t / (pi^2 * E * I_z))
 chi_lt(lam) = min(1; 1 / lam^2; 1 / (0.5 * (1 + alpha_LT * (lam - 0.4) + 0.75 * lam^2) + sqrt((0.5 * (1 + alpha_LT * (lam - 0.4) + 0.75 * lam^2))^2 - 0.75 * lam^2)))
 chi_LT = 1

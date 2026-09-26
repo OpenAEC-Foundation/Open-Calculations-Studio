@@ -10,14 +10,16 @@
  *      over ΔL (niet verder dan de onderkant van de lagen met negatieve kleef),
  *      ξ3 en ξ4 uit tabel A.10a of A.10b, γ_t, de variatiecoëfficiënt, en de
  *      negatieve kleef volgens 7.3.2.2(d) met de spanning over de
- *      grondwaterstand heen geïntegreerd. Het blad moet daar op vier
- *      significante cijfers mee overeenkomen.
+ *      grondwaterstand heen geïntegreerd. De schachtwrijving rekent met
+ *      O_s;ΔL;gem (7.6.2.3(c)) en de negatieve kleef met O_s;gem (7.3.2.2(d));
+ *      zonder andere schacht zijn dat allebei de omtrek van de paalvoet. Het
+ *      blad moet daar op vier significante cijfers mee overeenkomen.
  *   2. Voor een aantal sets de getallen van een handberekening.
  *
  * Het eindoordeel kent drie uitkomsten: voldoet niet (UC > 1), niet
  * aangetoond (VC > 12 %, een open stalen buis waarvan de volle doorsnede een
- * grondprop veronderstelt, of een UC die door lege invoer niet uit te rekenen
- * is) en voldoet. De meldingen bij een ingekorte ΔL,
+ * grondprop veronderstelt, een andere schacht zonder ingevulde omtrek, of een
+ * UC die door lege invoer niet uit te rekenen is) en voldoet. De meldingen bij een ingekorte ΔL,
  * een paalpunt in de kleeflagen en een open buis verschijnen alleen als ze
  * gelden.
  *
@@ -74,6 +76,11 @@ function uitwerking(v) {
     const a = v.a_p / 1000, b = v.b_p / 1000;
     Ab = a * b; O = 2 * (a + b); Deq = b > 1.5 * a ? a : Math.sqrt((4 * Ab) / Math.PI); s = v.s_p;
   }
+  // Een andere schacht dan de paalvoet: O_s;ΔL;gem voor de schachtwrijving (7.6.2.3(c)),
+  // O_s;gem voor de negatieve kleef (7.3.2.2(d)); niet ingevuld telt als 0.
+  const anders = v.schacht === 1;
+  const OdL = anders ? v.O_s_ΔL ?? 0 : O;
+  const Ogem = anders && v.nk === 1 ? v.O_s_gem ?? 0 : O;
   // Positieve schachtwrijving alleen onder de lagen met negatieve kleef.
   const zDraag = v.nk === 1 ? v.z_mv - [1, 2, 3, 4, 5].slice(0, v.n_l).reduce((t, j) => t + v[`d_${j}`], 0) : v.z_kop;
   const dLmax = Math.max(Math.min(v.z_kop, zDraag) - v.z_punt, 0);
@@ -87,7 +94,7 @@ function uitwerking(v) {
     if (dL < v[`ΔL_${j}`]) ingekort = true;
     const qb = Math.min(0.5 * ap * v.β * s * ((v[`q_cI_${j}`] + v[`q_cII_${j}`]) / 2 + qIII), 15);
     const Rb = Ab * qb * 1000;
-    const Rs = O * as * Math.min(v[`q_cs_${j}`], 15) * 1000 * dL;
+    const Rs = OdL * as * Math.min(v[`q_cs_${j}`], 15) * 1000 * dL;
     R.push({ qb, Rb, Rs, Rc: Rb + Rs });
   }
   const gem = R.reduce((s2, r) => s2 + r.Rc, 0) / R.length;
@@ -111,7 +118,7 @@ function uitwerking(v) {
       const phi = (v[`φ_${j}`] * Math.PI) / 180;
       const delta = insitu ? phi : 0.75 * phi;
       const c = Math.max((1 - Math.sin(phi)) * Math.tan(delta), 0.25);
-      Fnk += O * c * I;
+      Fnk += Ogem * c * I;
       z += d;
       sigma = sB;
     }
@@ -121,8 +128,11 @@ function uitwerking(v) {
   // paalpunt veronderstelt een grondprop, die het blad niet aantoont.
   const openBuis = v.paaltype === 8 && v.vorm === 1;
   const puntInKleef = v.nk === 1 && v.z_punt >= zDraag;
-  const oordeel = UC > 1 ? "voldoet niet" : VC > 0.12 || openBuis ? "niet aangetoond" : "voldoet";
-  return { Ab, O, Deq, R, gem, min, x3, x4, Rck, Rcd, VC, Fnk, UC, oordeel, begrensd, ingekort, openBuis, puntInKleef };
+  const schachtLeeg = anders && Math.min(OdL, Ogem) <= 0;
+  // Tapse houten paal met de omtrek van de punt: die onderschat de negatieve kleef (7.3.2.2(d)).
+  const taps = v.paaltype === 12 && !anders;
+  const oordeel = UC > 1 ? "voldoet niet" : VC > 0.12 || openBuis || schachtLeeg || (taps && v.nk === 1) ? "niet aangetoond" : "voldoet";
+  return { Ab, O, Deq, R, gem, min, x3, x4, Rck, Rcd, VC, Fnk, UC, oordeel, begrensd, ingekort, openBuis, puntInKleef, taps };
 }
 
 const s4 = (x) => {
@@ -208,6 +218,9 @@ const SETS = [
     naam: "7 — avegaarpaal met traject III al onder 2 MPa: geen begrenzing",
     invoer: { paaltype: 5, vorm: 1, D: 400, nk: 0, q_cIII_1: 1.5, q_cIII_2: 2 },
     // Met de hand: q_b,max,1 = 0,28·(15 + 1,5) = 4,62 MPa; q_b,max,2 = 0,28·(13 + 2) = 4,20 MPa.
+    // Zo'n 1,5 MPa is bijvoorbeeld de omhullende van een traject III met onderaan 5 en bovenaan
+    // 1 MPa: begin met 2, daarboven 1 (7.6.2.3(e)). Het ongecorrigeerde gemiddelde 3 MPa zou het
+    // blad afkappen op 2 (4,76 MPa, set 6): de afkapping is een bovengrens, geen omhullende.
     handwerk: { q_bmax_1: "4.62", q_bmax_2: "4.20" },
   },
   {
@@ -253,6 +266,42 @@ const SETS = [
     // UC = 450/1368,7 = 0,329.
     handwerk: { ΔL_1: "14.0", R_scal_1: "1624", R_ccal_2: "2168", R_cd: "1369", UC: "0.329" },
   },
+  {
+    naam: "13 — tapse houten paal, punt Ø 180, andere schacht: O_s;ΔL;gem = 0,6 m, O_s;gem = 0,8 m in de kleeflagen",
+    invoer: { paaltype: 12, vorm: 1, D: 180, schacht: 1, O_s_ΔL: 0.6, O_s_gem: 0.8, F_c_d: 180 },
+    // Met de hand: A_b = π/4·0,18² = 0,02545 m²; α_s = 0,012. R_b,1 = 0,02545·9450 = 240,5;
+    // R_s,1 = 0,6·0,012·10 000·3 = 216,0 → 456,5 kN; R_b,2 = 0,02545·8400 = 213,8;
+    // R_s,2 = 0,6·0,012·9000·3 = 194,4 → 408,2 kN. n = 2: R_c;k = 408,2/1,32 = 309,2; R_c;d = 257,7 kN.
+    // F_nk = 0,8·0,25·328 = 65,6 kN (met de omtrek van de punt, π·0,18 = 0,565 m, was het 46,4 kN).
+    // UC = (180 + 65,6)/257,7 = 0,953.
+    handwerk: { R_scal_1: "216.0", R_ccal_1: "456.5", R_ccal_2: "408.2", R_cd: "257.7", F_nk_k: "65.60", UC: "0.953" },
+  },
+  {
+    naam: "14 — in de grond gevormd (mantelbuis getrild), voetplaat Ø 460 op buis Ø 406: schacht met de omtrek van de buis",
+    invoer: { paaltype: 3, vorm: 1, D: 460, schacht: 1, O_s_ΔL: 1.2755, O_s_gem: 1.2755 },
+    // Met de hand: A_b = π/4·0,46² = 0,16619 m²; O = π·0,406 = 1,2755 m; α_s = 0,012; δ = φ.
+    // R_b,1 = 0,16619·9450 = 1570,5; R_s,1 = 1,2755·0,012·10 000·3 = 459,2 → 2029,7 kN;
+    // R_b,2 = 1396,0; R_s,2 = 1,2755·0,012·9000·3 = 413,3 → 1809,3 kN. R_c;k = 1809,3/1,32 = 1370,7;
+    // R_c;d = 1142,2 kN. c_nk = K0·tan φ: 0,6173·0,4142 = 0,2557 (laag 1 en 3), 0,1986 → 0,25 (laag 2);
+    // F_nk = 1,2755·(0,2557·29 + 0,25·76,5 + 0,2557·222,5) = 1,2755·83,43 = 106,4 kN
+    // (met de voetplaat, π·0,46 = 1,445 m: 120,6 kN). UC = (450 + 106,4)/1142,2 = 0,487.
+    handwerk: { R_scal_1: "459.2", R_ccal_1: "2030", R_ccal_2: "1809", R_cd: "1142", F_nk_k: "106.4", UC: "0.487" },
+  },
+  {
+    naam: "15 — andere schacht, omtrek in de kleeflagen niet ingevuld: niet aangetoond",
+    invoer: { schacht: 1, O_s_ΔL: 1.16 },
+    // Met de hand: O_s;gem = 0 → F_nk = 0 en UC = 450/643,7 = 0,699; zonder omtrek zegt het blad
+    // "niet aangetoond", niet "voldoet".
+    handwerk: { R_cd: "643.7", UC: "0.699" },
+  },
+  {
+    naam: "16 — tapse houten paal, punt Ø 180, met negatieve kleef en de omtrek van de punt: niet aangetoond",
+    invoer: { paaltype: 12, vorm: 1, D: 180, F_c_d: 180 },
+    // Met de hand: F_nk = π·0,18·0,25·328 = 46,4 kN met de omtrek van de punt; met de schacht van
+    // set 13 (0,8 m) is het 65,6 kN. R_c;d = 250,6 kN (narekening), UC = (180 + 46,4)/250,6 = 0,903:
+    // onder 1, maar het oordeel is "niet aangetoond", niet "voldoet".
+    handwerk: { F_nk_k: "46.37", UC: "0.903" },
+  },
 ];
 
 /** Het eindoordeel zoals het blad het in de slotzin geeft. */
@@ -286,6 +335,8 @@ for (const set of SETS) {
     [r.ingekort && v.nk !== 1, /ingekort tot de paallengte(?! onder)/, "ΔL ingekort tot de paallengte"],
     [r.puntInKleef, /paalpunt ligt niet onder de lagen met negatieve kleef/, "paalpunt in de kleeflagen"],
     [r.openBuis, /Open stalen buis: de volle doorsnede/, "open buis: grondprop"],
+    [r.taps, /Tapse houten paal: de omtrek van de punt/, "tapse paal: omtrek van de punt"],
+    [v.schacht === 1 && r.oordeel === "niet aangetoond" && !r.openBuis && r.VC <= 0.12, /omtrek van de schacht niet ingevuld/, "omtrek van de schacht niet ingevuld"],
   ]) {
     const gemeld = patroon.test(got.text);
     if (gemeld !== wel) fouten++;
@@ -308,6 +359,16 @@ for (const set of SETS) {
   const ok = oordeel === "niet aangetoond";
   if (!ok) fouten++;
   console.log(`\nLege invoer — geen uitrekenbare UC\n  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${oordeel}   verwacht niet aangetoond`);
+}
+
+// De correcties op q_c (7.6.2.3(i) t/m (l)) rekent het blad niet; het zegt dat ze in de invoer zitten.
+{
+  const tekst = reken(tpl, Object.fromEntries(Object.entries(STANDAARD).map(([k, x]) => [k, String(x)]))).text;
+  const ok = /correcties van 7\.6\.2\.3\(j\) t\/m \(l\)/.test(tekst) && /correcties op q c \(7\.6\.2\.3\(i\) t\/m \(l\)\)/.test(tekst);
+  if (!ok) fouten++;
+  console.log(`
+Correcties op q_c
+  ${ok ? "OK    " : "FOUT  "} genoemd bij de invoer en in de slotlijst`);
 }
 
 afronden(fouten, "Paaldraagvermogen");

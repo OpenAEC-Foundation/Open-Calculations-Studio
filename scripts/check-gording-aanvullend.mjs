@@ -18,6 +18,8 @@
  *   I  plat dak, winddruk in zone I (combinatie 7), ook in de BGT, en de
  *      netto opwaartse doorbuiging
  *   J  c_pe bij zuiging niet negatief of niet ingevuld: melding op het blad
+ *   K  ontwerplevensduur 100 jaar: q_p met c_prob en s_k volgens bijlage D
+ *   L  schuin dak boven 60°: C_pe loopt op naar +0,8 bij 75° (tabel NB.10 – 7.4a)
  *
  * Draaien:  node scripts/check-gording-aanvullend.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -25,7 +27,7 @@
 import { laadTemplate, reken, toets, afronden } from "./lib/refcheck.mjs";
 
 const tpl = laadTemplate("gording.ts");
-const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 1, windgebied: 2, terreincategorie: 2 };
+const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 1, windgebied: 2, terreincategorie: 2, DesignLife: 50 };
 const NORM = { ...PROJECT, rekenwijze: 0 };
 
 const BASIS = {
@@ -217,5 +219,27 @@ const zonder = { ...BASIS };
 delete zonder.c_pe_zuig;
 eis("J: c_pe niet ingevuld geeft een melding", MELDING.test(reken(tpl, zonder, PROJECT).text));
 eis("J: c_pe = −0,7 geeft geen melding", !MELDING.test(d1.text));
+
+// ── K. Ontwerplevensduur 100 jaar ────────────────────────────────────────────
+// A1.1(2) van de NB bij NEN-EN 1990: bij een langere referentieperiode moeten
+// wind en sneeuw omhoog. Windgebied II, terreincategorie II, z = 9 m:
+//   q_p,50 = (1 + 7/ln 45)·0,625·(0,20936·ln 45·27)²/1000 = 0,8216 kN/m²
+//   c_prob² = (1 + 0,234·4,6001)/(1 + 0,234·3,9019) = 1,0854 (opmerking 4 bij 4.2, tabel NB.2)
+//   q_p = 1,0854·0,8216 = 0,8917;  P_w = (0,7 + 0,3)·0,8917 = 0,8917;  q_wy = 1,3521·0,8917 = 1,206 kN/m
+// Sneeuw (D.1), V = 0,8: s_k = 1,1417·0,70 = 0,7992;  P_sn = 0,7016·0,7992 = 0,5607
+//   q_sn = 1,3521·0,5607·0,8321 = 0,6308 kN/m (bij 50 jaar 0,5525)
+geval("K — ontwerplevensduur 100 jaar", { windbron: "1" }, { ...PROJECT, DesignLife: 100 },
+  { c_prob: "1.042", q_p: "0.8917", P_w: "0.8917", q_wy: "1.206", f_sn: "1.142", s_k: "0.7992", P_sn: "0.5607", q_sn: "0.6308" });
+geval("K — ontwerplevensduur 50 jaar: niets verandert", { windbron: "1" }, PROJECT,
+  { q_p: "0.8216", q_wy: "1.111", s_k: "0.70", q_sn: "0.5525" });
+
+// ── L. Winddruk op een steil dak ─────────────────────────────────────────────
+// Tabel NB.10 – 7.4a: positieve c_pe in F, G en H +0,7 tot 60° en +0,8 bij 75°.
+// l_h = 1000, h_v = 3732,05 → α = 75°: P_w = (0,8 + 0,3)·0,822 = 0,9042;
+//   hoh = 3863,7/4 = 965,9 mm;  q_wy = 0,8734 kN/m;  M_wy = 0,8734·5,075²/8 = 2,812 kNm (met +0,7: 2,556)
+geval("L — schuin dak 75°", { l_h: "1000", h_v: "3732.05" }, PROJECT,
+  { C_pe: "0.800", P_w: "0.9042", q_wy: "0.8734", M_wy: "2.812" });
+// α = 67,5°: C_pe = 0,7 + 0,1·7,5/15 = 0,75;  P_w = 1,05·0,822 = 0,8631.
+geval("L — schuin dak 67,5°", { l_h: "1000", h_v: "2414.21" }, PROJECT, { C_pe: "0.750", P_w: "0.8631" });
 
 afronden(fouten, "Gording (aanvullend)");

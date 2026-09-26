@@ -6,7 +6,8 @@
  * referentiesets van die module (metselwerkwand-1 t/m -10, zie
  * check-metselwerkwand.mjs) gelden dus ook hier, op de sets na die de
  * lage-belastingstak of een verticale randsteuning nodig hebben. Druksterkte,
- * afschuiving en slankheid worden met de hand nagerekend.
+ * afschuiving en slankheid worden met de hand nagerekend, net als φ_∞ uit
+ * tabel NB-3 en de langsvoeg (§3.6.1.2(6)).
  *
  * De bladen dragen hun invoer als voorbeeldwaarden in de tekst; dit script
  * vervangt die regels per set.
@@ -55,6 +56,10 @@ let fouten = 0;
   fouten += toets("druksterkte — fb 5 met M15, f_m begrensd op 2·f_b",
     reken(met(tpl, { f_b: "5" }), {}, PROJECT),
     { f_meff: "10", f_k: "3.04" });
+  // Langsvoeg (§3.6.1.2(6)): K = 0,8·0,6 = 0,48 → f_k = 0,8·5,938 = 4,750.
+  fouten += toets("druksterkte — langsvoeg, K maal 0,8",
+    reken(tpl, { langsvoeg: "2" }, PROJECT),
+    { K: "0.48", f_k: "4.750" });
 }
 
 // ── Wand op druk ─────────────────────────────────────────────────────────
@@ -88,6 +93,23 @@ let fouten = 0;
       verwacht: { Phi_it: "0", N_Rd: "0" }, oordeel: "voldoet niet" },
     { naam: "betonvloer aan één zijde met een kortere oplegging", invoer: {}, selects: { ondersteuning: "4" },
       verwacht: { rho_2: "1.00", h_ef: "2800" } },
+    // φ_∞ uit tabel NB-3 (NB bij 3.7.4(2)); het voorbeeld is baksteen met
+    // metselmortel: 0,7. Betonsteen <25 % + M15 (f_k = 5,938, f_d = 3,493),
+    // t = 100, N = 58: λ_2 = 28 > 27, φ_∞ = 1,9,
+    // e_k2 = 0,002·1,9·28·√(100·10) = 3,365, e_mk2 = 13,365, A_1 = 0,7327,
+    // λ_F = 1,058, u = 0,9953/(0,73 − 0,1564) = 1,735, Φ_m2 = 0,7327·e^(−1,505) = 0,1626,
+    // N_Rd,m2 = 0,1626·100 000·3,493/1000 = 56,8 → UC_2 = 1,02. Met de vroegere
+    // voorbeeldwaarde φ_∞ = 1,5 gaf het blad 0,96 en "voldoet".
+    { naam: "φ_∞ = 0,7 voor baksteen met metselmortel (tabel NB-3)", invoer: {},
+      verwacht: { phi_inf: "0.7" } },
+    { naam: "betonsteen, t = 100, N = 58 kN — φ_∞ = 1,9 (tabel NB-3)",
+      invoer: { t_w: "100*mm", N_Ed: "58*kN" }, selects: { steensoort: "5" },
+      verwacht: { lam_2: "28.0", phi_inf: "1.9", e_k2: "3.365", Phi_m2: "0.1626", N_Rdm2: "56.8", UC_2: "1.02" } },
+    // Langsvoeg: baksteen fb 20 + M10, t = 210, N = 600, K = 0,48, f_d = 3,520;
+    // e_mk2 = 10,5, Φ_m2 = 0,725, N_Rd,m2 = 536,2 → UC_2 = 1,12 (zonder langsvoeg 0,90).
+    { naam: "langsvoeg — baksteen fb 20 + M10, t = 210, N = 600 kN",
+      invoer: { f_b: "20", f_m: "10", t_w: "210*mm", N_Ed: "600*kN" }, selects: { langsvoeg: "2" },
+      verwacht: { K: "0.48", f_k: "5.983", N_Rdm2: "536.2", UC_2: "1.12" } },
   ];
   for (const s of SETS) {
     const got = reken(met(tpl, s.invoer), s.selects ?? {}, { ...PROJECT, ...s.project });

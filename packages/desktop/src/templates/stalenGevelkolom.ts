@@ -5,7 +5,10 @@
  * Scharnierend aan beide einden (gaffels), wind via de gevelregels op de
  * buitenflens. De wind volgt uit NEN-EN 1991-1-4 met NB: q_p uit windgebied,
  * terreincategorie en gebouwhoogte (dezelfde keten als de gording), c_pe voor
- * een verticale gevel uit tabel NB.6 – 7.1 en c_pi = +0,2 of −0,3. Getoetst: doorsnedeklasse (tabel 5.2), doorsnede (§6.2), knik
+ * een verticale gevel uit tabel NB.6 – 7.1 en c_pi = +0,2 of −0,3. Bij een
+ * ontwerplevensduur boven 50 jaar q_p met c_prob (opmerking 4 bij 4.2, K uit
+ * tabel NB.2; A1.1(2) van de NB bij NEN-EN 1990); een zelf ingevulde q_p of
+ * netto druk niet. Getoetst: doorsnedeklasse (tabel 5.2), doorsnede (§6.2), knik
  * en torsieknik (§6.3.1, NB bij 6.3.1.4), kip met M_cr volgens bijlage NB.NB en
  * χ_LT volgens §6.3.2.3, druk met buiging volgens bijlage B (§6.3.3) en de
  * doorbuiging. Winddruk en windzuiging apart: bij druk is de buitenflens
@@ -174,9 +177,15 @@ L_cr,z', kniklengte om de z-as: L_st als de regels de flens steunen, anders L'
     zmin_ruw = if(terreincategorie ≡ 1; 1; if(terreincategorie ≡ 2; 4; 7))
     ze_ruw = max(z_wind/(1*m); zmin_ruw)
     verh = ze_ruw/z0_ruw
-    vm_ruw = 0.19*(z0_ruw/0.05)^0.07*log(verh)*vb0_ruw
+    K_prob = if(windgebied ≡ 1; 0.2; if(windgebied ≡ 2; 0.234; 0.281))
+    t_prob = max(DesignLife; 50)
+    cprob_ruw = sqrt((1 - K_prob*log(-log(1 - 1/t_prob)))/(1 - K_prob*log(-log(0.98))))
+    vm_ruw = 0.19*(z0_ruw/0.05)^0.07*log(verh)*cprob_ruw*vb0_ruw
     #show
     v_b0 = vb0_ruw*(m/s)', basiswindsnelheid (tabel NB.1); c_dir = c_season = 1'
+    #if DesignLife > 50
+        c_prob = cprob_ruw', ontwerplevensduur boven 50 jaar: (4.2) met p = 1/t, K uit tabel NB.2 en n = 0,5 (opmerking 4 bij 4.2)'
+    #end if
     z_e = ze_ruw*(m)', gehanteerde hoogte, ten minste z_min (tabel NB.3-4.1)'
     k_r = 0.19*(z0_ruw/0.05)^0.07', terreinfactor (4.5)'
     c_r = k_r*log(verh)', ruwheidsfactor (4.4); c_o = 1'
