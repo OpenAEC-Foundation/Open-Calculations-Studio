@@ -235,7 +235,7 @@ const NORM = [
     richting: { f_k: "gelijk", N_Rd: "gelijk", UC_1: "gelijk" }, melding: false },
   { naam: "baksteen fb 5 + M15", invoer: { steensoort: "1", f_b: "5" },
     richting: { f_k: "lager", N_Rd: "lager", UC_1: "hoger" },
-    xc: { f_k: "3.36" }, waarden: { f_k: "3.04" }, melding: true },
+    refStand: { f_k: "3.36" }, waarden: { f_k: "3.04" }, melding: true },
   { naam: "metselwerkwand-9 — minimale excentriciteit na een eerste afkeur", invoer: { f_m: "5" },
     project: { CC: 3 }, richting: { UC_1: "gelijk", UC_max: "hoger" },
     waarden: { N_Rdm2: "114.8", UC_2: "1.74", UC_max: "1.74" } },
@@ -248,13 +248,13 @@ const MELDING_2FB = /f m is groter dan 2·f b/;
 for (const n of NORM) {
   const invoer = { ...BASIS, ...n.invoer };
   const project = { ...PROJECT, ...n.project };
-  const xc = reken(tpl, invoer, project);
+  const refStand = reken(tpl, invoer, project);
   const nb = reken(tpl, invoer, { ...project, rekenwijze: 0 });
-  fouten += toetsNormStand(n.naam, xc, nb, n.richting);
-  if (n.xc) fouten += toets(`${n.naam} — referentiestand`, xc, n.xc);
+  fouten += toetsNormStand(n.naam, refStand, nb, n.richting);
+  if (n.refStand) fouten += toets(`${n.naam} — referentiestand`, refStand, n.refStand);
   if (n.waarden) fouten += toets(`${n.naam} — norm-stand, met de hand`, nb, n.waarden);
   if (n.melding !== undefined) {
-    const ok = MELDING_2FB.test(xc.text) === n.melding && !MELDING_2FB.test(nb.text);
+    const ok = MELDING_2FB.test(refStand.text) === n.melding && !MELDING_2FB.test(nb.text);
     if (!ok) fouten++;
     console.log(`  ${ok ? "OK    " : "FOUT  "} melding   f_m > 2·f_b ${n.melding ? "alleen in de referentiestand" : "nergens"}`);
   }

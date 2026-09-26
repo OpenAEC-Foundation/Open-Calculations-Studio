@@ -163,12 +163,12 @@ W_y'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
 S_y'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
 
 #hide
-ρ_xc = 550 kg/m^3
-g_xc = 10 m/s^2
+ρ_ref = 550 kg/m^3
+g_ref = 10 m/s^2
 g_nb = 9.81 m/s^2
-g_balk_xc = A*ρ_xc*g_xc to kN/m
+g_balk_ref = A*ρ_ref*g_ref to kN/m
 g_balk_nb = A*ρ_mean*g_nb to kN/m
-g_balk = if(rekenwijze ≡ 1; g_balk_xc; g_balk_nb)
+g_balk = if(rekenwijze ≡ 1; g_balk_ref; g_balk_nb)
 #show
 #if rekenwijze ≡ 1
     g_balk', eigen gewicht, A · 550 kg/m³ · 10 m/s²'
@@ -1043,9 +1043,9 @@ u_Q,k'<span class="alleen-scherm">, BG4</span><span class="kolom-4"></span>'
 #hide
 'Welke veranderlijke doorbuiging meetelt: in de referentiestand alleen de
 'gelijkmatig verdeelde last, in de norm-stand de maatgevende van de twee.
-u_var_xc = u_q,k to mm
+u_var_ref = u_q,k to mm
 u_var_nb = max(u_q,k; u_Q,k) to mm
-u_var = if(rekenwijze ≡ 1; u_var_xc; u_var_nb) to mm
+u_var = if(rekenwijze ≡ 1; u_var_ref; u_var_nb) to mm
 #show
 #if rekenwijze ≡ 1
     u_var', veranderlijk, veld 1: u<sub>q,k</sub><span class="alleen-scherm"></span>'
@@ -1054,9 +1054,9 @@ u_var = if(rekenwijze ≡ 1; u_var_xc; u_var_nb) to mm
 #end if
 #if s23 ≥ 1
     #hide
-    u_var2_xc = u_q,k,2 to mm
+    u_var2_ref = u_q,k,2 to mm
     u_var2_nb = max(u_q,k,2; u_Q,k,2) to mm
-    u_var,2 = if(rekenwijze ≡ 1; u_var2_xc; u_var2_nb) to mm
+    u_var,2 = if(rekenwijze ≡ 1; u_var2_ref; u_var2_nb) to mm
     #show
     #if rekenwijze ≡ 1
         u_var,2', idem tweede deel: u<sub>q,k,2</sub><span class="alleen-scherm"></span>'

@@ -16,7 +16,7 @@ import "./VoetplaatDesigner.css";
  *
  * Rekenregels identiek aan templates/verankeringslengte.ts, gecalibreerd op
  * document1B (C45/55 · B500B · Ø16 · c 30 · goed · recht → l_bd = 379 mm).
- * Het beeld volgt de rekenwijze van het project (ctx.xc), net als het blad:
+ * Het beeld volgt de rekenwijze van het project (ctx.ref), net als het blad:
  * in de referentiestand de l_bd van de referentie-uitwerking, met de
  * normwaarde in oranje ernaast waar die afwijkt.
  */
@@ -39,11 +39,11 @@ const DEFAULTS: Record<string, number> = {
 };
 
 /**
- * §8.4 — dezelfde volgorde als het rekenblad. `xc` kiest dezelfde tak als het
+ * §8.4 — dezelfde volgorde als het rekenblad. `ref` kiest dezelfde tak als het
  * blad: a1, ber en lbd zijn de gehanteerde waarden, lbdNb die van de norm.
  */
 function verankering(fck: number, ds: number, cd: number, goed: boolean, type: number, sig: number,
-                     druk: boolean, xc: boolean) {
+                     druk: boolean, ref: boolean) {
   const fctm = fck <= 50 ? 0.3 * fck ** (2 / 3) : 2.12 * Math.log(1 + (fck + 8) / 10);
   const fctd = (0.7 * fctm) / 1.5;
   const eta1 = goed ? 1.0 : 0.7;
@@ -53,16 +53,16 @@ function verankering(fck: number, ds: number, cd: number, goed: boolean, type: n
   // Tabel 8.2: α₁ = 0,7 alleen bij "anders dan recht" én c_d > 3Ø; op druk α₁ = α₂ = 1.
   const a1Nb = !druk && type !== 1 && cd > 3 * ds ? 0.7 : 1.0;
   // Wat de referentie-uitwerking doet: de staafvorm buiten beschouwing laten.
-  const a1Xc = !druk && cd > 3 * ds ? 0.7 : 1.0;
+  const a1Ref = !druk && cd > 3 * ds ? 0.7 : 1.0;
   const ruw = type === 1 ? 1 - (0.15 * (cd - ds)) / ds : 1 - (0.15 * (cd - 3 * ds)) / ds;
   const a2 = druk ? 1.0 : Math.min(Math.max(ruw, 0.7), 1.0);
   const a3 = 1.0, a4 = 1.0, a5 = 1.0;
   const lbmin = Math.max((druk ? 0.6 : 0.3) * lbrqd, 10 * ds, 100);   // (8.6) trek, (8.7) druk
   const berNb = a1Nb * a2 * a3 * a4 * a5 * lbrqd;
-  const berXc = a1Xc * a2 * a3 * a4 * a5 * lbrqd;
+  const berRef = a1Ref * a2 * a3 * a4 * a5 * lbrqd;
   const lbdNb = Math.max(berNb, lbmin);
-  const lbdXc = Math.max(berXc, lbmin);
-  const a1 = xc ? a1Xc : a1Nb, ber = xc ? berXc : berNb, lbd = xc ? lbdXc : lbdNb;
+  const lbdRef = Math.max(berRef, lbmin);
+  const a1 = ref ? a1Ref : a1Nb, ber = ref ? berRef : berNb, lbd = ref ? lbdRef : lbdNb;
   return { fctm, fctd, eta1, eta2, fbd, lbrqd, a1, a2, a3, a4, a5,
            lbmin, ber, lbd, minMaatgevend: ber < lbmin,
            lbdNb, afwijkt: Math.abs(lbd - lbdNb) > 0.5 };
@@ -71,7 +71,7 @@ function verankering(fck: number, ds: number, cd: number, goed: boolean, type: n
 export default function VerankeringslengteDesigner() {
   const ctx = useDesigner(MARKER, DEFAULTS);
   if (!ctx.actief) return null;
-  const { d, set, box, wrapRef, xc } = ctx;
+  const { d, set, box, wrapRef, ref } = ctx;
 
   const fck = Math.round(d("betonklasse"));
   const staal = Math.round(d("betonstaal"));
@@ -84,7 +84,7 @@ export default function VerankeringslengteDesigner() {
 
   const fyd = 500 / 1.15;
   const sig = Areq > 0 && Aprov > 0 ? (fyd * Areq) / Aprov : fyd;
-  const r = verankering(fck, ds, cd, goed, type, sig, druk, xc);
+  const r = verankering(fck, ds, cd, goed, type, sig, druk, ref);
   const benut = Areq > 0 && Aprov > 0;
 
   // ── layout ────────────────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ export default function VerankeringslengteDesigner() {
   const haak = type === 2 ? Math.max(10, 5 * dsPx) : 0;
 
   // grafiek: l_bd per diameter
-  const perDiam = DIAM_GRAFIEK.map((dd) => ({ dd, ...verankering(fck, dd, cd, goed, type, sig, druk, xc) }));
+  const perDiam = DIAM_GRAFIEK.map((dd) => ({ dd, ...verankering(fck, dd, cd, goed, type, sig, druk, ref) }));
   const gMax = Math.max(...perDiam.map((p) => p.lbd)) * 1.16;
   const gL = 52, gR = 14, gT = 14, gB = 30;
   const gw = Math.max(40, W - gL - gR), gh = Math.max(40, GH - gT - gB);

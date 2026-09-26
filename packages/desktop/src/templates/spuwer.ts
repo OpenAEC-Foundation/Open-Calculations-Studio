@@ -61,14 +61,14 @@ h_nd = ?*(mm)', bovenzijde dakbedekking tot onderzijde spuwer h_nd'
 'Tabel NB.1 (7.2(4)) — regenintensiteit i_r [m³/s]/m² per referentieperiode, tussenliggend lineair.
 'Splitspunt (register punt 20): de referentie-uitwerking rondt af; alle vier tegen een referentieberekening geverifieerd.
 irtab = [5; 15; 50; 100 |0.000027; 0.000041; 0.00005; 0.000056]
-i_r_xc = hlookup(irtab; t_ref; 1; 2)
+i_r_ref = hlookup(irtab; t_ref; 1; 2)
 i_r_nb = if(t_ref ≡ 5; 0.0215 + (5 - 1)/(15 - 1)*(0.0406 - 0.0215); if(t_ref ≡ 15; 0.0406; if(t_ref ≡ 50; 0.0500; 0.0561)))/1000
-i_r = if(rekenwijze ≡ 1; i_r_xc; i_r_nb)
+i_r = if(rekenwijze ≡ 1; i_r_ref; i_r_nb)
 #show
 
 b_tot = n_sp*b_sp', som van de spuwerbreedten'
 i_r', regenintensiteit uit tabel NB.1 (7.2(4)) [m³/s]/m²'
-#if rekenwijze ≡ 1 and i_r_xc ≠ i_r_nb
+#if rekenwijze ≡ 1 and i_r_ref ≠ i_r_nb
     '<i>Tabel NB.1 geeft 'i_r_nb' [m³/s]/m²; de referentie-uitwerking rekent met de afgeronde waarde.</i>
 #end if
 

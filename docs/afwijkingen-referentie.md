@@ -16,9 +16,9 @@ daarom alleen op eindigheid en op de richting van het verschil te controleren.
 Elk blad rekent op zo'n punt **allebei** uit en kiest er één:
 
 ```
-X_nb = …                                  volgens de norm
-X_XC = …                                  volgens de referentie-uitwerking
-X    = if(rekenwijze ≡ 1; X_XC; X_nb)     de gehanteerde waarde
+X_nb  = …                                 volgens de norm
+X_ref = …                                 volgens de referentie-uitwerking
+X     = if(rekenwijze ≡ 1; X_ref; X_nb)   de gehanteerde waarde
 ```
 
 De keuze staat op één regel, nooit binnen een tussenformule — zo blijft de
@@ -36,7 +36,7 @@ Drie controles bewaken dit:
 
 | script | wat het bewaakt |
 |---|---|
-| `check-rekenwijze.mjs` | elke `_XC`- of `_nb`-tak bereikt een schakelaar, direct of via een tussenstap. Een tak die wordt uitgerekend, netjes wordt afgedrukt en nergens meetelt, valt hier door. |
+| `check-rekenwijze.mjs` | elke `_ref`- of `_nb`-tak bereikt een schakelaar, direct of via een tussenstap. Een tak die wordt uitgerekend, netjes wordt afgedrukt en nergens meetelt, valt hier door. |
 | `check-projectvariabelen.mjs` | geen blad zet `rekenwijze` als eigen invoerveld neer |
 | de module-controlescripts | draaien elke referentieset twee keer: in de referentiestand moet **élke** waarde exact kloppen, in de norm-stand wordt op eindigheid en op de richting van het verschil getoetst, en waar een handberekening bestaat ook op het getal |
 
@@ -206,7 +206,7 @@ verankeringslengte dan de norm toestaat.
 α₁ die het getal stuurt (0,70). Factoren, product en l_bd passen daardoor bij
 elkaar. Direct onder l_bd staat een rode regel 'Korter dan tabel 8.2 toestaat'
 met de normwaarde l_bd,nb. Het parametrische beeld volgt dezelfde stand
-(`ctx.xc`) en toont de normwaarde in oranje ernaast. Het splitspunt afschaffen
+(`ctx.ref`) en toont de normwaarde in oranje ernaast. Het splitspunt afschaffen
 (altijd de normwaarde) is een aparte keuze; dan moeten de verwachtingen van
 document5B (100) en document7B (107) in `check-verankeringslengte.mjs` mee.
 
@@ -862,7 +862,7 @@ flensbreedte niet en neemt bij zo'n profiel die ondergrens van 0,8.
 De referentie-uitwerking rekent de wandschijf op vier punten strenger dan de
 norm. Het blad rekent op die punten beide lezingen uit:
 
-| grootheid | referentie-uitwerking (`_xc`) | norm (`_nb`) |
+| grootheid | referentie-uitwerking (`_ref`) | norm (`_nb`) |
 |---|---|---|
 | `F_ivRd` | F_f,Rd zonder de verhoging 1,2 langs de plaatranden | × 1,2 (§9.2.4.2(5)) |
 | `UC_plooi` | h.o.h.-afstand van de stijlen / (100·t) | dagmaat h.o.h. − t_stijl / (100·t) (§9.2.4.2(11)) |
@@ -948,7 +948,7 @@ Tabel NB.1 geeft i_r = 0,0215 / 0,0406 / 0,0500 / 0,0561 × 10⁻³ m/s bij 1, 1
 50 en 100 jaar, met lineaire interpolatie daartussen. De referentie-uitwerking
 rekent met 0,000027 (5 jaar, geïnterpoleerd en afgerond), 0,000041, 0,00005 en
 0,000056. Bij 5 en 15 jaar ligt dat aan de veilige kant, bij 100 jaar 0,2 %
-eronder. Het blad rekent `i_r_xc` en `i_r_nb` en meldt in de referentiestand
+eronder. Het blad rekent `i_r_ref` en `i_r_nb` en meldt in de referentiestand
 de tabelwaarde zodra die verschilt.
 
 n 3 · b 600 · h 80 · h_nd 30, A = 600 m²:
@@ -1066,8 +1066,8 @@ Je hebt ze allebei nodig.
 
 Bij een nieuwe afwijking:
 
-1. Reken in het blad beide lezingen uit (`X_nb`, `X_XC`) en kies op één regel
-   met `if(rekenwijze ≡ 1; X_XC; X_nb)`; `check-rekenwijze.mjs` controleert
+1. Reken in het blad beide lezingen uit (`X_nb`, `X_ref`) en kies op één regel
+   met `if(rekenwijze ≡ 1; X_ref; X_nb)`; `check-rekenwijze.mjs` controleert
    dat elke tak een schakelaar bereikt.
 2. Toets in het controlescript (`check-<module>.mjs`) de referentiestand exact
    tegen het referentieblad en de norm-stand met `toetsNormStand`, zo mogelijk

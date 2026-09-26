@@ -162,13 +162,13 @@ c_d = c_dek
 #hide
 l_bd,ber = α_1*α_2*α_3*α_4*α_5*l_b,rqd
 l_bd,nb = max(l_bd,ber; l_b,min)
-α_1,XC = if(staafkracht ≡ 1 and c_d > 3*d_s; 0.7; 1.0)
-l_bd,ber,XC = α_1,XC*α_2*α_3*α_4*α_5*l_b,rqd
-l_bd,XC = max(l_bd,ber,XC; l_b,min)
-l_bd = if(rekenwijze ≡ 1; l_bd,XC; l_bd,nb)
-α_1,geb = if(rekenwijze ≡ 1; α_1,XC; α_1)
-l_bd,prod = if(rekenwijze ≡ 1; l_bd,ber,XC; l_bd,ber)
-Δl = abs(l_bd,nb - l_bd,XC)/(1*mm)
+α_1,ref = if(staafkracht ≡ 1 and c_d > 3*d_s; 0.7; 1.0)
+l_bd,ber,ref = α_1,ref*α_2*α_3*α_4*α_5*l_b,rqd
+l_bd,ref = max(l_bd,ber,ref; l_b,min)
+l_bd = if(rekenwijze ≡ 1; l_bd,ref; l_bd,nb)
+α_1,geb = if(rekenwijze ≡ 1; α_1,ref; α_1)
+l_bd,prod = if(rekenwijze ≡ 1; l_bd,ber,ref; l_bd,ber)
+Δl = abs(l_bd,nb - l_bd,ref)/(1*mm)
 #show
 #if l_bd,prod ≥ l_b,min
     'α<sub>1</sub>·α<sub>2</sub>·α<sub>3</sub>·α<sub>4</sub>·α<sub>5</sub>·l<sub>b,rqd</sub> = 'α_1,geb' · 'α_2' · 'α_3' · 'α_4' · 'α_5' · 'l_b,rqd' = 'l_bd,prod' mm ≥ l<sub>b,min</sub> = 'l_b,min' mm
@@ -177,7 +177,7 @@ l_bd,prod = if(rekenwijze ≡ 1; l_bd,ber,XC; l_bd,ber)
 #end if
 l_bd', gehanteerde verankeringslengte'
 #if rekenwijze ≡ 1 and Δl > 0.5
-    '<b style="color:#b91c1c">Korter dan tabel 8.2 toestaat: de referentie-uitwerking past α<sub>1</sub> = 'α_1,XC' ook op een rechte staaf toe. Volgens de norm:</b>
+    '<b style="color:#b91c1c">Korter dan tabel 8.2 toestaat: de referentie-uitwerking past α<sub>1</sub> = 'α_1,ref' ook op een rechte staaf toe. Volgens de norm:</b>
     l_bd,nb', met α_1 = 1,0 (tabel 8.2)'
 #end if
 

@@ -186,10 +186,10 @@ k_naad,rest = if(naad ≡ 1; if(b_rest < 0.5*h; 0.85; 1); 1)
     #show
 #end if
 #hide
-F_ivRd,xc = F_f_Rd*b_ef,v*n_zijdig/s_verb
+F_ivRd,ref = F_f_Rd*b_ef,v*n_zijdig/s_verb
 F_ivRd,nb = 1.2*F_f_Rd*b_ef,v*n_zijdig/s_verb
 #show
-F_ivRd = if(rekenwijze ≡ 1; F_ivRd,xc; F_ivRd,nb) to kN', (9.20)/(9.21); de verhoging 1,2 langs de plaatranden (9.2.4.2(5)) alleen volgens de norm'
+F_ivRd = if(rekenwijze ≡ 1; F_ivRd,ref; F_ivRd,nb) to kN', (9.20)/(9.21); de verhoging 1,2 langs de plaatranden (9.2.4.2(5)) alleen volgens de norm'
 #if F_ivRd > 0 kN
     #if F_ivEd ≤ F_ivRd
         UC_sterkte = F_ivEd/F_ivRd', voldoet'
@@ -252,11 +252,11 @@ F_tot = F_itEd + max(F1; F2)', totale last op de gedrukte eindstijl: wind komt u
 
 '<h6>7.1 Druk loodrecht op de vezel — regel onder de eindstijl (§6.1.5)</h6>
 #hide
-A_c90,xc = t_stijl*min(b_stijl; b_regel)
+A_c90,ref = t_stijl*min(b_stijl; b_regel)
 A_c90,nb = (t_stijl + min(30 mm; t_stijl; (hoh - t_stijl)/2))*min(b_stijl; b_regel)
 #show
 #if detail_AC < 1.5
-    A_c90 = if(rekenwijze ≡ 1; A_c90,xc; A_c90,nb)', contactvlak van de stijl op de regel; volgens de norm +30 mm aan de binnenzijde (§6.1.5(1))'
+    A_c90 = if(rekenwijze ≡ 1; A_c90,ref; A_c90,nb)', contactvlak van de stijl op de regel; volgens de norm +30 mm aan de binnenzijde (§6.1.5(1))'
     σ_c90d = F_tot/A_c90 to N/mm^2', drukspanning ⊥'
     #if σ_c90d ≤ f_c90d
         UC_druk90 = σ_c90d/f_c90d', voldoet'
@@ -273,15 +273,15 @@ A_c90,nb = (t_stijl + min(30 mm; t_stijl; (hoh - t_stijl)/2))*min(b_stijl; b_reg
 # 8. Detaillering
 
 #hide
-UC_plooi,xc = hoh/t_bepl/100
+UC_plooi,ref = hoh/t_bepl/100
 UC_plooi,nb = (hoh - t_stijl)/t_bepl/100
-s_max,xc = 150 mm
+s_max,ref = 150 mm
 s_max,nb = if(verbindingsmiddel ≡ 1; 200 mm; 150 mm)
-UC_hoh,xc = s_verb/s_max,xc
+UC_hoh,ref = s_verb/s_max,ref
 UC_hoh,nb = s_verb/s_max,nb
 #show
-UC_plooi = if(rekenwijze ≡ 1; UC_plooi,xc; UC_plooi,nb)', plooi (9.2.4.2(11)): h.o.h.-afstand, volgens de norm de dagmaat, gedeeld door 100·t'
-UC_hoh = if(rekenwijze ≡ 1; UC_hoh,xc; UC_hoh,nb)', h.o.h. langs de plaatranden (10.8.2(1)): hoogstens 150 mm, volgens de norm 200 mm bij schroeven'
+UC_plooi = if(rekenwijze ≡ 1; UC_plooi,ref; UC_plooi,nb)', plooi (9.2.4.2(11)): h.o.h.-afstand, volgens de norm de dagmaat, gedeeld door 100·t'
+UC_hoh = if(rekenwijze ≡ 1; UC_hoh,ref; UC_hoh,nb)', h.o.h. langs de plaatranden (10.8.2(1)): hoogstens 150 mm, volgens de norm 200 mm bij schroeven'
 #hide
 'Gipskarton type A en F alleen in klimaatklasse 1, type H en FH en gipsvezelplaat in 1 en 2 (NB bij 3.8(1) en (2)).
 ok_klimaat = if(plaat ≡ 2; bool(klimaatklasse ≡ 1); if(plaat ≥ 3; bool(klimaatklasse ≤ 2); 1))

@@ -135,9 +135,9 @@ for (const ref of [...REFERENTIES, ...NEGATIEF]) {
 // τ_d en UC_6.13 zijn gelijk.
 for (const ref of [...REFERENTIES, ...NEGATIEF]) {
   const invoer = { ...BASIS, ...ref.invoer };
-  const xc = reken(tpl, invoer, PROJECT);
+  const refStand = reken(tpl, invoer, PROJECT);
   const nb = reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 });
-  fouten += toetsNormStand(ref.blad, xc, nb, {
+  fouten += toetsNormStand(ref.blad, refStand, nb, {
     l_ef: "gelijk", "σ_mcrit": "gelijk", k_crit: "gelijk", k_cy: "gelijk", k_cz: "gelijk",
     "τ_d": "gelijk", UC_613: "gelijk",
   });

@@ -169,10 +169,10 @@ console.log("\n3. Afschuiving — onderslag 71×221, L 1,50 m, belaste breedte 7
   gelijk("norm: UC_afsch = 0,7821", nb.alle.UC_afsch, 0.7821);
   // Referentiestand: g = 7,0 + 0,0863 = 7,0863; V = (8,5036 + 18,375)·0,75 =
   // 20,159 kN; τ_d = 1,5·20 159/(71·221) = 1,927 N/mm² (volle breedte); UC 0,783.
-  const xc = reken(invoer, 1);
-  gelijk("referentie: τ_d = V·S/(b·I) = 1,927", xc.alle["τ_d"], 1.927);
-  gelijk("referentie: UC_afsch = 0,783", xc.alle.UC_afsch, 0.783, { rel: 3e-3 });
-  for (const [stand, r] of [["norm", nb], ["referentie", xc]]) {
+  const refStand = reken(invoer, 1);
+  gelijk("referentie: τ_d = V·S/(b·I) = 1,927", refStand.alle["τ_d"], 1.927);
+  gelijk("referentie: UC_afsch = 0,783", refStand.alle.UC_afsch, 0.783, { rel: 3e-3 });
+  for (const [stand, r] of [["norm", nb], ["referentie", refStand]]) {
     waar(`${stand}: het blad noemt k_cr = 1,0 (NB art. 6.1.7(2))`, /k cr = 1,0 \(NB art\. 6\.1\.7\(2\)\)/.test(r.tekst));
     waar(`${stand}: geen melding "zonder k_cr" meer`, !/zonder k cr/.test(r.tekst));
   }

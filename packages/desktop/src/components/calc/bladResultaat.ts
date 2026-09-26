@@ -97,6 +97,34 @@ export function leesGetallen(nodes: EvaluatedNode[]): Record<string, number> {
   return uit;
 }
 
+/**
+ * Een schakelaar tussen de twee lezingen: `X = if(rekenwijze ≡ 1; X_ref; X_nb)`.
+ * Groep 2 is het achtervoegsel van de referentietak, zonder scheidingsteken.
+ */
+const SCHAKELAAR = /^[ \t]*([^\s=]+)[ \t]*=[ \t]*if\(rekenwijze ≡ 1;[ \t]*\1[,_]([^\s;,_]+)[ \t]*;/gmu;
+
+/**
+ * Zet de referentietakken van een blad onder hun huidige naam, `X_ref`.
+ *
+ * Een blad draagt zijn eigen rekentekst mee, dus een blad dat vóór die
+ * naamgeving is opgeslagen, noemt zijn referentietakken nog anders. Welk
+ * achtervoegsel het blad gebruikt, staat in zijn eigen schakelaars; dat lezen
+ * we daar af. Zo hoeft een beeld alleen de huidige naam te kennen en leest het
+ * een ouder blad toch goed. Bij een blad dat al `_ref` schrijft, verandert er
+ * niets.
+ */
+export function metRefNamen(getallen: Record<string, number>, bron: string): Record<string, number> {
+  const ander = new Set<string>();
+  for (const m of bron.matchAll(SCHAKELAAR)) if (m[2] !== "ref") ander.add(m[2]);
+  if (ander.size === 0) return getallen;
+  const uit: Record<string, number> = {};
+  for (const [naam, w] of Object.entries(getallen)) {
+    const i = naam.lastIndexOf("_");
+    uit[i > 0 && ander.has(naam.slice(i + 1)) ? `${naam.slice(0, i)}_ref` : naam] = w;
+  }
+  return uit;
+}
+
 /** Wat een beeld van zijn blad laat zien: het oordeel en de getallen van de uitwerking. */
 export interface BladUitkomst {
   resultaat: Resultaat;
@@ -123,7 +151,11 @@ export function rekenBladDoor(
   try {
     const ast = typeof blad === "string" ? leesBlad(blad) : blad;
     const nodes = evaluate(ast, waarden, scope);
-    return { resultaat: leesResultaat(nodes, naam), getallen: leesGetallen(nodes) };
+    const getallen = leesGetallen(nodes);
+    return {
+      resultaat: leesResultaat(nodes, naam),
+      getallen: typeof blad === "string" ? metRefNamen(getallen, blad) : getallen,
+    };
   } catch {
     return null;
   }

@@ -130,9 +130,9 @@ for (const ref of REFERENTIES) {
 // 6.1.7(2)), zoals de referentie-uitwerking.
 for (const ref of REFERENTIES) {
   const invoer = { ...BASIS, ...ref.invoer };
-  const xc = reken(tpl, invoer, PROJECT);
+  const refStand = reken(tpl, invoer, PROJECT);
   const nb = reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 });
-  fouten += toetsNormStand(ref.blad, xc, nb, {
+  fouten += toetsNormStand(ref.blad, refStand, nb, {
     // EN 338 geeft voor elke sterkteklasse in dit blad een ρ_mean onder de 550,
     // en 9,81 < 10 — het eigen gewicht is dus altijd lager, en daarmee ook de
     // doorbuiging. u_var kan alleen gelijk blijven of dalen, nooit stijgen.

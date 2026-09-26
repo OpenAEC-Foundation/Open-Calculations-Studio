@@ -102,8 +102,8 @@ fcm_ = f_cm/(1 N/mm^2)
 t_0,cor = max(0.5; t_0*(9/(2 + t_0^1.2) + 1)^α_cem)
 β_t0,nb = 1/(0.1 + t_0,cor^0.20)
 'De referentie-uitwerking vult in (B.5) de onbewerkte t_0 in, ook al is (B.9) uitgerekend.
-β_t0,XC = 1/(0.1 + t_0^0.20)
-β_t0 = if(rekenwijze ≡ 1; β_t0,XC; β_t0,nb)
+β_t0,ref = 1/(0.1 + t_0^0.20)
+β_t0 = if(rekenwijze ≡ 1; β_t0,ref; β_t0,nb)
 #show
 #if rekenwijze ≡ 1
     β_t0', (B<span>.</span>5) met de onbewerkte t_0, zoals de referentie-uitwerking'
@@ -122,8 +122,8 @@ t_0,cor = max(0.5; t_0*(9/(2 + t_0^1.2) + 1)^α_cem)
 α_H = if(fcm_ ≤ 35; 1; α_3)', α_3 telt alleen mee boven f_cm = 35'
 β_H,nb = min(1.5*(1 + (0.012*RH)^18)*h0_ + 250*α_H; 1500*α_H)
 'Bij de referentie-uitwerking draagt de term (0,012·RH)^18 in β_H nooit bij.
-β_H,XC = min(1.5*h0_ + 250*α_H; 1500*α_H)
-β_H = if(rekenwijze ≡ 1; β_H,XC; β_H,nb)
+β_H,ref = min(1.5*h0_ + 250*α_H; 1500*α_H)
+β_H = if(rekenwijze ≡ 1; β_H,ref; β_H,nb)
 #show
 #if rekenwijze ≡ 1
     β_H', (B<span>.</span>8a/b) zonder de term (0,012·RH)^18, zoals de referentie-uitwerking'

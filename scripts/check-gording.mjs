@@ -206,9 +206,9 @@ for (const [basis, sets] of [[BASIS, REFERENTIES], [WIND_BASIS, WIND]]) {
   for (const ref of sets) {
     const invoer = { ...basis, ...ref.invoer };
     const project = { ...PROJECT, ...(ref.project ?? {}) };
-    const xc = reken(tpl, invoer, project);
+    const refStand = reken(tpl, invoer, project);
     const nb = reken(tpl, invoer, { ...project, rekenwijze: 0 });
-    fouten += toetsNormStand(ref.blad, xc, nb, {
+    fouten += toetsNormStand(ref.blad, refStand, nb, {
       g_eig: "lager", u_gy: "lager",
       hoh: "gelijk", "μ_1": "gelijk", k_r: "gelijk", P_w: "gelijk",
     });

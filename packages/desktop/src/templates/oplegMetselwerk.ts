@@ -95,9 +95,9 @@ K = if(morteltype ≡ 2; K_lijm; K_metsel)*if(langsvoeg ≡ 2; 0.8; 1)
 'grens past het referentieprogramma niet toe (referentie 2: fb 5 met M15 geeft
 'daar f_k = 3,36 in plaats van 3,04) — register punt 14.
 f_b_eff = min(f_b; if(morteltype ≡ 1; 75; 50))
-f_m_eff_XC = min(f_m; 20)
+f_m_eff_ref = min(f_m; 20)
 f_m_eff_nb = min(f_m; 20; if(morteltype ≡ 1; 2*f_b_eff; 20))
-f_m_eff = if(rekenwijze ≡ 1; f_m_eff_XC; f_m_eff_nb)
+f_m_eff = if(rekenwijze ≡ 1; f_m_eff_ref; f_m_eff_nb)
 #show
 
 #if langsvoeg ≡ 2
@@ -108,9 +108,9 @@ f_m_eff = if(rekenwijze ≡ 1; f_m_eff_XC; f_m_eff_nb)
     #end if
 #end if
 f_k = K*f_b_eff^α*f_m_eff^β_exp', karakteristieke druksterkte metselwerk (form. 3.2) [N/mm²]'
-#if rekenwijze ≡ 1 and f_m_eff_XC > f_m_eff_nb
+#if rekenwijze ≡ 1 and f_m_eff_ref > f_m_eff_nb
     '<span style="color: red"><b>Let op:</b> f<sub>m</sub> is groter dan 2·f<sub>b</sub>. Met de rekenwijze "de
-    'referentie-uitwerking volgen" rekent het blad met f<sub>m</sub> = 'f_m_eff_XC' N/mm², volgens de NB bij 3.6.1.2
+    'referentie-uitwerking volgen" rekent het blad met f<sub>m</sub> = 'f_m_eff_ref' N/mm², volgens de NB bij 3.6.1.2
     'met 2·f<sub>b</sub> = 'f_m_eff_nb' N/mm²: f<sub>k</sub> is te hoog en de uitkomst te gunstig.</span>
 #end if
 f_d = f_k/γ_M', rekenwaarde druksterkte (3.1) [N/mm²]'
@@ -150,9 +150,9 @@ l_efm = a_L + links + rechts', effectieve lengte (= b_opl + l_efm;1 + l_efm;2)'
 
 #if abs(exc) + a_t/2 > t/2
     a_t_ef = max(0; min(t/2; exc + a_t/2) - max(-t/2; exc - a_t/2))', deel van de plaat dat op de wand ligt [mm]'
-    A_b_XC = a_L*a_t', hele plaat [mm²]'
+    A_b_ref = a_L*a_t', hele plaat [mm²]'
     A_b_nb = a_L*a_t_ef', alleen het deel op de wand, §6.1.3(2) [mm²]'
-    A_b = if(rekenwijze ≡ 1; A_b_XC; A_b_nb)', belast vlak [mm²]'
+    A_b = if(rekenwijze ≡ 1; A_b_ref; A_b_nb)', belast vlak [mm²]'
     #if rekenwijze ≡ 1
         '<span style="color: red"><b>Let op:</b> de oplegplaat steekt buiten de wand. Met de rekenwijze "de
         'referentie-uitwerking volgen" telt de hele plaat mee, volgens §6.1.3(2) alleen het deel op de wand

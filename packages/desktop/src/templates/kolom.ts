@@ -228,9 +228,9 @@ UC_624 = σ_c0d/(k_cz*f_c0d) + k_m*σ_myd/f_myd
 
 '<i>Kiplengte volgens tabel 6.1: 0,9·L + 2h (last aan de drukzijde), begrensd op de lengte zelf.</i>
 #hide
-L_kip_xc = L
+L_kip_ref = L
 L_kip_nb = max(L; Lcr)
-L_kip = if(rekenwijze ≡ 1; L_kip_xc; L_kip_nb)
+L_kip = if(rekenwijze ≡ 1; L_kip_ref; L_kip_nb)
 #show
 #if rekenwijze ≡ 1
     L_kip', de kolomlengte L'

@@ -133,8 +133,9 @@ export default function BoutDesigner() {
 
   // ── weerstanden en oordeel: uit het doorgerekende blad ─────────────────────
   const w = (naam: string, dec: number) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));
-  // k₁,XC staat alleen in het blad als de rekenwijze de stuikweerstand verandert.
-  const k1 = g.k_1_XC !== undefined ? "k_1_XC" : "k_1";
+  // k₁,ref staat alleen in het blad als de rekenwijze de stuikweerstand verandert.
+  // Ook een ouder blad levert hem onder deze naam (bladResultaat.metRefNamen).
+  const k1 = g.k_1_ref !== undefined ? "k_1_ref" : "k_1";
   // §3.6.1(10) is maatgevend als de gehanteerde F_b,Rd op de grens ligt.
   const capBijt = overlap === 2 && g.F_b_Rd !== undefined && g.F_b_Rd_cap !== undefined
     && Math.abs(g.F_b_Rd - g.F_b_Rd_cap) < 0.01;

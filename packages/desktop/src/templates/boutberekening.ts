@@ -201,10 +201,10 @@ F_b,Rd,tab = k_1*α_b*f_u*d*t_plaat/γ_M2 to kN
 F_b,Rd,cap = 1.5*f_u*d*t_plaat/γ_M2 to kN
 F_b,Rd,nb = if(overlaptype ≡ 2; min(F_b,Rd,tab; F_b,Rd,cap); F_b,Rd,tab)
 'Referentie-uitwerking (register punt 7): k_1 altijd als kleinste van beide takken.
-k_1,XC = min(min(2.8*e_2/d_0 - 1.7; if(enkel ≡ 1; 2.5; 1.4*p_2/d_0 - 1.7)); 2.5)
-F_b,Rd,tab,XC = k_1,XC*α_b*f_u*d*t_plaat/γ_M2 to kN
-F_b,Rd,XC = if(overlaptype ≡ 2; min(F_b,Rd,tab,XC; F_b,Rd,cap); F_b,Rd,tab,XC)
-F_b,Rd = if(rekenwijze ≡ 1; F_b,Rd,XC; F_b,Rd,nb)
+k_1,ref = min(min(2.8*e_2/d_0 - 1.7; if(enkel ≡ 1; 2.5; 1.4*p_2/d_0 - 1.7)); 2.5)
+F_b,Rd,tab,ref = k_1,ref*α_b*f_u*d*t_plaat/γ_M2 to kN
+F_b,Rd,ref = if(overlaptype ≡ 2; min(F_b,Rd,tab,ref; F_b,Rd,cap); F_b,Rd,tab,ref)
+F_b,Rd = if(rekenwijze ≡ 1; F_b,Rd,ref; F_b,Rd,nb)
 'Eenheidloos, voor de #if: verschilt de gehanteerde waarde van de norm-tak?
 ΔF_b = abs(F_b,Rd - F_b,Rd,nb)/(1*kN)
 #show
@@ -212,7 +212,7 @@ F_b,Rd = if(rekenwijze ≡ 1; F_b,Rd,XC; F_b,Rd,nb)
     F_b,Rd,cap', 1,5·f_u·d·t/γ_M2 — §3.6.1(10), enkele overlap met één boutrij; sluitringen onder kop en moer vereist'
 #end if
 #if ΔF_b > 0.05
-    k_1,XC', rekenwijze referentie-uitwerking: kleinste van de e_2- en de p_2-tak, ook bij een binnenste bout loodrecht op de kracht'
+    k_1,ref', rekenwijze referentie-uitwerking: kleinste van de e_2- en de p_2-tak, ook bij een binnenste bout loodrecht op de kracht'
 #end if
 F_b,Rd', gehanteerde stuikweerstand'
 
@@ -223,13 +223,13 @@ t_p = t_plaat
 d_m = (sw_ + ew_)/2*mm
 B_p,Rd,nb = 0.6*pi*d_m*t_p*f_u/γ_M2 to kN
 'Referentie-uitwerking (register punt 6): d_m is de sleutelwijdte.
-d_m,XC = sw_*mm
-B_p,Rd,XC = 0.6*pi*d_m,XC*t_p*f_u/γ_M2 to kN
-B_p,Rd = if(rekenwijze ≡ 1; B_p,Rd,XC; B_p,Rd,nb)
+d_m,ref = sw_*mm
+B_p,Rd,ref = 0.6*pi*d_m,ref*t_p*f_u/γ_M2 to kN
+B_p,Rd = if(rekenwijze ≡ 1; B_p,Rd,ref; B_p,Rd,nb)
 #show
 'B<sub>p,Rd</sub> = 0,6·π·d<sub>m</sub>·t<sub>p</sub>·f<sub>u</sub>/γ<sub>M2</sub>, met t<sub>p</sub> = t en d<sub>m</sub> = 'd_m' mm (gemiddelde van sleutelwijdte en maat over de hoeken).
 #if rekenwijze ≡ 1
-    'Rekenwijze referentie-uitwerking: d<sub>m</sub> = sleutelwijdte = 'd_m,XC' mm. Dat geeft 'B_p,Rd' kN in plaats van 'B_p,Rd,nb' kN.
+    'Rekenwijze referentie-uitwerking: d<sub>m</sub> = sleutelwijdte = 'd_m,ref' mm. Dat geeft 'B_p,Rd' kN in plaats van 'B_p,Rd,nb' kN.
 #end if
 B_p,Rd', doorponsen van de plaat onder kop of moer'
 
