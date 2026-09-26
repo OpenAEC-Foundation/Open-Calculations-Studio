@@ -101,7 +101,7 @@ export const moduleCatalogus: TreeNode[] = [
       { kind: "item", id: "sheet-schoorverbinding", label: "Schoorverbinding", templateId: "schoorverbinding", status: "controleren" },
       { kind: "item", id: "sheet-boutberekening", label: "Boutberekening", templateId: "boutberekening", status: "gereed" },
       { kind: "item", id: "sheet-lasberekening", label: "Lasberekening", templateId: "lasberekening", status: "controleren" },
-      { kind: "item", id: "sheet-brandwerendheid", label: "Brandwerendheid", templateId: "brandwerendheid", status: "controleren" },
+      { kind: "item", id: "sheet-brandwerendheid", label: "Brandwerendheid (staal, hout of beton)", templateId: "brandwerendheid", status: "controleren" },
     ],
   },
   {
