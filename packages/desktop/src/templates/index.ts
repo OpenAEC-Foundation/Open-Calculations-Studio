@@ -13,6 +13,7 @@ import { paaldraagvermogen } from "./paaldraagvermogen";
 import { gording } from "./gording";
 import { kolom } from "./kolom";
 import { metselwerkwand } from "./metselwerkwand";
+import { metselwerkLoodrecht } from "./metselwerkLoodrecht";
 import { spuwer } from "./spuwer";
 import { kruipfactor } from "./kruipfactor";
 import { boutberekening } from "./boutberekening";
@@ -30,6 +31,7 @@ import { betonkolom } from "./betonkolom";
 import { ponsberekening } from "./ponsberekening";
 import { tweepaalsPoer } from "./tweepaalsPoer";
 import { verankeringslengte } from "./verankeringslengte";
+import { opdrijven } from "./opdrijven";
 import {
   ec5Buiging, ec5Afschuiving, ec5Druk, ec5DrukLoodrecht,
   ec5Knik, ec5Doorbuiging, ec5HoutenBalk,
@@ -72,6 +74,7 @@ export const templates: Record<string, string> = {
   "gording": gording,
   "kolom": kolom,
   "metselwerkwand": metselwerkwand,
+  "metselwerk-loodrecht": metselwerkLoodrecht,
   "spuwer": spuwer,
   "kruipfactor": kruipfactor,
   "boutberekening": boutberekening,
@@ -87,6 +90,7 @@ export const templates: Record<string, string> = {
   "ponsberekening": ponsberekening,
   "tweepaals-poer": tweepaalsPoer,
   "verankeringslengte": verankeringslengte,
+  "opdrijven": opdrijven,
   "calcpad-demo": calcpadDemo,
   ...calcpadSamples,
   "paaldraagvermogen": paaldraagvermogen,
