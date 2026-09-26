@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, GeoJSON, Marker, Popup, Polyline, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   windGebiedenGeoJSON,
-  windGebiedForLatLng,
+  windLocatie,
   GEBIED_COLORS,
-  GEBIED_I_GRENS_LAT,
+  GEBIED_NAMES,
   type WindGebied,
+  type WindLocatie,
 } from "../../templates/nl-windgebieden";
 import "./WindAreaMap.css";
+
+const ROMEINS: Record<WindGebied, string> = { 1: "I", 2: "II", 3: "III" };
+const komma = (v: number, dec: number) => v.toFixed(dec).replace(".", ",");
 
 // Leaflet default-icon images don't resolve under bundlers without a hack —
 // pin the marker icon to a public CDN-shipped PNG.
@@ -24,17 +28,19 @@ const defaultIcon = L.icon({
 });
 
 /**
- * Vaste labelpunten met de gebied-nummers, getekend óp de kaart. Gebied II
- * ligt geografisch gesplitst (west + noordoost) en krijgt twee labels.
+ * Vaste labelpunten met de gebied-nummers, getekend óp de kaart. Gebied I
+ * ligt op het land (Noord-Holland-noord) en op het water; gebied II loopt van
+ * Zeeland tot Noord-Holland en van Flevoland tot Groningen.
  */
 const GEBIED_LABELS: Array<{ pos: [number, number]; tekst: string }> = [
-  { pos: [53.05, 5.1], tekst: "I" },
-  // Zuid-Holland boven 52°N hoort óók bij gebied I; zonder eigen label
-  // lijkt die strook een tekenfout.
-  { pos: [52.16, 4.47], tekst: "I" },
-  { pos: [51.88, 4.5], tekst: "II" },
-  { pos: [52.85, 6.5], tekst: "II" },
-  { pos: [51.95, 5.95], tekst: "III" },
+  { pos: [52.7, 4.85], tekst: "I" },
+  { pos: [52.9, 5.3], tekst: "I" },
+  { pos: [51.95, 4.45], tekst: "II" },
+  { pos: [52.45, 5.6], tekst: "II" },
+  { pos: [53.05, 5.75], tekst: "II" },
+  { pos: [53.3, 6.7], tekst: "II" },
+  { pos: [52.1, 5.9], tekst: "III" },
+  { pos: [52.85, 6.6], tekst: "III" },
 ];
 
 function gebiedLabelIcon(tekst: string): L.DivIcon {
@@ -72,6 +78,12 @@ function MapRecenter({ position }: { position: [number, number] | null }) {
   return null;
 }
 
+/** Een klik op de kaart kiest die plek als locatie. */
+function KlikOpKaart({ onKlik }: { onKlik: (lat: number, lng: number) => void }) {
+  useMapEvents({ click: (e) => onKlik(e.latlng.lat, e.latlng.lng) });
+  return null;
+}
+
 export interface WindAreaMapProps {
   /** Initial address — comes from project metadata. Empty means user enters fresh. */
   initialAddress?: string;
@@ -82,7 +94,9 @@ export interface WindAreaMapProps {
 export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }: WindAreaMapProps) {
   const [address, setAddress] = useState(initialAddress);
   const [location, setLocation] = useState<GeocodeResult | null>(null);
-  const [gebied, setGebied] = useState<WindGebied | null>(null);
+  const [loc, setLoc] = useState<WindLocatie | null>(null);
+  // Alleen na zoeken vliegt de kaart naar de plek; bij een klik blijft hij staan.
+  const [vliegNaar, setVliegNaar] = useState<[number, number] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,20 +110,37 @@ export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }:
       if (!result) {
         setError("Adres niet gevonden in Nederland.");
         setLocation(null);
-        setGebied(null);
+        setLoc(null);
         onWindGebiedChange?.(null, null);
         return;
       }
-      const g = windGebiedForLatLng(result.lat, result.lng);
+      const l = windLocatie(result.lat, result.lng);
       setLocation(result);
-      setGebied(g);
-      onWindGebiedChange?.(g, result);
+      setLoc(l);
+      setVliegNaar([result.lat, result.lng]);
+      onWindGebiedChange?.(l?.gebied ?? null, result);
     } catch (err) {
       setError(`Geocoding fout: ${(err as Error).message}`);
     } finally {
       setLoading(false);
     }
   }, [address, onWindGebiedChange]);
+
+  const kiesPunt = useCallback(
+    (lat: number, lng: number) => {
+      const plek: GeocodeResult = {
+        lat,
+        lng,
+        displayName: `punt op de kaart, ${komma(lat, 4)}° NB ${komma(lng, 4)}° OL`,
+      };
+      const l = windLocatie(lat, lng);
+      setError(null);
+      setLocation(plek);
+      setLoc(l);
+      onWindGebiedChange?.(l?.gebied ?? null, plek);
+    },
+    [onWindGebiedChange],
+  );
 
   const geoJsonStyle = useCallback(
     (feature?: { properties?: { gebied?: WindGebied } }) => {
@@ -119,7 +150,7 @@ export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }:
         color,
         weight: 1,
         fillColor: color,
-        fillOpacity: 0.16,
+        fillOpacity: 0.26,
       };
     },
     [],
@@ -127,14 +158,6 @@ export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }:
 
   const center: [number, number] = useMemo(() => [52.2, 5.5], []); // mid NL
   const markerPos: [number, number] | null = location ? [location.lat, location.lng] : null;
-
-  const onFeatureClick = useCallback(
-    (e: { propagatedFrom?: { feature?: { properties?: { naam?: string } } } }) => {
-      const naam = e.propagatedFrom?.feature?.properties?.naam;
-      if (naam) console.debug("Klikten op:", naam);
-    },
-    [],
-  );
 
   return (
     <div className="wind-area-map">
@@ -155,16 +178,26 @@ export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }:
         </button>
       </form>
       {error && <div className="wind-area-error">{error}</div>}
-      {gebied !== null && location && (
+      {loc && location && (
         <div
           className="wind-area-result"
-          style={{ borderLeftColor: GEBIED_COLORS[gebied] }}
+          style={{ borderLeftColor: GEBIED_COLORS[loc.gebied] }}
         >
-          <strong>Windgebied {gebied === 1 ? "I" : gebied === 2 ? "II" : "III"}</strong>
+          <strong>
+            Windgebied {ROMEINS[loc.gebied]} · v<sub>b,0</sub> = {komma(loc.vb0Gebied, 1)} m/s
+          </strong>
           <span> · {location.displayName}</span>
+          {loc.overgang && (
+            <div className="wind-area-overgang">
+              {komma(loc.overgang.afstandKm, 1)} km van de grens met gebied{" "}
+              {ROMEINS[loc.overgang.naarGebied]}: in de overgangszone van figuur NB.2 mag
+              v<sub>b,0</sub> = {komma(loc.overgang.vb0, 1)} m/s. De bladen rekenen met de
+              gebiedswaarde, aan de veilige kant.
+            </div>
+          )}
         </div>
       )}
-      {gebied === null && location && (
+      {!loc && location && (
         <div className="wind-area-result wind-area-result-warn">
           Locatie gevonden maar valt buiten de gedefinieerde polygons — kies handmatig in de Projectgegevens.
         </div>
@@ -179,34 +212,9 @@ export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }:
             data={windGebiedenGeoJSON}
             style={geoJsonStyle as never}
             onEachFeature={(feature, layer) => {
-              layer.bindTooltip(feature.properties.naam, { sticky: true });
-              layer.on({ click: onFeatureClick });
+              const { naam, gebied } = feature.properties as { naam: string; gebied: WindGebied };
+              layer.bindTooltip(`${naam} — gebied ${ROMEINS[gebied]}`, { sticky: true });
             }}
-          />
-          {/* De 52°-lijn zichtbaar maken: zonder die lijn lijkt de knip
-              dwars door Zuid-Holland een fout in de kaart. */}
-          <Polyline
-            positions={[
-              [GEBIED_I_GRENS_LAT, 3.0],
-              [GEBIED_I_GRENS_LAT, 7.6],
-            ]}
-            pathOptions={{
-              color: "#4b5563",
-              weight: 1,
-              opacity: 0.55,
-              dashArray: "5 5",
-            }}
-            interactive={false}
-          />
-          <Marker
-            position={[GEBIED_I_GRENS_LAT, 3.35]}
-            icon={L.divIcon({
-              className: "wind-area-graadlabel",
-              html: "52° NB",
-              iconSize: [46, 16],
-              iconAnchor: [23, 16],
-            })}
-            interactive={false}
           />
           {GEBIED_LABELS.map((l, i) => (
             <Marker
@@ -221,23 +229,22 @@ export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }:
               <Popup>
                 <strong>{location?.displayName}</strong>
                 <br />
-                {gebied !== null
-                  ? `Windgebied ${gebied === 1 ? "I (kust)" : gebied === 2 ? "II (overgang)" : "III (binnenland)"}`
-                  : "Geen gebied bepaald"}
+                {loc ? GEBIED_NAMES[loc.gebied] : "Geen gebied bepaald"}
               </Popup>
             </Marker>
           )}
-          <MapRecenter position={markerPos} />
+          <MapRecenter position={vliegNaar} />
+          <KlikOpKaart onKlik={kiesPunt} />
         </MapContainer>
       </div>
       <div className="wind-area-legend">
         <span className="wind-area-legend-item">
           <i className="wind-area-legend-dot" style={{ background: GEBIED_COLORS[1] }} />
-          I — kust
+          I — noordkust en meren
         </span>
         <span className="wind-area-legend-item">
           <i className="wind-area-legend-dot" style={{ background: GEBIED_COLORS[2] }} />
-          II — overgang
+          II — overige kust
         </span>
         <span className="wind-area-legend-item">
           <i className="wind-area-legend-dot" style={{ background: GEBIED_COLORS[3] }} />
@@ -245,8 +252,9 @@ export default function WindAreaMap({ initialAddress = "", onWindGebiedChange }:
         </span>
       </div>
       <p className="wind-area-note">
-        Polygonen zijn een vereenvoudigde weergave van NEN-EN 1991-1-4 NB Figuur A.1. Voor de exacte
-        gebiedstoewijzing per gemeente: raadpleeg NB-tabel A.1.
+        Indeling volgens NEN-EN 1991-1-4, nationale bijlage, figuur NB.1: provinciegrenzen, en in
+        Noord-Holland de noordgrens van Heemskerk, Uitgeest, Wormerland, Purmerend en
+        Edam-Volendam (gemeentegrenzen van 2015). Klik op de kaart om een plek te kiezen.
       </p>
     </div>
   );
