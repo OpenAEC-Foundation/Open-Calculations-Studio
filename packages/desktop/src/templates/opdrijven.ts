@@ -6,7 +6,7 @@
  *      V_dst;d ≤ G_stb;d + R_d                                      (2.8)
  *    • V_dst;d: de opwaartse waterdruk op de onderkant bij de rekenwaarde van
  *      de waterstand h_d (NB bij NEN-EN 1990 A1.3.1(2); rechtstreeks, of met
- *      (NB.4) h_d = h_k + k·(h_k − h_m) met k = 1), maal γ_G;dst.
+ *      (NB.4) h_d = h_k + k·(h_k − h_m) met k = 1 en h_m ≤ h_k), maal γ_G;dst.
  *    • G_stb;d: eigen gewicht van de bak plus overige blijvende belasting en
  *      ballast, maal γ_G;stb. Veranderlijke belasting telt niet mee (gunstig).
  *    • R_d: trekpalen, n·R_t;k/γ_s;t met γ_s;t = 1,40 (tabel A.16).
@@ -31,7 +31,8 @@
  *    • Scheefstand met de kleine-hoekbenadering φ = M/(Δ·GM): in rust door de
  *      excentriciteit van G, en onder een veranderlijke last met wind of met
  *      een excentrische last (personen aan één zijde). Wind en excentrische
- *      last werken aan de kant van de scheefstand in rust (veilige kant).
+ *      last werken aan de kant van de scheefstand in rust (veilige kant);
+ *      daarom tellen F_w·|a_w| en P_e·|e_P|, ook bij een negatief ingevulde arm.
  *    • Vrijboord aan de lage hoek: f = h − d − φ·b/2 − θ·l/2 ≥ f_min.
  *    Gerekend met karakteristieke waarden (γ = 1,0): scheefstand en vrijboord
  *    zijn gebruikseisen; de grenswaarden φ_max, f_min en GM_min zijn invoer.
@@ -88,12 +89,18 @@ export const opdrijven = `"Opdrijven en drijvend lichaam — NEN 9997-1 (2.8) en
       Uit de karakteristieke en de gemiddelde waterstand met (NB.4) = 2
     @end
     '<i>h<sub>d</sub>: rekenwaarde van de waterstand boven de onderkant van de vloer (NB bij NEN-EN 1990 A1.3.1(2)); bij gevolgklasse CC'CC' hoort de kans P<sub>e</sub> uit tabel NB.7.</i>
+    #hide
+    ok_hk = 1
+    #show
     #if waterstand ≡ 1
         h_d = ?*(m)'<span class="alleen-scherm">, rekenwaarde van de waterstand boven de onderkant van de vloer</span><span class="kolom-3"></span>'
     #else
         h_k = ?*(m)'<span class="alleen-scherm">, karakteristieke hoge waterstand</span><span class="kolom-4"></span>'
         h_m = ?*(m)'<span class="alleen-scherm">, gemiddelde waterstand</span><span class="kolom-4"></span>'
         h_d = h_k + (h_k - h_m)', (NB.4), k = 1<span class="kolom-2"></span>'
+        #hide
+        ok_hk = if(h_m ≤ h_k; 1; 0)
+        #show
     #end if
     G_ov = ?*(kN)', overig<span class="alleen-scherm">: afwerking, installaties, bovenbouw; in een bouwfase alleen wat dan al aanwezig is</span><span class="kolom-4"></span>'
     G_bal = ?*(kN)', ballast<span class="kolom-4"></span>'
@@ -105,10 +112,10 @@ export const opdrijven = `"Opdrijven en drijvend lichaam — NEN 9997-1 (2.8) en
     @end
 
     #hide
-    ok_inv = if(ok_geo ≡ 1 and h_d ≥ 0 m and h_d ≤ h_bak and n_tp ≥ 0 and R_t,k ≥ 0 kN and G_ov ≥ 0 kN and G_bal ≥ 0 kN; 1; 0)
+    ok_inv = if(ok_geo ≡ 1 and h_d ≥ 0 m and h_d ≤ h_bak and ok_hk ≡ 1 and n_tp ≥ 0 and R_t,k ≥ 0 kN and G_ov ≥ 0 kN and G_bal ≥ 0 kN; 1; 0)
     #show
     #if ok_inv ≡ 0
-        '<b style="color:#b91c1c">De invoer is onvolledig of past niet: lengte, breedte, vloer en beton- en watergewicht positief, de wanden passen in de bak (h > vloer + dak, b > wand 1 + wand 2, l > wand 3 + wand 4), de waterstand tussen de onderkant en de bovenkant van de bak en lasten en trekweerstand niet negatief.</b>
+        '<b style="color:#b91c1c">De invoer is onvolledig of past niet: lengte, breedte, vloer en beton- en watergewicht positief, de wanden passen in de bak (h > vloer + dak, b > wand 1 + wand 2, l > wand 3 + wand 4), de waterstand tussen de onderkant en de bovenkant van de bak, bij (NB.4) de gemiddelde waterstand niet boven de karakteristieke hoge, en lasten en trekweerstand niet negatief.</b>
         '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>het opdrijven is niet getoetst: invoer onvolledig</b></span>
     #else
         # 3. Gewicht van de bak
@@ -439,13 +446,13 @@ export const opdrijven = `"Opdrijven en drijvend lichaam — NEN 9997-1 (2.8) en
 
         # 5. Veranderlijke belasting
 
-        '<i>Dezelfde formules met de waterverplaatsing Δ en het zwaartepunt KG van de toestand. Wind: Δ = G + Q<sub>v</sub>, M = G·|y<sub>G</sub>| + F<sub>w</sub>·a<sub>w</sub>. Excentrische last: Δ = G + Q<sub>v</sub> + P<sub>e</sub>, M = G·|y<sub>G</sub>| + P<sub>e</sub>·|e<sub>P</sub>|. In rust: M = G·|y<sub>G</sub>|. Scheefstand φ = M/(Δ·GM), trim θ = G·|x<sub>G</sub>|/(Δ·GM<sub>L</sub>), vrijboord aan de lage hoek f = h − d − φ·b/2 − θ·l/2.</i>
+        '<i>Dezelfde formules met de waterverplaatsing Δ en het zwaartepunt KG van de toestand. Wind: Δ = G + Q<sub>v</sub>, M = G·|y<sub>G</sub>| + F<sub>w</sub>·|a<sub>w</sub>|. Excentrische last: Δ = G + Q<sub>v</sub> + P<sub>e</sub>, M = G·|y<sub>G</sub>| + P<sub>e</sub>·|e<sub>P</sub>|. In rust: M = G·|y<sub>G</sub>|. Scheefstand φ = M/(Δ·GM), trim θ = G·|x<sub>G</sub>|/(Δ·GM<sub>L</sub>), vrijboord aan de lage hoek f = h − d − φ·b/2 − θ·l/2.</i>
         Δ_w = G_tot + Q_v'<span class="alleen-scherm"></span>'
         KG_w = (G_tot*z_G + Q_v*z_Q)/Δ_w to m'<span class="alleen-scherm"></span>'
         d_w = Δ_w/(γ_w*A_w) to m'<span class="alleen-scherm"></span>'
         GM_w = d_w/2 + b_bak^2/(12*d_w) - KG_w to m'<span class="alleen-scherm"></span>'
         GML_w = d_w/2 + l_bak^2/(12*d_w) - KG_w to m'<span class="alleen-scherm"></span>'
-        M_w = G_tot*abs(y_G) + F_w*a_w to kN*m'<span class="alleen-scherm"></span>'
+        M_w = G_tot*abs(y_G) + F_w*abs(a_w) to kN*m'<span class="alleen-scherm"></span>'
         Δ_p = G_tot + Q_v + P_e'<span class="alleen-scherm"></span>'
         KG_p = (G_tot*z_G + Q_v*z_Q + P_e*z_P)/Δ_p to m'<span class="alleen-scherm"></span>'
         d_p = Δ_p/(γ_w*A_w) to m'<span class="alleen-scherm"></span>'
