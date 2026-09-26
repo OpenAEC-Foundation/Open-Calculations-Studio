@@ -64,5 +64,53 @@
     "erpUrl": "ERPNext URL",
     "erpSearch": "Project Zoeken",
     "erpSearchPlaceholder": "Zoek op projectnaam of nummer..."
+  },
+  "bladVersie": {
+    "rekenversie": "rekenversie",
+    "rekenversieUitleg": "Rekenversie {{versie}}: een vingerafdruk van de rekentekst van dit blad. Hij staat ook op de afdruk, zodat later na te gaan is met welke versie er gerekend is.",
+    "status": {
+      "gereed": "gecalibreerd",
+      "controleren": "nog controleren",
+      "concept": "nog uit te werken"
+    },
+    "statusUitleg": {
+      "gereed": "Module gecalibreerd — toetsing nagerekend op referentiebladen",
+      "controleren": "Module nog controleren — toetsing uitgewerkt, nog niet tegen referentiebladen gecontroleerd",
+      "concept": "Module nog uit te werken — alleen invoer en parametrisch beeld, geen toetsing"
+    },
+    "melding": "Nieuwere rekenversie beschikbaar",
+    "meldingUitleg": "dit blad rekent met rekenversie {{oud}}, de module staat inmiddels op {{nieuw}}. Het blad verandert pas als je het zelf bijwerkt.",
+    "vergelijken": "Vergelijken en bijwerken",
+    "rijVerouderd": "Nieuwere rekenversie beschikbaar ({{nieuw}})",
+    "alle": "Bladen bijwerken…",
+    "alleUitleg": "De bladen met een nieuwere rekenversie vergelijken en bijwerken",
+    "titelEen": "Vergelijken en bijwerken — {{naam}}",
+    "titelAlle": "Bladen bijwerken",
+    "introEen": "Het blad is met zijn huidige invoer doorgerekend met de oude en met de nieuwe rekenversie.",
+    "introAlle": "Elk blad is met zijn huidige invoer doorgerekend met de oude en met de nieuwe rekenversie. Vink uit wat je niet wilt bijwerken.",
+    "geenVerouderd": "Alle bladen rekenen al met de nieuwste rekenversie.",
+    "kolomBlad": "Blad",
+    "kolomVersie": "Rekenversie",
+    "kolomUc": "Maatgevende UC",
+    "kolomOordeel": "Oordeel",
+    "bezig": "doorrekenen…",
+    "mislukt": "rekent niet door",
+    "voldoet": "voldoet",
+    "voldoetNiet": "voldoet niet",
+    "details": "Details",
+    "ucKop": "UC-waarden die veranderen",
+    "ucGelijk": "Geen andere UC-waarde verandert.",
+    "veldenKop": "Invoervelden",
+    "veldenGelijk": "Dezelfde invoervelden; alle invoer blijft staan.",
+    "vervalt": "vervalt",
+    "nieuwVeld": "nieuw",
+    "beginwaarde": "beginwaarde {{waarde}}",
+    "alIngevuld": "al ingevuld: {{waarde}}",
+    "beeldVult": "Een nieuw veld zonder waarde rekent hier met zijn beginwaarde; het parametrisch beeld kan bij het openen van het blad een eigen standaardwaarde invullen.",
+    "regels": "Rekentekst: {{weg}} regels vervallen, {{bij}} regels nieuw.",
+    "letOp": "Bijwerken vervangt de rekentekst van het blad door de nieuwe versie en houdt de invoer die nog bestaat. Eigen aanpassingen in de code van het blad vervallen daarbij. Ongedaan maken (Ctrl+Z) zet alles terug.",
+    "bijwerken": "Bijwerken",
+    "bijwerkenAantal_one": "{{count}} blad bijwerken",
+    "bijwerkenAantal_other": "{{count}} bladen bijwerken"
   }
 }

@@ -1,8 +1,13 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { modulesPerTemplate } from "./projectTree";
 import { useProjectStore, PROJECT_ID, RAPPORT_ID, type Exemplaar } from "../../store/projectStore";
 import { useModuleKiezer } from "../../store/moduleKiezer";
+import { useBladBijwerken } from "../../store/bladBijwerken";
+import { templates } from "../../templates";
+import { huidigeModuletekst, isVerouderd, rekenversie } from "./bladVersie";
 import "./ProjectBrowser.css";
+import "./BladVersie.css";
 
 /** Eén rekenblad in het project, met hernoemen en de knopjes ernaast. */
 function ExemplaarRij({
@@ -17,6 +22,7 @@ function ExemplaarRij({
   metNaamInvoer: boolean;
   onNaamKlaar: () => void;
 }) {
+  const { t } = useTranslation();
   const selecteer = useProjectStore((s) => s.selecteer);
   const hernoem = useProjectStore((s) => s.hernoem);
   const dupliceer = useProjectStore((s) => s.dupliceer);
@@ -32,6 +38,14 @@ function ExemplaarRij({
   const info = modulesPerTemplate[ex.templateId];
   const status = info?.status;
   const bolletje = status === "concept" ? "○" : status ? "●" : "○";
+  // Modulestatus en rekenversie in de tooltip; een blad met een nieuwere
+  // rekenversie krijgt daarnaast een teken achter zijn naam.
+  const verouderd = isVerouderd(ex, templates);
+  const nieuweVersie = verouderd ? rekenversie(huidigeModuletekst(ex, templates) ?? "") : "";
+  const versieRegel = [
+    status ? t(`bladVersie.status.${status}`) : "",
+    `${t("bladVersie.rekenversie")} ${rekenversie(ex.source)}`,
+  ].filter(Boolean).join(" · ");
 
   if (bewerken) {
     return (
@@ -64,10 +78,15 @@ function ExemplaarRij({
         className="exemplaar-open"
         onClick={() => selecteer(ex.id)}
         onDoubleClick={() => setZelfBewerken(true)}
-        title={`${ex.naam}${info ? ` — ${info.label}` : ""}\nDubbelklik om te hernoemen`}
+        title={
+          `${ex.naam}${info ? ` — ${info.label}` : ""}\n${versieRegel}` +
+          (verouderd ? `\n${t("bladVersie.rijVerouderd", { nieuw: nieuweVersie })}` : "") +
+          "\nDubbelklik om te hernoemen"
+        }
       >
         <span className={`tree-item-icon${status ? ` tree-status-${status}` : ""}`}>{bolletje}</span>
         <span className="tree-item-label">{ex.naam}</span>
+        {verouderd && <span className="bv-rij-vlag" aria-label={t("bladVersie.melding")}>↻</span>}
       </button>
       <span className="exemplaar-acties">
         <button title="Omhoog" onClick={() => verplaats(ex.id, -1)}>↑</button>
@@ -99,6 +118,10 @@ export default function ProjectBrowser() {
   const activeId = useProjectStore((s) => s.activeId);
   const selecteer = useProjectStore((s) => s.selecteer);
   const projectNaam = useProjectStore((s) => s.projectNaam);
+  const { t } = useTranslation();
+  const openBijwerken = useBladBijwerken((s) => s.openen);
+  // De bladen waarvan de module intussen een nieuwere rekenversie heeft.
+  const verouderd = exemplaren.filter((ex) => isVerouderd(ex, templates));
 
   return (
     <aside className={`project-browser${collapsed ? " collapsed" : ""}`}>
@@ -162,6 +185,17 @@ export default function ProjectBrowser() {
             <span className="tree-item-icon">+</span>
             <span className="tree-item-label">Module toevoegen…</span>
           </button>
+
+          {/* Alleen als er iets bij te werken is; bijwerken gaat altijd via de vergelijking. */}
+          {verouderd.length > 0 && (
+            <button className="tree-item tree-item-toevoegen"
+              onClick={() => openBijwerken(verouderd.map((ex) => ex.id))}
+              title={t("bladVersie.alleUitleg")}>
+              <span className="tree-item-icon">↻</span>
+              <span className="tree-item-label">{t("bladVersie.alle")}</span>
+              <span className="tree-category-count">{verouderd.length}</span>
+            </button>
+          )}
         </div>
       )}
     </aside>

@@ -4,6 +4,7 @@ import { projectScope } from "../../store/projectGegevens";
 import { usePrintStore } from "../../store/printStore";
 import { ucTekst, type Resultaat } from "./bladResultaat";
 import { rekenBladDoor, zorgVoorKernstijlen } from "./bladDoorrekenen";
+import { rekenversie } from "./bladVersie";
 import { Oordeel, PrintBlad } from "./PrintBlad";
 import RapportAfdruk from "../rapport/afdruk/RapportAfdruk";
 import "./PrintDocument.css";
@@ -160,8 +161,11 @@ export function PrintVoorblad({ uitdraai }: { uitdraai: Uitdraai }) {
  * de bladkop. Een apart titelblok kostte zoveel hoogte dat een groot
  * parametrisch beeld niet meer op de eerste pagina paste en die pagina
  * verder leeg bleef; het project staat bovendien al in de loopkop.
+ *
+ * `rekenversie` is de vingerafdruk van de bladtekst (bladVersie.ts): zo is
+ * later na te gaan met welke versie van de rekenmodule er gerekend is.
  */
-export function PrintProjectregel({ uitdraai }: { uitdraai: Uitdraai }) {
+export function PrintProjectregel({ uitdraai, rekenversie }: { uitdraai: Uitdraai; rekenversie?: string }) {
   const { kopregels, datum } = uitdraai;
   // Naam en nummer staan al in de loopkop; hier de rest van de gegevens.
   const regels = kopregels.filter(([label]) => label !== "Projectnaam" && label !== "Projectnummer");
@@ -171,6 +175,7 @@ export function PrintProjectregel({ uitdraai }: { uitdraai: Uitdraai }) {
       {regels.map(([label, waarde]) => (
         <span key={label}><b>{label}</b> {waarde}</span>
       ))}
+      {rekenversie && <span><b>Rekenversie</b> {rekenversie}</span>}
       <span>{datum}</span>
     </p>
   );
@@ -184,7 +189,7 @@ export function UitdraaiInhoud({ uitdraai }: { uitdraai: Uitdraai }) {
       {!enkel && <PrintVoorblad uitdraai={uitdraai} />}
       {bladen.map(({ ex, html, resultaat }, i) => (
         <PrintBlad key={ex.id} ex={ex} html={html} nummer={i + 1} resultaat={resultaat}
-          projectregel={enkel ? <PrintProjectregel uitdraai={uitdraai} /> : undefined} />
+          projectregel={enkel ? <PrintProjectregel uitdraai={uitdraai} rekenversie={rekenversie(ex.source)} /> : undefined} />
       ))}
     </>
   );
