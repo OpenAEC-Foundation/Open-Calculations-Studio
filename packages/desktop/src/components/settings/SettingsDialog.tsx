@@ -4,6 +4,9 @@ import { LANGUAGES, changeLanguage } from "../../i18n/config";
 import { getSetting, setSetting } from "../../store";
 import Modal from "../Modal";
 import ThemedSelect from "../ThemedSelect";
+import BureauTab from "../rapport/BureauTab";
+import { useBureauStore } from "../../store/bureauProfiel";
+import { leegBureau, type BureauProfiel } from "../../rapport/model";
 import "../ThemedSelect.css";
 import "./SettingsDialog.css";
 
@@ -22,7 +25,7 @@ const THEME_OPTIONS = [
    Voorbeeld met domein-tab:
      const TAB_IDS = ["general", "appearance", "calculation", "about"] as const;
    ─────────────────────────────────────────────────────────── */
-const TAB_IDS = ["general", "appearance", "units", "about"] as const;
+const TAB_IDS = ["general", "appearance", "units", "bureau", "about"] as const;
 
 /** Persisted under the "units" settings key. Defaults match CalcPAD's. */
 export interface UnitsSettings {
@@ -66,12 +69,14 @@ export default function SettingsDialog({
   const [draftTheme, setDraftTheme] = useState(theme);
   const [draftLang, setDraftLang] = useState("auto");
   const [draftUnits, setDraftUnits] = useState<UnitsSettings>(UNITS_DEFAULTS);
+  const [draftBureau, setDraftBureau] = useState<BureauProfiel>(leegBureau);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
   // Snapshot of original values when dialog opens, for reverting on Cancel
   const originalTheme = useRef(theme);
   const originalLang = useRef("");
   const originalUnits = useRef<UnitsSettings>(UNITS_DEFAULTS);
+  const originalBureau = useRef<BureauProfiel>(leegBureau());
 
   // Reset draft to current values when dialog opens
   useEffect(() => {
@@ -86,6 +91,11 @@ export default function SettingsDialog({
         originalUnits.current = u;
         setDraftUnits(u);
       });
+      // Het bureauprofiel staat al in het geheugen: store/bureauProfiel.ts leest
+      // het bij het opstarten uit de instellingen. Hier dus geen getSetting.
+      const profiel = useBureauStore.getState().profiel;
+      originalBureau.current = profiel;
+      setDraftBureau(profiel);
     }
   }, [open, theme]);
 
@@ -109,6 +119,7 @@ export default function SettingsDialog({
     setDraftLang(originalLang.current);
     changeLanguage(originalLang.current);
     setDraftUnits(originalUnits.current);
+    setDraftBureau(originalBureau.current);
     onClose();
   };
 
@@ -124,6 +135,15 @@ export default function SettingsDialog({
     setSetting("units", draftUnits);
     window.dispatchEvent(new CustomEvent("units-changed", { detail: draftUnits }));
 
+    // De store bewaart het profiel zelf in de instellingen. Een constructeursregel
+    // zonder naam, telefoon en e-mail is een vergeten lege rij: die valt weg.
+    useBureauStore.getState().zetProfiel({
+      ...draftBureau,
+      constructeurs: draftBureau.constructeurs.filter(
+        (c) => c.naam.trim() !== "" || c.telefoon.trim() !== "" || c.email.trim() !== "",
+      ),
+    });
+
     onClose();
   };
 
@@ -138,6 +158,8 @@ export default function SettingsDialog({
     setDraftLang("auto");
     changeLanguage("auto");
     setDraftUnits(UNITS_DEFAULTS);
+    // Het bureauprofiel blijft staan: dat zijn bureaugegevens, geen voorkeur.
+    // Voor de huisstijl heeft de tab Bureau een eigen knop "Standaard huisstijl".
     setConfirmResetOpen(false);
   };
 
@@ -159,7 +181,7 @@ export default function SettingsDialog({
 
   return (
     <>
-    <Modal open={open} onClose={handleCancel} title={t("title")} width={560} height={500} className="settings-dialog" footer={footer}>
+    <Modal open={open} onClose={handleCancel} title={t("title")} width={680} height={560} className="settings-dialog" footer={footer}>
       <div className="settings-body">
         <div className="settings-sidebar">
           {TAB_IDS.map((id) => (
@@ -182,6 +204,9 @@ export default function SettingsDialog({
           )}
           {activeTab === "units" && (
             <UnitsTabContent units={draftUnits} onChange={setDraftUnits} />
+          )}
+          {activeTab === "bureau" && (
+            <BureauTab profiel={draftBureau} onChange={setDraftBureau} />
           )}
           {activeTab === "about" && <AboutTabContent />}
         </div>
