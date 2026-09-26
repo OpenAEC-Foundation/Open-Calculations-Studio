@@ -859,22 +859,26 @@ V_Ed,F2 = γ_G*V_g,k + γ_Q*F_Q,k*s3
 'naast het midden; daarvoor een toeslag van 4 %. Een veld dat omhoog komt telt
 'als nul.</i>
 #hide
+'Toeslag op de zakking in het midden: 1,04 bij een inklemmend eindmoment. De
+'puntlast midden in het veld van een overstek geeft geen eindmoment.
 k_u = if(s2 + s3 ≥ 1; 1.04; 1)
 k_uF = if(s3 ≡ 1; 1.04; 1)
+u_g,k = k_u*max(Um1(bw1(1); 0; mb_1); 0)*mm
+u_q,k = k_u*max(Um1(bw1(2); 0; mb_2); 0)*mm
+'Bij een overstek staat de puntlast ook op het uiteinde; de grootste telt.
+u_Q,k = max(k_uF*max(Um1(0; F_n; m_Qv); 0); Ue(0; 0; 0; F_n*s2; m_Qe))*mm
+u_g,k,2 = k_u*max(Um2(bw2(1); 0; mb_1); 0)*mm
+u_q,k,2 = k_u*max(Um2(bw2(3); 0; mb_3); 0)*mm
+u_Q,k,2 = k_uF*max(Um2(0; F_n*s3; m_Q2); 0)*mm
 #show
-u_g,k = k_u*max(Um1(bw1(1); 0; mb_1); 0)*mm', veld 1 — BG1, permanent'
-u_q,k = k_u*max(Um1(bw1(2); 0; mb_2); 0)*mm', veld 1 — BG2, veranderlijk'
-u_Q,k = max(k_uF*max(Um1(0; F_n; m_Qv); 0); Ue(0; 0; 0; F_n*s2; m_Qe))*mm', veld 1 — BG4, puntlast (bij een overstek de grootste van veld en uiteinde)'
+k_u', toeslag op de zakking in het midden van het veld'
+u_g,k', veld 1 — BG1, permanent'
+u_q,k', veld 1 — BG2, veranderlijk'
+u_Q,k', veld 1 — BG4, puntlast (bij een overstek de grootste van veld en uiteinde)'
 #if s3 ≡ 1
-    u_g,k,2 = k_u*max(Um2(bw2(1); 0; mb_1); 0)*mm', veld 2 — BG1, permanent'
-    u_q,k,2 = k_u*max(Um2(bw2(3); 0; mb_3); 0)*mm', veld 2 — BG3, veranderlijk'
-    u_Q,k,2 = k_uF*max(Um2(0; F_n*s3; m_Q2); 0)*mm', veld 2 — BG5, puntlast'
-#else
-    #hide
-    u_g,k,2 = 0 mm
-    u_q,k,2 = 0 mm
-    u_Q,k,2 = 0 mm
-    #show
+    u_g,k,2', veld 2 — BG1, permanent'
+    u_q,k,2', veld 2 — BG3, veranderlijk'
+    u_Q,k,2', veld 2 — BG5, puntlast'
 #end if
 'Splitspunt — welke veranderlijke doorbuiging meetelt (register punt 9).
 u_var_xc = u_q,k to mm', de referentie-uitwerking: alleen de gelijkmatig verdeelde variant'
