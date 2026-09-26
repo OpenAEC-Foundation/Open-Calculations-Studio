@@ -1,4 +1,16 @@
-import { useMemo } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  alsGevellaag,
+  alsLaag,
+  alsOpbouw,
+  laaggroepenVoor,
+  omschrijving,
+  opbouwenVoor,
+  somVan,
+  voegToe,
+  type Bibliotheekopbouw,
+  type Bouwdeel,
+} from "../../../rapport/gewichten";
 import type { Gevellaag, Laag, Opbouw } from "../../../rapport/model";
 import { gevelOpbouw, vlakOpbouw } from "../../../rapport/opbouw";
 import { useProjectStore } from "../../../store/projectStore";
@@ -7,6 +19,14 @@ import RijenTabel, { type Kolom } from "./RijenTabel";
 
 /** De twee groepen van 5.5. */
 export type Opbouwgroep = "vloerenDaken" | "wanden";
+
+/** Welke bouwdelen uit de bibliotheek bij een groep horen. */
+const BOUWDELEN: Record<Opbouwgroep, readonly Bouwdeel[]> = {
+  vloerenDaken: ["vloer", "dak"],
+  wanden: ["wand"],
+};
+
+const BOUWDEEL_KOP: Record<Bouwdeel, string> = { vloer: "Vloeren", dak: "Daken", wand: "Wanden" };
 
 const VLAK_KOLOMMEN: Kolom<Laag>[] = [
   { sleutel: "naam", kop: "Laag" },
@@ -33,6 +53,9 @@ function nieuweOpbouw(soort: Opbouw["soort"]): Opbouw {
  * telt per laag d × ρ op (of de ingevulde p) tot kN/m²; een gevelopbouw telt
  * p × h × vulling op tot kN/m¹. De sommen komen uit opbouw.ts, dezelfde
  * rekensom als in de afdruk.
+ *
+ * "Uit bibliotheek" voegt een complete opbouw of een losse laag uit
+ * rapport/gewichten.ts in; daarna is het gewone invoer die je kunt aanpassen.
  */
 export default function OpbouwEditor({ groep, titel }: { groep: Opbouwgroep; titel: string }) {
   const opbouwen = useProjectStore((s) => s.rapport.belastingen[groep]);
@@ -48,6 +71,16 @@ export default function OpbouwEditor({ groep, titel }: { groep: Opbouwgroep; tit
       };
     });
 
+  const bouwdelen = BOUWDELEN[groep];
+  const bibliotheek: Menugroep[] = bouwdelen.map((deel) => ({
+    naam: BOUWDEEL_KOP[deel],
+    regels: opbouwenVoor([deel]).map((o) => ({
+      label: o.naam,
+      uittreksel: opbouwTekst(o),
+      kies: () => wijzig((l) => [...l, alsOpbouw(o)]),
+    })),
+  }));
+
   return (
     <div className="rapport-opbouwgroep">
       <h5 className="rapport-subkop">{titel}</h5>
@@ -59,6 +92,7 @@ export default function OpbouwEditor({ groep, titel }: { groep: Opbouwgroep; tit
           pad={`belastingen.${groep}.${i}`}
           index={i}
           aantal={opbouwen.length}
+          bouwdelen={bouwdelen}
           wijzig={wijzig}
         />
       ))}
@@ -69,20 +103,63 @@ export default function OpbouwEditor({ groep, titel }: { groep: Opbouwgroep; tit
         <button type="button" className="rapport-knop" onClick={() => wijzig((l) => [...l, nieuweOpbouw("gevel")])}>
           + Gevelopbouw (kN/m¹)
         </button>
+        <BibliotheekMenu
+          knop="+ Opbouw uit bibliotheek"
+          titel="Een complete opbouw uit de bibliotheek toevoegen als vlakopbouw"
+          groepen={bibliotheek}
+        />
       </div>
     </div>
   );
 }
 
-function OpbouwKaart({ opbouw, pad, index, aantal, wijzig }: {
+function OpbouwKaart({ opbouw, pad, index, aantal, bouwdelen, wijzig }: {
   opbouw: Opbouw;
   pad: string;
   index: number;
   aantal: number;
+  bouwdelen: readonly Bouwdeel[];
   wijzig: (fn: (lijst: Opbouw[]) => Opbouw[]) => void;
 }) {
   const zet = useProjectStore((s) => s.zetRapportVeld);
   const vlak = opbouw.soort === "vlak";
+
+  // Een laag uit de bibliotheek achteraan in deze opbouw. De opbouw komt uit
+  // de lijst van dát moment; is hij intussen van soort veranderd, dan niets.
+  const voegLaagToe = (laag: Laag) =>
+    wijzig((l) => l.map((o, j) => (j === index && o.soort === "vlak" ? { ...o, lagen: voegToe(o.lagen, laag) } : o)));
+  const voegGevellaagToe = (laag: Gevellaag) =>
+    wijzig((l) => l.map((o, j) => (j === index && o.soort === "gevel" ? { ...o, lagen: voegToe(o.lagen, laag) } : o)));
+
+  // Vlak: de losse lagen voor de bouwdelen van deze groep. Gevel: complete
+  // wanden als één laag met hun gewicht per m²; h en vulling vul je zelf in.
+  const bibliotheek: Menugroep[] = vlak
+    ? laaggroepenVoor(bouwdelen).map((g) => ({
+        naam: g.naam,
+        regels: g.lagen.map((laag) => ({
+          label: laag.naam,
+          uittreksel: omschrijving(laag),
+          kies: () => voegLaagToe(alsLaag(laag)),
+        })),
+      }))
+    : [
+        {
+          naam: BOUWDEEL_KOP.wand,
+          regels: opbouwenVoor(["wand"]).map((o) => ({
+            label: o.naam,
+            uittreksel: opbouwTekst(o),
+            kies: () => voegGevellaagToe(alsGevellaag(o)),
+          })),
+        },
+      ];
+  const menu = (
+    <BibliotheekMenu
+      knop="+ Laag uit bibliotheek"
+      titel={vlak ? "Een laag uit de bibliotheek toevoegen" : "Een wand uit de bibliotheek toevoegen als laag"}
+      groepen={bibliotheek}
+    />
+  );
+
   return (
     <div className="rapport-kaart">
       <div className="rapport-kaart-kop">
@@ -127,15 +204,15 @@ function OpbouwKaart({ opbouw, pad, index, aantal, wijzig }: {
         </button>
       </div>
       {opbouw.soort === "vlak" ? (
-        <VlakLagen pad={`${pad}.lagen`} lagen={opbouw.lagen} />
+        <VlakLagen pad={`${pad}.lagen`} lagen={opbouw.lagen} knoppen={menu} />
       ) : (
-        <GevelLagen pad={`${pad}.lagen`} lagen={opbouw.lagen} />
+        <GevelLagen pad={`${pad}.lagen`} lagen={opbouw.lagen} knoppen={menu} />
       )}
     </div>
   );
 }
 
-function VlakLagen({ pad, lagen }: { pad: string; lagen: Laag[] }) {
+function VlakLagen({ pad, lagen, knoppen }: { pad: string; lagen: Laag[]; knoppen: ReactNode }) {
   const { regels, som } = useMemo(() => vlakOpbouw(lagen), [lagen]);
   return (
     <RijenTabel<Laag>
@@ -144,6 +221,7 @@ function VlakLagen({ pad, lagen }: { pad: string; lagen: Laag[] }) {
       kolommen={VLAK_KOLOMMEN}
       nieuweRij={() => ({ naam: "", d: "", rho: "", p: "" })}
       toevoegen="Laag toevoegen"
+      knoppen={knoppen}
       extra={[{ kop: "berekend", breedte: "6em", waarde: (_rij, i) => getalTekst(regels[i]?.p, 2) }]}
       voet={
         <p className="rapport-som">
@@ -155,7 +233,7 @@ function VlakLagen({ pad, lagen }: { pad: string; lagen: Laag[] }) {
   );
 }
 
-function GevelLagen({ pad, lagen }: { pad: string; lagen: Gevellaag[] }) {
+function GevelLagen({ pad, lagen, knoppen }: { pad: string; lagen: Gevellaag[]; knoppen: ReactNode }) {
   const { regels, som } = useMemo(() => gevelOpbouw(lagen), [lagen]);
   return (
     <RijenTabel<Gevellaag>
@@ -164,6 +242,7 @@ function GevelLagen({ pad, lagen }: { pad: string; lagen: Gevellaag[] }) {
       kolommen={GEVEL_KOLOMMEN}
       nieuweRij={() => ({ naam: "", p: "", h: "", vulling: "" })}
       toevoegen="Laag toevoegen"
+      knoppen={knoppen}
       extra={[{ kop: "q [kN/m¹]", breedte: "6em", waarde: (_rij, i) => getalTekst(regels[i]?.q, 2) }]}
       voet={
         <p className="rapport-som">
@@ -172,5 +251,92 @@ function GevelLagen({ pad, lagen }: { pad: string; lagen: Gevellaag[] }) {
         </p>
       }
     />
+  );
+}
+
+/**
+ * "6 lagen · 0,43 kN/m²" onder de naam van een opbouw in het menu; bij één
+ * laag met een toelichting komt die erachter.
+ */
+function opbouwTekst(o: Bibliotheekopbouw): string {
+  const n = o.lagen.length;
+  const toe = n === 1 && o.lagen[0].opmerking ? ` · ${o.lagen[0].opmerking}` : "";
+  return `${n} ${n === 1 ? "laag" : "lagen"} · ${getalTekst(somVan(o), 2)} kN/m²${toe}`;
+}
+
+interface Menuregel {
+  label: string;
+  uittreksel: string;
+  kies: () => void;
+}
+
+interface Menugroep {
+  naam: string;
+  regels: Menuregel[];
+}
+
+/**
+ * Knop met een keuzemenu, in de vorm van "Standaardtekst ▾" in TekstVeld. Een
+ * keuze voert de actie uit en sluit het menu; een klik ernaast of Escape
+ * sluit het ook.
+ */
+function BibliotheekMenu({ knop, titel, groepen }: { knop: string; titel: string; groepen: Menugroep[] }) {
+  const [open, setOpen] = useState(false);
+  const ankerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const klik = (e: MouseEvent) => {
+      if (!ankerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const toets = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", klik);
+    document.addEventListener("keydown", toets);
+    return () => {
+      document.removeEventListener("mousedown", klik);
+      document.removeEventListener("keydown", toets);
+    };
+  }, [open]);
+
+  return (
+    <div className="rapport-menu-anker" ref={ankerRef}>
+      <button
+        type="button"
+        className="rapport-knop"
+        title={titel}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {knop} ▾
+      </button>
+      {open && (
+        <div className="rapport-menu" role="menu">
+          {groepen.map((g) => (
+            <Fragment key={g.naam}>
+              <div className="rapport-menu-groep">{g.naam}</div>
+              {g.regels.map((r) => (
+                <button
+                  key={r.label}
+                  type="button"
+                  role="menuitem"
+                  className="rapport-menu-item"
+                  title={`${r.label}: ${r.uittreksel}`}
+                  onClick={() => {
+                    r.kies();
+                    setOpen(false);
+                  }}
+                >
+                  <span className="rapport-menu-label">{r.label}</span>
+                  <span className="rapport-menu-uittreksel">{r.uittreksel}</span>
+                </button>
+              ))}
+            </Fragment>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
