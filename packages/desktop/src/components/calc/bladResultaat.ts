@@ -145,3 +145,11 @@ export function useBladUitkomst(): BladUitkomst | null {
     [source, waarden, scope, naam],
   );
 }
+
+/** De automatische samenvatting voor hoofdstuk Berekeningen: "Houten balklaag — UC 0,82, voldoet.". */
+export function samenvatting(r: Resultaat): string {
+  const delen: string[] = [];
+  if (r.uc !== null) delen.push(`UC ${ucTekst(r.uc)}`);
+  if (r.voldoet !== null) delen.push(r.voldoet ? "voldoet" : "voldoet niet");
+  return delen.length > 0 ? `${r.titel} — ${delen.join(", ")}.` : `${r.titel}.`;
+}
