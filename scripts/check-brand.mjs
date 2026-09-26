@@ -892,6 +892,19 @@ const SETS_HOUT = [
     handwerk: { η_fi: "0.5944", N_fi_d: "118.9" },
   },
   {
+    naam: "H11 — C24 160×400 ligger, driezijdig, onbeschermd, R60, η_fi = 0,45 (NB bij §2.4.2(3))",
+    invoer: { houtsoort: 2, b_hout: 160, h_hout: 400, verhitting: 3, η_fi: 0.45, M_Ed: 40, V_Ed: 35 },
+    // Met de hand: β_n = 0,8 (gezaagd, tabel 3.1); d_char,n = 0,8·60 = 48 mm;
+    // k_0 = 1; d_ef = 48 + 7 = 55 mm → b_ef = 160 − 110 = 50 mm, h_ef = 400 − 55 =
+    // 345 mm. W_ef = 50·345²/6 = 991 875 mm³; M_fi,d = 0,45·40 = 18 kNm →
+    // σ = 18,15 N/mm²; f_m,d,fi = 1,25·24 = 30 → UC_m = 0,6049. V_fi,d = 0,45·35 =
+    // 15,75 kN → τ = 1,5·15 750/(50·345) = 1,370; f_v,d,fi = 1,25·4,0 = 5,0 →
+    // UC_v = 0,2739. Voldoet.
+    handwerk: { d_char_n: "48.0", d_ef: "55.0", b_ef: "50.0", h_ef: "345.0", M_fi_d: "18.00", σ_m_d_fi: "18.15",
+      UC_m: "0.6049", τ_d_fi: "1.370", UC_v: "0.2739" },
+    oordeel: "voldoet",
+  },
+  {
     naam: "H9 — geen afmetingen: niet te bepalen",
     invoer: { b_hout: 0 },
     onvolledig: "vul de afmetingen in",
@@ -964,6 +977,7 @@ function uitwerkingBeton(v) {
     geenA && "de afmetingen", geenT && "de tabelwaarden", geenE && "de belasting bij brand", geenR && "N Rd",
   ].filter(Boolean);
   uit.buiten = kolom && uit.μ > 0.7;
+  uit.overbelast = !kolom && uit.μ > 1;
   uit.UCb = tabel / maat;
   uit.UCa = v.a_min / uit.a;
   uit.UCmax = Math.max(uit.UCb, uit.UCa);
@@ -1020,6 +1034,17 @@ const SETS_BETON = [
     onvolledig: "vul de tabelwaarden en N Rd in",
   },
   {
+    naam: "B8 — balk 250×500 met M_fi = 200 kNm bij M_Rd = 150 kNm: μ_fi > 1",
+    invoer: { element_b: 2, b_beton: 250, h_beton: 500, c_dek: 30, d_beugel: 8, d_staaf: 20, bron_fi: 2, M_fi: 200, M_Rd: 150,
+      eis_min: 60, b_min: 200, a_min: 40 },
+    // Met de hand: a = 30 + 8 + 10 = 48 mm → UC_a = 40/48 = 0,8333, UC_b = 200/250
+    // = 0,8; de tabel zou voldoen. Maar μ_fi = 200/150 = 1,333 > 1: de belasting
+    // bij brand is groter dan de capaciteit bij normale temperatuur, dus het
+    // element voldoet niet (eerder gaf het blad hier "voldoet aan R 60").
+    handwerk: { a_hw: "48.0", μ_fi: "1.333" },
+    overbelast: true,
+  },
+  {
     naam: "B7 — kolom aan één zijde verhit, R60",
     invoer: { zijde_b: 2, b_beton: 200, h_beton: 600, b_min: 150, a_min: 25 },
     // Met de hand: a = 46 mm; b = 200 mm → UC_b = 0,75, UC_a = 25/46 = 0,5435.
@@ -1068,6 +1093,12 @@ for (const set of SETS_BETON) {
     const ok = set.buiten === true && /niet te bepalen: μ fi > 0,7 valt buiten tabel 5.2a → het element voldoet niet/.test(slot);
     if (!ok) fouten++;
     console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    μ_fi > 0,7: buiten de tabel, voldoet niet`);
+    continue;
+  }
+  if (r.overbelast) {
+    const ok = set.overbelast === true && /niet te bepalen: μ fi > 1, .* → het element voldoet niet/.test(slot) && !/voldoet aan/.test(slot);
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    balk of vloer met μ_fi > 1: voldoet niet`);
     continue;
   }
   const m = slot.match(/Maatgevende UC = ([\d.]+)/);

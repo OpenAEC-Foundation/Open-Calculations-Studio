@@ -76,13 +76,34 @@ geval("1a  staande strook op twee steunen", { ...MW, steun: "1", h_w: "2700" },
 // 1b  Idem met een verticale last N = 20 kN/m (σ = 0,20 N/mm²). Φ_m volgens
 //     bijlage G met h_ef = 2700 (ρ₂ = 1): λ = 27, e_k = 0, e_mk = max(6; 5) = 6,
 //     A₁ = 0,88, u = (27/√700 − 0,063)/(0,73 − 1,17·0,06) = 0,9575/0,6598 = 1,4512,
-//     Φ_m = 0,88·e^(−1,053) = 0,3070. Grens 0,15·0,3070·3,156 = 0,1454 < 0,20,
-//     dus σ_d = 0,1454 en f_xd1,app = 0,1176 + 0,1454 = 0,2630 (6.17).
-//     M_Rd = 0,2630·1,667·10⁶ = 0,4383 kNm → UC = 0,8201/0,4383 = 1,87.
+//     Φ_m1 = 0,88·e^(−1,053) = 0,3070. De NB bij 6.1.2.2(1)(ii) en 5.5.1.1(5)
+//     vraagt ook e_mk = max(10; 2700/300 = 9) = 10 mm: A₁ = 0,80, u = 0,9575/
+//     (0,73 − 0,117) = 1,5620, Φ_m2 = 0,80·e^(−1,2199) = 0,2362 → Φ_m = 0,2362.
+//     Grens 0,15·0,2362·3,156 = 0,1118 < 0,20, dus σ_d = 0,1118 en
+//     f_xd1,app = 0,1176 + 0,1118 = 0,2295 (6.17).
+//     M_Rd = 0,2295·1,667·10⁶ = 0,3825 kNm → UC = 0,8201/0,3825 = 2,144.
+//     (Met alleen h_ef/450 was het 0,4383 kNm en UC 1,871 geweest.)
 geval("1b  idem met gunstige verticale belasting (6.17)",
   { ...MW, steun: "1", h_w: "2700", vert: "2", N_v_Ed: "20" },
-  { "Φ_m": "0.3070", "λ": "27.0", e_mk: "6.00", "σ_d_max": "0.1454", "σ_d": "0.1454", f_xd1_app: "0.2630",
-    M_Rd: "0.4383", UC_M: "1.871" },
+  { "Φ_m": "0.2362", "λ": "27.0", e_mk: "6.00", e_mk2: "10.0",
+    "σ_d_max": "0.1118", "σ_d": "0.1118", f_xd1_app: "0.2295", M_Rd: "0.3825", UC_M: "2.144" },
+  "voldoet niet");
+
+// 1b2 Grensgeval dat zonder de NB-excentriciteit ten onrechte voldeed.
+//     Baksteen < 25 % f_b 15 met M7,5: f_k = 0,6·15^0,65·7,5^0,25 = 0,6·5,8140·
+//     1,6549 = 5,773, f_d = 3,396. f_xk1 = 0,25 → f_xd1 = 0,1471. t = 100,
+//     h = 2600, W_Ed = 0,58, N = 15 kN/m (σ = 0,15 N/mm²).
+//     λ = 26: Φ_m1 (e = 5,78 mm) = 0,3373; Φ_m2 (e = 10 mm): A₁ = 0,80,
+//     u = (26/√700 − 0,063)/0,613 = 1,5003, Φ_m2 = 0,80·e^(−1,1255) = 0,2596.
+//     Grens 0,15·0,2596·3,396 = 0,1322 < 0,15 → σ_d = 0,1322,
+//     f_xd1,app = 0,2793; M_Rd = 0,2793·1,667 = 0,4655 kNm.
+//     M_Ed = 0,58·2,6²/8 = 0,4901 kNm → UC = 1,053: voldoet niet.
+//     (Met alleen Φ_m1 gaf de grens 0,1718, σ_d = 0,15 en UC = 0,990.)
+geval("1b2 staande strook op de grens: de NB-excentriciteit beslist",
+  { ...MW, steensoort: "1", f_b: "15", f_m: "7.5", f_xk1: "0.25", f_xk2: "0.5", steun: "1", h_w: "2600",
+    W_Ed: "0.58", vert: "2", N_v_Ed: "15" },
+  { f_k: "5.773", e_mk2: "10.0", "Φ_m": "0.2596", "σ_d": "0.1322", f_xd1_app: "0.2793", M_Ed: "0.4901",
+    M_Rd: "0.4655", UC_M: "1.053" },
   "voldoet niet");
 
 // 1c  Uitkragende tuinmuur, steens baksteen < 25 % fb 20 met M5 en een
@@ -113,15 +134,17 @@ geval("1e  paneel, α₂ uit bijlage E", { ...MW, steun: "4", h_w: "2600", l_w: 
   { "μ": "0.500", "α_1": "0.0200", M_Ed1: "0.2880", M_Ed2: "0.5760", M_Rd1: "0.1961", M_Rd2: "0.3922", UC_M: "1.469" },
   "voldoet niet", ["figuren F.1 t/m F.3"]);
 
-// 1f  Idem met N = 20 kN/m: h_ef = 2600, λ = 26, Φ_m = 0,3373,
-//     σ_d = min(0,20; 0,15·0,3373·3,156 = 0,1597) = 0,1597, f_xd1,app = 0,2774,
-//     μ = 0,2774/0,2353 = 1,179 (aangepast volgens §6.3.1(4)(i)).
-//     α₂ = 0,035 (opnieuw afgelezen): α₁ = 0,04126, M_Ed1 = 0,5941, M_Ed2 = 0,504;
-//     M_Rd1 = 0,2774·1,667·10⁶ = 0,4623 → UC = max(1,285; 1,285) = 1,285.
+// 1f  Idem met N = 20 kN/m: h_ef = 2600, λ = 26, Φ_m1 = 0,3373 (e = 5,78 mm);
+//     met de NB-excentriciteit e = max(10; 8,67) = 10 mm: A₁ = 0,80,
+//     u = (26/√700 − 0,063)/0,613 = 1,5003, Φ_m2 = 0,80·e^(−1,1255) = 0,2596 → Φ_m.
+//     σ_d = min(0,20; 0,15·0,2596·3,156 = 0,1229) = 0,1229, f_xd1,app = 0,2405,
+//     μ = 0,2405/0,2353 = 1,022 (aangepast volgens §6.3.1(4)(i)).
+//     α₂ = 0,035 (opnieuw afgelezen): α₁ = 0,03578, M_Ed1 = 0,5153, M_Ed2 = 0,504;
+//     M_Rd1 = 0,2405·1,667·10⁶ = 0,4009 → UC = max(1,285; 1,285) = 1,285.
 geval("1f  paneel met verticale belasting: μ aangepast",
   { ...MW, steun: "4", h_w: "2600", l_w: "4000", vert: "2", N_v_Ed: "20", "α_2": "0.035" },
-  { "Φ_m": "0.3373", "σ_d": "0.1597", f_xd1_app: "0.2774", "μ": "1.179", M_Ed1: "0.5941", M_Ed2: "0.5040",
-    M_Rd1: "0.4623", UC_M: "1.285" },
+  { "Φ_m": "0.2596", "σ_d": "0.1229", f_xd1_app: "0.2405", "μ": "1.022", M_Ed1: "0.5153", M_Ed2: "0.5040",
+    M_Rd1: "0.4009", UC_M: "1.285" },
   "voldoet niet");
 
 // 1g  Paneel dikker dan 250 mm: bijlage E geldt niet → niet getoetst, geen UC.
@@ -154,12 +177,16 @@ geval("1j  staande strook dunner dan 100 mm",
 //     λ = 54 > 27, dus kruip telt (NB bij 6.1.2.2(2)): φ_∞ = 1,1 (kalkzandsteen,
 //     metselmortel, tabel NB-3), e_init = 12, e_k = 0,002·1,1·54·√(100·12) = 4,115,
 //     e_mk = 16,12, A₁ = 0,6777, u = (54/√700 − 0,063)/(0,73 − 1,17·0,1612) = 3,653,
-//     Φ_m = 0,6777·e^(−6,673) = 0,000857 → σ_d = 0,15·0,000857·3,156 = 0,000406:
-//     de verticale last helpt vrijwel niet. M_Ed = 0,9·2,7²/2 = 3,281 kNm,
-//     M_Rd = (0,1176 + 0,0004)·1,667·10⁶ = 0,1968 → UC = 16,7.
+//     Φ_m1 = 0,6777·e^(−6,673) = 0,000857. Met de NB-excentriciteit
+//     e = max(10; 5400/300 = 18) = 18, e_k2 = 0,002·1,1·54·√(100·18) = 5,040,
+//     e_mk2 = 23,04, A₁ = 0,5392, u = 1,9780/(0,73 − 0,2696) = 4,296,
+//     Φ_m2 = 0,5392·e^(−9,228) = 0,0000530 → Φ_m = 0,0000530,
+//     σ_d = 0,15·0,0000530·3,156 = 0,000025: de verticale last helpt niet.
+//     M_Ed = 0,9·2,7²/2 = 3,281 kNm, M_Rd = 0,1177·1,667·10⁶ = 0,1961 → UC = 16,7.
 geval("1k  slanke uitkraging: kruip en een kleine Φ_m",
   { ...MW, steun: "2", h_w: "2700", vert: "2", N_v_Ed: "20" },
-  { "λ": "54.0", e_k: "4.115", e_mk: "16.12", "Φ_m": "0.000857", M_Ed: "3.281", M_Rd: "0.1968", UC_M: "16.7" },
+  { "λ": "54.0", e_k: "4.115", e_mk: "16.12", e_mk2: "23.04", "Φ_m": "0.0000530",
+    M_Ed: "3.281", M_Rd: "0.1961", UC_M: "16.7" },
   "voldoet niet");
 
 // ═══ Geval 2 — spouwmuur belast door wind ════════════════════════════════════

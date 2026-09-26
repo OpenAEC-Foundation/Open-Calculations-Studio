@@ -70,7 +70,7 @@ function geometrie(v) {
 function deel1(v) {
   const { hw, lk, geldig } = geometrie(v);
   const h_d = v.waterstand === 2 ? v.h_k + (v.h_k - v.h_m) : v.h_d;
-  if (!geldig || h_d > v.h_bak || v.n_tp < 0 || v.R_t_k < 0 || v.G_ov < 0 || v.G_bal < 0) return { geldig: false };
+  if (!geldig || h_d > v.h_bak || (v.waterstand === 2 && v.h_m > v.h_k) || v.n_tp < 0 || v.R_t_k < 0 || v.G_ov < 0 || v.G_bal < 0) return { geldig: false };
   const V_c = v.l_bak * v.b_bak * (v.t_vl + v.t_dak) + (v.l_bak * (v.t_w1 + v.t_w2) + lk * (v.t_w3 + v.t_w4)) * hw;
   const G_bak = v.γ_c * V_c;
   const G_stb_k = G_bak + v.G_ov + v.G_bal;
@@ -139,7 +139,7 @@ function deel3(v) {
   const M0 = G * Math.abs(y_G);
   const t0 = toestand(G, z_G, M0);
   const Δw = G + v.Q_v;
-  const tw = toestand(Δw, (G * z_G + v.Q_v * v.z_Q) / Δw, M0 + v.F_w * v.a_w);
+  const tw = toestand(Δw, (G * z_G + v.Q_v * v.z_Q) / Δw, M0 + v.F_w * Math.abs(v.a_w));
   const Δp = G + v.Q_v + v.P_e;
   const tp = toestand(Δp, (G * z_G + v.Q_v * v.z_Q + v.P_e * v.z_P) / Δp, M0 + v.P_e * Math.abs(v.e_P));
   const T = [t0, tw, tp];
@@ -280,6 +280,15 @@ for (const [G_ov, voldoet] of [[449, false], [452, true]]) {
   const s = slot(got);
   meld(s && s.uc === null && !s.voldoet, "  en de slotregel geeft geen UC en geen 'voldoet'");
 }
+{
+  // (NB.4) met h_m boven h_k (verwisseld): h_d = 2·1,2 − 1,4 = 1,0 m zou lager
+  // uitkomen dan h_k en de bak ten onrechte laten voldoen. Niet getoetst.
+  const got = doorreken({ ...STANDAARD, waterstand: 2, h_k: 1.2, h_m: 1.4 });
+  meld(/gemiddelde waterstand niet boven de karakteristieke/.test(got.text) && /niet getoetst: invoer onvolledig/.test(got.text),
+    "Deel 1 — (NB.4) met h_m > h_k wordt niet getoetst");
+  const s = slot(got);
+  meld(s && s.uc === null && !s.voldoet, "  en de slotregel geeft geen UC en geen 'voldoet'");
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Deel 2 — zwaartepunt
@@ -382,6 +391,16 @@ for (const [G_ov, voldoet] of [[449, false], [452, true]]) {
   schoon("deel 3 standaard", got);
   oordeelPast("deel 3 standaard", got, true);
   meld(/\(vrijboord\)/.test(slot(got)?.zin ?? ""), "de slotregel noemt het vrijboord als maatgevend");
+}
+{
+  // Een negatief ingevulde arm van de wind mag het kenterend moment niet
+  // verkleinen: de wind werkt aan de kant van de scheefstand in rust.
+  // Met de hand, standaardinvoer met a_w = −3 m: M_w = 50 + 15·|−3| = 95 kNm,
+  // gelijk aan a_w = +3 m; φ_w = 1,240° en f_w = 0,5423 m als hierboven.
+  const v = { ...STANDAARD, deel: 3, a_w: -3 };
+  const got = doorreken(v);
+  fouten += toets("Deel 3 — negatieve arm van de wind (handberekening)", got, { M_w: "95", φ_w: "1.240", f_w: "0.5423", UC_max: "0.9172" });
+  vergelijk("Deel 3 — negatieve arm van de wind", got, { M_w: deel3(v).M_w });
 }
 for (const [f_min, voldoet] of [[0.5, true], [0.51, false]]) {
   const v = { ...STANDAARD, deel: 3, f_min };

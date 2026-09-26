@@ -87,7 +87,8 @@
  *    μ_fi = E_fi,d/R_d (kolom N_0Ed,fi/N_Rd, met de tabelkolom 0,2/0,5/0,7
  *    naar boven afgerond en μ_fi > 0,7 buiten de tabel; balk en vloer
  *    M_Ed,fi/M_Rd met σ_s,fi/f_yk ≈ μ_fi/γ_S als hulp bij §5.2) en
- *    UC = max(b_min/b; a_min/a).
+ *    UC = max(b_min/b; a_min/a). Een balk of vloer met μ_fi > 1 voldoet al bij
+ *    normale temperatuur niet en krijgt geen UC maar "voldoet niet".
  *
  * Een blad zonder belasting, lengte, afmeting of tabelwaarde krijgt geen UC
  * maar "niet te bepalen → voldoet niet": een leeg veld telt als 0, en daarmee
@@ -994,6 +995,8 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         '<b>Maatgevende UC</b><span style="color:#b91c1c"> niet te bepalen: vul 'if(geen_A ≡ 1; "de afmetingen"; "")''if(geen_A ≡ 1 and geen_T + geen_E + geen_R > 0; if(geen_T + geen_E + geen_R ≡ 1; " en "; ", "); "")''if(geen_T ≡ 1; "de tabelwaarden"; "")''if(geen_T ≡ 1 and geen_E + geen_R > 0; if(geen_E + geen_R ≡ 1; " en "; ", "); "")''if(geen_E ≡ 1; "de belasting bij brand"; "")''if(geen_E ≡ 1 and geen_R ≡ 1; " en "; "")''if(geen_R ≡ 1; "N<sub>Rd</sub>"; "")' in → <b>het element voldoet niet</b></span>
     #else if element_b ≡ 1 and μ_fi > 0.7
         '<b>Maatgevende UC</b><span style="color:#b91c1c"> niet te bepalen: μ<sub>fi</sub> > 0,7 valt buiten tabel 5.2a → <b>het element voldoet niet</b></span>
+    #else if element_b ≥ 2 and μ_fi > 1
+        '<b>Maatgevende UC</b><span style="color:#b91c1c"> niet te bepalen: μ<sub>fi</sub> > 1, de belasting bij brand is groter dan de capaciteit bij normale temperatuur; de tabellen gaan uit van een element dat volgens NEN-EN 1992-1-1 voldoet → <b>het element voldoet niet</b></span>
     #else if UC_max ≤ 1.0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>het element voldoet aan R 'eis_min'</b></span>
     #else

@@ -19,8 +19,11 @@
  *    • Gunstige verticale belasting (§6.3.1(4)(i)): f_xd1,app = f_xd1 + σ_d
  *      (6.17), σ_d ≤ 0,15·N_Rd in het midden van de wand, hier per eenheid van
  *      oppervlakte 0,15·Φ_m·f_d. Φ_m volgens bijlage G met ρ₂ = 1,00 (bij
- *      een uitkraging h_ef = 2·h), e_mk uit h_ef/450 en e_k, zonder de
- *      excentriciteit uit de zijdelingse belasting. Bij een paneel wordt μ
+ *      een uitkraging h_ef = 2·h), zonder de excentriciteit uit de zijdelingse
+ *      belasting: de kleinste van Φ_m met e_mk uit h_ef/450 en e_k, en Φ_m met
+ *      de excentriciteit van ten minste 10 mm en h_ef/300 (NB bij
+ *      6.1.2.2(1)(ii) en 5.5.1.1(5), zoals in metselwerkwand.ts, met e_k
+ *      boven λ = 27). Bij een paneel wordt μ
  *      overeenkomstig aangepast. Alleen toegestaan als bezwijken niet leidt
  *      tot onevenredig grote schade (NB bij 6.4.3); dat staat in de keuze.
  *    • Bijlage F (normatief volgens de NB): alleen F(2), h ≤ 30·t bij een wand
@@ -211,33 +214,42 @@ b_s = 1000*mm
     #end if
     #if ok_1 ≡ 1 and mv ≡ 1
         N_v,Ed = ?*(kN)', kleinste gelijktijdige verticale rekenbelasting per m wandlengte in de maatgevende doorsnede<span class="alleen-scherm">, zonder gunstige veranderlijke belasting (bijvoorbeeld 0,9·G<sub>k</sub>)</span>'
-        '<i>σ<sub>d</sub> is niet groter dan 0,15·N<sub>Rd</sub> in het midden van de wand (6.1.2.1(2)), per eenheid van oppervlakte 0,15·Φ<sub>m</sub>·f<sub>d</sub>; Φ<sub>m</sub> volgens bijlage G met ρ<sub>2</sub> = 1,00 (uitkraging: h<sub>ef</sub> = 2·h) en zonder de excentriciteit uit de zijdelingse belasting. Beschouw het tweede-orde-effect (5.4) en de invloed van de veranderlijke belasting op de normaalkracht (NB bij 6.4.3).</i><span class="alleen-scherm"></span>
+        '<i>σ<sub>d</sub> is niet groter dan 0,15·N<sub>Rd</sub> in het midden van de wand (6.1.2.1(2)), per eenheid van oppervlakte 0,15·Φ<sub>m</sub>·f<sub>d</sub>; Φ<sub>m</sub> volgens bijlage G met ρ<sub>2</sub> = 1,00 (uitkraging: h<sub>ef</sub> = 2·h) en zonder de excentriciteit uit de zijdelingse belasting, de kleinste van die met h<sub>ef</sub>/450 en die met de excentriciteit van ten minste 10 mm en h<sub>ef</sub>/300 (NB bij 6.1.2.2(1)(ii) en 5.5.1.1(5)). Beschouw het tweede-orde-effect (5.4) en de invloed van de veranderlijke belasting op de normaalkracht (NB bij 6.4.3).</i><span class="alleen-scherm"></span>
         #hide
         h_ef = if(steun ≡ 2; 2; 1)*h_w
         λ = h_ef/t_w
         e_init = h_ef/450
+        e_m2 = max(10*mm; h_ef/300)
         #show
         #if λ ≤ 27
             #hide
             e_k = 0*mm
+            e_k2 = 0*mm
             #show
         #else
             #hide
             e_k = 0.002*φ_inf*λ*sqrt(t_w*e_init)
+            e_k2 = 0.002*φ_inf*λ*sqrt(t_w*e_m2)
             #show
         #end if
         #hide
         e_mk = max(e_init + e_k; 0.05*t_w)
+        e_mk2 = max(e_m2 + e_k2; 0.05*t_w)
         A_1 = 1 - 2*e_mk/t_w
         u_m = (λ*sqrt(1/700) - 0.063)/(0.73 - 1.17*e_mk/t_w)
-        Φ_m = max(A_1*exp(-u_m^2/2); 0)
+        Φ_m1 = max(A_1*exp(-u_m^2/2); 0)
+        A_12 = 1 - 2*e_mk2/t_w
+        u_m2 = (λ*sqrt(1/700) - 0.063)/(0.73 - 1.17*e_mk2/t_w)
+        Φ_m2 = max(A_12*exp(-u_m2^2/2); 0)
+        Φ_m = min(Φ_m1; Φ_m2)
         f_d = f_k/γ_M
         #show
         h_ef', ρ<sub>2</sub> = 1<span class="kolom-3"></span>'
         λ', h<sub>ef</sub>/t<span class="kolom-3"></span>'
         e_k', (6.8), 0 bij λ ≤ 27<span class="kolom-3"></span>'
         e_mk', (6.6), met h<sub>ef</sub>/450<span class="kolom-3"></span>'
-        Φ_m', (G.1), E = 700·f<sub>k</sub><span class="kolom-3"></span>'
+        e_mk2', met ten minste 10 mm en h<sub>ef</sub>/300 (NB)<span class="kolom-3"></span>'
+        Φ_m', (G.1), E = 700·f<sub>k</sub>, de kleinste van beide<span class="kolom-3"></span>'
         f_d'<span class="kolom-3"></span>'
         σ_d,max = 0.15*Φ_m*f_d', 0,15·N<sub>Rd</sub> in het midden van de wand, per eenheid van oppervlakte'
         σ_d = min(max(N_v,Ed; 0 kN)/(b_s*t_w); σ_d,max) to N/mm^2', rekenwaarde van de drukspanning, begrensd'
