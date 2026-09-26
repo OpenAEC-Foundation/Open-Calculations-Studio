@@ -6,6 +6,8 @@
  *                   (onbekende velden weg, verkeerde typen en lege invoer →
  *                   standaard, lijsten per element gecontroleerd)
  *   pad.ts          onveranderlijk zetten op een pad
+ *   revisies.ts     volgende revisiecode, rapportstatus, datums
+ *   invullen.ts     invulvelden ({adviseur}, …) en tekstregels
  *
  * Node 24 laadt de .ts-bestanden rechtstreeks (typen worden weggestreept), dus
  * er is geen build nodig. Daarom importeert src/rapport/ waarden alleen binnen
@@ -15,6 +17,8 @@
  */
 import { leegBureau, normaliseerRapport, standaardRapport, STANDAARD_HUISSTIJL } from "../packages/desktop/src/rapport/model.ts";
 import { leesPad, zetOpPad } from "../packages/desktop/src/rapport/pad.ts";
+import { datumTekst, eersteDatum, laatsteRevisie, rapportStatus, volgendeCode } from "../packages/desktop/src/rapport/revisies.ts";
+import { INVULVELDEN, tekstRegels, vulIn } from "../packages/desktop/src/rapport/invullen.ts";
 
 let fouten = 0;
 let aantal = 0;
@@ -178,6 +182,59 @@ kop("pad.ts");
   gelijk("zetOpPad: nieuwe sleutel", r3.inHoofdstuk, { "ex-1": true });
   const r4 = zetOpPad({}, ["a", 1, "b"], "x");
   toets("zetOpPad: ontbrekende tussenlagen aangemaakt", Array.isArray(r4.a) && r4.a[1].b === "x");
+}
+
+// ── revisies.ts ─────────────────────────────────────────────────────────────
+kop("revisies.ts");
+{
+  const rev = (code, status = "concept", datum = "01-01-2026") => ({ code, datum, omschrijving: "", status });
+  gelijk("volgendeCode: lege lijst → A", volgendeCode([]), "A");
+  const CODES = [
+    ["A", "B"], ["Z", "AA"], ["AZ", "BA"], ["ZZ", "AAA"], ["b", "c"], ["z", "aa"],
+    ["3", "4"], ["9", "10"], ["09", "10"], ["007", "008"], ["B2", "B3"], ["B9", "B10"],
+    ["1a", "1b"], ["A.", "A.1"], ["  ", "A"],
+  ];
+  for (const [van, naar] of CODES) gelijk(`volgendeCode: "${van}" → "${naar}"`, volgendeCode([rev(van)]), naar);
+  gelijk("volgendeCode: de laatste revisie telt, niet de hoogste",
+    volgendeCode([rev("A"), rev("C"), rev("B")]), "C");
+
+  gelijk("rapportStatus: geen revisies", rapportStatus([]), "");
+  gelijk("rapportStatus: laatste revisie", rapportStatus([rev("A", "concept"), rev("B", "definitief")]), "definitief");
+  gelijk("eersteDatum: geen revisies", eersteDatum([]), "");
+  gelijk("eersteDatum", eersteDatum([rev("A", "concept", "03-02-2026"), rev("B", "concept", "10-06-2026")]), "03-02-2026");
+  gelijk("laatsteRevisie: geen", laatsteRevisie([]), undefined);
+  gelijk("laatsteRevisie", laatsteRevisie([rev("A"), rev("B")])?.code, "B");
+  gelijk("datumTekst", datumTekst(new Date(2026, 0, 5)), "05-01-2026");
+  gelijk("datumTekst: eind van het jaar", datumTekst(new Date(2026, 11, 31)), "31-12-2026");
+}
+
+// ── invullen.ts ─────────────────────────────────────────────────────────────
+kop("invullen.ts");
+{
+  const w = {
+    adviseur: "Voorbeeld Constructies", projectnummer: "2026-001", projectnaam: "Voorbeeldproject",
+    opdrachtgever: "", locatie: "Voorbeeldstad", verantwoordelijk: "Ir. A. Voorbeeld", uitvoerend: "Ing. B. Voorbeeld",
+  };
+  gelijk("INVULVELDEN in volgorde", [...INVULVELDEN],
+    ["adviseur", "projectnummer", "projectnaam", "opdrachtgever", "locatie", "verantwoordelijk", "uitvoerend"]);
+  gelijk("vulIn", vulIn("{adviseur} heeft opdracht voor {projectnaam}.", w),
+    "Voorbeeld Constructies heeft opdracht voor Voorbeeldproject.");
+  gelijk("vulIn: leeg veld → —", vulIn("Opdrachtgever: {opdrachtgever}", w), "Opdrachtgever: —");
+  gelijk("vulIn: alleen spaties telt als leeg", vulIn("{locatie}", { ...w, locatie: "   " }), "—");
+  gelijk("vulIn: onbekend veld blijft staan", vulIn("{onbekend} en {adviseur}", w), "{onbekend} en Voorbeeld Constructies");
+  gelijk("vulIn: meermaals", vulIn("{projectnummer}/{projectnummer}", w), "2026-001/2026-001");
+
+  gelijk("tekstRegels: leeg", tekstRegels(""), []);
+  gelijk("tekstRegels: alleen witruimte", tekstRegels("  \n \n"), []);
+  gelijk("tekstRegels", tekstRegels("\n\nEerste regel.\n\n-punt een;\n  -punt twee;\r\nSlot.  \n\n"), [
+    { tekst: "Eerste regel.", leeg: false, inspringen: false },
+    { tekst: "", leeg: true, inspringen: false },
+    { tekst: "-punt een;", leeg: false, inspringen: true },
+    { tekst: "-punt twee;", leeg: false, inspringen: true },
+    { tekst: "Slot.", leeg: false, inspringen: false },
+  ]);
+  gelijk("tekstRegels: twee lege regels blijven twee rijen",
+    tekstRegels("a\n\n\nb").map((r) => r.leeg), [false, true, true, false]);
 }
 
 // ── Uitslag ─────────────────────────────────────────────────────────────────
