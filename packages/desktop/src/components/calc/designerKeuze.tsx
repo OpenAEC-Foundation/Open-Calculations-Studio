@@ -12,6 +12,7 @@ import HsbStabiliteitDesigner from "./HsbStabiliteitDesigner";
 import KolomDesigner from "./KolomDesigner";
 import KruipfactorDesigner from "./KruipfactorDesigner";
 import LasDesigner from "./LasDesigner";
+import LiggerDesigner from "./LiggerDesigner";
 import MetselwerkwandDesigner from "./MetselwerkwandDesigner";
 import MetselwerkLoodrechtDesigner from "./MetselwerkLoodrechtDesigner";
 import MomentverbindingDesigner from "./MomentverbindingDesigner";
@@ -71,6 +72,7 @@ const DESIGNERS: { marker: string; beeld: () => ReactElement }[] = [
   { marker: "Tweepaals poer", beeld: () => <TweepaalsPoerDesigner /> },
   { marker: "Verankeringslengte", beeld: () => <VerankeringslengteDesigner /> },
   { marker: "Opdrijven en drijvend lichaam", beeld: () => <OpdrijvenDesigner /> },
+  { marker: "Ligger van hout of staal", beeld: () => <LiggerDesigner /> },
 ];
 
 /** Het beeld dat bij deze bladtekst hoort, of null als er geen is. */
