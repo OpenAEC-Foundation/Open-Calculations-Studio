@@ -529,11 +529,11 @@ for (const { titel, invoer, geo } of NORMSTAND) {
  *     mee: R = V_z,Ed = 4,45 kN op 71 × (50 + 30) mm geeft σ_c,90,d =
  *     4450/5680 = 0,7835 N/mm²; k_c,90·f_c,90,d = 1,5 · 0,8·2,5/1,3 = 2,308,
  *     dus UC 0,3395 — groter dan de buiging (0,3193).
- *   • raveelbalk 3,05 m in de norm-stand: de afschuiving rekent met k_cr = 0,67
- *     (§6.1.7(2)). τ_d = 1,5 · 7410/(0,67 · 71 · 221) = 1,057 N/mm² (was 0,7083
- *     zonder k_cr) en UC_afsch = 1,057/2,462 = 0,4295 (was 0,2878). De
- *     oplegdruk (7410/5680/2,308 = 0,565) blijft onder de buiging, dus UC_max
- *     blijft 0,6619.
+ *   • raveelbalk 3,05 m in de norm-stand: de afschuiving rekent met k_cr = 1,0
+ *     (NB art. 6.1.7(2), prismatische doorsnede), dus over de volle breedte:
+ *     τ_d = 1,5 · 7410/(71 · 221) = 0,7083 N/mm² en UC_afsch = 0,7083/2,462 =
+ *     0,2878. De oplegdruk (7410/5680/2,308 = 0,565) blijft onder de buiging,
+ *     dus UC_max blijft 0,6619.
  */
 const OUD = {
   "overstek 4,05 + 0,80 m": {
@@ -554,7 +554,7 @@ const OUD = {
   },
   "raveelbalk 3,05 m, staart 2,50 m, norm-stand": {
     invoer: { schema: "4", b_sparing: "3000", l_staart: "2500" }, rekenwijze: 0,
-    waarden: { P_g_k: 1.315, q_q_k: 2.188, F_Q_k: 2, k_r: 1, u_g_k: 2.109, u_q_k: 3.509, u_Q_k: 1.683, w_inst: 5.617, w_qp: 3.161, w_fin: 7.514, w_lim: 12.2, M_y_Ed: 5.65, V_z_Ed: 7.41, "σ_m_y_d": 9.776, "τ_d": 1.057, UC_buiging: 0.6619, UC_afsch: 0.4295, UC_doorbuiging: 0.6159, UC_max: 0.6619 },
+    waarden: { P_g_k: 1.315, q_q_k: 2.188, F_Q_k: 2, k_r: 1, u_g_k: 2.109, u_q_k: 3.509, u_Q_k: 1.683, w_inst: 5.617, w_qp: 3.161, w_fin: 7.514, w_lim: 12.2, M_y_Ed: 5.65, V_z_Ed: 7.41, "σ_m_y_d": 9.776, "τ_d": 0.7083, UC_buiging: 0.6619, UC_afsch: 0.2878, UC_doorbuiging: 0.6159, UC_max: 0.6619 },
   },
 };
 

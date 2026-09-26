@@ -5,7 +5,7 @@
  * is met de hand nagerekend en staat als commentaar bij de set. Het script
  * bewaakt vooral dat de keuzes op het blad ook echt doorwerken: sterkteklasse
  * (EN 338 / EN 14080), klimaatklasse × belastingduurklasse (k_mod, tabel 3.1),
- * γ_M per houttype (tabel 2.3 NB), k_cr = 0,67 (6.1.7(2)), k_c,90 en l_ef bij
+ * γ_M per houttype (tabel 2.3 NB), k_cr = 1,0 (NB art. 6.1.7(2)), k_c,90 en l_ef bij
  * een eind- of tussenoplegging (6.1.5), k_crit volgens (6.34) met l_ef + 2h,
  * in de houten balk de combinatie met alleen blijvende belasting (3.1.3(2)) en
  * in de doorbuiging ψ_2 per belastingcategorie. Per blad leest één set ook het
@@ -80,26 +80,27 @@ let fouten = 0;
 }
 
 // ── Afschuiving ──────────────────────────────────────────────────────────
-// V_Ed = 5·3/2 = 7,5 kN; b_ef = 0,67·70 = 46,9 mm; τ_d = 1,5·7500/(46,9·200) = 1,199.
+// V_Ed = 5·3/2 = 7,5 kN; k_cr = 1,0 (NB art. 6.1.7(2), prismatische doorsnede),
+// dus b_ef = 70 mm; τ_d = 1,5·7500/(70·200) = 0,8036.
 {
   const tpl = bladen.ec5Afschuiving;
-  // C24, middellang: f_v,d = 0,8·4,0/1,3 = 2,462; UC = 1,199/2,462 = 0,487 (was 0,37 met k_cr = 1,0 en f_v,k 3,5).
+  // C24, middellang: f_v,d = 0,8·4,0/1,3 = 2,462; UC = 0,8036/2,462 = 0,326 (was 0,487 met k_cr = 0,67).
   fouten += toetsMetOordeel("afschuiving — C24, middellang",
     reken(tpl, { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
-    { f_vk: "4.0", f_vd: "2.462", k_cr: "0.67", b_ef: "46.9", tau_d: "1.199", UC_afschuiving: "0.487",
-      UC_slot: "0.487", voldoet: "1" });
-  // C18, blijvend: f_v,d = 0,6·3,4/1,3 = 1,569; UC = 1,199/1,569 = 0,764.
+    { f_vk: "4.0", f_vd: "2.462", k_cr: "1.0", b_ef: "70.0", tau_d: "0.8036", UC_afschuiving: "0.326",
+      UC_slot: "0.326", voldoet: "1" });
+  // C18, blijvend: f_v,d = 0,6·3,4/1,3 = 1,569; UC = 0,8036/1,569 = 0,512.
   fouten += toets("afschuiving — C18, blijvend",
     reken(tpl, {}, PROJECT),
-    { f_vk: "3.4", k_mod: "0.60", f_vd: "1.569", UC_afschuiving: "0.764" });
-  // GL24h, middellang: f_v,d = 0,8·3,5/1,25 = 2,24; UC = 0,535.
+    { f_vk: "3.4", k_mod: "0.60", f_vd: "1.569", UC_afschuiving: "0.512" });
+  // GL24h, middellang: f_v,d = 0,8·3,5/1,25 = 2,24; UC = 0,8036/2,24 = 0,359.
   fouten += toets("afschuiving — GL24h, middellang",
     reken(tpl, { sterkteklasse: GL24h, belastingduurklasse: MIDDELLANG }, PROJECT),
-    { gamma_M: "1.25", f_vd: "2.24", UC_afschuiving: "0.535" });
-  // C30, klimaatklasse 3, zeer kort: k_mod 0,90; f_v,d = 0,9·4,0/1,3 = 2,769; UC = 0,433.
+    { gamma_M: "1.25", f_vd: "2.24", UC_afschuiving: "0.359" });
+  // C30, klimaatklasse 3, zeer kort: k_mod 0,90; f_v,d = 0,9·4,0/1,3 = 2,769; UC = 0,8036/2,769 = 0,290.
   fouten += toets("afschuiving — C30, klimaatklasse 3, zeer kort",
     reken(tpl, { sterkteklasse: C30, klimaatklasse: "3", belastingduurklasse: ZEER_KORT }, PROJECT),
-    { k_mod: "0.90", f_vd: "2.769", UC_afschuiving: "0.433" });
+    { k_mod: "0.90", f_vd: "2.769", UC_afschuiving: "0.290" });
 }
 
 // ── Druk evenwijdig ──────────────────────────────────────────────────────
@@ -209,7 +210,7 @@ let fouten = 0;
   // Standaard: C18, klimaatklasse 1, blijvend, CC2, categorie A, g_k 1,5 en q_k 2,0 kN/m.
   // q_d,a = 1,35·1,5 + 1,5·0,4·2,0 = 3,225; q_d,b = 1,2·1,5 + 1,5·2,0 = 4,80 → q_d = 4,80.
   // M = 4,8·4²/8 = 9,60; σ = 20,57; f_m,d = 0,6·18/1,3 = 8,31; UC = 2,476.
-  // τ = 1,5·9600/(46,9·200) = 1,535; f_v,d = 0,6·3,4/1,3 = 1,569; UC = 0,978.
+  // τ = 1,5·9600/(1,0·70·200) = 1,029 (k_cr = 1,0); f_v,d = 0,6·3,4/1,3 = 1,569; UC = 0,6555.
   // l_ef = 100 + 30 = 130; σ_c,90 = 9600/9100 = 1,055; UC = 1,055/(1,5·1,015) = 0,693.
   // l_ef = 0,9·4000 + 2·200 = 4000; σ_crit = 0,78·70²·6000/(200·4000) = 28,67;
   // λ = √(18/28,67) = 0,792; k_crit = 1,56 − 0,75·0,792 = 0,966; UC = 20,57/(0,966·8,31) = 2,564.
@@ -219,18 +220,18 @@ let fouten = 0;
   fouten += toetsMetOordeel("houten balk — standaard (C18, blijvend, CC2, categorie A)",
     reken(tpl, {}, PROJECT),
     { q_da: "3.225", q_db: "4.80", q_d: "4.80", M_Ed: "9.60", f_md: "8.31", UC_buiging: "2.476",
-      tau_d: "1.535", UC_afschuiving: "0.978", L_ef: "130", UC_c90: "0.693",
+      tau_d: "1.029", UC_afschuiving: "0.6555", L_ef: "130", UC_c90: "0.693",
       l_ef: "4000", sigma_mcrit: "28.67", lambda_relm: "0.792", k_crit: "0.966", UC_kip: "2.564",
       w_netfin: "37.78", UC_doorbuiging: "2.361", UC_slot: "2.564", voldoet: "0" });
   // C24 100×300, middellang: q_d = 4,80 met k_mod 0,80 (2,025/0,6 = 3,375 < 4,8/0,8 = 6,0).
   // σ = 9,60·10⁶/1,5·10⁶ = 6,40; f_m,d = 14,77; UC = 0,433.
-  // τ = 1,5·9600/(67·300) = 0,716; f_v,d = 2,462; UC = 0,291.
+  // τ = 1,5·9600/(100·300) = 0,480; f_v,d = 2,462; UC = 0,195.
   // σ_c,90 = 9600/(100·130) = 0,738; UC = 0,738/(1,5·1,538) = 0,320.
   // l_ef = 3600 + 600 = 4200; σ_crit = 0,78·100²·7400/(300·4200) = 45,81; λ = 0,724 → k_crit 1.
   // w = 2,020·1,6 + 2,694·1,18 = 6,411; UC = 0,401. UC_max = 0,433: de balk voldoet.
   fouten += toetsMetOordeel("houten balk — C24 100×300, middellang: voldoet",
     reken(met(tpl, { b: "100 mm", h: "300 mm" }), { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
-    { UC_buiging: "0.433", UC_afschuiving: "0.291", UC_c90: "0.320", k_crit: "1.0", UC_kip: "0.433",
+    { UC_buiging: "0.433", UC_afschuiving: "0.195", UC_c90: "0.320", k_crit: "1.0", UC_kip: "0.433",
       w_netfin: "6.41", UC_doorbuiging: "0.401", UC_slot: "0.433", voldoet: "1" });
   // C24, middellang, q_d = 5 kN/m (alleen q_k = 10/3).
   // σ_crit = 0,78·4900·7400/(200·4000) = 35,35; λ = 0,824; k_crit = 0,942;

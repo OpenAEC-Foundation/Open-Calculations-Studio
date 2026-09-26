@@ -22,8 +22,9 @@
  *     ingevoerde ongesteunde lengte L_cr. document4 heeft L_cr = 1600 en rekent
  *     toch met 0,9 × 3200 + 2 × 144 = 3168 mm. Splitspunt: de norm-stand neemt
  *     max(L; L_cr).
- *   • Afschuiving zonder k_cr: τ_d = V_Ed·S_y/(b·I_y) over de volle breedte.
- *     Splitspunt: de norm-stand rekent met b_ef = k_cr·b, k_cr = 0,67 (§6.1.7(2)).
+ *   • Afschuiving over de volle breedte: τ_d = V_Ed·S_y/(b·I_y). Dat is k_cr =
+ *     1,0, de waarde voor een prismatische doorsnede (NB art. 6.1.7(2)); geen
+ *     splitspunt, beide standen rekenen zo.
  *   • Klimaatklasse 2 geeft exact dezelfde uitkomsten als klasse 1 (document5):
  *     k_mod is voor beide gelijk en dit blad toetst geen doorbuiging.
  *   • Dit blad kent geen belasting om de zwakke as; de termen met σ_m,z,d vallen
@@ -87,7 +88,7 @@ E_005 = hlookup(materialen; sterkteklasse; 1; 6)*N/mm^2
 γ_M = 1.30
 k_m = 0.7
 beta_c = 0.2
-k_cr = 0.67
+k_cr = 1.0
 k_mod = if(klimaatklasse ≡ 3; hlookup(kmods; duurklasse; 1; 3); hlookup(kmods; duurklasse; 1; 2))
 k_hy = if(h_k < 150*mm; min((150*mm/h_k)^0.2; 1.3); 1)
 k_hz = if(b_k < 150*mm; min((150*mm/b_k)^0.2; 1.3); 1)
@@ -150,15 +151,9 @@ V_Ed = abs(q_z_Ed)*L/2 + abs(M_yA_Ed - M_yB_Ed)/L to kN
 σ_c0d = N_Ed/A to N/mm^2', drukspanning ∥ vezel'
 σ_myd = M_yEd/W_y to N/mm^2', buigspanning om de y-as'
 #hide
-τ_d,xc = V_Ed*S_y/(b_k*I_y) to N/mm^2
-τ_d,nb = V_Ed*S_y/(k_cr*b_k*I_y) to N/mm^2
-τ_d = if(rekenwijze ≡ 1; τ_d,xc; τ_d,nb) to N/mm^2
+τ_d = V_Ed*S_y/(k_cr*b_k*I_y) to N/mm^2
 #show
-#if rekenwijze ≡ 1
-    τ_d', schuifspanning V·S/(b·I) over de volle breedte'
-#else
-    τ_d', schuifspanning V·S/(k_cr·b·I) met k_cr = 0,67 (§6.1.7(2))'
-#end if
+τ_d', schuifspanning V·S/(k_cr·b·I) met k_cr = 1,0 (NB art. 6.1.7(2))'
 
 # 6. Druk ∥ vezel — §6.1.4 (6.2)
 

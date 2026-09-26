@@ -52,9 +52,17 @@ fouten += toets("knik C24, kort", reken(knik, { ...K, materiaal: "4", belastingd
 const schuif = blad("vandepitteSchuifspanning");
 const SR = { b: "200", h: "400", L: "6", q: "25" };
 // V = 25·6/2 = 75 kN; τ = 1,5·75000/(200·400) = 1,406.
-// C24, middellang: f_v,d = 0,8·4,0/1,3 = 2,462; τ_d = 1,406/0,67 = 2,099; UC = 0,853 (eerder 0,014 tegen 100 N/mm²).
+// C24, middellang, rechthoek: k_cr = 1,0 (NB art. 6.1.7(2), prismatische doorsnede);
+//   f_v,d = 0,8·4,0/1,3 = 2,462; τ_d = 1,406/1,0 = 1,406; UC = 1,406/2,462 = 0,5713
+//   (met k_cr = 0,67 was het 2,099 en 0,853).
 fouten += toets("schuif C24, middellang", reken(schuif, { ...SR, materiaal: "4", belastingduurklasse: "3" }, PROJECT),
-  { V_Ed: "75", τ_max: "1.406", f_vd: "2.462", τ_d: "2.099", UC_max: "0.853" });
+  { V_Ed: "75", τ_max: "1.406", f_vd: "2.462", k_cr: "1.0", τ_d: "1.406", UC_max: "0.5713" });
+// Dezelfde doorsnede als I-profiel ingevoerd (I_z = 200·400³/12, S = 200·400²/8, t = 200): de
+// flensbreedte is onbekend, dus de ondergrens k_cr = 0,8 (NB art. 6.1.7(2));
+//   τ_d = 1,406/0,8 = 1,758; UC = 1,758/2,462 = 0,7141.
+fouten += toets("schuif C24, middellang, I-profiel",
+  reken(schuif, { profieltype: "2", I_z: "1066666667", S_zmax: "4000000", t: "200", L: "6", q: "25", materiaal: "4", belastingduurklasse: "3" }, PROJECT),
+  { τ_max: "1.406", k_cr: "0.8", τ_d: "1.758", UC_max: "0.7141" });
 // S235: τ_Rd = 235/√3 = 135,7; UC = 1,406/135,7 = 0,01036.
 fouten += toets("schuif S235", reken(schuif, { ...SR, materiaal: "1" }, PROJECT), { τ_Rd: "135.7", UC_max: "0.01036" });
 // Cirkel D = 200: A = 31416 mm²; τ = 4/3·75000/31416 = 3,183 (eerder met A = b·h).

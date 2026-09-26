@@ -6,7 +6,7 @@
  *   §6.1.4   Druk evenwijdig aan de vezels (uitgangspunt)
  *   §6.3.2   Knikcontrole (kolom op druk + buiging), (6.23)/(6.24)
  *   §6.3.3   Kip in combinatie met druk, (6.32)–(6.35)
- *   §6.1.7   Dwarskracht, (6.13) met k_cr
+ *   §6.1.7   Dwarskracht, (6.13) met k_cr = 1,0 (NB art. 6.1.7(2))
  *
  * Onderbouw als in houtenBalklaag.ts (zelfde C-klassen en k_def); k_mod
  * volgt een keuze voor de belastingduur. Geometrie is een staaflengte met
@@ -76,7 +76,7 @@ profiles_b_h = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17 |71; 7
 b_p = hlookup(profiles_b_h; profile; 1; 2)*mm
 h_p = hlookup(profiles_b_h; profile; 1; 3)*mm
 
-'Houtsterkte EN 338 [id | f_m,k | f_c,0,k | f_v,k | E_0,mean | E_0,05 | rho_k]; f_v,k hoort bij k_cr = 0,67 (§6.1.7(2))
+'Houtsterkte EN 338 [id | f_m,k | f_c,0,k | f_v,k | E_0,mean | E_0,05 | rho_k]
 strength_C = [14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |16; 17; 18; 19; 20; 21; 22; 23; 25; 26 |3.0; 3.2; 3.4; 3.6; 3.8; 4.0; 4.0; 4.0; 4.0; 4.0 |7000; 8000; 9000; 9500; 10000; 11000; 11500; 12000; 13000; 14000 |4700; 5400; 6000; 6400; 6700; 7400; 7700; 8000; 8700; 9400 |290; 310; 320; 330; 340; 350; 370; 380; 400; 420]
 
 f_m,k = hlookup(strength_C; houtkwaliteit; 1; 2)*N/mm^2
@@ -249,7 +249,7 @@ UC_635 = (σ_m,y,d/(k_crit*f_m,d))^2 + σ_c,0,d/(k_c,z*f_c,0,d) + σ_m,z,d/f_m,d
 
 # 7. Dwarskracht §6.1.7
 
-k_cr = 0.67', §6.1.7(2)'
+k_cr = 1.0', NB art. 6.1.7(2), prismatische doorsnede'
 f_v,d = k_mod*f_v,k/γ_M
 τ_d = 1.5*V_Ed/(k_cr*b_p*h_p) to N/mm^2
 UC_V = τ_d/f_v,d', (6.13)'

@@ -10,8 +10,8 @@
  *      overspanningsrichting (de balken), (EI)_b dwars daarop (het beschot);
  *   2  f_1 ≤ 8 Hz: (7.3) en (7.4) gelden niet, de trilling en het eindoordeel
  *      zijn dan "niet aangetoond" (§7.3.3(1));
- *   3  afschuiving met b_ef = k_cr·b (§6.1.7(2)) in de norm-stand, zonder k_cr
- *      in de referentiestand;
+ *   3  afschuiving over de volle breedte, k_cr = 1,0 (NB art. 6.1.7(2)), in
+ *      beide standen;
  *   4  oplegdruk (§6.1.5) bij de eindoplegging, het tussensteunpunt van twee
  *      velden en k_c,90 volgens 6.1.5(4);
  *   5  de combinatie met alleen permanente last, met k_mod voor blijvend
@@ -151,25 +151,31 @@ console.log("\n2. f_1 ≤ 8 Hz — 96×271 h.o.h. 400, L 5,05 m, G_k 2,5 (zware 
   waar("dan geen 'niet aangetoond'", !/niet aangetoond/.test(slotzin(licht.tekst)));
 }
 
-// ── 3. Afschuiving: k_cr ──────────────────────────────────────────────────
+// ── 3. Afschuiving: k_cr = 1,0 ────────────────────────────────────────────
 
 console.log("\n3. Afschuiving — onderslag 71×221, L 1,50 m, belaste breedte 7,0 m, F 3 kN");
 {
+  // k_cr = 1,0 voor een prismatische doorsnede (NB art. 6.1.7(2)): beide
+  // standen rekenen met de volle breedte b = 71 mm.
   // Norm-stand: g = 7,0·1,0 + 0,06465 = 7,0647 kN/m, q = 7,0·1,75 = 12,25 kN/m.
   // V_z,Ed = (1,2·7,0647 + 1,5·12,25)·1,50/2 = 20,139 kN (6.10b; de puntlast
-  // geeft 1,2·7,0647·0,75 + 1,5·3 = 10,86). τ_d = 1,5·20 139/(0,67·71·221)
-  // = 2,874 N/mm²; f_v,d = 0,8·4,0/1,3 = 2,462; UC = 1,167.
+  // geeft 1,2·7,0647·0,75 + 1,5·3 = 10,86). τ_d = 1,5·20 139/(71·221)
+  // = 1,925 N/mm²; f_v,d = 0,8·4,0/1,3 = 2,462; UC = 0,7821 (was 2,874 en
+  // 1,167 met k_cr = 0,67).
   const invoer = { ligger: "2", b_ond: "7.0", L_d: "1400", a_opl: "100", F_k: "3" };
-  const nb = reken(invoer, 0).alle;
-  gelijk("norm: V_z,Ed = 20,139 kN", nb.V_z_Ed, 20.139);
-  gelijk("norm: τ_d = V·S/(k_cr·b·I) = 2,874", nb["τ_d"], 2.874);
-  gelijk("norm: UC_afsch = 1,167", nb.UC_afsch, 1.167);
+  const nb = reken(invoer, 0);
+  gelijk("norm: V_z,Ed = 20,139 kN", nb.alle.V_z_Ed, 20.139);
+  gelijk("norm: τ_d = V·S/(b·I) = 1,925", nb.alle["τ_d"], 1.925);
+  gelijk("norm: UC_afsch = 0,7821", nb.alle.UC_afsch, 0.7821);
   // Referentiestand: g = 7,0 + 0,0863 = 7,0863; V = (8,5036 + 18,375)·0,75 =
   // 20,159 kN; τ_d = 1,5·20 159/(71·221) = 1,927 N/mm² (volle breedte); UC 0,783.
   const xc = reken(invoer, 1);
   gelijk("referentie: τ_d = V·S/(b·I) = 1,927", xc.alle["τ_d"], 1.927);
   gelijk("referentie: UC_afsch = 0,783", xc.alle.UC_afsch, 0.783, { rel: 3e-3 });
-  waar("referentie: de melding zonder k_cr staat op het blad", /zonder k cr/.test(xc.tekst));
+  for (const [stand, r] of [["norm", nb], ["referentie", xc]]) {
+    waar(`${stand}: het blad noemt k_cr = 1,0 (NB art. 6.1.7(2))`, /k cr = 1,0 \(NB art\. 6\.1\.7\(2\)\)/.test(r.tekst));
+    waar(`${stand}: geen melding "zonder k_cr" meer`, !/zonder k cr/.test(r.tekst));
+  }
 }
 
 // ── 4. Oplegdruk ──────────────────────────────────────────────────────────

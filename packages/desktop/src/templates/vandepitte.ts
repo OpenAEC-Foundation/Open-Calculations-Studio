@@ -8,8 +8,10 @@
  *
  * De theorie komt uit het boek; waar een blad een oordeel geeft, toetst het
  * tegen de Eurocode en niet tegen een vaste toelaatbare spanning:
- * - schuifspanning: staal f_y/(√3·γ_M0) (NEN-EN 1993-1-1 6.2.6), hout
- *   k_cr·f_v,d (NEN-EN 1995-1-1 6.1.7); voor andere materialen alleen τ;
+ * - schuifspanning: staal f_y/(√3·γ_M0) (NEN-EN 1993-1-1 6.2.6), hout f_v,d
+ *   met b_ef = k_cr·b (NEN-EN 1995-1-1 6.1.7): k_cr = 1,0 bij een
+ *   prismatische doorsnede, 0,8 als ondergrens bij een I-, T- of kokerprofiel
+ *   (NB art. 6.1.7(2)); voor andere materialen alleen τ;
  * - knik: staal met χ (NEN-EN 1993-1-1 6.3.1.2) en hout met k_c en E_0,05
  *   (NEN-EN 1995-1-1 6.3.2); de Eulerlast is alleen de theoretische grens;
  * - Mohr: veld getoetst aan L/250, overstek aan 2a/250 (dubbele lengte als
@@ -119,7 +121,11 @@ Ander materiaal (geen toets) = 0
     #show
     'f<sub>v,k</sub> = 'f_vk' N/mm² (EN 338 / EN 14080), k<sub>mod</sub> = 'k_mod' (tabel 3.1), γ<sub>M</sub> = 'γ_M' (tabel 2.3, NB).
     f_vd = k_mod*f_vk/γ_M to N/mm^2', NEN-EN 1995-1-1 (2.14)'
-    k_cr = 0.67', scheuren (6.1.7(2))'
+    #if profieltype ≡ 2
+        k_cr = 0.8', ondergrens voor een I-, T- of kokerprofiel (NB art. 6.1.7(2))'
+    #else
+        k_cr = 1.0', prismatische doorsnede (NB art. 6.1.7(2))'
+    #end if
     τ_d = τ_max/k_cr to N/mm^2', met b_ef = k_cr·b (6.13a)'
     UC_max = τ_d/f_vd
 #else

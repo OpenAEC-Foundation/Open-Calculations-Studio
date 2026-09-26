@@ -174,9 +174,9 @@ f_vd = k_mod * f_vk / gamma_M to N/mm^2
 b = 70 mm
 h = 200 mm
 
-Scheurfactor k_cr voor massief en gelamineerd hout (art. 6.1.7(2)):
+Scheurfactor k_cr voor een ligger met een prismatische doorsnede (NB art. 6.1.7(2)):
 
-k_cr = 0.67
+k_cr = 1.0
 
 Effectieve breedte (formule 6.13a):
 
@@ -863,9 +863,9 @@ UC_buiging = sigma_md / f_md
 
 ## 2. Afschuiving (art. 6.1.7, formule 6.13)
 
-Scheurfactor voor massief en gelamineerd hout (art. 6.1.7(2)):
+Scheurfactor k_cr voor een ligger met een prismatische doorsnede (NB art. 6.1.7(2)):
 
-k_cr = 0.67
+k_cr = 1.0
 
 b_ef = k_cr * b to mm
 
