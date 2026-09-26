@@ -12,7 +12,11 @@
  * NEN-EN 1990 (A1.4.3(3) en (4), via NB 7.2(2)). Verder wringing met α en k_shape
  * bij een rechthoekige en een ronde doorsnede (6.14, 6.15), de tapse ligger met
  * k_m,α bij trek en druk langs de tapse rand (6.37 t/m 6.40) en de uitkeping bij
- * de oplegging met k_v en k_n (6.60 t/m 6.63). Per blad leest één set ook het
+ * de oplegging met k_v en k_n (6.60 t/m 6.63). Het vloer- en dakbeschot rekent
+ * met coëfficiënten van een doorgaande ligger: die rekent dit script met een
+ * eigen driemomentenberekening na (naar boven afgerond, ten hoogste 0,1 %
+ * erboven), en daarmee het hele blad over een reeks materialen, velden en
+ * categorieën; een paar sets met de hand. Per blad leest één set ook het
  * oordeel zoals de afdruk dat doet, uit de slotzin "Maatgevende UC = …".
  *
  * De bladen dragen hun invoer als voorbeeldwaarden in de tekst; dit script
@@ -425,6 +429,230 @@ let fouten = 0;
   fouten += toetsMetOordeel("uitkeping — C18, blijvend, V 16 kN: voldoet niet",
     reken(met(tpl, { V_Ed: "16 kN" }), {}, PROJECT),
     { f_vd: "1.569", tau_d: "1.371", UC_uitkeping: "1.781", UC_slot: "1.781", voldoet: "0" });
+}
+
+// ── Vloer- en dakbeschot ─────────────────────────────────────────────────
+// Doorgaande ligger over n gelijke velden (hart-op-hartafstand L): g op alle velden,
+// q op de ongunstigste velden en de puntlast Q op de ongunstigste plaats (6.2.1 van
+// NEN-EN 1991-1-1). Veld en steunpunt apart, g en q (of Q) opgeteld. Doorbuiging
+// w_bij = k_def·(w_G + ψ_2·w_Q) + ψ·w_Q (ψ_1, of 1,0 bij een overig dak) ≤ 0,003·L,
+// L/500 of L/250 en w_net,fin = w_G·(1 + k_def) + w_Q·(1 + ψ_2·k_def) ≤ L/250.
+{
+  const tpl = bladen.ec5Beschot;
+
+  // Eigen driemomentenberekening (L = 1, EI = 1): steunmomenten, en per veld M(x) en
+  // w(x) uit w'' = −M met w = 0 op beide steunpunten.
+  function doorgaand(n, last, punt) {
+    const M = new Array(n + 1).fill(0);
+    if (n > 1) {
+      const m = n - 1, A = [], r = [];
+      for (let j = 1; j <= m; j++) {
+        A.push(Array.from({ length: m }, (_, k) => (k === j - 1 ? 4 : Math.abs(k - (j - 1)) === 1 ? 1 : 0)));
+        let rhs = last[j - 1] / 4 + last[j] / 4;
+        if (punt && punt.veld === j - 1) rhs += punt.a * (1 - punt.a) * (1 + punt.a);
+        if (punt && punt.veld === j) rhs += punt.a * (1 - punt.a) * (2 - punt.a);
+        r.push(-rhs);
+      }
+      for (let k = 0; k < m; k++) for (let i = k + 1; i < m; i++) {
+        const f = A[i][k] / A[k][k];
+        for (let c = k; c < m; c++) A[i][c] -= f * A[k][c];
+        r[i] -= f * r[k];
+      }
+      for (let i = m - 1; i >= 0; i--) {
+        let s = r[i];
+        for (let c = i + 1; c < m; c++) s -= A[i][c] * M[c + 1];
+        M[i + 1] = s / A[i][i];
+      }
+    }
+    const N = 400;
+    let Mmax = 0, Mmin = 0, wmax = 0;
+    for (let v = 0; v < n; v++) {
+      const Ms = [];
+      for (let k = 0; k <= N; k++) {
+        const x = k / N;
+        let Mx = (last[v] * x * (1 - x)) / 2 + M[v] * (1 - x) + M[v + 1] * x;
+        if (punt && punt.veld === v) Mx += x <= punt.a ? (1 - punt.a) * x : punt.a * (1 - x);
+        Ms.push(Mx);
+        Mmax = Math.max(Mmax, Mx); Mmin = Math.min(Mmin, Mx);
+      }
+      let th = 0, u = 0;
+      const us = [0];
+      for (let k = 1; k <= N; k++) {
+        const th1 = th + (Ms[k] + Ms[k - 1]) / 2 / N;
+        u += (th + th1) / 2 / N; th = th1; us.push(u);
+      }
+      for (let k = 0; k <= N; k++) wmax = Math.max(wmax, -(us[k] - (us[N] * k) / N));
+    }
+    return { Mmax, Mmin, wmax };
+  }
+  function coefficienten(n) {
+    const alle = doorgaand(n, new Array(n).fill(1));
+    const c = { gf: alle.Mmax, gs: -alle.Mmin, gw: alle.wmax, qf: 0, qs: 0, qw: 0, Pf: 0, Ps: 0, Pw: 0 };
+    for (let mask = 1; mask < 1 << n; mask++) {
+      const r = doorgaand(n, Array.from({ length: n }, (_, i) => (mask >> i) & 1));
+      c.qf = Math.max(c.qf, r.Mmax); c.qs = Math.max(c.qs, -r.Mmin); c.qw = Math.max(c.qw, r.wmax);
+    }
+    for (let v = 0; v < n; v++) for (let k = 1; k < 200; k++) {
+      const r = doorgaand(n, new Array(n).fill(0), { veld: v, a: k / 200 });
+      c.Pf = Math.max(c.Pf, r.Mmax); c.Ps = Math.max(c.Ps, -r.Mmin); c.Pw = Math.max(c.Pw, r.wmax);
+    }
+    return c;
+  }
+  const SLEUTELS = ["gf", "gs", "gw", "qf", "qs", "qw", "Pf", "Ps", "Pw"];
+  const EIGEN = { 1: coefficienten(1), 2: coefficienten(2), 3: coefficienten(3) };
+  // Vier of meer velden: de omhullende over vier tot en met acht velden.
+  EIGEN[4] = Object.fromEntries(SLEUTELS.map((k) => [k, 0]));
+  for (let n = 4; n <= 8; n++) {
+    const c = coefficienten(n);
+    for (const k of SLEUTELS) EIGEN[4][k] = Math.max(EIGEN[4][k], c[k]);
+  }
+  // Bekende waarden voor één en twee velden: ql²/8, 5ql⁴/384, PL/4, PL³/48; 9ql²/128 en ql²/8.
+  const bekend = [[EIGEN[1].gf, 1 / 8], [EIGEN[1].gw, 5 / 384], [EIGEN[1].Pf, 1 / 4], [EIGEN[1].Pw, 1 / 48],
+    [EIGEN[2].gf, 9 / 128], [EIGEN[2].gs, 1 / 8], [EIGEN[3].gs, 1 / 10]];
+  const eigenOk = bekend.every(([a, b]) => Math.abs(a - b) <= 2e-4 * b);
+  if (!eigenOk) fouten++;
+  console.log(`\nbeschot — eigen driemomentenberekening tegen bekende waarden\n  ${eigenOk ? "OK    " : "FOUT  "} ql²/8, 5ql⁴/384, PL/4, PL³/48, 9ql²/128, ql²/8 en ql²/10`);
+
+  // De tabel in het blad: niet lager dan de eigen waarde en ten hoogste 0,1 % erboven.
+  const rijen = tpl.match(/coef = \[([^\]]+)\]/)[1].split("|").map((r) => r.split(";").map(Number));
+  console.log("\nbeschot — coëfficiënten in het blad tegen de eigen berekening");
+  let coefFout = 0;
+  for (let kol = 0; kol < 4; kol++) {
+    const n = rijen[0][kol];
+    for (const [i, k] of SLEUTELS.entries()) {
+      const blad = rijen[i + 1][kol], eigen = EIGEN[n][k];
+      const ok = eigen < 1e-9 ? blad === 0 : blad >= eigen * (1 - 2e-5) && blad <= eigen * 1.001;
+      if (!ok) { coefFout++; console.log(`  FOUT   ${n} velden, ${k}: blad ${blad}, eigen ${eigen.toPrecision(6)}`); }
+    }
+  }
+  fouten += coefFout;
+  if (!coefFout) console.log(`  OK     ${4 * SLEUTELS.length} coëfficiënten: niet lager dan de eigen waarde, ten hoogste 0,1 % erboven`);
+
+  // Materialen: massief hout EN 338 [f_m,k, E_0,mean]; k_mod per klimaatklasse (tabel 3.1, null = niet
+  // toegestaan), k_def (tabel 3.2) en γ_M (tabel 2.3) per materiaal: massief, multiplex, OSB/3-4, P5, P7.
+  const HOUT = [null, [14, 7000], [16, 8000], [18, 9000], [20, 9500], [22, 10000], [24, 11000], [27, 11500], [30, 12000]];
+  const MASSIEF = [0.6, 0.7, 0.8, 0.9, 1.1], MASSIEF3 = [0.5, 0.55, 0.65, 0.7, 0.9];
+  const KMOD = [null,
+    [MASSIEF, MASSIEF, MASSIEF3], [MASSIEF, MASSIEF, MASSIEF3],
+    [[0.4, 0.5, 0.7, 0.9, 1.1], [0.3, 0.4, 0.55, 0.7, 0.9], null],
+    [[0.3, 0.45, 0.65, 0.85, 1.1], [0.2, 0.3, 0.45, 0.6, 0.8], null],
+    [[0.4, 0.5, 0.7, 0.9, 1.1], [0.3, 0.4, 0.55, 0.7, 0.9], null]];
+  const KDEF = [null, [0.6, 0.8, 2.0], [0.8, 1.0, 2.5], [1.5, 2.25], [2.25, 3.0], [1.5, 2.25]];
+  const GM = [null, 1.3, 1.2, 1.2, 1.3, 1.3];
+  // Categorie: [q_k, Q_k, ψ_0, ψ_1, ψ_2] (NEN-EN 1991-1-1 NB; NEN-EN 1990 tabel NB.2 — A1.1).
+  const CAT = [null, [1.75, 3, 0.4, 0.5, 0.3], [2.0, 3, 0.4, 0.5, 0.3], [2.5, 3, 0.4, 0.5, 0.3], [3.0, 3, 0.4, 0.5, 0.3],
+    [2.5, 3, 0.5, 0.5, 0.3], [4.0, 3, 0.4, 0.7, 0.6], [4.0, 7, 0.4, 0.7, 0.6], [5.0, 7, 0.4, 0.7, 0.6],
+    [4.0, 7, 0.4, 0.7, 0.6], [1.0, 1.5, 0, 0, 0]];
+  const STANDAARD = {
+    materiaal: 1, sterkteklasse: 1, klimaatklasse: 1, belastingduurklasse: 1, velden: 1, t: 22, L: 600, b_v: 300,
+    g_k: 0.25, gebruikscategorie: 1, toepassing: 1, f_m_plaat: 14.8, E_plaat: 4930, CC: 2,
+  };
+
+  function beschot(v) {
+    const km = KMOD[v.materiaal][v.klimaatklasse - 1];
+    if (!km) return { toegestaan: false };
+    const kG = km[0], kQ = km[v.belastingduurklasse - 1], kdef = KDEF[v.materiaal][v.klimaatklasse - 1], gM = GM[v.materiaal];
+    const [fmk, E] = v.materiaal === 1 ? HOUT[v.sterkteklasse] : [v.f_m_plaat, v.E_plaat];
+    const kh = v.materiaal === 1 ? Math.min((150 / v.t) ** 0.2, 1.3) : 1;
+    const [qk, Qk, p0, p1, p2] = CAT[v.gebruikscategorie];
+    const c = EIGEN[v.velden];
+    const gGa = v.CC === 1 ? 1.2 : v.CC === 3 ? 1.5 : 1.35, gGb = v.CC === 1 ? 1.1 : v.CC === 3 ? 1.3 : 1.2;
+    const gQ = v.CC === 1 ? 1.35 : v.CC === 3 ? 1.65 : 1.5;
+    // N en mm: kN/m² = 10⁻³ N/mm².
+    const g = v.g_k / 1000, q = qk / 1000, Q = Qk * 1000, L = v.L, t = v.t, bm = 1000, bv = v.b_v;
+    const fG = (kG * kh * fmk) / gM, fQ = (kQ * kh * fmk) / gM;
+    const uc = (Mgf, Mgs, Mvf, Mvs, W) => Math.max(
+      Math.max(gGa * Mgf + gQ * p0 * Mvf, gGa * Mgs + gQ * p0 * Mvs, gGb * Mgf + gQ * Mvf, gGb * Mgs + gQ * Mvs) / W / fQ,
+      (gGa * Math.max(Mgf, Mgs)) / W / fG);
+    const UC_mq = uc(c.gf * g * bm * L * L, c.gs * g * bm * L * L, c.qf * q * bm * L * L, c.qs * q * bm * L * L, (bm * t * t) / 6);
+    const UC_mQ = uc(c.gf * g * bv * L * L, c.gs * g * bv * L * L, c.Pf * Q * L, c.Ps * Q * L, (bv * t * t) / 6);
+    const Im = (bm * t ** 3) / 12, Iv = (bv * t ** 3) / 12;
+    const wG = (c.gw * g * bm * L ** 4) / (E * Im), wq = (c.qw * q * bm * L ** 4) / (E * Im), wQ = (c.Pw * Q * L ** 3) / (E * Iv);
+    const pw3 = v.toepassing === 3 ? 1 : p1;
+    const bij = (L * (v.toepassing === 2 ? 1 / 500 : v.toepassing === 3 ? 1 / 250 : 0.003)), fin = L / 250;
+    const r = {
+      toegestaan: true, UC_mq, UC_mQ, w_G: wG, w_q: wq, w_Q: wQ,
+      UC_bij_q: (kdef * (wG + p2 * wq) + pw3 * wq) / bij, UC_fin_q: (wG * (1 + kdef) + wq * (1 + p2 * kdef)) / fin,
+      UC_bij_Q: (kdef * (wG + p2 * wQ) + pw3 * wQ) / bij, UC_fin_Q: (wG * (1 + kdef) + wQ * (1 + p2 * kdef)) / fin,
+    };
+    r.UC_max = Math.max(r.UC_mq, r.UC_mQ, r.UC_bij_q, r.UC_fin_q, r.UC_bij_Q, r.UC_fin_Q);
+    return r;
+  }
+  const s4b = (x) => (x === 0 ? "0" : x.toFixed(Math.max(0, 3 - Math.floor(Math.log10(Math.abs(x))))));
+  // Tolerantie 0,2 %: de coëfficiënten in het blad liggen tot 0,1 % boven de exacte.
+  const ruimB = (x) => ({ waarde: s4b(x), tol: Math.max(Math.abs(x) * 0.002, 1e-6) });
+  const LETTERLIJK = ["t", "L", "b_v", "g_k", "f_m_plaat", "E_plaat"];
+  const eenheid = { t: "mm", L: "mm", b_v: "mm", g_k: "kN/m^2", f_m_plaat: "N/mm^2", E_plaat: "N/mm^2" };
+  const rekenSet = (v) => {
+    const letterlijk = Object.fromEntries(LETTERLIJK.filter((k) => v[k] !== STANDAARD[k]).map((k) => [k, `${v[k]} ${eenheid[k]}`]));
+    const keuzes = Object.fromEntries(["materiaal", "sterkteklasse", "klimaatklasse", "belastingduurklasse", "velden", "gebruikscategorie", "toepassing"].map((k) => [k, String(v[k])]));
+    return reken(Object.keys(letterlijk).length ? met(tpl, letterlijk) : tpl, keuzes, { ...PROJECT, CC: v.CC });
+  };
+
+  // Met de hand.
+  // Standaard: planken C14 22 mm op 600 mm, één veld, blijvend, categorie A (q_k 1,75, Q_k 3 kN), b_v = 300.
+  // k_h = min((150/22)^0,2; 1,3) = 1,3; f_m,d = 0,6·1,3·14/1,3 = 8,40.
+  // q: M_d = 1,2·0,125·0,25·0,36 + 1,5·0,125·1,75·0,36 = 0,01350 + 0,1181 = 0,1316 kNm; W = 1000·22²/6 = 80 667;
+  //    σ = 1,632, UC = 0,1943.
+  // Q: M_d = 1,2·0,125·0,25·0,3·0,36 + 1,5·3·0,6/4 = 0,00405 + 0,675 = 0,6791 kNm; W = 300·22²/6 = 24 200;
+  //    σ = 28,06, UC = 3,340 (M_d = 0,67905).
+  // w_Q = 3000·600³/(48·7000·300·22³/12) = 7,245 mm (het blad met 0,02084 in plaats van 1/48: 7,247);
+  // w_G = 5·0,25·10⁻³·1000·600⁴/(384·7000·887 333) = 0,0679; w_net,fin = 0,0679·1,6 + 7,247·1,18 = 8,66 > 600/250 = 2,4:
+  // UC = 3,608, maatgevend. w_bij = 0,6·(0,0679 + 0,3·7,247) + 0,5·7,247 = 4,969 > 1,8: UC = 2,760.
+  fouten += toetsMetOordeel("beschot — standaard: planken C14 22 mm, één veld, puntlast 3 kN op 300 mm",
+    rekenSet(STANDAARD),
+    { k_h: "1.3", f_md_Q: "8.40", M_db: "0.1316", sigma_mq: "1.632", UC_mq: "0.1943", M_dbv: "0.679", W_v: "24200",
+      sigma_mQ: "28.06", UC_mQ: "3.340", w_Q: "7.25", w_G: "0.0680", UC_fin_Q: "3.608", UC_bij_Q: "2.760",
+      UC_slot: "3.608", voldoet: "0" });
+  // Planken C24 28 mm op 500 mm over drie velden, middellang, b_v = 300: k_h = 1,3, f_m,d = 0,8·1,3·24/1,3 = 19,2.
+  // Q: M_veld = 1,2·0,08·0,25·0,3·0,25 + 1,5·0,2050·3·0,5 = 0,0018 + 0,4613 = 0,4631 kNm (steunpunt
+  // 1,2·0,1·0,25·0,3·0,25 + 1,5·0,1027·1,5 = 0,2333); W = 300·28²/6 = 39 200; σ = 11,81; UC = 0,6152.
+  // q: steunpunt maatgevend, 1,2·0,1·0,25·0,25 + 1,5·0,1167·1,75·0,25 = 0,08408 kNm; σ = 0,6435, UC = 0,03352.
+  // w_Q = 0,01473·3000·500³/(11 000·300·28³/12) = 0,9150; w_G = 0,005346; w_bij = 0,6·(0,005346 + 0,3·0,9150)
+  // + 0,5·0,9150 = 0,6254 ≤ 1,5: UC = 0,4169; w_net,fin = 0,00855 + 0,9150·1,18 = 1,088 ≤ 2,0: UC = 0,5441. Voldoet.
+  fouten += toetsMetOordeel("beschot — planken C24 28 mm op 500 mm, drie velden, middellang: voldoet",
+    rekenSet({ ...STANDAARD, sterkteklasse: 6, t: 28, L: 500, velden: 3, belastingduurklasse: 3 }),
+    { f_md_Q: "19.20", M_dbv: "0.4631", sigma_mQ: "11.81", UC_mQ: "0.6152", M_db: "0.08408", UC_mq: "0.03352",
+      w_Q: "0.9150", w_G: "0.005346", UC_bij_Q: "0.4169", UC_fin_Q: "0.5441", UC_slot: "0.6152", voldoet: "1" });
+  // OSB 18 mm (f_m,k 14,8, E 4930) op 600 mm, twee velden, klimaatklasse 2, kort, dak (H: Q_k 1,5 kN, ψ = 0),
+  // overig dak, g_k 0,3: k_mod 0,70 en blijvend 0,30, k_def 2,25, γ_M 1,2; f_m,d = 0,7·14,8/1,2 = 8,633.
+  // Q: 1,2·0,07032·0,3·0,3·0,36 + 1,5·0,2075·1,5·0,6 = 0,00273 + 0,2801 = 0,2829 kNm; W = 300·18²/6 = 16 200;
+  // σ = 17,46, UC = 2,022. w_Q = 0,01510·1500·600³/(4930·300·18³/12) = 6,806; w_G = 0,08790;
+  // w_bij = 2,25·0,0879 + 6,806 = 7,004 > 2,4 (L/250): UC = 2,918; w_net,fin = 0,0879·3,25 + 6,806 = 7,092: UC = 2,955.
+  fouten += toetsMetOordeel("beschot — OSB 18 mm, twee velden, klimaatklasse 2, dak",
+    rekenSet({ ...STANDAARD, materiaal: 3, klimaatklasse: 2, belastingduurklasse: 4, velden: 2, t: 18, g_k: 0.3, gebruikscategorie: 10, toepassing: 3 }),
+    { k_mod_G: "0.30", k_mod_Q: "0.70", k_def: "2.25", gamma_M: "1.2", f_md_Q: "8.633", sigma_mQ: "17.46", UC_mQ: "2.022",
+      w_Q: "6.806", w_G: "0.08790", UC_bij_Q: "2.918", UC_fin_Q: "2.955", UC_slot: "2.955", voldoet: "0" });
+  // OSB in klimaatklasse 3: niet toegestaan (tabel 3.1): geen UC, het beschot voldoet niet.
+  {
+    const got = rekenSet({ ...STANDAARD, materiaal: 3, klimaatklasse: 3 });
+    const ok = /mag in klimaatklasse 3 niet worden toegepast/.test(got.text) && /niet bepaald → het beschot voldoet niet/.test(got.text) && !/NaN/.test(got.text);
+    if (!ok) fouten++;
+    console.log(`\nbeschot — OSB in klimaatklasse 3\n  ${ok ? "OK    " : "FOUT  "} niet toegestaan, geen UC`);
+  }
+
+  // Narekening over een reeks materialen, velden, categorieën, klimaat- en duurklassen.
+  let zaad = 20260927;
+  const kies = (lijst) => { zaad = (zaad * 1103515245 + 12345) % 2147483648; return lijst[zaad % lijst.length]; };
+  for (let k = 0; k < 40; k++) {
+    const v = {
+      ...STANDAARD, materiaal: 1 + (k % 5), sterkteklasse: kies([1, 3, 6, 8]), klimaatklasse: kies([1, 1, 2, 3]),
+      belastingduurklasse: kies([1, 2, 3, 4, 5]), velden: 1 + ((k >> 1) % 4), t: kies([18, 22, 28, 40]), L: kies([400, 500, 600, 800]),
+      b_v: kies([100, 200, 300, 500]), g_k: kies([0.2, 0.4]), gebruikscategorie: 1 + (k % 10), toepassing: kies([1, 2, 3]),
+      f_m_plaat: kies([14.8, 23.0]), E_plaat: kies([4930, 8000]), CC: kies([1, 2, 3]),
+    };
+    const r = beschot(v);
+    const got = rekenSet(v);
+    const naam = `beschot — narekening ${k + 1}: materiaal ${v.materiaal}, ${v.velden} veld(en), categorie ${v.gebruikscategorie}, klimaatklasse ${v.klimaatklasse}`;
+    if (!r.toegestaan) {
+      const ok = /niet worden toegepast/.test(got.text) && !/Maatgevende UC =/.test(got.text);
+      if (!ok) fouten++;
+      console.log(`\n${naam}\n  ${ok ? "OK    " : "FOUT  "} niet toegestaan`);
+      continue;
+    }
+    const verwacht = Object.fromEntries(["UC_mq", "UC_mQ", "UC_bij_q", "UC_fin_q", "UC_bij_Q", "UC_fin_Q", "w_G", "w_q", "w_Q"].map((x) => [x, ruimB(r[x])]));
+    fouten += toetsMetOordeel(naam, got, { ...verwacht, UC_slot: ruimB(r.UC_max), voldoet: r.UC_max <= 1 ? "1" : "0" });
+  }
 }
 
 afronden(fouten, "Normbladen EN 1995-1-1");

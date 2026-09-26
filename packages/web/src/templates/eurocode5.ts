@@ -1462,3 +1462,318 @@ UC_uitkeping = tau_d / (k_v * f_vd)
   '<b>Maatgevende UC = 'UC_uitkeping'</b><span style="color: red"> > 1,0 → <b>uitkeping voldoet niet</b></span>
 #end if
 `;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11. Vloer- en dakbeschot — EN 1995-1-1 §6.1.6 en §7.2
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * EN 1995-1-1 §6.1.6 en §7.2 — Vloer- en dakbeschot: planken of plaatmateriaal
+ * op balken of sporen, als doorgaande ligger met gelijke velden (de
+ * hart-op-hartafstand). Blijvende last op alle velden, de veranderlijke last
+ * en de puntlast op de ongunstigste plaats (NEN-EN 1991-1-1, 6.2.1(1)); de
+ * coëfficiënten komen uit de driemomentenvergelijking, naar boven afgerond, en
+ * "vier of meer velden" is de omhullende over vier en meer. Veld en steunpunt
+ * apart, g en q (of Q) opgeteld: bij de puntlast een veilige bovengrens. De
+ * puntlast Q_k van de gebruikscategorie staat los van q_k (6.2.1(3)) en werkt
+ * op de verdeelbreedte b_v. k_mod en k_def per materiaal (tabel 3.1 en 3.2),
+ * γ_M per materiaal (tabel 2.3), k_h voor massief hout met de plankdikte als
+ * hoogte (3.2(3)); plaatmateriaal met eigen f_m,k en E als invoer.
+ */
+export const ec5Beschot = `# Toetsing Vloer- en Dakbeschot — EN 1995-1-1 §6.1.6 / §7.2
+
+'<i>Planken of plaatmateriaal op balken of sporen, gerekend als ligger over de balken met de hart-op-hartafstand als overspanning. Buiging en doorbuiging onder de gelijkmatig verdeelde belasting q<sub>k</sub> per meter breedte, en apart onder de puntlast Q<sub>k</sub> van de gebruikscategorie over de verdeelbreedte b<sub>v</sub>: de puntlast wordt niet met q<sub>k</sub> gecombineerd (NEN-EN 1991-1-1, 6.2.1(3)).</i><span class="alleen-scherm"></span>
+
+## Materiaal
+
+@select materiaal "Materiaal van het beschot"
+Massief hout: planken (EN 338) = 1
+Multiplex (EN 636) = 2
+OSB/3 of OSB/4 (EN 300) = 3
+Spaanplaat P5 (EN 312) = 4
+Spaanplaat P7 (EN 312) = 5
+@end
+
+#if materiaal ≡ 1
+  @select sterkteklasse "Sterkteklasse (EN 338)"
+  C14 = 1
+  C16 = 2
+  C18 = 3
+  C20 = 4
+  C22 = 5
+  C24 = 6
+  C27 = 7
+  C30 = 8
+  @end
+#else
+  'Karakteristieke buigsterkte en gemiddelde elasticiteitsmodulus bij buiging van de plaat, in de overspanningsrichting (productverklaring of EN 12369-1; de waarden hieronder zijn een voorbeeld):
+  f_m_plaat = 14.8 N/mm^2
+  E_plaat = 4930 N/mm^2
+  #if materiaal ≡ 2
+    '<i>Multiplex in klimaatklasse 2: type EN 636-2 of EN 636-3; in klimaatklasse 3: type EN 636-3 (tabel 3.1).</i><span class="alleen-scherm"></span>
+  #end if
+#end if
+
+@select klimaatklasse "Klimaatklasse (art. 2.3.1.3)"
+Klasse 1 — droog, binnenklimaat = 1
+Klasse 2 — beschut buitenklimaat = 2
+Klasse 3 — buiten, onbeschermd = 3
+@end
+
+@select belastingduurklasse "Belastingduurklasse van de veranderlijke belasting (tabel 2.1)"
+Blijvend (> 10 jaar) = 1
+Lang (6 mnd - 10 jaar) = 2
+Middellang (1 week - 6 mnd) = 3
+Kort (< 1 week) = 4
+Zeer kort = 5
+@end
+
+#hide
+'Massief hout (EN 338): [klasse | f_m,k | E_0,mean]
+hout = [1; 2; 3; 4; 5; 6; 7; 8 |14; 16; 18; 20; 22; 24; 27; 30 |7000; 8000; 9000; 9500; 10000; 11000; 11500; 12000]
+'k_mod (tabel 3.1), sleutel 10 × materiaal + klimaatklasse: [sleutel | blijvend | lang | middellang | kort | zeer kort]; 0 = niet toegestaan.
+kmod_tabel = [11; 12; 13; 21; 22; 23; 31; 32; 33; 41; 42; 43; 51; 52; 53 |0.60; 0.60; 0.50; 0.60; 0.60; 0.50; 0.40; 0.30; 0; 0.30; 0.20; 0; 0.40; 0.30; 0 |0.70; 0.70; 0.55; 0.70; 0.70; 0.55; 0.50; 0.40; 0; 0.45; 0.30; 0; 0.50; 0.40; 0 |0.80; 0.80; 0.65; 0.80; 0.80; 0.65; 0.70; 0.55; 0; 0.65; 0.45; 0; 0.70; 0.55; 0 |0.90; 0.90; 0.70; 0.90; 0.90; 0.70; 0.90; 0.70; 0; 0.85; 0.60; 0; 0.90; 0.70; 0 |1.10; 1.10; 0.90; 1.10; 1.10; 0.90; 1.10; 0.90; 0; 1.10; 0.80; 0; 1.10; 0.90; 0]
+'k_def (tabel 3.2) per klimaatklasse en γ_M (tabel 2.3): [materiaal | klasse 1 | klasse 2 | klasse 3 | γ_M]
+kdef_tabel = [1; 2; 3; 4; 5 |0.60; 0.80; 1.50; 2.25; 1.50 |0.80; 1.00; 2.25; 3.00; 2.25 |2.00; 2.50; 0; 0; 0 |1.3; 1.2; 1.2; 1.3; 1.3]
+sleutel = 10 * materiaal + klimaatklasse
+k_mod_G = hlookup(kmod_tabel; sleutel; 1; 2)
+k_mod_Q = hlookup(kmod_tabel; sleutel; 1; belastingduurklasse + 1)
+k_def = hlookup(kdef_tabel; materiaal; 1; klimaatklasse + 1)
+gamma_M = hlookup(kdef_tabel; materiaal; 1; 5)
+#show
+
+## Beschot en overspanning
+
+Dikte van het beschot:
+
+t = 22 mm
+
+Hart-op-hartafstand van de balken of sporen, de overspanning van het beschot:
+
+L = 600 mm
+
+@select velden "Het beschot loopt door over (zonder stoot boven een tussenliggende balk)"
+Eén veld: op twee balken = 1
+Twee velden = 2
+Drie velden = 3
+Vier of meer velden = 4
+@end
+
+'<i>Een stoot van planken of platen boven een balk onderbreekt de doorgaande werking. Liggen er stoten boven de balken, ook verspringend, dan is één veld de veilige keuze.</i><span class="alleen-scherm"></span>
+
+'Verdeelbreedte b<sub>v</sub>: de breedte van het beschot die de puntlast Q<sub>k</sub> draagt:
+
+b_v = 300 mm
+
+'<i>De puntlast werkt op 0,1 × 0,1 m (NB bij 6.3.1.2; bij C2 op 0,5 × 0,5 m). Bij losse planken is b<sub>v</sub> de breedte van de planken die de last samen dragen, bij plaatmateriaal de breedte waarover de plaat de last spreidt.</i><span class="alleen-scherm"></span>
+
+#hide
+'Doorgaande ligger met gelijke velden (driemomentenvergelijking), naar boven afgerond. [velden | M veld, g op alle velden | M steunpunt, g | w, g | M veld, q ongunstig geplaatst | M steunpunt, q | w, q | M veld, puntlast op de ongunstigste plaats | M steunpunt, puntlast | w, puntlast]
+'M = k·w·L² of k·F·L en w = k·w·L⁴/EI of k·F·L³/EI; "vier of meer" is de omhullende over vier en meer velden.
+coef = [1; 2; 3; 4 |0.1250; 0.07032; 0.08000; 0.07791 |0; 0.1250; 0.1000; 0.1072 |0.01303; 0.005417; 0.006885; 0.006572 |0.1250; 0.09571; 0.1013; 0.1001 |0; 0.1250; 0.1167; 0.1206 |0.01303; 0.009151; 0.009918; 0.009756 |0.2500; 0.2075; 0.2050; 0.2048 |0; 0.09623; 0.1027; 0.1032 |0.02084; 0.01510; 0.01473; 0.01470]
+k_gf = hlookup(coef; velden; 1; 2)
+k_gs = hlookup(coef; velden; 1; 3)
+k_wg = hlookup(coef; velden; 1; 4)
+k_qf = hlookup(coef; velden; 1; 5)
+k_qs = hlookup(coef; velden; 1; 6)
+k_wq = hlookup(coef; velden; 1; 7)
+k_Qf = hlookup(coef; velden; 1; 8)
+k_Qs = hlookup(coef; velden; 1; 9)
+k_wQ = hlookup(coef; velden; 1; 10)
+b_m = 1000 mm
+#show
+
+## Materiaaleigenschappen
+
+#if materiaal ≡ 1
+  #hide
+  f_mk = hlookup(hout; sterkteklasse; 1; 2)*N/mm^2
+  E_mean = hlookup(hout; sterkteklasse; 1; 3)*N/mm^2
+  #show
+  'Hoogtefactor voor massief hout met de plankdikte als hoogte bij buiging (art. 3.2(3), formule 3.1):
+  k_h = min((150 mm / t)^0.2; 1.3)
+#else
+  #hide
+  f_mk = f_m_plaat
+  E_mean = E_plaat
+  #show
+  'Plaatmateriaal: geen hoogtefactor.
+  k_h = 1.0
+#end if
+
+'Karakteristieke buigsterkte en elasticiteitsmodulus, partiële factor (tabel 2.3), modificatiefactoren blijvend en veranderlijk (tabel 3.1) en kruipfactor (tabel 3.2):
+
+f_mk
+E_mean
+gamma_M
+k_mod_G
+k_mod_Q
+k_def
+
+#if k_mod_Q ≡ 0
+  '<b style="color:#b91c1c">Dit plaatmateriaal mag in klimaatklasse 'klimaatklasse' niet worden toegepast (tabel 3.1 en 3.2).</b>
+  '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>het beschot voldoet niet: dit materiaal is in deze klimaatklasse niet toegestaan</b></span>
+#else
+  Rekenwaarden buigsterkte, alleen blijvende belasting en met de veranderlijke belasting (art. 2.4.1, formule 2.14):
+
+  f_md_G = k_mod_G * k_h * f_mk / gamma_M to N/mm^2
+  f_md_Q = k_mod_Q * k_h * f_mk / gamma_M to N/mm^2
+
+  ## Belasting
+
+  'Blijvende belasting: het eigen gewicht van het beschot en de afwerking (karakteristiek):
+
+  g_k = 0.25 kN/m^2
+
+  @select gebruikscategorie "Gebruikscategorie (NEN-EN 1991-1-1, tabel NB.1 – 6.2 en NB.4 – 6.10)"
+  A — vloer, niet-gemeenschappelijk: q_k 1,75 kN/m², Q_k 3 kN = 1
+  A — trap, niet-gemeenschappelijk: q_k 2,0 kN/m², Q_k 3 kN = 2
+  A — balkon, niet-gemeenschappelijk: q_k 2,5 kN/m², Q_k 3 kN = 3
+  A — gemeenschappelijke vloer, trap of balkon: q_k 3,0 kN/m², Q_k 3 kN = 4
+  B — kantoorruimte: q_k 2,5 kN/m², Q_k 3 kN = 5
+  C1 — ruimte met tafels: q_k 4,0 kN/m², Q_k 3 kN = 6
+  C2 — vaste zitplaatsen: q_k 4,0 kN/m², Q_k 7 kN = 7
+  C3, C4 en C5: q_k 5,0 kN/m², Q_k 7 kN = 8
+  D — winkelruimte: q_k 4,0 kN/m², Q_k 7 kN = 9
+  H — dak, niet toegankelijk: q_k 1,0 kN/m², Q_k 1,5 kN = 10
+  @end
+
+  @select toepassing "Grens bijkomende doorbuiging (NB bij NEN-EN 1990, A1.4.3(3))"
+  Vloer, of dak dat intensief door personen wordt gebruikt — 0,003·L = 1
+  Vloer met scheurgevoelige scheidingswanden — L/500 = 2
+  Overig dak — L/250 = 3
+  @end
+
+  #hide
+  'Gebruiksbelasting per categorie (NEN-EN 1991-1-1) en ψ-factoren (NEN-EN 1990 tabel NB.2 — A1.1): [categorie | q_k | Q_k | ψ_0 | ψ_1 | ψ_2]
+  cat_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 |1.75; 2.0; 2.5; 3.0; 2.5; 4.0; 4.0; 5.0; 4.0; 1.0 |3; 3; 3; 3; 3; 3; 7; 7; 7; 1.5 |0.4; 0.4; 0.4; 0.4; 0.5; 0.4; 0.4; 0.4; 0.4; 0 |0.5; 0.5; 0.5; 0.5; 0.5; 0.7; 0.7; 0.7; 0.7; 0 |0.3; 0.3; 0.3; 0.3; 0.3; 0.6; 0.6; 0.6; 0.6; 0]
+  q_k = hlookup(cat_tabel; gebruikscategorie; 1; 2)*kN/m^2
+  Q_k = hlookup(cat_tabel; gebruikscategorie; 1; 3)*kN
+  psi_0 = hlookup(cat_tabel; gebruikscategorie; 1; 4)
+  psi_1 = hlookup(cat_tabel; gebruikscategorie; 1; 5)
+  psi_2 = hlookup(cat_tabel; gebruikscategorie; 1; 6)
+  'w_3 in de bijkomende doorbuiging (A1.4.3(3)): frequent (6.15b) bij een vloer of een
+  'intensief gebruikt dak, karakteristiek (6.14b) bij een overig dak.
+  psi_w3 = if(toepassing ≡ 3; 1; psi_1)
+  grens_bij = if(toepassing ≡ 2; 1/500; if(toepassing ≡ 3; 1/250; 0.003))
+  gamma_Ga = if(CC ≡ 1; 1.2; if(CC ≡ 3; 1.5; 1.35))
+  gamma_Gb = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))
+  gamma_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))
+  #show
+
+  'Gelijkmatig verdeelde en geconcentreerde gebruiksbelasting van de categorie:
+
+  q_k
+  Q_k
+
+  #if gebruikscategorie ≡ 10
+    '<i>Dak: q<sub>k</sub> = 1,0 kN/m² geldt bij een helling onder 15°; bij een steiler dak is q<sub>k</sub> kleiner (tabel NB.4 – 6.10) en ligt het blad aan de veilige kant.</i><span class="alleen-scherm"></span>
+  #end if
+
+  'Belastingfactoren (NEN-EN 1990 tabel NB.4 en NB.5 — A1.2(B), gevolgklasse CC{{CC}}) en combinatiefactoren (tabel NB.2 — A1.1):
+
+  gamma_Ga
+  gamma_Gb
+  gamma_Q
+  psi_0
+
+  ## Buiging onder q_k (art. 6.1.6, formule 6.11)
+
+  'Karakteristieke momenten in een strook van 1 m breedte, in het veld en boven een steunpunt; g<sub>k</sub> op alle velden, q<sub>k</sub> op de ongunstigste velden (NEN-EN 1991-1-1, 6.2.1(1)):
+
+  M_gf = k_gf * g_k * b_m * L^2 to kN*m
+  M_gs = k_gs * g_k * b_m * L^2 to kN*m
+  M_qf = k_qf * q_k * b_m * L^2 to kN*m
+  M_qs = k_qs * q_k * b_m * L^2 to kN*m
+
+  'Rekenwaarden (formule 6.10a en 6.10b, en alleen blijvende belasting met k<sub>mod</sub> blijvend, art. 3.1.3(2)), per combinatie het grootste van veld en steunpunt:
+
+  M_da = max(gamma_Ga * M_gf + gamma_Q * psi_0 * M_qf; gamma_Ga * M_gs + gamma_Q * psi_0 * M_qs) to kN*m
+  M_db = max(gamma_Gb * M_gf + gamma_Q * M_qf; gamma_Gb * M_gs + gamma_Q * M_qs) to kN*m
+  M_dG = gamma_Ga * max(M_gf; M_gs) to kN*m
+
+  W_m = b_m * t^2 / 6 to mm^3
+
+  sigma_mq = max(M_da; M_db) / W_m to N/mm^2
+  sigma_mG = M_dG / W_m to N/mm^2
+
+  UC_mq = max(sigma_mq / f_md_Q; sigma_mG / f_md_G)
+
+  ## Buiging onder de puntlast Q_k (art. 6.1.6, formule 6.11)
+
+  'De strook met de verdeelbreedte b<sub>v</sub> draagt Q<sub>k</sub> op de ongunstigste plaats en zijn deel van g<sub>k</sub>. Het grootste veldmoment van g en van Q vallen niet op dezelfde plaats: opgeteld zijn ze een veilige bovengrens.
+
+  M_gfv = k_gf * g_k * b_v * L^2 to kN*m
+  M_gsv = k_gs * g_k * b_v * L^2 to kN*m
+  M_Qf = k_Qf * Q_k * L to kN*m
+  M_Qs = k_Qs * Q_k * L to kN*m
+
+  M_dav = max(gamma_Ga * M_gfv + gamma_Q * psi_0 * M_Qf; gamma_Ga * M_gsv + gamma_Q * psi_0 * M_Qs) to kN*m
+  M_dbv = max(gamma_Gb * M_gfv + gamma_Q * M_Qf; gamma_Gb * M_gsv + gamma_Q * M_Qs) to kN*m
+  M_dGv = gamma_Ga * max(M_gfv; M_gsv) to kN*m
+
+  W_v = b_v * t^2 / 6 to mm^3
+
+  sigma_mQ = max(M_dav; M_dbv) / W_v to N/mm^2
+  sigma_mGv = M_dGv / W_v to N/mm^2
+
+  UC_mQ = max(sigma_mQ / f_md_Q; sigma_mGv / f_md_G)
+
+  ## Doorbuiging (art. 7.2, NB bij NEN-EN 1990 A1.4.3)
+
+  'Ogenblikkelijke doorbuiging met de coëfficiënten k·w·L⁴/EI en k·F·L³/EI; de doorbuiging onder g<sub>k</sub> is per strookbreedte gelijk:
+
+  I_m = b_m * t^3 / 12 to mm^4
+  I_v = b_v * t^3 / 12 to mm^4
+
+  w_G = k_wg * g_k * b_m * L^4 / (E_mean * I_m) to mm
+  w_q = k_wq * q_k * b_m * L^4 / (E_mean * I_m) to mm
+  w_Q = k_wQ * Q_k * L^3 / (E_mean * I_v) to mm
+
+  'Kruipdeel onder de quasi-blijvende combinatie (w<sub>2</sub>) en deel door de veranderlijke belasting (w<sub>3</sub>, met ψ<sub>1</sub> frequent of 1,0 karakteristiek); uiteindelijke doorbuiging met formule 2.3 en 2.4:
+
+  psi_2
+  psi_w3
+
+  w_bij_q = k_def * (w_G + psi_2 * w_q) + psi_w3 * w_q to mm
+  w_fin_q = w_G * (1 + k_def) + w_q * (1 + psi_2 * k_def) to mm
+
+  w_bij_Q = k_def * (w_G + psi_2 * w_Q) + psi_w3 * w_Q to mm
+  w_fin_Q = w_G * (1 + k_def) + w_Q * (1 + psi_2 * k_def) to mm
+
+  'Grenswaarden (NB 7.2(2): NB bij NEN-EN 1990, A1.4.3(3) en (4)), met de hart-op-hartafstand als overspanning:
+
+  w_bij_lim = grens_bij * L to mm
+  w_fin_lim = L / 250 to mm
+
+  UC_bij_q = w_bij_q / w_bij_lim
+  UC_fin_q = w_fin_q / w_fin_lim
+  UC_bij_Q = w_bij_Q / w_bij_lim
+  UC_fin_Q = w_fin_Q / w_fin_lim
+
+  ## Samenvatting
+
+  #hide
+  UC_max = max(UC_mq; UC_mQ; UC_bij_q; UC_fin_q; UC_bij_Q; UC_fin_Q)
+  kleur(u) = if(u > 1; "#b91c1c"; if(u > 0.9; "#b45309"; "#047857"))
+  oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
+  #show
+  '<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
+  '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:4px 8px;">Toets</th><th style="text-align:left; padding:4px 8px;">Norm</th><th style="text-align:right; padding:4px 8px;">UC</th><th style="text-align:left; padding:4px 8px;">Oordeel</th></tr>
+  '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Buiging onder q<sub>k</sub></td><td style="padding:4px 8px;">§6.1.6</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_mq)'">'UC_mq'</td><td style="padding:4px 8px; color:'kleur(UC_mq)'">'oordeel(UC_mq)'</td></tr>
+  '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Buiging onder Q<sub>k</sub></td><td style="padding:4px 8px;">§6.1.6</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_mQ)'">'UC_mQ'</td><td style="padding:4px 8px; color:'kleur(UC_mQ)'">'oordeel(UC_mQ)'</td></tr>
+  '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Bijkomende doorbuiging onder q<sub>k</sub></td><td style="padding:4px 8px;">A1.4.3(3)</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_bij_q)'">'UC_bij_q'</td><td style="padding:4px 8px; color:'kleur(UC_bij_q)'">'oordeel(UC_bij_q)'</td></tr>
+  '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">w<sub>net,fin</sub> onder q<sub>k</sub></td><td style="padding:4px 8px;">§7.2, A1.4.3(4)</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_fin_q)'">'UC_fin_q'</td><td style="padding:4px 8px; color:'kleur(UC_fin_q)'">'oordeel(UC_fin_q)'</td></tr>
+  '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Bijkomende doorbuiging onder Q<sub>k</sub></td><td style="padding:4px 8px;">A1.4.3(3)</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_bij_Q)'">'UC_bij_Q'</td><td style="padding:4px 8px; color:'kleur(UC_bij_Q)'">'oordeel(UC_bij_Q)'</td></tr>
+  '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">w<sub>net,fin</sub> onder Q<sub>k</sub></td><td style="padding:4px 8px;">§7.2, A1.4.3(4)</td><td style="padding:4px 8px; text-align:right; color:'kleur(UC_fin_Q)'">'UC_fin_Q'</td><td style="padding:4px 8px; color:'kleur(UC_fin_Q)'">'oordeel(UC_fin_Q)'</td></tr>
+  '</table>
+
+  #if UC_max ≤ 1
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>het beschot voldoet</b></span>
+  #else
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>het beschot voldoet niet</b></span>
+  #end if
+
+  '<i>Niet getoetst: afschuiving, de bevestiging van het beschot op de balken, trillingen (§7.3) en de balken zelf; de systeemsterkte k<sub>sys</sub> (§6.6) is niet toegepast. Bij een dak zijn sneeuw en de lijnlast van 2 kN/m uit tabel NB.4 – 6.10 niet meegenomen.</i>
+#end if
+`;
