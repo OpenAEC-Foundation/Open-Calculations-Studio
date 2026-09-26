@@ -34,6 +34,15 @@
  *   (7.8)–(7.11) met de bovengrens van s_r,max, of (7.14). Zonder de
  *   vergroting van w_max met k_x: de veilige kant.
  *
+ * Optioneel (mk_lijn = 1, standaard uit) de M-κ-lijn, informatief en buiten
+ * het oordeel: zonder normaalkracht en met N_Ed, beton op druk met het
+ * parabool-rechthoekdiagram (3.17), ongescheurd lineair-elastisch (ideële
+ * doorsnede met E_cm) tot f_ctm, gescheurd zonder trek in het beton; staal
+ * bilineair met f_yd. De punten scheuren, vloeien (buitenste getrokken laag op
+ * ε_yd) en uiterste toestand (ε_cu2, of ε_c2 op 3/7·h bij volledige druk,
+ * figuur 6.1) en een tekening van de lijn. Staat de keuze uit, of ontbreekt
+ * ze in een ouder blad, dan rekent het blad precies als daarvoor.
+ *
  * Een positief moment geeft trek onderin, een negatief bovenin: de berekening
  * spiegelt de lagen. De scheurwijdte kiest de trekzijde van M_fr zelf; bij
  * trek met een kleine excentriciteit is dat de zijde waar de resultante ligt
@@ -146,6 +155,11 @@ M_fr = ?*(kN*m)'<span class="kolom-4"></span>'
 @select belastingduur "Duur van de BGT-belasting"
   Langdurend = 1
   Kortdurend = 2
+@end
+
+@select mk_lijn "Moment-krommingslijn (informatief, hoofdstuk 8)"
+  Niet berekenen = 0
+  Berekenen, zonder en met N_Ed = 1
 @end
 
 #if past ≡ 0
@@ -586,7 +600,159 @@ M_fr = ?*(kN*m)'<span class="kolom-4"></span>'
         #end if
     #end if
 
-    # 8. Samenvatting
+    #if mk_lijn ≡ 1
+
+        # 8. M-κ-lijn
+
+        '<i>Informatief: de lijn telt niet mee in het oordeel. Beton op druk met het parabool-rechthoekdiagram (3.17) met f<sub>cd</sub>, n = 2, ε<sub>c2</sub> = 2,0 ‰ en ε<sub>cu2</sub> = 3,5 ‰ (tabel 3.1). Ongescheurd lineair-elastisch met E<sub>cm</sub> (ideële doorsnede, α<sub>e</sub> = E<sub>s</sub>/E<sub>cm</sub>) tot f<sub>ctm</sub> aan de getrokken rand; gescheurd zonder trek in het beton, dus zonder tension stiffening. Staal bilineair met f<sub>yd</sub> en een horizontale tak zonder rekgrens (3.2.7(2)b). De drie lagen volledig, zonder aftrek voor wringing; verdrongen beton verwaarloosd. Gedrukt aan de rand tegenover de trekzijde van de UGT. Vloeien: de buitenste getrokken laag bereikt ε<sub>yd</sub>. Uiterste toestand: ε<sub>cu2</sub> aan de gedrukte rand, of ε<sub>c2</sub> op 3/7·h als de doorsnede geheel gedrukt is (figuur 6.1). Bij druk ligt de lijn met N = N<sub>Ed</sub> bij κ = 0 op M = N·(h/2 − y<sub>i</sub>), met y<sub>i</sub> het zwaartepunt van de ideële doorsnede.</i><span class="alleen-scherm"></span>
+        #hide
+        'Diepten van de lagen vanaf de gedrukte rand, kaal in N en mm; κ in 1/mm.
+        A1k_ = if(s_U > 0; A_s,o; A_s,b)/mm^2
+        Amk_ = A_s,m/mm^2
+        A2k_ = if(s_U > 0; A_s,b; A_s,o)/mm^2
+        p1_ = if(s_U > 0; a_o; h - a_b)/mm
+        pm_ = if(s_U > 0; a_m; h - a_m)/mm
+        p2_ = if(s_U > 0; a_b; h - a_o)/mm
+        Ecm_ = E_cm/(N/mm^2)
+        fctm_ = f_ctm/(N/mm^2)
+        εc2 = 0.002
+        εcu2 = 0.0035
+        εyd_ = fyd_/200000
+        'Parabool-rechthoek (3.17) met n = 2: Fc = ∫σ dε en Gc = ∫σ·ε dε vanaf 0, nul bij trek.
+        Fc(t) = if(t ≤ 0; 0; if(t ≤ εc2; fcd_*(t^2/εc2 - t^3/(3*εc2^2)); fcd_*(2*εc2/3 + t - εc2)))
+        Gc(t) = if(t ≤ 0; 0; if(t ≤ εc2; fcd_*(2*t^3/(3*εc2) - t^4/(4*εc2^2)); fcd_*(5*εc2^2/12 + (t^2 - εc2^2)/2)))
+        σk(t) = min(max(200000*t; -fyd_); fyd_)
+        'N en M om h/2 (druk positief) bij rek t aan de gedrukte rand en kromming k.
+        Nk(t; k) = b_/k*(Fc(t) - Fc(t - k*h_)) + A1k_*σk(t - k*p1_) + Amk_*σk(t - k*pm_) + A2k_*σk(t - k*p2_)
+        Mk(t; k) = b_/k*((h_/2 - t/k)*(Fc(t) - Fc(t - k*h_)) + (Gc(t) - Gc(t - k*h_))/k) + A1k_*σk(t - k*p1_)*(h_/2 - p1_) + Amk_*σk(t - k*pm_)*(h_/2 - pm_) + A2k_*σk(t - k*p2_)*(h_/2 - p2_)
+        'Ideële doorsnede: oppervlakte, zwaartepunt vanaf de gedrukte rand en traagheidsmoment.
+        αk_ = 200000/Ecm_
+        Ai_ = b_*h_ + αk_*(A1k_ + Amk_ + A2k_)
+        yi_ = (b_*h_^2/2 + αk_*(A1k_*p1_ + Amk_*pm_ + A2k_*p2_))/Ai_
+        Ii_ = b_*h_^3/12 + b_*h_*(h_/2 - yi_)^2 + αk_*(A1k_*(p1_ - yi_)^2 + Amk_*(pm_ - yi_)^2 + A2k_*(p2_ - yi_)^2)
+        py_ = if(A1k_ > 0; p1_; if(Amk_ > 0; pm_; p2_))
+        Nmk_ = fcd_*b_*h_ + (A1k_ + Amk_ + A2k_)*σk(εc2)
+        Nmn_ = -(A1k_ + Amk_ + A2k_)*fyd_
+        #show
+        mkPunten$(0; 0)
+        #hide
+        EI_I = Ecm_*Ii_*N*mm^2 to kN*m^2
+        y_i = yi_*mm
+        M_r,0 = mk_mr,0*N*mm to kN*m
+        κ_r,0 = mk_kr,0/mm to m^-1
+        M_y,0 = mk_my,0*N*mm to kN*m
+        κ_y,0 = mk_ky,0/mm to m^-1
+        EI_y,0 = M_y,0/κ_y,0 to kN*m^2
+        μ_κ,0 = mk_ku,0/mk_ky,0
+        M_u,0 = mk_mu,0*N*mm to kN*m
+        κ_u,0 = mk_ku,0/mm to m^-1
+        #show
+        EI_I', ongescheurd: E<sub>cm</sub>·I<sub>i</sub><span class="kolom-2"></span>'
+        y_i', zwaartepunt van de ideële doorsnede vanaf de gedrukte rand<span class="kolom-2"></span>'
+        '<b>Zonder normaalkracht</b>
+        M_r,0', scheuren<span class="kolom-4"></span>'
+        κ_r,0'<span class="kolom-4"></span>'
+        #if mk_vl,0 ≡ 1
+            M_y,0', vloeien<span class="kolom-4"></span>'
+            κ_y,0'<span class="kolom-4"></span>'
+        #else
+            '<i>De getrokken wapening vloeit niet vóór de uiterste toestand.</i>
+        #end if
+        M_u,0', uiterste toestand<span class="kolom-4"></span>'
+        κ_u,0'<span class="kolom-4"></span>'
+        #if mk_vl,0 ≡ 1
+            EI_y,0', gescheurd: secans tot vloeien<span class="kolom-2"></span>'
+            μ_κ,0', κ<sub>u</sub>/κ<sub>y</sub><span class="kolom-2"></span>'
+        #end if
+        #hide
+        mk_metN = if(N_Ed ≠ 0 kN and N_ > 0.999*Nmn_ and N_ < 0.999*Nmk_; 1; 0)
+        #show
+        #if mk_metN ≡ 1
+            mkPunten$(N; N_)
+            #hide
+            M_0,N = mk_m0,N*N*mm to kN*m
+            M_r,N = mk_mr,N*N*mm to kN*m
+            κ_r,N = mk_kr,N/mm to m^-1
+            M_y,N = mk_my,N*N*mm to kN*m
+            κ_y,N = mk_ky,N/mm to m^-1
+            μ_κ,N = mk_ku,N/mk_ky,N
+            M_u,N = mk_mu,N*N*mm to kN*m
+            κ_u,N = mk_ku,N/mm to m^-1
+            #show
+            '<b>Met N<sub>Ed</sub> = 'N_Ed' kN</b>
+            M_0,N', bij κ = 0<span class="kolom-4"></span>'
+            #if mk_rok,N ≡ 1
+                M_r,N', scheuren<span class="kolom-4"></span>'
+                κ_r,N'<span class="kolom-4"></span>'
+            #else
+                '<i>Door de trekkracht al gescheurd bij κ = 0.</i>
+            #end if
+            #if mk_vl,N ≡ 1
+                M_y,N', vloeien<span class="kolom-4"></span>'
+                κ_y,N'<span class="kolom-4"></span>'
+            #else
+                '<i>De getrokken wapening vloeit niet vóór de uiterste toestand.</i>
+            #end if
+            M_u,N', uiterste toestand<span class="kolom-4"></span>'
+            κ_u,N'<span class="kolom-4"></span>'
+            #if mk_vl,N ≡ 1
+                μ_κ,N', κ<sub>u</sub>/κ<sub>y</sub><span class="kolom-2"></span>'
+            #end if
+        #else if N_Ed ≠ 0 kN
+            '<i>N<sub>Ed</sub> ligt buiten het bereik van de doorsnede: geen lijn met normaalkracht.</i>
+        #end if
+        #hide
+        mkLijn$(0)
+        #show
+        #if mk_metN ≡ 1
+            #hide
+            mkLijn$(N)
+            #show
+        #else
+            #hide
+            mk_K,N = mk_K,0
+            mk_M,N = mk_M,0
+            mk_ku,N = mk_ku,0
+            mk_mr,N = mk_mr,0
+            mk_m0,N = mk_m0,0
+            #show
+        #end if
+        #hide
+        mk_kmax = max(mk_ku,0; mk_ku,N)
+        mk_mmax = max(max(mk_M,0); max(mk_M,N); mk_mr,0; mk_mr,N; 0)*1.08
+        mk_mmin = min(min(mk_M,0); min(mk_M,N); mk_m0,0; mk_m0,N; 0)
+        mk_mmin = mk_mmin - 0.05*(mk_mmax - mk_mmin)
+        Xk(k) = 60 + 400*k/mk_kmax
+        Ym(m) = 222 - 200*(m - mk_mmin)/(mk_mmax - mk_mmin)
+        #show
+        '<svg viewbox="0 0 480 262" xmlns="http://www.w3.org/2000/svg" style="font-size:10px; width:100%; max-height:282px;">
+        '<line x1="60" y1="'Ym(0)'" x2="465" y2="'Ym(0)'" style="stroke:#6b7280; stroke-width:1"/>
+        '<line x1="60" y1="16" x2="60" y2="226" style="stroke:#6b7280; stroke-width:1"/>
+        #for i = 1 : 4
+            '<line x1="'Xk(i*mk_kmax/4)'" y1="'Ym(0) - 3'" x2="'Xk(i*mk_kmax/4)'" y2="'Ym(0) + 3'" style="stroke:#6b7280; stroke-width:1"/>
+            '<text x="'Xk(i*mk_kmax/4)'" y="'Ym(0) + 14'" text-anchor="middle" style="fill:#374151">'i*mk_kmax/4*1000'</text>
+            '<line x1="57" y1="'Ym(i*mk_mmax/4)'" x2="63" y2="'Ym(i*mk_mmax/4)'" style="stroke:#6b7280; stroke-width:1"/>
+            '<text x="54" y="'Ym(i*mk_mmax/4) + 3'" text-anchor="end" style="fill:#374151">'i*mk_mmax/4/1000000'</text>
+        #loop
+        '<text x="465" y="'Ym(0) - 6'" text-anchor="end" style="fill:#374151">κ [1/m]</text>
+        '<text x="66" y="14" style="fill:#374151">M [kNm]</text>
+        mkTeken$(0; "#2563eb")
+        #if mk_metN ≡ 1
+            mkTeken$(N; "#d97706")
+        #end if
+        '</svg>'
+        '<span class="alleen-scherm"><span style="display:inline-block; width:14px; border-top:3px solid #2563eb; vertical-align:middle"></span>&nbsp;N = 0 &nbsp;&nbsp; <span style="display:inline-block; width:14px; border-top:3px solid #d97706; vertical-align:middle"></span>&nbsp;N = N<sub>Ed</sub> &nbsp;&nbsp; doorlopend: de gevolgde lijn, stippel: gescheurd onder het scheurmoment, streep: de sprong bij het scheuren; r scheuren, y vloeien, u uiterste toestand</span>
+    #end if
+
+    #if mk_lijn ≡ 1
+
+        # 9. Samenvatting
+
+    #else
+
+        # 8. Samenvatting
+
+    #end if
 
     UC_max = max(UC_N; UC_M; UC_V; UC_Vmax; UC_Tl; UC_As,min; UC_As,max; UC_ρw; UC_sl; UC_st; UC_sl,T; UC_w)'<span class="alleen-scherm"></span>'
     UC_max', grootste van de toetsen hierboven<span class="alleen-afdruk"></span>'
@@ -596,4 +762,82 @@ M_fr = ?*(kN*m)'<span class="kolom-4"></span>'
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
     #end if
 #end if
+
+#def mkPunten$(sfx$; nwP$)
+#hide
+mk_N,sfx = nwP
+Nt = mk_N,sfx
+mk_kB,sfx = $Find{Nk(εcu2; k) - Nt @ k = 0.000000001 : 1}
+mk_kC,sfx = $Find{Nk(εc2 + 3*k*h_/7; k) - Nt @ k = 0.000000001 : 7*εc2/(4*h_)}
+mk_C,sfx = if(mk_kB,sfx*h_ < εcu2; 1; 0)
+mk_ku,sfx = if(mk_C,sfx ≡ 1; mk_kC,sfx; mk_kB,sfx)
+mk_eu,sfx = if(mk_C,sfx ≡ 1; εc2 + 3*mk_ku,sfx*h_/7; εcu2)
+mk_mu,sfx = Mk(mk_eu,sfx; mk_ku,sfx)
+mk_vl,sfx = if(mk_eu,sfx - mk_ku,sfx*py_ ≤ -εyd_; 1; 0)
+mk_ky,sfx = if(mk_vl,sfx ≡ 1; $Find{Nk(k*py_ - εyd_; k) - Nt @ k = 0.000000000001 : mk_ku,sfx}; mk_ku,sfx)
+mk_my,sfx = if(mk_vl,sfx ≡ 1; Mk(mk_ky,sfx*py_ - εyd_; mk_ky,sfx); mk_mu,sfx)
+mk_ei,sfx = Nt/(Ecm_*Ai_)
+mk_rok,sfx = if(mk_ei,sfx + fctm_/Ecm_ > 0; 1; 0)
+mk_kr,sfx = max((mk_ei,sfx + fctm_/Ecm_)/(h_ - yi_); 0)
+mk_m0,sfx = Ecm_*mk_ei,sfx*Ai_*(h_/2 - yi_)
+mk_mr,sfx = mk_m0,sfx + Ecm_*mk_kr,sfx*Ii_
+#show
+#end def
+
+#def mkLijn$(sfx$)
+Nt = mk_N,sfx
+mk_ka,sfx = if(mk_rok,sfx ≡ 1; max(mk_kr,sfx; mk_ku,sfx/1000); mk_ku,sfx/1000)
+t_a = $Find{Nk(t; mk_ka,sfx) - Nt @ t = -0.01 : mk_ka,sfx*h_ + 0.01}
+mk_K,sfx = [mk_ka,sfx]
+mk_M,sfx = [Mk(t_a; mk_ka,sfx)]
+#for j = 1 : 24
+    κ_j = if(mk_vl,sfx ≡ 1 and mk_ky,sfx > mk_ka,sfx; if(j ≤ 12; mk_ka,sfx + (mk_ky,sfx - mk_ka,sfx)*j/12; mk_ky,sfx + (mk_ku,sfx - mk_ky,sfx)*(j - 12)/12); mk_ka,sfx + (mk_ku,sfx - mk_ka,sfx)*j/24)
+    t_j = $Find{Nk(t; κ_j) - Nt @ t = -0.01 : κ_j*h_ + 0.01}
+    mk_K,sfx = concat(mk_K,sfx; [κ_j])
+    mk_M,sfx = concat(mk_M,sfx; [Mk(t_j; κ_j)])
+#loop
+#end def
+
+#def mkTeken$(sfx$; klP$)
+#hide
+kl_ = klP
+MR_ = if(mk_rok,sfx ≡ 1; mk_mr,sfx; mk_mmin - 1)
+#show
+#if mk_rok,sfx ≡ 1
+    '<line x1="'Xk(0)'" y1="'Ym(mk_m0,sfx$)'" x2="'Xk(mk_kr,sfx$)'" y2="'Ym(mk_mr,sfx$)'" style="stroke:'kl_'; stroke-width:1.8"/>
+    '<circle cx="'Xk(mk_kr,sfx$)'" cy="'Ym(mk_mr,sfx$)'" r="3" style="fill:'kl_'"/>
+    '<text x="'Xk(mk_kr,sfx$) - 4'" y="'Ym(mk_mr,sfx$) - 5'" text-anchor="end" style="fill:'kl_'">r</text>
+#end if
+#for j = 1 : 24
+    #hide
+    k1_ = mk_K,sfx.(j)
+    k2_ = mk_K,sfx.(j + 1)
+    m1_ = mk_M,sfx.(j)
+    m2_ = mk_M,sfx.(j + 1)
+    t_ = if(m2_ ≠ m1_; min(max((MR_ - m1_)/(m2_ - m1_); 0); 1); 0)
+    km_ = k1_ + t_*(k2_ - k1_)
+    #show
+    #if j ≡ 1 and mk_rok,sfx ≡ 1 and m1_ ≥ MR_
+        '<line x1="'Xk(mk_kr,sfx$)'" y1="'Ym(MR_)'" x2="'Xk(k1_)'" y2="'Ym(m1_)'" style="stroke:'kl_'; stroke-width:1; stroke-dasharray:4 3"/>
+    #end if
+    #if m1_ ≥ MR_ and m2_ ≥ MR_
+        '<line x1="'Xk(k1_)'" y1="'Ym(m1_)'" x2="'Xk(k2_)'" y2="'Ym(m2_)'" style="stroke:'kl_'; stroke-width:1.8"/>
+    #else if m1_ < MR_ and m2_ < MR_
+        '<line x1="'Xk(k1_)'" y1="'Ym(m1_)'" x2="'Xk(k2_)'" y2="'Ym(m2_)'" style="stroke:'kl_'; stroke-width:1; stroke-dasharray:2 3"/>
+    #else if m1_ < MR_
+        '<line x1="'Xk(k1_)'" y1="'Ym(m1_)'" x2="'Xk(km_)'" y2="'Ym(MR_)'" style="stroke:'kl_'; stroke-width:1; stroke-dasharray:2 3"/>
+        '<line x1="'Xk(km_)'" y1="'Ym(MR_)'" x2="'Xk(k2_)'" y2="'Ym(m2_)'" style="stroke:'kl_'; stroke-width:1.8"/>
+        '<line x1="'Xk(mk_kr,sfx$)'" y1="'Ym(MR_)'" x2="'Xk(km_)'" y2="'Ym(MR_)'" style="stroke:'kl_'; stroke-width:1; stroke-dasharray:4 3"/>
+    #else
+        '<line x1="'Xk(k1_)'" y1="'Ym(m1_)'" x2="'Xk(km_)'" y2="'Ym(MR_)'" style="stroke:'kl_'; stroke-width:1.8"/>
+        '<line x1="'Xk(km_)'" y1="'Ym(MR_)'" x2="'Xk(k2_)'" y2="'Ym(m2_)'" style="stroke:'kl_'; stroke-width:1; stroke-dasharray:2 3"/>
+    #end if
+#loop
+#if mk_vl,sfx ≡ 1
+    '<circle cx="'Xk(mk_ky,sfx$)'" cy="'Ym(mk_my,sfx$)'" r="3" style="fill:'kl_'"/>
+    '<text x="'Xk(mk_ky,sfx$) + 2'" y="'Ym(mk_my,sfx$) + 13'" style="fill:'kl_'">y</text>
+#end if
+'<circle cx="'Xk(mk_ku,sfx$)'" cy="'Ym(mk_mu,sfx$)'" r="3" style="fill:'kl_'"/>
+'<text x="'Xk(mk_ku,sfx$) - 4'" y="'Ym(mk_mu,sfx$) - 5'" text-anchor="end" style="fill:'kl_'">u</text>
+#end def
 `;

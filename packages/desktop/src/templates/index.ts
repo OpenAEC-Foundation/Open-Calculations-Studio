@@ -30,6 +30,7 @@ import { betondoorsnede } from "./betondoorsnede";
 import { betonkolom } from "./betonkolom";
 import { ponsberekening } from "./ponsberekening";
 import { tweepaalsPoer } from "./tweepaalsPoer";
+import { betonplaat } from "./betonplaat";
 import { verankeringslengte } from "./verankeringslengte";
 import { opdrijven } from "./opdrijven";
 import { houtenKap } from "./houtenKap";
@@ -92,6 +93,7 @@ export const templates: Record<string, string> = {
   "betonkolom": betonkolom,
   "ponsberekening": ponsberekening,
   "tweepaals-poer": tweepaalsPoer,
+  "betonplaat": betonplaat,
   "verankeringslengte": verankeringslengte,
   "opdrijven": opdrijven,
   "houten-kap": houtenKap,
