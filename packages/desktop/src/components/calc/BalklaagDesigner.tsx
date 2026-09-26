@@ -4,7 +4,7 @@ import { useActiefExemplaar, useAlleenLezen, useProjectScope } from "../../store
 import { JaNee, IconKeuze, SchemaIcoon, type SchemaSoort } from "./designerKit";
 import {
   KLEUR_M, KLEUR_V, KLEUR_U, Label, Oplegging, LijnLast, PuntLast, KrachtenLijn,
-  RaveelPlattegrond, raveelMaten, extremen, randwaarden, nl,
+  RaveelPlattegrond, raveelMaten, raveelHoogte, extremen, randwaarden, nl,
 } from "./balklaagTekening";
 import { leesBlad, rekenBladDoor, useBladUitkomst } from "./bladResultaat";
 import { belastinggevallen, lijnen, ugtCombinaties, type Ligger, type Lijnen } from "./balklaagLijnen";
@@ -386,19 +386,29 @@ export default function BalklaagDesigner() {
   // ── doorsnede-tekening — vult het gemeten tekengebied, gecentreerd ─────────
   // Eén uniforme fit-schaal: het beeld groeit/krimpt evenredig mee met het
   // paneel en blijft dimensioneel correct (x = y).
-  const capH = 26;                                 // ruimte voor het onderschrift boven de stage
+  // Op papier staat de plattegrond van de sparing boven het statisch schema:
+  // daar minder tussenruimte en de onderschriften op hun werkelijke hoogte
+  // (23 px, met een subscript 26 px).
+  const krap = alleenLezen && schema === 4;
+  const capH = krap ? 25 : 26;                     // ruimte voor het onderschrift boven de stage
   const nJ = onderslag ? 1 : 4;
-  // Op papier compacter: vijf tekeningen moeten samen op één bladspiegel.
   const schemaH = alleenLezen ? 154 : 186;         // vaste hoogte voor het statisch schema
-  const mH = alleenLezen ? 112 : 150;              // idem voor de M-lijn
+  // De lijnen staan alleen op het scherm; op papier staan ze in de uitwerking.
+  const mH = 150;                                  // vaste hoogte voor de M-lijn
   const vH = mH;                                   // en de V-lijn
-  const uH = alleenLezen ? 100 : 140;              // en voor de doorbuigingslijn
+  const uH = 140;                                  // en voor de doorbuigingslijn
   const W = box.w;
-  // De doorsnede (bij een raveelbalk de plattegrond) krijgt wat overblijft;
-  // 4 × 14 px tussenruimte tussen de vijf tekeningen (`gap` op .vd-canvases).
-  const gapH = 4 * 14;
-  const hMin = schema === 4 ? (alleenLezen ? 128 : 240) : (alleenLezen ? 110 : 130);
-  const H = Math.max(hMin, box.h - 5 * capH - schemaH - mH - vH - uH - gapH);
+  // De doorsnede krijgt wat overblijft; 4 × `gap` tussenruimte tussen de vijf
+  // tekeningen (.vd-canvases).
+  const gap = krap ? 8 : 14;
+  const gapH = 4 * gap;
+  const hMin = 130;
+  const raveel = { bSparing, lStaart, hoh, bBalk: b, profiel: prof.name };
+  // De plattegrond krijgt de hoogte waarbij hij de breedte vult: op het scherm
+  // scrollt de kolom, en op papier is het beeld zo hoog als zijn inhoud.
+  const H = schema === 4
+    ? raveelHoogte(W, raveel)
+    : Math.max(hMin, box.h - 5 * capH - schemaH - mH - vH - uH - gapH);
   const mX = 46, mTop = 26, mBot = 48;             // marges (px)
   // Bij een onderslag één balk; de "groep" is dan de balk met wat ruimte ernaast.
   const totalMM = onderslag ? b * 4 : (nJ - 1) * hoh + b;
@@ -413,11 +423,11 @@ export default function BalklaagDesigner() {
   const yBoard = mTop + Math.max(0, (availH - blockH) / 2);  // verticaal gecentreerd
   const yJoist = yBoard + tV;
 
-  function Dim(props: { name: string; value: number; x: number; y: number; step?: number }) {
-    const { name, value, x, y, step = 5 } = props;
+  function Dim(props: { name: string; value: number; x: number; y: number; step?: number; anker?: "end" }) {
+    const { name, value, x, y, step = 5, anker } = props;
     const isEd = editing === name;
     return (
-      <div className="vd-dim" style={{ left: x, top: y }}>
+      <div className="vd-dim" style={{ left: x, top: y, ...(anker === "end" ? { transform: "translate(-100%, -50%)" } : {}) }}>
         {isEd ? (
           <input className="vd-dim-input" type="number" step={step} defaultValue={value} autoFocus
             onFocus={(e) => e.currentTarget.select()}
@@ -436,7 +446,12 @@ export default function BalklaagDesigner() {
   }
 
   return (
-    <div className="vd-panel" data-afdrukhoogte="212">
+    // Op papier alleen wat de uitwerking niet zelf tekent: het statisch schema
+    // en bij een raveelbalk de plattegrond. De doorsnede staat in de invoer, de
+    // lijnen per belastinggeval en als omhullende in de uitwerking. Geen van
+    // die tekeningen schaalt op de gemeten hoogte, dus het beeld mag zo hoog
+    // worden als zijn inhoud.
+    <div className="vd-panel" data-afdrukhoogte="inhoud">
       <div className="vd-head">
         <strong>Parametrisch beeld — balklaag</strong>
         {resultaat && Number.isFinite(ucMax) ? (
@@ -633,41 +648,28 @@ export default function BalklaagDesigner() {
           )}
         </div>
 
-        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, justifyContent: "safe center", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
+        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, justifyContent: "safe center", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18, ...(krap ? { gap } : {}) }}>
           {schema === 4 ? (
             <div className="vd-canvas">
               <div className="vd-caption">Plattegrond van de sparing</div>
               <div className="vd-stage" style={{ width: W, height: H, background: "transparent", border: "none", borderRadius: 0 }}>
-                {(() => {
-                  const m = raveelMaten(W, H, bSparing, lStaart, hoh);
+                {/* Op papier tekent de plattegrond de maatgetallen zelf; op het
+                    scherm staan er klikbare maten, boven en links naast hun lijn. */}
+                <svg width={W} height={H} className="vd-svg">
+                  <RaveelPlattegrond W={W} H={H} {...raveel} getallen={alleenLezen} />
+                </svg>
+                {!alleenLezen && (() => {
+                  const m = raveelMaten(W, H, raveel);
                   return (
                     <>
-                      <svg width={W} height={H} className="vd-svg">
-                        <defs>
-                          <marker id="bdDimP" markerWidth="10" markerHeight="12" refX="5" refY="6" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-                            <circle cx="5" cy="6" r="2.4" className="vd-dimarrow" />
-                          </marker>
-                        </defs>
-                        <RaveelPlattegrond W={W} H={H} bSparing={bSparing} lStaart={lStaart} hoh={hoh} bBalk={b} profiel={prof.name} />
-                        {/* breedte van de sparing = overspanning van de raveelbalk */}
-                        <line x1={m.wl} y1={m.yOnd + 24} x2={m.wr} y2={m.yOnd + 24} className="vd-dimmeasure" markerStart="url(#bdDimP)" markerEnd="url(#bdDimP)" />
-                        <line x1={m.wl} y1={m.yOnd + 2} x2={m.wl} y2={m.yOnd + 28} className="vd-dimext" />
-                        <line x1={m.wr} y1={m.yOnd + 2} x2={m.wr} y2={m.yOnd + 28} className="vd-dimext" />
-                        {/* staartlengte = de balken die op de raveelbalk rusten */}
-                        <line x1={m.x0 - 34} y1={m.y0} x2={m.x0 - 34} y2={m.yRav} className="vd-dimmeasure" markerStart="url(#bdDimP)" markerEnd="url(#bdDimP)" />
-                        <line x1={m.x0 - 38} y1={m.yRav} x2={m.wl - 6} y2={m.yRav} className="vd-dimext" />
-                      </svg>
-                      <Dim name="b_sparing" value={bSparing} x={m.xm} y={m.yOnd + 24} step={100} />
-                      <Dim name="l_staart" value={lStaart} x={m.x0 - 34} y={(m.y0 + m.yRav) / 2} step={100} />
-                      <div className="vd-dim-ro" style={{ left: m.xm, top: m.yOnd + 42 }}>
-                        belaste breedte l<sub>staart</sub>/2 = {nl(lStaart / 2, 0)} mm
-                      </div>
+                      <Dim name="b_sparing" value={bSparing} x={m.xm} y={m.yMaat - 9} step={100} />
+                      <Dim name="l_staart" value={lStaart} x={m.xStaart - 3} y={(m.y0 + m.yRav) / 2} step={100} anker="end" />
                     </>
                   );
                 })()}
               </div>
             </div>
-          ) : onderslag ? (
+          ) : alleenLezen ? null : onderslag ? (
           <div className="vd-canvas">
             <div className="vd-caption">Doorsnede van de onderslag</div>
             <div className="vd-stage" style={{ width: W, height: H, background: "transparent", border: "none", borderRadius: 0 }}>
@@ -786,7 +788,7 @@ export default function BalklaagDesigner() {
           </div>
 
           {/* ── Omhullende momentenlijn en dwarskrachtenlijn (UGT) ── */}
-          {(() => {
+          {!alleenLezen && (() => {
             const mx1 = 54, mx2 = Math.max(mx1 + 80, W - 54);
             const X = (x: number) => mx1 + ((mx2 - mx1) * x) / tot;
             // Schaal: alles wat getekend wordt moet passen, boven én onder de as.
@@ -865,6 +867,7 @@ export default function BalklaagDesigner() {
           })()}
 
           {/* ── Doorbuigingslijn (BGT) ─────────────────────────────────── */}
+          {!alleenLezen && (
           <div className="vd-canvas">
             <div className="vd-caption">
               Doorbuiging (BGT){" "}
@@ -882,7 +885,7 @@ export default function BalklaagDesigner() {
                 const X = (x: number) => ux1 + ((ux2 - ux1) * x) / tot;
                 // Per veld het veranderlijke geval dat het blad meetelt: de
                 // verdeelde last op dat veld, of in de norm-stand de puntlast als
-                // die de grootste zakking geeft (§8.1 van het blad).
+                // die de grootste zakking geeft (5.1 van het blad).
                 const pv1 = uitBlad("u_var") > uitBlad("u_q_k") + 1e-9;
                 const pv2 = uitBlad("u_var_2") > uitBlad("u_q_k_2") + 1e-9;
                 const tweede = schema === 2 || schema === 3;
@@ -896,7 +899,7 @@ export default function BalklaagDesigner() {
                 const uas = 26 + laag * sU;
                 const lijn = (f: (x: number) => number) => xs.map((x) => `${X(x)},${uas + sU * f(x)}`).join(" ");
                 // De stippen staan waar het blad de grootste eindstand vond
-                // (§8.1); een ouder blad noemt die plaats niet, dan het midden.
+                // (5.1); een ouder blad noemt die plaats niet, dan het midden.
                 const xw1 = uitBlad("x_w1"), xw2 = uitBlad("x_w2");
                 const velden = [
                   { x: Number.isFinite(xw1) ? xw1 : L1 / 2, w: wfin, lim: wlim },
@@ -927,6 +930,7 @@ export default function BalklaagDesigner() {
               })()}
             </div>
           </div>
+          )}
         </div>
       </div>
 
