@@ -67,32 +67,58 @@ export function steunmoment(g: Ligger, s: Lastset): number {
 
 /**
  * De belastinggevallen BG1 … BG5 uit de lasten per balk, zoals het blad ze
- * definieert (§7): BG1 permanent overal, BG2 veranderlijk op veld 1 (bij een
- * overstek ook op het overstek), BG3 veranderlijk op veld 2, BG4 puntlast in
- * veld 1 (bij een overstek dat langer is dan L/4 op het uiteinde), BG5 puntlast
- * in veld 2.
+ * definieert (§7): BG1 permanent overal, BG2 veranderlijk op veld 1, BG3
+ * veranderlijk op het tweede deel (veld 2 of het overstek), BG4 puntlast
+ * midden in veld 1, BG5 puntlast op het tweede deel (midden in veld 2 of op
+ * het uiteinde van het overstek). Het overstek is voor de schaakbordbelasting
+ * een tweede deel, net als veld 2.
  */
 export function belastinggevallen(g: Ligger, lasten: { g: number; q: number; F: number }): Record<1 | 2 | 3 | 4 | 5, Lastset> {
-  const s2 = g.schema === 2, s3 = g.schema === 3;
-  const eind = s2 && g.a > g.L1 / 4;
+  const twee = g.schema === 2 || g.schema === 3;
   return {
-    1: { w1: lasten.g, w2: lasten.g, P1: 0, P2: 0 },
-    2: { w1: lasten.q, w2: s2 ? lasten.q : 0, P1: 0, P2: 0 },
-    3: { w1: 0, w2: s3 ? lasten.q : 0, P1: 0, P2: 0 },
-    4: { w1: 0, w2: 0, P1: eind ? 0 : lasten.F, P2: eind ? lasten.F : 0 },
-    5: { w1: 0, w2: 0, P1: 0, P2: s3 ? lasten.F : 0 },
+    1: { w1: lasten.g, w2: twee ? lasten.g : 0, P1: 0, P2: 0 },
+    2: { w1: lasten.q, w2: 0, P1: 0, P2: 0 },
+    3: { w1: 0, w2: twee ? lasten.q : 0, P1: 0, P2: 0 },
+    4: { w1: 0, w2: 0, P1: lasten.F, P2: 0 },
+    5: { w1: 0, w2: 0, P1: 0, P2: twee ? lasten.F : 0 },
   };
 }
 
-/** De vijf UGT-combinaties (6.10b) van §8 als lastset. */
-export function ugtCombinaties(bg: Record<1 | 2 | 3 | 4 | 5, Lastset>, gG: number, gQ: number): Lastset[] {
-  return [
-    tel([[bg[1], gG], [bg[2], gQ]]),
-    tel([[bg[1], gG], [bg[2], gQ], [bg[3], gQ]]),
-    tel([[bg[1], gG], [bg[3], gQ]]),
-    tel([[bg[1], gG], [bg[4], gQ]]),
-    tel([[bg[1], gG], [bg[5], gQ]]),
-  ];
+/**
+ * De partiële factoren uit het blad: γ_G en γ_Q voor 6.10b, en γ_G,a en
+ * γ_Q·ψ_0 voor 6.10a. Een blad uit een oudere versie kent 6.10a niet; laat
+ * gGa en gQa dan weg (of NaN), dan blijft het bij 6.10b.
+ */
+export interface Factoren {
+  gG: number;
+  gQ: number;
+  gGa?: number;
+  gQa?: number;
+}
+
+/** Eén UGT-combinatie: de rij uit de tabel van het blad (§8.2), de formule en de lastset. */
+export interface Combinatie {
+  rij: 1 | 2 | 3 | 4 | 5;
+  formule: "6.10a" | "6.10b";
+  set: Lastset;
+}
+
+/**
+ * De UGT-combinaties van §8 als lastset: vijf rijen (veld 1, steun, veld 2 of
+ * overstek, en de twee puntlasten), elk met 6.10a en 6.10b.
+ */
+export function ugtCombinaties(bg: Record<1 | 2 | 3 | 4 | 5, Lastset>, f: Factoren): Combinatie[] {
+  const rijen: [Combinatie["rij"], (2 | 3 | 4 | 5)[]][] = [[1, [2]], [2, [2, 3]], [3, [3]], [4, [4]], [5, [5]]];
+  const formules: [Combinatie["formule"], number, number][] = [];
+  if (Number.isFinite(f.gGa) && Number.isFinite(f.gQa)) formules.push(["6.10a", f.gGa as number, f.gQa as number]);
+  formules.push(["6.10b", f.gG, f.gQ]);
+  const uit: Combinatie[] = [];
+  for (const [rij, veranderlijk] of rijen) {
+    for (const [formule, fG, fQ] of formules) {
+      uit.push({ rij, formule, set: tel([[bg[1], fG], ...veranderlijk.map((k): [Lastset, number] => [bg[k], fQ])]) });
+    }
+  }
+  return uit;
 }
 
 export interface Lijnen {

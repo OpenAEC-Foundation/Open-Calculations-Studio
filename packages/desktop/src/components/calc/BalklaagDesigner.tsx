@@ -8,6 +8,7 @@ import {
 } from "./balklaagTekening";
 import { leesBlad, rekenBladDoor, useBladUitkomst } from "./bladResultaat";
 import { belastinggevallen, lijnen, ugtCombinaties, type Ligger, type Lijnen } from "./balklaagLijnen";
+import { balklaagKent, kdefUitKlimaat } from "./balklaagBlad";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
@@ -186,6 +187,10 @@ export default function BalklaagDesigner() {
   // de melding niet meer en verdwijnt hij vanzelf.
   const [ontwerp, setOntwerp] = useState<{ sig: string; tekst: string } | null>(null);
   const [zoekt, setZoekt] = useState(false);
+  // De handtekening van de invoer bij de laatste render. De ontwerpknop zoekt
+  // een paar seconden; is de invoer intussen veranderd, dan hoort het gevonden
+  // profiel bij de oude invoer en schrijft de knop niets.
+  const laatsteSig = useRef("");
 
   // Meet het beschikbare tekengebied zodat het beeld meegroeit met het paneel.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -233,8 +238,12 @@ export default function BalklaagDesigner() {
 
   // ── invoer (defaults uit gedeelde DEFAULTS-bron, zie boven) ───────────────
   const d = (name: string) => num(name, DEFAULTS[name]);
+  // Een blad uit een oudere versie kent de soort ligger en de vrije maat niet;
+  // het beeld biedt dan alleen aan waar dat blad mee rekent.
+  const kent = balklaagKent(source);
+  const oudBlad = !kent.ligger || !kent.zelf;
   const profId = Math.round(d("profiel"));
-  const zelf = profId === ZELF;
+  const zelf = kent.zelf && profId === ZELF;
   const bZelf = d("b_zelf");
   const hZelf = d("h_zelf");
   const prof: Prof = zelf
@@ -245,8 +254,9 @@ export default function BalklaagDesigner() {
   const klim = Math.round(d("klimaat"));
   const schema = Math.round(d("schema"));
   const soort = Math.round(d("ligger"));
-  // Bij een raveelbalk blijft de belaste breedte l_staart/2, ook als soort "onderslag" staat.
-  const onderslag = soort === 2 && schema !== 4;
+  // Bij een raveelbalk blijft de belaste breedte l_staart/2, ook als soort
+  // "onderslag" staat. Een blad zonder de keuze rekent altijd met hoh.
+  const onderslag = kent.ligger && soort === 2 && schema !== 4;
   const bOnd = d("b_ond");
   const aOver = d("a_over");
   const LVeld2 = d("L_veld2");
@@ -285,7 +295,12 @@ export default function BalklaagDesigner() {
   const ok = resultaat?.voldoet === true;
   const Pg = uitBlad("P_g_k"), qq = uitBlad("q_q_k"), FQ = uitBlad("F_Q_k");
   const gG = uitBlad("γ_G"), gQ = uitBlad("γ_Q");
-  const kdef = uitBlad("k_def"), psi2 = uitBlad("ψ_2");
+  // 6.10a: een ouder blad kent die factoren niet (NaN); dan alleen 6.10b.
+  const gGa = uitBlad("γ_G_a"), gQa = uitBlad("γ_Q_a");
+  // Een ouder blad toont k_def niet; dan uit de klimaatklasse, zoals het blad rekent.
+  const kdefBlad = uitBlad("k_def");
+  const kdef = Number.isFinite(kdefBlad) ? kdefBlad : kdefUitKlimaat(klim);
+  const psi2 = uitBlad("ψ_2");
   const MyEd = uitBlad("M_y_Ed"), VzEd = uitBlad("V_z_Ed");
   const wfin = uitBlad("w_fin"), wlim = uitBlad("w_lim");
   const wfin2 = uitBlad("w_fin_2"), wlim2 = uitBlad("w_lim_2");
@@ -303,6 +318,7 @@ export default function BalklaagDesigner() {
     scope,
   ]);
   const ontwerpMelding = ontwerp && ontwerp.sig === ontwerpSig ? ontwerp.tekst : null;
+  laatsteSig.current = ontwerpSig;
   /**
    * Het eerste profiel uit de keuzelijst waarop het blad voldoet. "Eerste" is
    * de volgorde van de lijst zelf; die loopt per reeks van klein naar groot,
@@ -312,6 +328,7 @@ export default function BalklaagDesigner() {
    */
   const kiesEerstePassend = async () => {
     if (!exemplaar || zoekt) return;
+    const sig = ontwerpSig;
     setZoekt(true);
     const ast = leesBlad(source);
     const naam = exemplaar.naam ?? "";
@@ -322,16 +339,19 @@ export default function BalklaagDesigner() {
       if (u?.resultaat.voldoet === true) { gevonden = id; break; }
     }
     setZoekt(false);
+    // Tijdens het zoeken gewijzigde invoer: het gevonden profiel hoort bij de
+    // oude invoer. Niets schrijven; de gebruiker kan opnieuw zoeken.
+    if (laatsteSig.current !== sig) return;
     if (gevonden === null) {
       setOntwerp({
-        sig: ontwerpSig,
+        sig,
         tekst: "Geen enkel profiel uit de lijst voldoet. Verklein de h.o.h. afstand of de overspanning, kies een hogere sterkteklasse, of vul zelf een maat in.",
       });
       return;
     }
     setVal("profiel", gevonden);
     setOntwerp({
-      sig: ontwerpSig,
+      sig,
       tekst:
         gevonden === profId
           ? `${PROFILES[gevonden].name} voldoet al — lichter kan niet binnen deze lijst.`
@@ -351,7 +371,9 @@ export default function BalklaagDesigner() {
   const gevalLijn: Record<number, Lijnen> = Object.fromEntries(
     ([1, 2, 3, 4, 5] as const).map((k) => [k, lijnen(ligger, bg[k])]),
   );
-  const combis = ugtCombinaties(bg, Number.isFinite(gG) ? gG : 0, Number.isFinite(gQ) ? gQ : 0).map((s) => lijnen(ligger, s));
+  const combis = ugtCombinaties(bg, {
+    gG: Number.isFinite(gG) ? gG : 0, gQ: Number.isFinite(gQ) ? gQ : 0, gGa, gQa,
+  }).map((c) => lijnen(ligger, c.set));
   const Mmax = (x: number) => Math.max(...combis.map((c) => c.M(x)));
   const Mmin = (x: number) => Math.min(...combis.map((c) => c.M(x)));
   const Vmax = (x: number) => Math.max(...combis.map((c) => c.V(x)));
@@ -434,16 +456,19 @@ export default function BalklaagDesigner() {
           <span className="vd-ctrl-h">Statisch schema</span>
           <IconKeuze label="Schema" waarde={schema} opties={SCHEMA_OPTIES}
             onChange={(v) => setVal("schema", v)} />
-          <label>Soort ligger
-            <select value={soort} onChange={(e) => {
-              const v = parseInt(e.target.value);
-              setVal("ligger", v);
-              // De trillingstoets hoort bij de balklaag zelf; bij een onderslag staat hij standaard uit.
-              if (v === 2) setVal("controleer_trilling", 0);
-            }}>
-              {LIGGER.map((l) => <option key={l.v} value={l.v}>{l.label}</option>)}
-            </select>
-          </label>
+          {kent.ligger && (
+            <label>Soort ligger
+              {/* De trillingstoets volgt de soort in het blad zelf: bij een onderslag vervalt hij. */}
+              <select value={soort} onChange={(e) => setVal("ligger", parseInt(e.target.value))}>
+                {LIGGER.map((l) => <option key={l.v} value={l.v}>{l.label}</option>)}
+              </select>
+            </label>
+          )}
+          {oudBlad && (
+            <p className="vd-ontwerp-melding">
+              Dit blad is met een oudere versie gemaakt; voeg de balklaag opnieuw in voor onderslag en vrije maat.
+            </p>
+          )}
           {onderslag && (
             <label title="Bij balken die over twee gelijke velden doorlopen 1,25 × L, bij losse balken aan weerszijden de som van de halve overspanningen.">
               <span className="vd-help">Belaste breedte (m)</span>
@@ -479,7 +504,7 @@ export default function BalklaagDesigner() {
           <label>Profiel (b×h)
             <select value={profId} onChange={(e) => setVal("profiel", parseInt(e.target.value))}>
               {Object.entries(PROFILES).map(([id, p]) => <option key={id} value={id}>{p.name}</option>)}
-              <option value={ZELF}>Zelf invullen</option>
+              {kent.zelf && <option value={ZELF}>Zelf invullen</option>}
             </select>
           </label>
           {zelf && (
@@ -590,6 +615,9 @@ export default function BalklaagDesigner() {
             waarde={tril === 1}
             onChange={(v) => setVal("controleer_trilling", v ? 1 : 0)}
           />
+          {onderslag && tril === 1 && (
+            <p className="vd-ontwerp-melding">Bij een onderslag vervalt de trillingstoets; die hoort bij de balklaag erop.</p>
+          )}
           {tril === 1 && (
             <>
               <label>ζ — demping
@@ -701,9 +729,9 @@ export default function BalklaagDesigner() {
                 // voor het label van de permanente last.
                 const qTip = gTop - (kort_ ? 14 : 17);
                 const qTop = qTip - (kort_ ? 20 : 26); // bovenlijn van de veranderlijke last
-                // De puntlast staat waar hij maatgevend is: midden in het veld,
-                // of bij een lang overstek op het uiteinde (BG4 in het blad).
-                const xF = schema === 2 && aOver > Lth / 4 ? sxE : smid;
+                // De puntlast staat midden in veld 1, zoals in het statische
+                // schema van het blad; de andere standen zijn aparte gevallen.
+                const xF = smid;
                 const yMaat = ay + maatAf;
                 // In een smal paneel de lastlabels zonder de omschrijving.
                 const kort = W < 440;
@@ -842,7 +870,9 @@ export default function BalklaagDesigner() {
               Doorbuiging (BGT){" "}
               <span className="vd-caption-waarde">
                 · w<sub>fin</sub> = {tekst(wfin, 1)} mm, grens {tekst(wlim, 1)} mm
-                {schema === 3 && Number.isFinite(wfin2) && <> · veld 2: {tekst(wfin2, 1)} mm, grens {tekst(wlim2, 1)} mm</>}
+                {(schema === 2 || schema === 3) && Number.isFinite(wfin2) && (
+                  <> · {schema === 2 ? "uiteinde" : "veld 2"}: {tekst(wfin2, 1)} mm, grens {tekst(wlim2, 1)} mm</>
+                )}
               </span>
             </div>
             <div className="vd-stage" style={{ width: W, height: uH, background: "transparent", border: "none", borderRadius: 0 }}>
@@ -855,7 +885,8 @@ export default function BalklaagDesigner() {
                 // die de grootste zakking geeft (§8.1 van het blad).
                 const pv1 = uitBlad("u_var") > uitBlad("u_q_k") + 1e-9;
                 const pv2 = uitBlad("u_var_2") > uitBlad("u_q_k_2") + 1e-9;
-                const kvar = (x: number) => (schema === 3 && x > L1 ? (pv2 ? 5 : 3) : (pv1 ? 4 : 2));
+                const tweede = schema === 2 || schema === 3;
+                const kvar = (x: number) => (tweede && x > L1 ? (pv2 ? 5 : 3) : (pv1 ? 4 : 2));
                 const uInst = (x: number) => gevalLijn[1].u(x) + gevalLijn[kvar(x)].u(x);
                 const uFin = (x: number) => (1 + kdef) * gevalLijn[1].u(x) + (1 + psi2 * kdef) * gevalLijn[kvar(x)].u(x);
                 const xs = Array.from({ length: 241 }, (_, i) => (tot * i) / 240);
@@ -864,9 +895,13 @@ export default function BalklaagDesigner() {
                 const sU = (uH - 60) / (hoog + laag);
                 const uas = 26 + laag * sU;
                 const lijn = (f: (x: number) => number) => xs.map((x) => `${X(x)},${uas + sU * f(x)}`).join(" ");
+                // De stippen staan waar het blad de grootste eindstand vond
+                // (§8.1); een ouder blad noemt die plaats niet, dan het midden.
+                const xw1 = uitBlad("x_w1"), xw2 = uitBlad("x_w2");
                 const velden = [
-                  { x: L1 / 2, w: wfin, lim: wlim },
-                  ...(schema === 3 ? [{ x: L1 + ligger.L2 / 2, w: wfin2, lim: wlim2 }] : []),
+                  { x: Number.isFinite(xw1) ? xw1 : L1 / 2, w: wfin, lim: wlim },
+                  ...(schema === 3 ? [{ x: Number.isFinite(xw2) ? xw2 : L1 + ligger.L2 / 2, w: wfin2, lim: wlim2 }] : []),
+                  ...(schema === 2 && Number.isFinite(wfin2) ? [{ x: tot, w: wfin2, lim: wlim2 }] : []),
                 ];
                 return (
                   <svg width={W} height={uH} className="vd-svg">
@@ -901,7 +936,7 @@ export default function BalklaagDesigner() {
           {controleer === 1 ? <UcChip naam="doorbuiging" uc={ucDoor} /> : <span className="vd-uc-nvt">doorbuiging n.v.t.</span>}
           <UcChip naam="buiging" uc={ucBuig} />
           <UcChip naam="afschuiving" uc={ucAfsch} />
-          {tril === 1
+          {tril === 1 && !onderslag
             ? <UcChip naam="trilling" uc={ucTril} extra={Number.isFinite(f1) ? `f₁ = ${f1.toFixed(1)} Hz` : undefined} />
             : <span className="vd-uc-nvt">trilling n.v.t.</span>}
         </span>
