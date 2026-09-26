@@ -142,18 +142,18 @@ for (const g of GEVALLEN) {
 const PLAAT = [
   { naam: "plaat breder dan de wand — a_t = 300 op t = 200",
     invoer: { a_t: "300", N_Edc: "250" },
-    xc: { A_b: "60000", N_Rdc: "303.2", UC: "0.83" },
+    refStand: { A_b: "60000", N_Rdc: "303.2", UC: "0.83" },
     nb: { a_t_ef: "200", A_b: "40000", "β": "1.31", N_Rdc: "207.2", UC: "1.21" } },
   { naam: "plaat uit het hart — a_t = 200, exc = 50",
     invoer: { a_t: "200", exc: "50", N_Edc: "160" },
-    xc: { A_b: "40000", UC: "0.78" },
+    refStand: { A_b: "40000", UC: "0.78" },
     nb: { a_t_ef: "150", A_b: "30000", "β": "1.31", N_Rdc: "155.4", UC: "1.04" } },
 ];
 for (const p of PLAAT) {
   const invoer = { ...BASIS, ...REFERENTIES[0].invoer, ...p.invoer };
-  const xc = reken(tpl, invoer, PROJECT);
-  fouten += toets(`${p.naam} — referentiestand`, xc, p.xc);
-  const melding = /steekt buiten de wand/.test(xc.text);
+  const refStand = reken(tpl, invoer, PROJECT);
+  fouten += toets(`${p.naam} — referentiestand`, refStand, p.refStand);
+  const melding = /steekt buiten de wand/.test(refStand.text);
   if (!melding) fouten++;
   console.log(`  ${melding ? "OK    " : "FOUT  "} melding   de plaat steekt buiten de wand`);
   const nb = reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 });
@@ -184,18 +184,18 @@ const NORM_WAARDEN = [
 ];
 const MELDING_2FB = /f m is groter dan 2·f b/;
 /** De melding f_m > 2·f_b staat er alleen in de referentiestand, en alleen als het verschil optreedt. */
-function toetsMelding(naam, xc, nb, verwacht) {
-  const ok = MELDING_2FB.test(xc.text) === verwacht && !MELDING_2FB.test(nb.text);
+function toetsMelding(naam, refStand, nb, verwacht) {
+  const ok = MELDING_2FB.test(refStand.text) === verwacht && !MELDING_2FB.test(nb.text);
   console.log(`  ${ok ? "OK    " : "FOUT  "} melding   f_m > 2·f_b ${verwacht ? "alleen in de referentiestand" : "nergens"}   (${naam})`);
   return ok ? 0 : 1;
 }
 REFERENTIES.forEach((ref, i) => {
   const invoer = { ...BASIS, ...ref.invoer };
-  const xc = reken(tpl, invoer, PROJECT);
+  const refStand = reken(tpl, invoer, PROJECT);
   const nb = reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 });
-  fouten += toetsNormStand(ref.blad, xc, nb, RICHTING[i]);
+  fouten += toetsNormStand(ref.blad, refStand, nb, RICHTING[i]);
   if (NORM_WAARDEN[i]) fouten += toets(`${ref.blad} — norm-stand, met de hand`, nb, NORM_WAARDEN[i]);
-  fouten += toetsMelding(ref.blad, xc, nb, i === 1);
+  fouten += toetsMelding(ref.blad, refStand, nb, i === 1);
 });
 
 // Hoe groot punt 14 kan worden: baksteen fb 5 + M20, categorie I, CC2, t = 200,
@@ -209,12 +209,12 @@ REFERENTIES.forEach((ref, i) => {
   const naam = "baksteen fb 5 + M20 — f_m > 2·f_b beslist het oordeel";
   const invoer = { ...BASIS, steensoort: "1", f_b: "5", f_m: "20", steencategorie: "1",
                    t: "200", a_t: "150", a_1: "300", N_Edc: "70" };
-  const xc = reken(tpl, invoer, { ...PROJECT, CC: 2 });
+  const refStand = reken(tpl, invoer, { ...PROJECT, CC: 2 });
   const nb = reken(tpl, invoer, { ...PROJECT, CC: 2, rekenwijze: 0 });
-  fouten += toets(`${naam} — referentiestand`, xc, { f_k: "3.612", N_Rdc: "83.4", UC: "0.85" });
+  fouten += toets(`${naam} — referentiestand`, refStand, { f_k: "3.612", N_Rdc: "83.4", UC: "0.85" });
   fouten += toets(`${naam} — norm-stand, met de hand`, nb, { f_k: "3.037", N_Rdc: "70.2", UC: "1.01" });
-  fouten += toetsMelding(naam, xc, nb, true);
-  const oordeel = [xc, nb].map((r) => /voldoet niet/.test(slotzin(r)));
+  fouten += toetsMelding(naam, refStand, nb, true);
+  const oordeel = [refStand, nb].map((r) => /voldoet niet/.test(slotzin(r)));
   const ok = !oordeel[0] && oordeel[1];
   if (!ok) fouten++;
   console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel   referentiestand voldoet, norm-stand voldoet niet`);

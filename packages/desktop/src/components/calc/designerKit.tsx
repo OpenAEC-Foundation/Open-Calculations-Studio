@@ -41,7 +41,7 @@ export interface DesignerCtx {
    * precies het soort verschil dat niemand opmerkt. Zie
    * docs/afwijkingen-referentie.md.
    */
-  xc: boolean;
+  ref: boolean;
 }
 
 /**
@@ -66,7 +66,7 @@ export function useDesigner(marker: string, defaults: Record<string, number>): D
   const [box, setBox] = useState({ w: 640, h: 520 });
 
   const actief = !!exemplaar?.source.includes(marker);
-  const xc = Math.round(useProjectGetal("rekenwijze", 1)) === 1;
+  const ref = Math.round(useProjectGetal("rekenwijze", 1)) === 1;
 
   useEffect(() => {
     if (!actief) return;
@@ -98,7 +98,7 @@ export function useDesigner(marker: string, defaults: Record<string, number>): D
   };
   const set = (naam: string, waarde: number) => zetWaarde(activeId, naam, String(waarde));
 
-  return { actief, d, set, box, wrapRef, editing, setEditing, xc };
+  return { actief, d, set, box, wrapRef, editing, setEditing, ref };
 }
 
 /** Nederlandse notatie: 1234.5 → "1234,5". */

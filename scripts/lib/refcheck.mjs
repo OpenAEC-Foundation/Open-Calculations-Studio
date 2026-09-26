@@ -132,7 +132,7 @@ export function toets(naam, got, verwacht, afwijkend = {}, afgeleid = {}) {
  *
  * @param richting  { variabele: "lager" | "hoger" | "gelijk" } t.o.v. de referentie-uitwerking
  */
-export function toetsNormStand(naam, xc, nb, richting = {}) {
+export function toetsNormStand(naam, refStand, nb, richting = {}) {
   console.log(`
 ${naam}  — norm-stand`);
   let fouten = 0;
@@ -147,7 +147,7 @@ ${naam}  — norm-stand`);
     console.log(`  OK     alle ${Object.keys(nb.values).length} grootheden eindig`);
   }
   for (const [variabele, wil] of Object.entries(richting)) {
-    const a = xc.values[variabele], b = nb.values[variabele];
+    const a = refStand.values[variabele], b = nb.values[variabele];
     const ok =
       wil === "gelijk" ? Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a))
       : wil === "lager" ? b < a

@@ -165,9 +165,9 @@ gam_M = gam_base - if(CC ≡ 1; 0.2; 0)
 'Die laatste grens past het referentieprogramma niet toe (oplegreferentie 2:
 'fb 5 met M15 geeft daar f_k = 3,36 in plaats van 3,04) — register punt 14.
 f_beff = min(f_b; if(morteltype ≡ 1; 75; 50))
-f_meff_XC = min(f_m; 20)
+f_meff_ref = min(f_m; 20)
 f_meff_nb = min(f_m; 20; if(morteltype ≡ 1; 2*f_beff; 20))
-f_meff = if(rekenwijze ≡ 1; f_meff_XC; f_meff_nb)
+f_meff = if(rekenwijze ≡ 1; f_meff_ref; f_meff_nb)
 K_E = 700
 '§6.1.2.1(3): bij een doorsnede kleiner dan 0,1 m² gaat f_d maal (0,7 + 3·A).
 A_w = l_w*t_w to m^2
@@ -186,9 +186,9 @@ alfa', exponent α'
 bexp', exponent β'
 gam_M
 f_k = K*f_beff^alfa*f_meff^bexp*N/mm^2', karakteristieke druksterkte metselwerk (3.2)'
-#if rekenwijze ≡ 1 and f_meff_XC > f_meff_nb
+#if rekenwijze ≡ 1 and f_meff_ref > f_meff_nb
     '<span style="color: red"><b>Let op:</b> f<sub>m</sub> is groter dan 2·f<sub>b</sub>. Met de rekenwijze "de
-    'referentie-uitwerking volgen" rekent het blad met f<sub>m</sub> = 'f_meff_XC' N/mm², volgens de NB bij 3.6.1.2
+    'referentie-uitwerking volgen" rekent het blad met f<sub>m</sub> = 'f_meff_ref' N/mm², volgens de NB bij 3.6.1.2
     'met 2·f<sub>b</sub> = 'f_meff_nb' N/mm²: f<sub>k</sub> is te hoog en de uitkomst te gunstig.</span>
 #end if
 #if A_w < 0.1*m^2

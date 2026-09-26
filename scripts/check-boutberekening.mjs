@@ -214,11 +214,11 @@ for (const ref of REFERENTIES) {
     fouten++;
     continue;
   }
-  for (const [naam, xc] of Object.entries(ref.verwacht)) {
+  for (const [naam, refWaarde] of Object.entries(ref.verwacht)) {
     const ons = got.values[naam];
-    const ok = ons !== undefined && gelijk(ons, xc);
+    const ok = ons !== undefined && gelijk(ons, refWaarde);
     if (!ok) fouten++;
-    console.log(`  ${ok ? "OK    " : "FOUT  "} ${naam.padEnd(8)} ons ${String(ons ?? "—").padStart(8)}   de referentie-uitwerking ${xc}`);
+    console.log(`  ${ok ? "OK    " : "FOUT  "} ${naam.padEnd(8)} ons ${String(ons ?? "—").padStart(8)}   de referentie-uitwerking ${refWaarde}`);
   }
   // Norm-stand: voor een randbout valt k₁ samen met de tabel, dus F_b,Rd
   // blijft gelijk; d_m volgens §3.6.1(3) maakt B_p,Rd groter.

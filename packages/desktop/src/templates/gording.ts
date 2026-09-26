@@ -96,9 +96,9 @@ W_y = I_y/(h_g/2)
 W_z = I_z/(b_g/2)
 #hide
 'Splitspunt eigen gewicht (register punt 8).
-g_eig_xc = A*5.5*kN/m^3 to kN/m
+g_eig_ref = A*5.5*kN/m^3 to kN/m
 g_eig_nb = A*ρ_mean*9.81*m/s^2 to kN/m
-g_eig = if(rekenwijze ≡ 1; g_eig_xc; g_eig_nb)
+g_eig = if(rekenwijze ≡ 1; g_eig_ref; g_eig_nb)
 #show
 #if rekenwijze ≡ 1
     'Eigen gewicht met 550 kg/m³ en g = 10 m/s²:
@@ -526,11 +526,11 @@ vet(i; n) = if(i ≡ n; 700; 400)
 'neemt de combinatie met de hoogste van haar eigen twee waarden en drukt daarvan
 '6.11 en 6.12 af; de norm neemt per formule de ongunstigste combinatie. Zonder
 'dubbele buiging telt 6.12 niet mee in die keuze.
-n_comb_xc = imax(max(r611_0; c_par*r612_0); max(r611_1; c_par*r612_1); max(r611_2; c_par*r612_2); max(r611_3; c_par*r612_3); max(r611_4; c_par*r612_4); max(r611_5; c_par*r612_5); max(r611_6; c_par*r612_6); max(r611_7; c_par*r612_7))
+n_comb_ref = imax(max(r611_0; c_par*r612_0); max(r611_1; c_par*r612_1); max(r611_2; c_par*r612_2); max(r611_3; c_par*r612_3); max(r611_4; c_par*r612_4); max(r611_5; c_par*r612_5); max(r611_6; c_par*r612_6); max(r611_7; c_par*r612_7))
 n_611_nb = imax(r611_0; r611_1; r611_2; r611_3; r611_4; r611_5; r611_6; r611_7)
 n_612_nb = imax(r612_0; r612_1; r612_2; r612_3; r612_4; r612_5; r612_6; r612_7)
-n_611 = if(rekenwijze ≡ 1; n_comb_xc; n_611_nb)
-n_612 = if(rekenwijze ≡ 1; n_comb_xc; n_612_nb)
+n_611 = if(rekenwijze ≡ 1; n_comb_ref; n_611_nb)
+n_612 = if(rekenwijze ≡ 1; n_comb_ref; n_612_nb)
 n_τ = imax(tau_0; tau_1; tau_2; tau_3; tau_4; tau_5; tau_6; tau_7)
 #show
 'Partiële factoren bij CC'CC' (NEN-EN 1990 NB, tabel NB.4/NB.5): 6.10b met γ<sub>G</sub> = 'γ_G' en γ<sub>Q</sub> = 'γ_Q'; gunstig γ<sub>G,inf</sub> = 'γ_G_inf'.

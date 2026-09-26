@@ -85,7 +85,7 @@ export default function KruipfactorDesigner() {
   const [editing, setEditing] = useState<string | null>(null);
   // De uitkomst en de tussenwaarden van het blad zelf, met de gekozen tak.
   const uitkomst = useBladUitkomst();
-  const xc = Math.round(useProjectGetal("rekenwijze", 1)) === 1;
+  const ref = Math.round(useProjectGetal("rekenwijze", 1)) === 1;
 
   // Meet het beschikbare tekengebied zodat het beeld meegroeit met het paneel.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -244,7 +244,7 @@ export default function KruipfactorDesigner() {
           </label>
           {alpha !== 0 && (
             <span className="gd-note" style={{ color: "#1d4ed8" }}>
-              {xc ? (
+              {ref ? (
                 <>Cementcorrectie (B.9): de referentiestand vult in (B.5) de onbewerkte
                   t<sub>0</sub> = {fmt(t0Invoer, 0)} dagen in, zoals de referentie-uitwerking. De norm-stand
                   rekent met de gecorrigeerde ouderdom.</>
