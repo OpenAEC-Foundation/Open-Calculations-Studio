@@ -1,5 +1,9 @@
 import { create, all, type MathJsInstance, type MathNode } from 'mathjs';
 import type { AstNode, ConditionalNode, EvaluatedNode } from './types.js';
+import {
+  liggerOplossing, liggerReacties, liggerOmhullende, liggerOmhullendeReacties, liggerExtremen,
+  liggerInterpoleer, liggerNulpunt, liggerStatus, liggerDelen, liggerVelden, liggerSvgPunten, liggerSamen,
+} from './ligger.js';
 
 const math: MathJsInstance = create(all, {});
 
@@ -283,6 +287,114 @@ math.import(
       }
       const xOpt = (a + b) / 2;
       return Number((fn as (n: number) => unknown)(xOpt));
+    },
+  },
+  { override: true },
+);
+
+// ── Ligger (packages/core/src/ligger.ts) ───────────────────────────────────
+// Een ligger op steunpunten, met overstekken, inklemmingen en scharnieren,
+// opgelost met de verplaatsingsmethode. In het blad met kale getallen in m, kN,
+// kN/m, kNm en kNm²; een grootheid met eenheid wordt daarnaar omgerekend (EI
+// bijvoorbeeld als E*I_y). De uitkomsten zijn matrices: rijen [x, V, M, w] langs
+// de ligger, of [x, R, M] per steunpunt. Zie ligger.ts voor de afspraken.
+
+/** Getal in m, kN, kN/m, kNm of kNm², afhankelijk van de eenheid; een kaal getal blijft. */
+function liggerGetal(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'boolean') return v ? 1 : 0;
+  if (isUnit(v)) {
+    for (const e of ['m', 'kN', 'kN/m', 'kN*m', 'kN*m^2']) {
+      try { return v.toNumber(e); } catch { /* volgende */ }
+    }
+    return v.value;
+  }
+  return asNumber(v);
+}
+/** Matrix of vector als rijen met getallen. */
+function liggerRijen(v: unknown): number[][] {
+  const a = toArrayLike(v);
+  if (!a) return [[liggerGetal(v)]];
+  return a.map((r) => {
+    const rr = toArrayLike(r);
+    return rr ? rr.map(liggerGetal) : [liggerGetal(r)];
+  });
+}
+/** Vector als platte lijst getallen (ook een kolom- of rijmatrix). */
+function liggerVector(v: unknown): number[] | undefined {
+  if (v === undefined) return undefined;
+  const a = toArrayLike(v);
+  if (!a) return [liggerGetal(v)];
+  return a.flatMap((r) => {
+    const rr = toArrayLike(r);
+    return rr ? rr.map(liggerGetal) : [liggerGetal(r)];
+  });
+}
+const liggerMatrix = (m: number[][]) => math.matrix(m);
+
+math.import(
+  {
+    /** ligger(geo; last; EI[; f[; deel[; xs]]]) → [x, V, M, w] langs de ligger, met de punten xs erbij. */
+    ligger: function (geo: unknown, last: unknown, EI: unknown, f?: unknown, deel?: unknown, xs?: unknown) {
+      return liggerMatrix(liggerOplossing(
+        liggerRijen(geo), liggerRijen(last), liggerGetal(EI), liggerVector(f), deel === undefined ? 0 : liggerGetal(deel),
+        liggerVector(xs) ?? [],
+      ));
+    },
+    /** ligger_R(geo; last; EI[; f[; deel]]) → [x, R, M] per steunpunt. */
+    ligger_R: function (geo: unknown, last: unknown, EI: unknown, f?: unknown, deel?: unknown) {
+      return liggerMatrix(liggerReacties(liggerRijen(geo), liggerRijen(last), liggerGetal(EI), liggerVector(f), deel === undefined ? 0 : liggerGetal(deel)));
+    },
+    /** ligger_omh(geo; last; EI; groep; f1; f2; teken[; lead]) → omhullende [x, V, M, w]. */
+    ligger_omh: function (geo: unknown, last: unknown, EI: unknown, groep: unknown, f1: unknown, f2: unknown, teken?: unknown, lead?: unknown) {
+      return liggerMatrix(liggerOmhullende(
+        liggerRijen(geo), liggerRijen(last), liggerGetal(EI), liggerVector(groep) ?? [], liggerVector(f1) ?? [], liggerVector(f2) ?? [],
+        teken === undefined ? 1 : liggerGetal(teken), lead === undefined ? 0 : liggerGetal(lead),
+      ));
+    },
+    /** ligger_omhR(…) → omhullende [x, R, M] per steunpunt, argumenten als ligger_omh. */
+    ligger_omhR: function (geo: unknown, last: unknown, EI: unknown, groep: unknown, f1: unknown, f2: unknown, teken?: unknown, lead?: unknown) {
+      return liggerMatrix(liggerOmhullendeReacties(
+        liggerRijen(geo), liggerRijen(last), liggerGetal(EI), liggerVector(groep) ?? [], liggerVector(f1) ?? [], liggerVector(f2) ?? [],
+        teken === undefined ? 1 : liggerGetal(teken), lead === undefined ? 0 : liggerGetal(lead),
+      ));
+    },
+    /** ligger_max(R1; R2; …) → per punt en per kolom de grootste waarde (x uit R1). */
+    ligger_max: function (...ms: unknown[]) {
+      return liggerMatrix(liggerSamen(1, ...ms.map(liggerRijen)));
+    },
+    /** ligger_min(R1; R2; …) → per punt en per kolom de kleinste waarde (x uit R1). */
+    ligger_min: function (...ms: unknown[]) {
+      return liggerMatrix(liggerSamen(-1, ...ms.map(liggerRijen)));
+    },
+    /** ligger_ext(R; k[; x1; x2]) → [max; x bij max; min; x bij min] van kolom k. */
+    ligger_ext: function (R: unknown, k: unknown, x1?: unknown, x2?: unknown) {
+      return math.matrix(liggerExtremen(liggerRijen(R), liggerGetal(k),
+        x1 === undefined ? -Infinity : liggerGetal(x1), x2 === undefined ? Infinity : liggerGetal(x2)));
+    },
+    /** ligger_int(R; k; x) → kolom k in x, lineair tussen de rasterpunten. */
+    ligger_int: function (R: unknown, k: unknown, x: unknown) {
+      return liggerInterpoleer(liggerRijen(R), liggerGetal(k), liggerGetal(x));
+    },
+    /** ligger_nul(R; k; x_van; x_tot) → eerste x vanaf x_van waar kolom k niet negatief is. */
+    ligger_nul: function (R: unknown, k: unknown, xVan: unknown, xTot: unknown) {
+      return liggerNulpunt(liggerRijen(R), liggerGetal(k), liggerGetal(xVan), liggerGetal(xTot));
+    },
+    /** ligger_status(geo[; EI]) → 1 stabiel, -1 beweeglijk, 0 ongeldig. */
+    ligger_status: function (geo: unknown, EI?: unknown) {
+      return liggerStatus(liggerRijen(geo), EI === undefined ? 1 : liggerGetal(EI));
+    },
+    /** ligger_delen(geo) → [x_begin, x_eind] per deel voor de schaakbordbelasting. */
+    ligger_delen: function (geo: unknown) {
+      return liggerMatrix(liggerDelen(liggerRijen(geo)));
+    },
+    /** ligger_velden(geo) → [x_begin, x_eind, overstek] per veld tussen de steunpunten. */
+    ligger_velden: function (geo: unknown) {
+      return liggerMatrix(liggerVelden(liggerRijen(geo)));
+    },
+    /** ligger_svg(R; k; x0; sx; y0; sy) → "X,Y X,Y …" voor een polyline of polygon. */
+    ligger_svg: function (R: unknown, k: unknown, x0: unknown, sx: unknown, y0: unknown, sy: unknown) {
+      return liggerSvgPunten(liggerRijen(R), liggerGetal(k), liggerGetal(x0), liggerGetal(sx), liggerGetal(y0), liggerGetal(sy));
     },
   },
   { override: true },

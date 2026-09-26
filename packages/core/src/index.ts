@@ -5,6 +5,11 @@ export { render, defaultStyles } from './renderer.js';
 export { exprToLatex, nameToLatex } from './latex.js';
 export { parseGef, type GefData } from './gef-parser.js';
 export {
+  liggerOplossing, liggerReacties, liggerOmhullende, liggerOmhullendeReacties, liggerExtremen,
+  liggerInterpoleer, liggerNulpunt, liggerStatus, liggerDelen, liggerVelden, liggerSvgPunten, liggerSamen,
+  LIGGER_PUNT, LIGGER_LAST, LIGGER_STATUS,
+} from './ligger.js';
+export {
   generateIfcx,
   generateIfc4x3Step,
   generateProjectIfcx,
