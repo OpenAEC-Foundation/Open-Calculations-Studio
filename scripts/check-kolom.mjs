@@ -128,29 +128,29 @@ for (const ref of [...REFERENTIES, ...NEGATIEF]) {
 }
 
 // ── Norm-stand ────────────────────────────────────────────────────────────
-// Twee splitspunten. De kiplengte rekent bij de referentie-uitwerking met de
+// Eén splitspunt. De kiplengte rekent bij de referentie-uitwerking met de
 // kolomlengte L, bij de norm met max(L; L_cr); op alle bladen is L_cr ≤ L, dus
-// l_ef hoort in beide standen gelijk te zijn. De afschuiving rekent bij de norm
-// met b_ef = k_cr·b (k_cr = 0,67): τ_d en UC_6.13 liggen dan hoger zodra er
-// dwarskracht is.
+// l_ef hoort in beide standen gelijk te zijn. De afschuiving is geen
+// splitspunt: beide standen rekenen met k_cr = 1,0 (NB art. 6.1.7(2)), dus
+// τ_d en UC_6.13 zijn gelijk.
 for (const ref of [...REFERENTIES, ...NEGATIEF]) {
   const invoer = { ...BASIS, ...ref.invoer };
   const xc = reken(tpl, invoer, PROJECT);
   const nb = reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 });
-  const afschuiving = xc.values.V_Ed > 0 ? { "τ_d": "hoger", UC_613: "hoger" } : { "τ_d": "gelijk" };
   fouten += toetsNormStand(ref.blad, xc, nb, {
     l_ef: "gelijk", "σ_mcrit": "gelijk", k_crit: "gelijk", k_cy: "gelijk", k_cz: "gelijk",
-    ...afschuiving,
+    "τ_d": "gelijk", UC_613: "gelijk",
   });
 }
 
-// De norm-tak van de afschuiving op document4, met de hand:
-// τ_d = 1,5·3825/(0,67·44·144) = 1,352 N/mm² · UC = 1,352/1,846 = 0,732
+// De afschuiving op document4 in de norm-stand, met de hand (k_cr = 1,0):
+// τ_d = 1,5·3825/(1,0·44·144) = 0,9055 N/mm² · UC = 0,9055/1,846 = 0,4905
+// (met k_cr = 0,67 was het 1,352 en 0,732).
 {
   const doc4 = REFERENTIES.find((r) => r.blad.startsWith("document4"));
   const nb = reken(tpl, { ...BASIS, ...doc4.invoer }, { ...PROJECT, rekenwijze: 0 });
-  fouten += toets("document4 — norm-stand, afschuiving met k_cr = 0,67", nb,
-    { "τ_d": "1.352", UC_613: "0.732" }, {}, ucsUitTekst(nb.text));
+  fouten += toets("document4 — norm-stand, afschuiving met k_cr = 1,0", nb,
+    { "τ_d": "0.9055", UC_613: "0.4905" }, {}, ucsUitTekst(nb.text));
 }
 
 // ── Het beeld ─────────────────────────────────────────────────────────────

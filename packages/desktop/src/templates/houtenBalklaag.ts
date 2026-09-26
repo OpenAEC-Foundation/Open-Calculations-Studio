@@ -71,7 +71,7 @@ h_p = hlookup(profiles_b_h; profile; 1; 3)*mm
 @end
 
 #hide
-'Houtsterkte-eigenschappen — EN 338 (alle in N/mm² behalve ρ_mean in kg/m³); f_v,k hoort bij k_cr = 0,67 (§6.1.7(2))
+'Houtsterkte-eigenschappen — EN 338 (alle in N/mm² behalve ρ_mean in kg/m³)
 '  [id(C-klasse) | f_m,k | f_t,0,k | f_c,0,k | f_v,k | E_0,mean | E_0,05 | ρ_mean | f_c,90,k]
 strength_C = [14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |8; 10; 11; 12; 13; 14; 16; 18; 21; 24 |16; 17; 18; 19; 20; 21; 22; 23; 25; 26 |3.0; 3.2; 3.4; 3.6; 3.8; 4.0; 4.0; 4.0; 4.0; 4.0 |7000; 8000; 9000; 9500; 10000; 11000; 11500; 12000; 13000; 14000 |4700; 5400; 6000; 6400; 6700; 7400; 7700; 8000; 8700; 9400 |350; 370; 380; 400; 410; 420; 450; 460; 480; 500 |2.0; 2.2; 2.2; 2.3; 2.4; 2.5; 2.5; 2.7; 2.7; 2.8]
 
@@ -202,7 +202,7 @@ UC_M = σ_m,d/f_m,d
 # 6. UGT — dwarskracht §6.1.7
 
 #hide
-k_cr = 0.67', §6.1.7(2) — scheurfactor voor gezaagd hout'
+k_cr = 1.0', NB art. 6.1.7(2) — scheurfactor, prismatische doorsnede'
 #show
 
 #if V_Ed,G/k_mod,G > V_Ed,Q/k_mod,Q

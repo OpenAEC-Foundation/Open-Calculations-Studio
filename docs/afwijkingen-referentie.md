@@ -49,7 +49,8 @@ Waar dit naartoe gaat: dit programma wordt uiteindelijk onafhankelijk van
 de referentie-uitwerking. De norm-tak is de kant die dan overblijft, en draait daarom nu al
 mee in plaats van als voetnoot te verstoffen.
 
-Status: **open** = nog te bespreken · **vastgesteld** = keuze staat, blijft zo.
+Status: **open** = nog te bespreken · **vastgesteld** = keuze staat, blijft zo ·
+**vervallen** = bij nader inzien geen afwijking; het nummer blijft staan.
 
 ---
 
@@ -787,39 +788,35 @@ u.c. is te laag, maar de conclusie klopt.
 
 ---
 
-## 17. Kolom — afschuiving zonder k_cr
+## 17. Kolom — afschuiving over de volle breedte (vervallen)
 
 | | |
 |---|---|
 | Module | Kolom (`templates/kolom.ts`) |
-| Norm | NEN-EN 1995-1-1+C1+A1 §6.1.7(2), (6.13) |
+| Norm | NEN-EN 1995-1-1+C1+A1 §6.1.7(2), (6.13) en (6.13a); NB art. 6.1.7(2) |
 | Referenties | document2, document3, document4 (kolom) |
-| Status | **open** |
+| Status | **vervallen** — geen afwijking: de referentie-uitwerking rekent zoals de NB |
 
 De referentie-uitwerking toetst de schuifspanning over de volle breedte:
-τ_d = V_Ed·S_y/(b·I_y). §6.1.7(2) schrijft een effectieve breedte
-b_ef = k_cr·b voor, met k_cr = 0,67 voor massief en gelamineerd hout. De
-f_v,k-waarden van EN 338 horen bij die k_cr. Zonder k_cr ligt de
-afschuifcapaciteit een factor 1/0,67 = 1,49 te hoog. Dat is de onveilige kant.
+τ_d = V_Ed·S_y/(b·I_y). (6.13a) rekent met een werkzame breedte
+b_ef = k_cr·b. De aanbevolen waarde 0,67 uit de EN geldt in Nederland niet:
+NB art. 6.1.7(2) schrijft voor een ligger met een prismatische doorsnede
+k_cr = 1,0 voor, en dan is b_ef = b. De referentie rekent dus volgens de norm;
+dit is geen splitspunt. Het blad rekent in beide standen met k_cr = 1,0.
 
-**Gevolg** (document4, 44×144 C24, V_Ed = 3,825 kN, f_v,d = 1,846 N/mm²):
-
-| | τ_d | UC 6.13 |
-|---|---|---|
-| norm-stand (k_cr = 0,67) | **1,35 N/mm²** | **0,73** |
-| referentiestand | 0,91 N/mm² | 0,49 |
+document4 (44×144 C24, V_Ed = 3,825 kN), in beide standen:
 
 ```
-referentie:  τ_d = 1,5 × 3825/(44 × 144)        = 0,906 N/mm²    UC = 0,906/1,846 = 0,49
-norm:        τ_d = 1,5 × 3825/(0,67 × 44 × 144) = 1,352 N/mm²    UC = 1,352/1,846 = 0,73
-             f_v,d = 0,6 × 4,0/1,3 = 1,846 N/mm²
+τ_d = 1,5 × 3825/(1,0 × 44 × 144) = 0,906 N/mm²    UC = 0,906/1,846 = 0,49
+f_v,d = 0,6 × 4,0/1,3 = 1,846 N/mm²
 ```
 
-Bij een kolom is afschuiving zelden maatgevend, bij een korte, zwaar
-dwarsbelaste stijl wel. Het blad rekent beide (`τ_d,xc`, `τ_d,nb`) en de
-projectinstelling kiest. De NB-waarde van k_cr is nog te bevestigen in de
-NB-tekst. De normbladen in `eurocode5.ts` (ec5Afschuiving, ec5HoutenBalk)
-rekenen altijd met 0,67.
+Hetzelfde geldt voor de Balklaag (8.2 en 8.5), de normbladen in
+`eurocode5.ts` (ec5Afschuiving, ec5HoutenBalk) en het blad voor de
+schuifspanning in `vandepitte.ts`. Alleen bij een I-, T- of kokerprofiel met
+een lijf van gezaagd of gelamineerd hout geeft de NB een lagere waarde, tot 0,8
+bij een lijf dunner dan de halve flensbreedte. Het schuifspanningsblad kent de
+flensbreedte niet en neemt bij zo'n profiel die ondergrens van 0,8.
 
 ---
 

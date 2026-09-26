@@ -224,10 +224,11 @@ Onderstaande waarden uit de referentie komen overeen met de template en/of EN 33
   - UC = σ_m,y,d/f_m,d = 8,1/14,8 = **0,55** voldoet ✅ (enkele-as, geen k_m-term)
 - **UGT afschuiving (§6.1.7, vgl. 6.13)** — conform template:
   - τ_d = V_Ed·S_y/(b·I_y) = 4608,7·433464 / (71·63863678) = 0,44 N/mm² ✅
-    (= 1,5·V/A; volle breedte b, geen k_cr — zie informatieve noot hieronder)
+    (= 1,5·V/A; volle breedte b, k_cr = 1,0 — zie de noot hieronder)
   - UC = τ_d/f_v,d = 0,44/2,46 = **0,18** voldoet ✅
-  - ⚪ k_cr: met k_cr = 0,67 (EN 1995-1-1/A1) zou τ_d = 0,66 N/mm² → UC 0,27,
-    nog steeds ruim. Referentie én template rekenen met volle b. Geen verschil.
+  - ⚪ k_cr: NB art. 6.1.7(2) schrijft voor een prismatische doorsnede k_cr = 1,0
+    voor; de EN-aanbeveling 0,67 geldt in Nederland niet. Referentie én template
+    rekenen met de volle b, in beide rekenwijzen. Geen verschil.
 - **Eindconclusie** — maatgevend **UC = 0,61** (doorbuiging) > buiging 0,55 > afschuiving 0,18
   → **Balklaag voldoet**. Identiek aan `UC_max` van de template. ✅
 

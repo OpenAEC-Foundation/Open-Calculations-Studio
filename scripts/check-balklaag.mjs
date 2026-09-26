@@ -123,11 +123,11 @@ for (const ref of REFERENTIES) {
 }
 
 // ── Norm-stand ────────────────────────────────────────────────────────────
-// Dezelfde bladen nog eens met `rekenwijze` = 0. Drie splitspunten zijn actief:
-// het eigen gewicht (EN 338 ρ_mean × 9,81 in plaats van 550 × 10), de vraag
-// welke veranderlijke doorbuiging in w_fin meetelt, en de scheurfactor k_cr =
-// 0,67 in de afschuiving (§6.1.7(2)); de referentie-uitwerking rekent met de
-// volle breedte.
+// Dezelfde bladen nog eens met `rekenwijze` = 0. Twee splitspunten zijn actief:
+// het eigen gewicht (EN 338 ρ_mean × 9,81 in plaats van 550 × 10) en de vraag
+// welke veranderlijke doorbuiging in w_fin meetelt. De afschuiving is geen
+// splitspunt: beide standen rekenen met de volle breedte, k_cr = 1,0 (NB art.
+// 6.1.7(2)), zoals de referentie-uitwerking.
 for (const ref of REFERENTIES) {
   const invoer = { ...BASIS, ...ref.invoer };
   const xc = reken(tpl, invoer, PROJECT);
@@ -138,9 +138,9 @@ for (const ref of REFERENTIES) {
     // doorbuiging. u_var kan alleen gelijk blijven of dalen, nooit stijgen.
     g_balk: "lager", u_g_k: "lager", w_fin: "lager",
     u_q_k: "gelijk", k_r: "gelijk", f_m_d: "gelijk",
-    // V_z,Ed daalt een paar procent met het lichtere eigen gewicht, maar de
-    // werkzame breedte k_cr·b maakt τ_d een factor 1/0,67 = 1,49 groter.
-    "τ_d": "hoger",
+    // V_z,Ed daalt een paar procent met het lichtere eigen gewicht; met dezelfde
+    // breedte (k_cr = 1,0 in beide standen) daalt τ_d evenveel.
+    "τ_d": "lager",
   });
 }
 

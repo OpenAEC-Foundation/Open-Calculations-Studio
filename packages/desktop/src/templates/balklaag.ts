@@ -1759,21 +1759,11 @@ UC_buiging' (σ<sub>m,y,d</sub>/f<sub>m,d</sub>)<span class="alleen-afdruk"></sp
 
 '<h6>8.2 Afschuiving — §6.1.7 (6.13)</h6>
 #hide
-'Scheurfactor k_cr (§6.1.7(2)): de werkzame breedte is k_cr·b, met k_cr = 0,67
-'voor massief en gelamineerd hout; de f_v,k uit EN 338 en EN 14080 hoort daarbij.
-'De referentie-uitwerking rekent met de volle breedte, een factor 1/0,67 = 1,49
-'te gunstig; de norm-stand rekent met k_cr. Op het blad staat daarna de formule
-'van de gekozen tak, met dezelfde uitkomst als τ_d hier.
-k_cr = 0.67
-τ_d_xc = V_z,Ed*S_y/(b_balk*I_y) to N/mm^2
-τ_d_nb = V_z,Ed*S_y/(k_cr*b_balk*I_y) to N/mm^2
-τ_d = if(rekenwijze ≡ 1; τ_d_xc; τ_d_nb) to N/mm^2
+'Werkzame breedte b_ef = k_cr·b (6.13a). Voor een ligger met een prismatische
+'doorsnede is k_cr = 1,0 (NB art. 6.1.7(2)): de volle breedte, in beide
+'rekenwijzen. Ook 8.5 rekent zo.
 #show
-#if rekenwijze ≡ 1
-    τ_d = V_z,Ed*S_y/(b_balk*I_y) to N/mm^2', zonder k<sub>cr</sub> (referentie-uitwerking)'
-#else
-    τ_d = V_z,Ed*S_y/(k_cr*b_balk*I_y) to N/mm^2', k<sub>cr</sub> = 0,67 (§6.1.7(2))'
-#end if
+τ_d = V_z,Ed*S_y/(b_balk*I_y) to N/mm^2', k<sub>cr</sub> = 1,0 (NB art. 6.1.7(2))'
 UC_afsch = τ_d/f_v,d'<span class="alleen-scherm"></span>'
 UC_afsch' (τ<sub>d</sub>/f<sub>v,d</sub>)<span class="alleen-afdruk"></span>'
 #if UC_afsch ≤ 1.0
@@ -1945,9 +1935,7 @@ f_v,d,G = k_mod,G*f_v,k/γ_M
 f_c,90,d,G = k_mod,G*f_c,90,k/γ_M
 M_Ed,G,veld = γ_G,a*M_g,veld*kN*m
 M_Ed,G,steun = γ_G,a*M_g,steun*kN*m
-τ_G_xc = V_Ed,G*S_y/(b_balk*I_y) to N/mm^2
-τ_G_nb = V_Ed,G*S_y/(k_cr*b_balk*I_y) to N/mm^2
-τ_G = if(rekenwijze ≡ 1; τ_G_xc; τ_G_nb) to N/mm^2
+τ_G = V_Ed,G*S_y/(b_balk*I_y) to N/mm^2
 'De reacties zoals in 8.3: de eindopleggingen op l_ef,e, het tweede steunpunt
 'op l_ef,s (alleen bij twee velden of een overstek).
 R_G,e = max(Rg(1); if(s3 ≡ 1; Rg(3); if(s2 ≡ 1; Rg(1); Rg(2))))*kN
@@ -2082,5 +2070,5 @@ UC_rest = max(UC_doorbuiging; UC_bij; UC_buiging; UC_afsch; UC_c90; UC_kip; UC_G
     '<span style="color: #b91c1c"><b>Trek in een eindoplegging:</b> verankering per 'if(ond ≡ 1; "onderslag"; "balk")' van ten minste '-R_min' kN (8.3).</span>
 #end if
 
-'Aangenomen: bovenrand gesteund door beschot of balken ('if(s23 ≥ 1; "kip alleen bij het steunmoment"; "geen kip")'). Buiten dit blad: ondersteuning'if(ond ≡ 1; ", verbindingen en de druk onder de balken op de bovenzijde van de onderslag"; " en verbindingen")'.'if(rekenwijze ≡ 1; " Afschuiving zonder k<sub>cr</sub>, als de referentie-uitwerking."; "")'
+'Aangenomen: bovenrand gesteund door beschot of balken ('if(s23 ≥ 1; "kip alleen bij het steunmoment"; "geen kip")'). Buiten dit blad: ondersteuning'if(ond ≡ 1; ", verbindingen en de druk onder de balken op de bovenzijde van de onderslag"; " en verbindingen")'.
 `;
