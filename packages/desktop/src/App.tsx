@@ -11,12 +11,13 @@ import SplitPane from "./components/calc/SplitPane";
 import ProjectBrowser from "./components/calc/ProjectBrowser";
 import { designerVoor } from "./components/calc/designerKeuze";
 import ProjectGegevensPanel from "./components/calc/ProjectGegevensPanel";
+import RapportPanel from "./components/rapport/RapportPanel";
 import PrintDocument from "./components/calc/PrintDocument";
 import AfdrukVoorbeeld from "./components/calc/AfdrukVoorbeeld";
 import ModuleKiezer from "./components/calc/ModuleKiezer";
 import IfcViewerPanel from "./components/calc/IfcViewerPanel";
 import { getSetting } from "./store";
-import { useProjectStore, PROJECT_ID } from "./store/projectStore";
+import { useProjectStore, PROJECT_ID, RAPPORT_ID } from "./store/projectStore";
 import { usePrintStore } from "./store/printStore";
 import { useRecentFiles } from "./hooks/useRecentFiles";
 import { useSneltoetsen } from "./hooks/useSneltoetsen";
@@ -83,6 +84,7 @@ export default function App() {
   const sluitVoorbeeld = usePrintStore((s) => s.sluitVoorbeeld);
   const printSelectie = usePrintStore((s) => s.selectie);
   const kiesSelectie = usePrintStore((s) => s.kiesSelectie);
+  const printSoort = usePrintStore((s) => s.soort);
   // Alleen het échte printen zet de app weg. Het afdrukvoorbeeld is een paneel
   // binnen de applicatie: lint, projectboom en statusbalk blijven staan.
   const afdrukmodus = printBezig;
@@ -122,16 +124,35 @@ export default function App() {
     }
   }, [printVoorbeeld, actief, printSelectie, kiesSelectie]);
 
+  // Het rapportvoorbeeld hoort bij de knoop Rapport, het voorbeeld van bladen
+  // bij de bladen. Kies je een andere knoop terwijl het rapportvoorbeeld
+  // openstaat, of de knoop Rapport terwijl er bladen in het voorbeeld staan,
+  // dan gaat het voorbeeld dicht. Anders blijft het onzichtbaar "open" en
+  // drukt Ctrl+P iets anders af dan je ziet. Hetzelfde als je vanuit het
+  // voorbeeld van een blad het rapport afdrukt: dat voorbeeld zou daarna het
+  // rapport tonen onder de tabs van het blad.
+  useEffect(() => {
+    if (!printVoorbeeld) return;
+    if ((printSoort === "rapport") !== (activeId === RAPPORT_ID)) sluitVoorbeeld();
+  }, [printVoorbeeld, printSoort, activeId, sluitVoorbeeld]);
+
   const designerPane = designerVoor(source);
   // Het projectgegevens-formulier is geen rekenblad: geen editor, geen
   // uitwerking, geen splitsing — alleen het formulier.
   const toontProjectGegevens = activeId === PROJECT_ID;
+  // Het rapport is evenmin een rekenblad: een eigen paneel, met het hele
+  // rapport als afdrukvoorbeeld in de tweede tab. Net als bij de bladen wint
+  // een open voorbeeld van de IFC-weergave, het invulpaneel niet.
+  const toontRapport = activeId === RAPPORT_ID;
+  const rapportVoorbeeld = printVoorbeeld && printSoort === "rapport";
+  const rapportWerkruimte = toontRapport && (rapportVoorbeeld || activeView !== "ifc");
   const hasDesigner = designerPane !== null && !toontProjectGegevens;
   const mode = hasDesigner ? splitMode : "cu";
   const leftPane = mode === "vu" ? designerPane : <Editor />;
   const rightPane = mode === "cv" ? designerPane : <Preview />;
 
   // De weergaven van een geopend blad, met het afdrukvoorbeeld als laatste tab.
+  // Dat voorbeeld toont de bladen, ook als er eerder een rapport is afgedrukt.
   const kiesWeergave = (m: "cv" | "cu" | "vu") => {
     sluitVoorbeeld();
     setSplitMode(m);
@@ -145,9 +166,17 @@ export default function App() {
       {hasDesigner && (
         <button className={`split-tab${!printVoorbeeld && mode === "vu" ? " active" : ""}`} onClick={() => kiesWeergave("vu")}>Visueel + Uitwerking</button>
       )}
-      <button className={`split-tab${printVoorbeeld ? " active" : ""}`} onClick={() => toonVoorbeeld([actief.id])}>Afdrukvoorbeeld</button>
+      <button className={`split-tab${printVoorbeeld ? " active" : ""}`} onClick={() => toonVoorbeeld([actief.id], "bladen")}>Afdrukvoorbeeld</button>
     </div>
   ) : null;
+
+  // De knoop Rapport: het invulpaneel, of het hele rapport zoals het op papier komt.
+  const rapportTabs = (
+    <div className="split-tabs">
+      <button className={`split-tab${rapportVoorbeeld ? "" : " active"}`} onClick={() => sluitVoorbeeld()}>Rapport</button>
+      <button className={`split-tab${rapportVoorbeeld ? " active" : ""}`} onClick={() => toonVoorbeeld(null, "rapport")}>Afdrukvoorbeeld</button>
+    </div>
+  );
 
   const handleOpenRecent = useCallback(async (path: string) => {
     try {
@@ -181,7 +210,18 @@ export default function App() {
       <main className="main-view" style={{ flex: 1, minHeight: 0, display: "flex" }}>
         <ProjectBrowser />
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          {printVoorbeeld ? (
+          {rapportWerkruimte ? (
+            <>
+              {rapportTabs}
+              {rapportVoorbeeld ? (
+                <AfdrukVoorbeeld />
+              ) : (
+                <div style={{ flex: 1, minHeight: 0 }}>
+                  <RapportPanel />
+                </div>
+              )}
+            </>
+          ) : printVoorbeeld ? (
             <>
               {tabBalk}
               <AfdrukVoorbeeld />
