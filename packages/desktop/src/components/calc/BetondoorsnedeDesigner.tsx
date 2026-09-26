@@ -1,4 +1,5 @@
-import { useDesigner, Dim, Ro, Defs, betonFill, HDim, VDim, fmt, clamp } from "./designerKit";
+import { useDesigner, Dim, Ro, Defs, betonFill, HDim, VDim, fmt, clamp, UitkomstKop } from "./designerKit";
+import { useBladUitkomst } from "./bladResultaat";
 import "./VoetplaatDesigner.css";
 
 /**
@@ -9,28 +10,47 @@ import "./VoetplaatDesigner.css";
  * beugelbreedte verdeeld, en de staafdiameters op schaal. Rechts staan de
  * lagen benoemd zoals op een wapeningstekening.
  *
- * De getoonde kengetallen zijn pure geometrie — oppervlak per laag en het
- * wapeningspercentage. De toetsing zelf zit hier bewust nog niet in.
- *
- * Nog geen toetsing — zie templates/betondoorsnede.ts.
+ * De toetsing staat in het rekenblad (templates/betondoorsnede.ts): de kop
+ * toont de maatgevende UC en het oordeel van het blad, de voetregel de UC per
+ * toets, en de tekening de drukzone uit dezelfde uitwerking. Het beeld rekent
+ * zelf alleen de oppervlakken en het wapeningspercentage uit, voor de tekening.
  */
 const MARKER = "Betondoorsnede";
 
 const BETON = [20, 25, 30, 35, 40, 45, 50];
+const BETONLABEL: Record<number, string> = {
+  20: "C20/25", 25: "C25/30", 30: "C30/37", 35: "C35/45", 40: "C40/50", 45: "C45/55", 50: "C50/60",
+};
 const STAALSOORT = [{ v: 1, label: "B500A" }, { v: 2, label: "B500B" }, { v: 3, label: "B500C" }];
+const MILIEU = [{ v: 1, label: "X0 of XC1 (0,4 mm)" }, { v: 2, label: "XC2–XC4 (0,3 mm)" }, { v: 3, label: "XD of XS (0,2 mm)" }];
+const DUUR = [{ v: 1, label: "Langdurend (k_t = 0,4)" }, { v: 2, label: "Kortdurend (k_t = 0,6)" }];
 const DIAM = [6, 8, 10, 12, 16, 20, 25, 32];
 
+// Een balk 200×300 in C30/37 met 2Ø16 onder, 2Ø8 in de tussenlaag, 2Ø12 boven
+// en beugels Ø8-150, op buiging en dwarskracht. Dezelfde waarden als de
+// standaardinvoer van scripts/check-betondoorsnede.mjs.
 const DEFAULTS: Record<string, number> = {
   b_dsn: 200, h_dsn: 300, betonklasse: 30, betonstaal: 2, c_dek: 25,
   n_onder: 2, d_onder: 16, n_midden: 2, d_midden: 8, n_boven: 2, d_boven: 12,
-  d_beugel: 8, s_beugel: 250, n_sneden: 2,
-  N_Ed: 0, M_Ed: 0, V_Ed: 0, T_Ed: 0, N_k: 0, M_k: 0,
+  d_beugel: 8, s_beugel: 150, n_sneden: 2,
+  N_Ed: 0, M_Ed: 35, V_Ed: 50, T_Ed: 0,
+  N_qp: 0, M_qp: 20, "φ_kr": 2, milieuklasse: 2, belastingduur: 1,
 };
+
+/** Eén unity check uit het blad, gekleurd naar de uitkomst; ∞ bij weerstand nul. */
+function UcChip({ naam, uc }: { naam: string; uc: number | undefined }) {
+  if (uc === undefined || Number.isNaN(uc)) return null;
+  const staat = uc > 1 ? "bad" : uc > 0.9 ? "warn" : "ok";
+  return <span className={`vd-uc-chip ${staat}`}>{naam} {Number.isFinite(uc) ? fmt(uc, 2) : "∞"}</span>;
+}
 
 export default function BetondoorsnedeDesigner() {
   const ctx = useDesigner(MARKER, DEFAULTS);
+  // Vóór de vroege return: de volgorde van de hooks moet vast liggen.
+  const uitkomst = useBladUitkomst();
   if (!ctx.actief) return null;
   const { d, set, box, wrapRef } = ctx;
+  const g = uitkomst?.getallen ?? {};
 
   const b = Math.max(50, d("b_dsn")), h = Math.max(50, d("h_dsn"));
   const fck = Math.round(d("betonklasse"));
@@ -42,14 +62,19 @@ export default function BetondoorsnedeDesigner() {
   const dBg = Math.max(4, d("d_beugel")), sBg = Math.max(20, d("s_beugel"));
   const nSn = clamp(Math.round(d("n_sneden")), 2, 6);
   const NEd = d("N_Ed"), MEd = d("M_Ed"), VEd = d("V_Ed"), TEd = d("T_Ed");
-  const Nk = d("N_k"), Mk = d("M_k");
+  const Nqp = d("N_qp"), Mqp = d("M_qp"), phi = d("φ_kr");
+  const milieu = Math.round(d("milieuklasse")), duur = Math.round(d("belastingduur"));
 
-  // Geometrie van de wapening — geen toetsing, alleen oppervlakken.
+  // Geometrie van de wapening — alleen oppervlakken, voor de tekening en de notitie.
   const A = (n: number, dia: number) => (n * Math.PI * dia * dia) / 4;
   const AsO = A(nO, dO), AsM = A(nM, dM), AsB = A(nB, dB);
   const Astot = AsO + AsM + AsB;
   const rho = (Astot / (b * h)) * 100;
-  const dEff = h - c - dBg - dO / 2;                   // nuttige hoogte, onderste laag
+
+  // Gedrukte rand bij de UGT, zoals het blad hem kiest: tegenover de trekzijde
+  // van M_Ed, bij M_Ed = 0 die van M_qp.
+  const bovenGedrukt = MEd < 0 ? false : MEd > 0 ? true : !(Mqp < 0);
+  const xu = g.x_u, yc = g.y_c;
 
   // ── layout ────────────────────────────────────────────────────────────────
   const capH = 24;
@@ -79,27 +104,30 @@ export default function BetondoorsnedeDesigner() {
   const yM = (yO + yB) / 2;
   const staven = [...laag(nB, dB, yB), ...laag(nM, dM, yM), ...laag(nO, dO, yO)];
 
+  // Drukzone uit het blad: het spanningsblok λ·x_u en de neutrale lijn op x_u.
+  const blokH = yc !== undefined ? clamp(yc, 0, h) * s : 0;
+  const blokY = bovenGedrukt ? y0 : y1 - blokH;
+  const naY = xu !== undefined && xu < h ? (bovenGedrukt ? y0 + xu * s : y1 - xu * s) : null;
+
+  const UC = (naam: string) => g[naam];
+  const regels = Math.max(UC("UC_As_min") ?? 0, UC("UC_As_max") ?? 0, UC("UC_ρw") ?? 0, UC("UC_sl") ?? 0, UC("UC_st") ?? 0);
+
   return (
     <div className="vd-panel">
-      <div className="vd-head">
-        <strong>Parametrisch beeld — betondoorsnede</strong>
-        <span className="vd-uc info">
-          {fmt(b)}×{fmt(h)} · A<sub>s</sub> = {fmt(Astot)} mm² ({fmt(rho, 2)} %)
-        </span>
-      </div>
+      <UitkomstKop titel="Parametrisch beeld — betondoorsnede" uitkomst={uitkomst} />
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
-        <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
+        <div className="vd-controls vd-compact" style={{ alignSelf: "stretch", overflowY: "auto", minHeight: 0 }}>
           <span className="vd-ctrl-h">Doorsnede (mm)</span>
           <label>Breedte b
-            <input type="number" step={10} value={b} onChange={(e) => set("b_dsn", parseFloat(e.target.value))} />
+            <input type="number" step={10} value={d("b_dsn")} onChange={(e) => set("b_dsn", parseFloat(e.target.value))} />
           </label>
           <label>Hoogte h
-            <input type="number" step={10} value={h} onChange={(e) => set("h_dsn", parseFloat(e.target.value))} />
+            <input type="number" step={10} value={d("h_dsn")} onChange={(e) => set("h_dsn", parseFloat(e.target.value))} />
           </label>
           <label>Betonsterkteklasse
             <select value={fck} onChange={(e) => set("betonklasse", parseInt(e.target.value))}>
-              {BETON.map((v) => <option key={v} value={v}>C{v}/{v === 20 ? 25 : v === 25 ? 30 : v === 30 ? 37 : v === 35 ? 45 : v === 40 ? 50 : v === 45 ? 55 : 60}</option>)}
+              {BETON.map((v) => <option key={v} value={v}>{BETONLABEL[v]}</option>)}
             </select>
           </label>
           <label>Betonstaalsoort
@@ -108,7 +136,7 @@ export default function BetondoorsnedeDesigner() {
             </select>
           </label>
           <label>Dekking c
-            <input type="number" step={5} value={c} onChange={(e) => set("c_dek", parseFloat(e.target.value))} />
+            <input type="number" step={5} value={d("c_dek")} onChange={(e) => set("c_dek", parseFloat(e.target.value))} />
           </label>
 
           <span className="vd-ctrl-h">Wapening</span>
@@ -129,7 +157,7 @@ export default function BetondoorsnedeDesigner() {
               <select value={dBg} onChange={(e) => set("d_beugel", parseFloat(e.target.value))}>
                 {DIAM.slice(0, 5).map((x) => <option key={x} value={x}>Ø{x}</option>)}
               </select>
-              <input type="number" step={25} min={20} value={sBg} style={{ width: 58 }}
+              <input type="number" step={25} min={20} value={d("s_beugel")} style={{ width: 58 }}
                 onChange={(e) => set("s_beugel", parseFloat(e.target.value))} />
             </span>
           </label>
@@ -137,13 +165,14 @@ export default function BetondoorsnedeDesigner() {
             <input type="number" step={1} min={2} max={6} value={nSn} onChange={(e) => set("n_sneden", parseFloat(e.target.value))} />
           </label>
           <span className="gd-note">A<sub>s,onder</sub> = {fmt(AsO)} · A<sub>s,midden</sub> = {fmt(AsM)} ·
-            A<sub>s,boven</sub> = {fmt(AsB)} mm² · nuttige hoogte d ≈ {fmt(dEff)} mm.</span>
+            A<sub>s,boven</sub> = {fmt(AsB)} mm²{g.M_Rd !== undefined && <> · M<sub>Rd</sub> = {fmt(g.M_Rd, 1)} kNm</>}
+            {g.V_Rd_c !== undefined && <> · V<sub>Rd,c</sub> = {fmt(g.V_Rd_c, 1)} kN</>}.</span>
 
           <span className="vd-ctrl-h">Belastingen (UGT)</span>
-          <label>N<sub>Ed</sub> (kN)
+          <label title="Druk positief">N<sub>Ed</sub> (kN)
             <input type="number" step={10} value={NEd} onChange={(e) => set("N_Ed", parseFloat(e.target.value))} />
           </label>
-          <label>M<sub>Ed</sub> (kNm)
+          <label title="Positief bij trek onderin">M<sub>Ed</sub> (kNm)
             <input type="number" step={5} value={MEd} onChange={(e) => set("M_Ed", parseFloat(e.target.value))} />
           </label>
           <label>V<sub>Ed</sub> (kN)
@@ -152,13 +181,28 @@ export default function BetondoorsnedeDesigner() {
           <label>T<sub>Ed</sub> (kNm)
             <input type="number" step={1} value={TEd} onChange={(e) => set("T_Ed", parseFloat(e.target.value))} />
           </label>
-          <span className="vd-ctrl-h">Belastingen (BGT)</span>
-          <label>N<sub>k</sub> (kN)
-            <input type="number" step={10} value={Nk} onChange={(e) => set("N_k", parseFloat(e.target.value))} />
+          <span className="vd-ctrl-h">Belastingen (BGT, quasi-blijvend)</span>
+          <label title="Druk positief">N<sub>qp</sub> (kN)
+            <input type="number" step={10} value={Nqp} onChange={(e) => set("N_qp", parseFloat(e.target.value))} />
           </label>
-          <label>M<sub>k</sub> (kNm)
-            <input type="number" step={5} value={Mk} onChange={(e) => set("M_k", parseFloat(e.target.value))} />
+          <label>M<sub>qp</sub> (kNm)
+            <input type="number" step={5} value={Mqp} onChange={(e) => set("M_qp", parseFloat(e.target.value))} />
           </label>
+          <label title="Kruipcoëfficiënt φ(∞,t₀); telt alleen bij een langdurende belasting">φ(∞,t<sub>0</sub>)
+            <input type="number" step={0.1} min={0} value={phi} onChange={(e) => set("φ_kr", parseFloat(e.target.value))} />
+          </label>
+          <label>Milieuklasse
+            <select value={milieu} onChange={(e) => set("milieuklasse", parseInt(e.target.value))}>
+              {MILIEU.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
+            </select>
+          </label>
+          <label>Belastingduur
+            <select value={duur} onChange={(e) => set("belastingduur", parseInt(e.target.value))}>
+              {DUUR.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
+            </select>
+          </label>
+          {g.w_k !== undefined && <span className="gd-note">w<sub>k</sub> = {fmt(g.w_k, 3)} mm
+            {g.σ_s !== undefined && <> bij σ<sub>s</sub> = {fmt(g.σ_s)} N/mm²</>}.</span>}
         </div>
 
         <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
@@ -169,6 +213,9 @@ export default function BetondoorsnedeDesigner() {
                 <Defs k="bt" />
                 {/* beton */}
                 <rect x={x0} y={y0} width={b * s} height={h * s} fill={betonFill("bt")} stroke="#6b7280" strokeWidth={1.4} />
+                {/* drukzone uit het blad: spanningsblok en neutrale lijn */}
+                {blokH > 0 && <rect x={x0} y={blokY} width={b * s} height={blokH} fill="rgba(220,38,38,0.16)" stroke="none" />}
+                {naY !== null && <line x1={x0 - 6} y1={naY} x2={x1 + 6} y2={naY} stroke="#b91c1c" strokeWidth={1} strokeDasharray="7 4" />}
                 {/* beugel */}
                 <rect x={bx0} y={by0} width={bx1 - bx0} height={by1 - by0} rx={rr} ry={rr}
                   fill="none" stroke="#1e3a8a" strokeWidth={bgPx} />
@@ -191,13 +238,15 @@ export default function BetondoorsnedeDesigner() {
                 <line x1={x1 + 4} y1={(yB + yM) / 2} x2={x1 + 30} y2={(yB + yM) / 2} stroke="#1e3a8a" strokeWidth={0.9} />
               </svg>
 
-              <Dim ctx={ctx} name="b_dsn" value={b} x={cx} y={y1 + 28} step={10} label="b" />
-              <Dim ctx={ctx} name="h_dsn" value={h} x={x0 - 32} y={cy} step={10} label="h" />
+              <Dim ctx={ctx} name="b_dsn" value={d("b_dsn")} x={cx} y={y1 + 28} step={10} label="b" />
+              <Dim ctx={ctx} name="h_dsn" value={d("h_dsn")} x={x0 - 32} y={cy} step={10} label="h" />
               <Ro text={`c=${fmt(c)}`} x={x0 + c * s + 22} y={y0 + (c * s) / 2} title="dekking op de beugel" />
               {nB > 0 && <Ro text={`${nB}Ø${fmt(dB)}`} x={x1 + 62} y={yB} title={`${fmt(AsB)} mm²`} />}
               {nM > 0 && <Ro text={`${nM}Ø${fmt(dM)}`} x={x1 + 62} y={yM} title={`${fmt(AsM)} mm²`} />}
               {nO > 0 && <Ro text={`${nO}Ø${fmt(dO)}`} x={x1 + 62} y={yO} title={`${fmt(AsO)} mm²`} />}
               <Ro text={`Ø${fmt(dBg)}-${fmt(sBg)} (${nSn}sn.)`} x={x1 + 74} y={(yB + yM) / 2} kleur="#1e3a8a" title="beugels" />
+              {naY !== null && xu !== undefined &&
+                <Ro text={`x=${fmt(xu)}`} x={x0 - 64} y={naY} kleur="#b91c1c" title="drukzonehoogte x_u uit het blad (UGT)" />}
             </div>
           </div>
         </div>
@@ -205,12 +254,18 @@ export default function BetondoorsnedeDesigner() {
 
       <div className="vd-foot">
         <span>Klik op een blauwe maat om die te wijzigen — stroomt direct terug in de rekensheet.
-          <br />De staven staan op schaal en verdelen zich automatisch over de binnenzijde van de beugel.</span>
+          <br />De staven staan op schaal; rood is de drukzone van de UGT uit het blad.</span>
         <span className="vd-live">
-          C{fck} · {STAALSOORT.find((o) => o.v === staal)?.label} · {fmt(b)}×{fmt(h)} mm · dekking {fmt(c)} mm ·
-          {nO}Ø{fmt(dO)} onder · {nM}Ø{fmt(dM)} midden · {nB}Ø{fmt(dB)} boven · Ø{fmt(dBg)}-{fmt(sBg)} ({nSn}sn.) ·
-          A<sub>s</sub> = {fmt(Astot)} mm² ({fmt(rho, 2)} %) · d ≈ {fmt(dEff)} mm ·
-          N/M/V/T = {fmt(NEd)} kN / {fmt(MEd)} kNm / {fmt(VEd)} kN / {fmt(TEd)} kNm
+          <UcChip naam="N" uc={UC("UC_N") || undefined} />
+          <UcChip naam="M" uc={UC("UC_M")} />
+          <UcChip naam="V" uc={UC("UC_V")} />
+          <UcChip naam={TEd !== 0 ? "diagonalen (6.29)" : "diagonalen (6.9)"} uc={UC("UC_Vmax")} />
+          <UcChip naam="wringing, langs" uc={UC("UC_Tl") || undefined} />
+          <UcChip naam="§9.2" uc={uitkomst && UC("UC_st") !== undefined ? regels : undefined} />
+          <UcChip naam="w_k" uc={UC("UC_w")} />
+          <span>
+            {BETONLABEL[fck] ?? `C${fck}`} · {STAALSOORT.find((o) => o.v === staal)?.label} · {fmt(b)}×{fmt(h)} mm · A<sub>s</sub> = {fmt(Astot)} mm² ({fmt(rho, 2)} %)
+          </span>
         </span>
       </div>
     </div>

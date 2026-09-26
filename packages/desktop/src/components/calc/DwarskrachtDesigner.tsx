@@ -1,4 +1,5 @@
-import { useDesigner, Dim, Force, Ro, Defs, loadMark, Bout, Las, HDim, VDim, fmt, clamp } from "./designerKit";
+import { useDesigner, Dim, Force, Ro, Defs, loadMark, Bout, Las, HDim, VDim, Kop, UitkomstKop, fmt, clamp } from "./designerKit";
+import { useBladUitkomst } from "./bladResultaat";
 import { profiel, profielOpties } from "./profielen";
 import "./VoetplaatDesigner.css";
 
@@ -16,7 +17,11 @@ import "./VoetplaatDesigner.css";
  * De plaathoogte volgt uit de boutverdeling (e + (n−1)·p + e), zodat de
  * tekening altijd klopt met de ingevoerde afstanden.
  *
- * Nog geen toetsing — zie templates/dwarskrachtverbinding.ts.
+ * De toetsing staat in templates/dwarskrachtverbinding.ts (alleen de
+ * kopplaat); de kop en de UC's per toets komen uit dat blad. Het beeld toetst
+ * zelf alleen de passing: de kopplaat blijft binnen de flenzen en de las telt
+ * op het rechte lijfdeel, een lijfplaat of hoekstaal moet tussen de
+ * afrondingen passen (h − 2t_f − 2r).
  */
 const MARKER = "Dwarskrachtverbinding";
 
@@ -27,17 +32,33 @@ const GAT: Record<number, number> = { 12: 13, 16: 18, 20: 22, 24: 26 };
 const KOLOMMEN = [4, 5, 6, 7, 8, 9, 10, 14, 16, 18, 20];
 const LIGGERS = [21, 22, 23, 24, 25, 26, 27];
 
+/**
+ * Beginwaarden van een nieuw blad. Een kopplaat van 10 mm haalt met M16 8.8
+ * in S235 de ductiliteitseis (6.32) van 10,6 mm; 12 mm niet.
+ */
 const DEFAULTS: Record<string, number> = {
   verbindingsvorm: 1, kolomprofiel: 7, liggerprofiel: 22,
   staalsoort: 235, boutkwaliteit: 88, boutmaat: 16, hartlijn: 1,
-  n_boutrijen: 3, t_kp: 12, b_kp: 120, e_kp: 25, p_kp: 50, w_kp: 70,
-  a_las: 5, V_Ed: 0,
+  n_boutrijen: 3, t_kp: 10, b_kp: 120, e_kp: 25, p_kp: 50, w_kp: 70,
+  a_las: 5, V_Ed: 80, L_b: 6,
 };
+
+/** UC's per toets zoals het blad ze noemt; een toets die niet doorging, staat er niet. */
+const TOETSEN: { naam: string; label: string }[] = [
+  { naam: "UC_b", label: "bouten" },
+  { naam: "UC_kp", label: "kopplaat" },
+  { naam: "UC_wb", label: "liggerlijf" },
+  { naam: "UC_w", label: "las" },
+  { naam: "UC_φ", label: "rotatie" },
+];
 
 export default function DwarskrachtDesigner() {
   const ctx = useDesigner(MARKER, DEFAULTS);
+  // Vóór de vroege return: de volgorde van de hooks moet vast liggen.
+  const uitkomst = useBladUitkomst();
   if (!ctx.actief) return null;
   const { d, set, box, wrapRef } = ctx;
+  const g = uitkomst?.getallen ?? {};
 
   const vorm = Math.round(d("verbindingsvorm"));      // 1 kopplaat, 2 lijfplaat, 3 hoekstaal
   const kol = profiel(Math.round(d("kolomprofiel")), 7);
@@ -52,12 +73,27 @@ export default function DwarskrachtDesigner() {
   const eKp = Math.max(1, d("e_kp")), pKp = Math.max(1, d("p_kp")), wKp = Math.max(1, d("w_kp"));
   const aLas = Math.max(1, d("a_las"));
   const VEd = d("V_Ed");
+  const Lb = d("L_b");
   const d0 = GAT[M] ?? M + 2;
 
-  // Plaathoogte volgt uit de boutverdeling en past binnen de liggerhoogte.
+  // Plaathoogte volgt uit de boutverdeling. De passing hangt van de vorm af:
+  // een kopplaat zit tegen het liggereinde en moet binnen de flenzen blijven,
+  // anders steunt de onderflens direct op de plaat; de las telt alleen op het
+  // rechte lijfdeel. Een lijfplaat of hoekstaal ligt tegen het lijf en moet
+  // tussen de afrondingen passen.
   const hKp = 2 * eKp + (nRij - 1) * pKp;
-  const past = hKp <= lig.h - 2 * lig.tf;
+  const hFlenzen = lig.h - 2 * lig.tf;
+  const dW = hFlenzen - 2 * lig.r;
+  const past = vorm === 1 ? hKp <= hFlenzen : hKp <= dW;
+  const lW = Math.min(hKp, dW);
   const rijAf = Array.from({ length: nRij }, (_, i) => eKp + i * pKp);
+  const vormNaam = vorm === 1 ? "kopplaat" : vorm === 2 ? "lijfplaat" : "dubbel hoekstaal";
+  const pasTekst = vorm === 1
+    ? past ? `plaat ${fmt(hKp)} mm binnen de flenzen` : `plaat ${fmt(hKp)} mm reikt tot de flenzen`
+    : past ? `plaat ${fmt(hKp)} mm past tussen de afrondingen` : `plaat ${fmt(hKp)} mm valt in de afrondingen`;
+  // UC's per toets uit het blad; alleen bij de kopplaat rekent het blad.
+  const ucs = vorm === 1 ? TOETSEN.filter((t) => g[t.naam] !== undefined) : [];
+  const ucMax = ucs.length ? Math.max(...ucs.map((t) => g[t.naam])) : null;
 
   // ── layout ────────────────────────────────────────────────────────────────
   const capH = 24, gap = 16;
@@ -89,12 +125,10 @@ export default function DwarskrachtDesigner() {
 
   return (
     <div className="vd-panel">
-      <div className="vd-head">
-        <strong>Parametrisch beeld — dwarskrachtverbinding</strong>
-        <span className={`vd-uc ${past ? "ok" : "bad"}`}>
-          {past ? `✓ plaat ${fmt(hKp)} mm past in het lijf` : `✗ plaat ${fmt(hKp)} mm hoger dan het lijf`}
-        </span>
-      </div>
+      {vorm === 1
+        ? <UitkomstKop titel="Parametrisch beeld — dwarskrachtverbinding" uitkomst={uitkomst} />
+        : <Kop titel="Parametrisch beeld — dwarskrachtverbinding" staat={past ? "info" : "bad"}
+            badge={`${past ? "✓" : "✗"} ${pasTekst} · ${vormNaam} niet getoetst`} />}
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
         <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
@@ -163,12 +197,29 @@ export default function DwarskrachtDesigner() {
             <input type="number" step={1} value={aLas} onChange={(e) => set("a_las", parseFloat(e.target.value))} />
           </label>
           <span className="gd-note">Plaathoogte 2·{fmt(eKp)} + {nRij - 1}×{fmt(pKp)} = {fmt(hKp)} mm ·
-            liggerlijf {fmt(lig.h - 2 * lig.tf)} mm hoog.</span>
+            recht lijfdeel h − 2t<sub>f</sub> − 2r = {fmt(dW, 1)} mm
+            {vorm === 1 && <> · las over {fmt(lW, 1)} mm</>}.{" "}
+            <span style={{ color: past ? "#047857" : "#b91c1c" }}>{past ? "✓" : "✗"} {pasTekst}.</span></span>
 
           <span className="vd-ctrl-h">Belasting</span>
           <label>V<sub>Ed</sub> (kN)
             <input type="number" step={10} value={VEd} onChange={(e) => set("V_Ed", parseFloat(e.target.value))} />
           </label>
+          <label title="Overspanning van de ligger, voor de rotatie van het liggereinde">Overspanning L<sub>b</sub> (m)
+            <input type="number" step={0.5} min={0} value={Lb} onChange={(e) => set("L_b", parseFloat(e.target.value))} />
+          </label>
+          {ucs.length > 0 && (
+            <span className="gd-note">UC {ucs.map((t, i) => (
+              <span key={t.naam} style={{ color: g[t.naam] > 1 ? "#b91c1c" : g[t.naam] === ucMax ? "#b45309" : undefined }}>
+                {i > 0 ? " · " : ""}{t.label} {fmt(g[t.naam], 2)}
+              </span>
+            ))}</span>
+          )}
+          {vorm !== 1 && (
+            <span className="gd-note" style={{ color: "#b45309" }}>
+              Het blad toetst alleen de kopplaat; voor de {vormNaam} staat alleen de passing vast.
+            </span>
+          )}
         </div>
 
         <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, flexDirection: gestapeld ? "column" : "row", alignItems: gestapeld ? "stretch" : "flex-start", gap, borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
@@ -193,9 +244,18 @@ export default function DwarskrachtDesigner() {
                 <rect x={xKp1} y={yTop + tfL} width={xLig1 - xKp1} height={yLig1 - tfL - (yTop + tfL)} fill="#f2f6fc" stroke="#1e40af" strokeWidth={0.9} />
                 <text x={(xKp1 + xLig1) / 2} y={yTop - 10} textAnchor="middle" style={{ fontSize: 10.5, fill: "#1e40af", fontWeight: 700 }}>{lig.naam}</text>
 
-                {/* las plaat op kolom */}
-                <Las x={xKp0 + 1} y={yKp1} a={Math.max(4, aLas * s * 2.2)} />
-                <Las x={xKp0 + 1} y={yKp0 + Math.max(4, aLas * s * 2.2)} a={Math.max(4, aLas * s * 2.2)} />
+                {/* las: een kopplaat zit met het liggerlijf vast (in zijaanzicht een strook
+                    langs de plaat, over de laslengte l_w op het rechte lijfdeel, zoals het blad
+                    rekent); de andere vormen tekenen de las van plaat op kolom */}
+                {vorm === 1 ? (
+                  <rect x={xKp1} y={yTop + ((lig.h - lW) * s) / 2} width={Math.max(3, aLas * Math.SQRT2 * s)} height={lW * s}
+                    fill="#1e40af" opacity={0.55} />
+                ) : (
+                  <>
+                    <Las x={xKp0 + 1} y={yKp1} a={Math.max(4, aLas * s * 2.2)} />
+                    <Las x={xKp0 + 1} y={yKp0 + Math.max(4, aLas * s * 2.2)} a={Math.max(4, aLas * s * 2.2)} />
+                  </>
+                )}
 
                 {/* boutrijen */}
                 {yRij.map((y, i) => (
@@ -263,10 +323,10 @@ export default function DwarskrachtDesigner() {
         <span>Klik op een blauwe maat of de rode kracht om die te wijzigen — stroomt direct terug in de rekensheet.
           <br />De plaat blijft bewust korter dan de liggerhoogte; dat geeft de verbinding de rotatiecapaciteit van een scharnier.</span>
         <span className="vd-live">
-          {vorm === 1 ? "kopplaat" : vorm === 2 ? "lijfplaat" : "dubbel hoekstaal"} · {kol.naam} / {lig.naam} S{fy} ·
+          {vormNaam} · {kol.naam} / {lig.naam} S{fy} ·
           {nRij} rijen × 2 M{M}–{KWAL.find((k) => k.v === kwal)?.label} ({hart === 1 ? "versprongen" : "in lijn"}) ·
           plaat {fmt(bKp)}×{fmt(hKp)}×{fmt(tKp)} mm · e/p/w = {fmt(eKp)}/{fmt(pKp)}/{fmt(wKp)} ·
-          a = {fmt(aLas)} mm · V<sub>Ed</sub> = {fmt(VEd)} kN
+          a = {fmt(aLas)} mm · V<sub>Ed</sub> = {fmt(VEd)} kN · L<sub>b</sub> = {fmt(Lb, 1)} m
         </span>
       </div>
     </div>
