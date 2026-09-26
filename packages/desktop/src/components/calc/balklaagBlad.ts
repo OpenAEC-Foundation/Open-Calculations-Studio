@@ -14,12 +14,21 @@ export interface BalklaagKent {
   ligger: boolean;
   /** De keuze "Zelf invullen" in de profiellijst. */
   zelf: boolean;
+  /** De opleglengte van het tussensteunpunt (oplegdruk bij twee velden). */
+  steun: boolean;
+  /** Het eigen gewicht van de gedragen balken bij een onderslag of raveelbalk. */
+  gedragen: boolean;
+  /** De grens voor de bijkomende doorbuiging, naast die voor de eindstand. */
+  bijkomend: boolean;
 }
 
 export function balklaagKent(source: string): BalklaagKent {
   return {
     ligger: /@select ligger\b/.test(source),
     zelf: /Zelf invullen = 28\b/.test(source),
+    steun: /^\s*a_steun = \?/m.test(source),
+    gedragen: /^\s*g_bl = \?/m.test(source),
+    bijkomend: /@select grens_bij\b/.test(source),
   };
 }
 

@@ -4,12 +4,15 @@
  * Reproduceert de referentie-uitwerking voor de enkelvoudige ligger: permanente
  * en veranderlijke lijnlast en een geconcentreerde last met concentratiefactor
  * k_r, BGT-doorbuiging (w_fin met kruip k_def) en UGT (buiging §6.1.6 +
- * afschuiving §6.1.7). Daarnaast een overstek, twee velden en een raveelbalk:
- * vijf belastinggevallen (de veranderlijke last per veld apart, zodat bij twee
- * velden de schaakbordbelasting meedoet), de UGT- en BGT-combinaties in een
- * tabel en de omhullende M- en V-lijn. De soort ligger is een balk in een
- * balklaag of een onderslag met een belaste breedte; het profiel komt uit de
- * lijst of is zelf in te vullen.
+ * afschuiving §6.1.7). Verder toetst het blad de bijkomende doorbuiging, de
+ * trillingen (§7.3.3), de oplegdruk (§6.1.5), kip bij het steunmoment (§6.3.3)
+ * en de combinatie met alleen permanente last (k_mod blijvend, §3.1.3(2)), en
+ * meldt het trek in een eindoplegging. Daarnaast een overstek, twee velden en
+ * een raveelbalk: vijf belastinggevallen (de veranderlijke last per veld apart,
+ * zodat bij twee velden de schaakbordbelasting meedoet), de UGT- en
+ * BGT-combinaties in een tabel en de omhullende M- en V-lijn. De soort ligger
+ * is een balk in een balklaag of een onderslag met een belaste breedte; het
+ * profiel komt uit de lijst of is zelf in te vullen.
  *
  * Eigengewicht balk: A · ρ_mean · g volgens EN 1991-1-1 / EN 338 (ρ_mean per
  * sterkteklasse). De referentie-uitwerking rekent met een vaste 550 kg/m³ én g = 10 m/s²;
@@ -17,7 +20,8 @@
  * docs/afwijkingen-referentie.md.
  *
  * Gecalibreerd op document1 t/m document9 — zie scripts/check-balklaag.mjs.
- * Belastinggevallen en combinaties: scripts/check-balklaag-schema3.mjs.
+ * Belastinggevallen en combinaties: scripts/check-balklaag-schema3.mjs. De
+ * toetsen buiten de referentiebladen: scripts/check-balklaag-toetsen.mjs.
  *
  * Op papier is het blad beknopter dan op het scherm (PrintDocument.css): uitleg
  * en de tekeningen die het beeld al toont dragen `alleen-scherm`, korte regels
@@ -28,7 +32,7 @@
 
 export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
 
-'<i>Toetsing van een houten vloerbalk of onderslag: enkelvoudig, met een overstek, op drie steunpunten of als raveelbalk, belast door een permanente en een veranderlijke vloerbelasting en een geconcentreerde last. UGT-buiging en afschuiving, BGT-doorbuiging met kruip en de trillingstoets.</i><span class="alleen-scherm"></span>
+'<i>Toetsing van een houten vloerbalk of onderslag: enkelvoudig, met een overstek, op drie steunpunten of als raveelbalk, belast door een permanente en een veranderlijke vloerbelasting en een geconcentreerde last. UGT-buiging, afschuiving, oplegdruk en kip, BGT-doorbuiging met kruip en de trillingstoets.</i><span class="alleen-scherm"></span>
 # 1. Profiel, materiaal en doorsnede
 
 @select profiel "Profiel (b×h)"
@@ -100,8 +104,9 @@ export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
 'maatvoering (38 mm dik), zoals dat in de houtskeletbouw wordt geleverd. De
 'dubbele varianten zijn twee stuks tegen elkaar.
 profielen = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19; 20; 21; 22; 23; 24; 25; 26; 27 |46; 46; 46; 46; 63; 63; 63; 63; 71; 71; 71; 71; 71; 71; 96; 96; 96; 96; 96; 38; 38; 38; 38; 38; 76; 76; 76 |96; 146; 171; 196; 146; 171; 196; 221; 146; 171; 196; 221; 246; 271; 171; 196; 221; 246; 271; 89; 140; 184; 235; 285; 184; 235; 285]
-'Materiaalmatrix: [id | f_m,k | f_v,k | E_mean | ρ_mean | γ_M]
-materialen = [1; 2; 3; 4; 5 |18; 24; 30; 24; 28 |3.4; 4.0; 4.0; 3.5; 3.5 |9000; 11000; 12000; 11500; 12600 |380; 420; 460; 420; 460 |1.30; 1.30; 1.30; 1.25; 1.25]
+'Materiaalmatrix: [id | f_m,k | f_v,k | E_mean | ρ_mean | γ_M | f_c,90,k | E_0,05]
+'EN 338 voor C18 t/m C30, EN 14080 voor GL24h en GL28h.
+materialen = [1; 2; 3; 4; 5 |18; 24; 30; 24; 28 |3.4; 4.0; 4.0; 3.5; 3.5 |9000; 11000; 12000; 11500; 12600 |380; 420; 460; 420; 460 |1.30; 1.30; 1.30; 1.25; 1.25 |2.2; 2.5; 2.7; 2.5; 2.5 |6000; 7400; 8000; 9600; 10500]
 
 'Keuze 28 is "Zelf invullen": dan komen b en h uit de invoer.
 b_balk = if(profiel ≡ 28; b_zelf; hlookup(profielen; profiel; 1; 2)*mm)
@@ -111,10 +116,16 @@ f_v,k = hlookup(materialen; sterkteklasse; 1; 3)*N/mm^2
 E_mean = hlookup(materialen; sterkteklasse; 1; 4)*N/mm^2
 ρ_mean = hlookup(materialen; sterkteklasse; 1; 5)*kg/m^3
 γ_M = hlookup(materialen; sterkteklasse; 1; 6)
+f_c,90,k = hlookup(materialen; sterkteklasse; 1; 7)*N/mm^2
+E_0,05 = hlookup(materialen; sterkteklasse; 1; 8)*N/mm^2
 'k_mod (EN 1995-1-1 Tabel 3.1) — klimaatklasse 1 en 2 gelijk, klasse 3 lager:
 k_mod_12 = if(duurklasse ≡ 1; 0.90; if(duurklasse ≡ 2; 0.80; if(duurklasse ≡ 3; 0.70; 0.60)))
 k_mod_3 = if(duurklasse ≡ 1; 0.70; if(duurklasse ≡ 2; 0.65; if(duurklasse ≡ 3; 0.55; 0.50)))
 k_mod = if(klimaat ≡ 3; k_mod_3; k_mod_12)
+'De combinatie met alleen de permanente last hoort bij de duurklasse blijvend
+'(§3.1.3(2)): k_mod van de kortst durende last in de combinatie. Bij
+'belastingcategorie H, sneeuw en wind is ψ_0 = 0 en is 6.10a alleen γ_G,a·G.
+k_mod,G = if(klimaat ≡ 3; 0.50; 0.60)
 k_def = if(klimaat ≡ 1; 0.60; if(klimaat ≡ 2; 0.80; 2.00))
 'Hoogtefactor k_h op f_m,k — massief §3.2(3) bij h < 150 mm, gelijmd gelamineerd
 '§3.3(3) bij h < 600 mm. Op 71×221 is k_h = 1 voor massief en 1,10 voor GL.
@@ -126,7 +137,7 @@ k_h = if(gelijmd ≡ 1; k_h_gelijmd; k_h_massief)
 f_m,k_eff = k_h*f_m,k', karakteristieke buigsterkte incl. hoogtefactor'
 #show
 
-'<h6>Gekozen profiel en materiaal</h6>
+'<h6>Gekozen profiel en materiaal<span class="alleen-scherm"></span></h6>
 b_balk'<span class="alleen-scherm"></span>'
 h_balk'<span class="alleen-scherm"></span>'
 f_m,k'<span class="kolom-4"></span>'
@@ -184,6 +195,9 @@ g_balk = if(rekenwijze ≡ 1; g_balk_xc; g_balk_nb)
 'Een onderslag: soort ligger 2, behalve bij een raveelbalk — die houdt zijn
 'belaste breedte l_staart/2, ook als de soort op "Onderslag" staat.
 ond = bool(ligger ≡ 2)*(1 - bool(schema ≡ 4))
+'Draagt de ligger andere balken: een onderslag, of een raveelbalk met de
+'onderbroken balken?
+draagt = ond + bool(schema ≡ 4)
 'Heeft de ligger een tweede deel: veld 2 of een overstek?
 s2 = bool(schema ≡ 2)
 s3 = bool(schema ≡ 3)
@@ -225,7 +239,7 @@ t_vloer = ?*(mm)', dikte beschot<span class="kolom-3"></span>'
 E_beschot = ?*(N/mm^2)', beschot<span class="alleen-scherm"> (E<sub>0,ser,rep</sub>)</span><span class="kolom-3"></span>'
 #if ond ≡ 1
     b_ond = ?*(m)', belaste breedte onderslag<span class="kolom-3"></span>'
-    '<i>Een onderslag draagt een strook vloer in plaats van één balk: bij balken die over twee gelijke velden doorlopen 1,25 × L, bij losse balken aan weerszijden de som van de halve overspanningen. k<sub>r</sub> is dan 1,0 en de trillingstoets hoort bij de balklaag zelf.</i><span class="alleen-scherm"></span>
+    '<i>Een onderslag draagt een strook vloer in plaats van één balk: bij balken die over twee gelijke velden doorlopen 1,25 × L, bij losse balken aan weerszijden de som van de halve overspanningen. k<sub>r</sub> is dan 1,0 en de trillingstoets hoort bij de balklaag zelf. Het eigen gewicht van de balken die op de onderslag liggen komt in g<sub>bl</sub> (§3).</i><span class="alleen-scherm"></span>
 #else
     #hide
     b_ond = 0 m
@@ -301,10 +315,17 @@ Ue(w1; w2; P1; P2; Ms) = if(r_a > 0; 1000/EI_n*uod(r_a; w1; w2; P1; P2; Ms); 0)
 
 # 3. Belastingen
 
-'<i>Vloerafwerking, plafond, vaste scheidingswanden en overige blijvende lasten tellen op in G<sub>k</sub>; verplaatsbare scheidingswanden horen volgens EN 1991-1-1 §6.3.1.2 bij Q<sub>k</sub>. Het eigen gewicht van de balk rekent het blad in §1 zelf uit de doorsnede en de dichtheid.</i><span class="alleen-scherm"></span>
+'<i>Vloerafwerking, plafond, vaste scheidingswanden en overige blijvende lasten tellen op in G<sub>k</sub>; verplaatsbare scheidingswanden horen volgens EN 1991-1-1 §6.3.1.2 bij Q<sub>k</sub>. Het eigen gewicht van de ligger zelf rekent het blad in §1 uit de doorsnede en de dichtheid. Draagt de ligger andere balken (een onderslag, of een raveelbalk met de onderbroken balken), dan komt het eigen gewicht van die balken per m² vloer apart in g<sub>bl</sub>; bijvoorbeeld 71×221 h.o.h. 600 in C24: 0,11 kN/m².</i><span class="alleen-scherm"></span>
 G_k = ?*(kN/m^2)', permanent<span class="kolom-3"></span>'
 Q_k = ?*(kN/m^2)', veranderlijk<span class="kolom-3"></span>'
 F_k = ?*(kN)', geconcentreerd<span class="kolom-3"></span>'
+#if draagt ≡ 1
+    g_bl = ?*(kN/m^2)'<span class="alleen-scherm">, eigen gewicht van de gedragen balken</span><span class="kolom-3"></span>'
+#else
+    #hide
+    g_bl = 0 kN/m^2
+    #show
+#end if
 
 @select belastingcat "Belastingcategorie (Tabel NB.2 — A1.1)"
   A — woon- en verblijfsruimtes = 1
@@ -357,7 +378,11 @@ F_k = ?*(kN)', geconcentreerd<span class="kolom-3"></span>'
 #else
     b_belast = hoh to mm', belaste breedte, hart-op-hart afstand'
 #end if
-P_g,k = b_belast*G_k + g_balk to kN/m', permanent'
+#if draagt ≡ 1
+    P_g,k = b_belast*(G_k + g_bl) + g_balk to kN/m', permanent'
+#else
+    P_g,k = b_belast*G_k + g_balk to kN/m', permanent'
+#end if
 q_q,k = b_belast*Q_k to kN/m', veranderlijk'
 
 #hide
@@ -377,7 +402,11 @@ kr_een = max(bool(schema ≡ 4); bool(ligger ≡ 2))
 #else
     '<i>Een puntlast verdeelt zich via het beschot over meerdere balken. De concentratiefactor k<sub>r</sub> (NB) is het deel dat op één balk komt; stijver beschot geeft een kleinere k<sub>r</sub>.</i><span class="alleen-scherm"></span>
     k_r_0 = 0.37 + 0.8*hoh/a_ref - E_vl*t_ruw^3/12/EI_ref
-    k_r = min(1; k_r_0)'<span class="alleen-scherm">, concentratiefactor (NB)</span><span class="kolom-2"></span>'
+    '<i>Bij een dik of stijf beschot op een kleine h.o.h. komt k<sub>r,0</sub> laag uit en kan hij zelfs negatief worden; de puntlast zou dan omhoog werken. Het blad houdt daarom een ondergrens van 1/3 aan: één balk neemt dan nog een derde van de puntlast.</i><span class="alleen-scherm"></span>
+    k_r = min(1; max(k_r_0; 1/3))'<span class="alleen-scherm">, concentratiefactor (NB)</span><span class="kolom-2"></span>'
+    #if k_r_0 < 1/3
+        '<span style="color: #b45309">k<sub>r,0</sub> = 'k_r_0' < 1/3: buiten het geldigheidsgebied van de formule; k<sub>r</sub> = 1/3 aangehouden.</span>
+    #end if
 #end if
 F_Q,k = F_k*k_r to kN'<span class="alleen-scherm">, puntlast op één balk</span><span class="kolom-2"></span>'
 
@@ -898,6 +927,13 @@ V_Ed,steun = max(V_Ed,steun,a; V_Ed,steun,b)
 V_Ed,veld2 = max(V_Ed,veld2,a; V_Ed,veld2,b)
 V_Ed,F1 = max(V_Ed,F1,a; V_Ed,F1,b)
 V_Ed,F2 = max(V_Ed,F2,a; V_Ed,F2,b)
+'Alleen de permanente last, 6.10a zonder veranderlijke last: getoetst met
+'k_mod voor blijvend (§8.5). Het veldmoment en het steunmoment apart, voor de
+'kipfactor bij het steunmoment.
+M_g,veld = max(Mv1(bw1(1); 0; mb_1); Mv2(bw2(1); 0; mb_1))
+M_g,steun = max(mb_1; 0)
+M_Ed,G = γ_G,a*max(M_g,veld; M_g,steun)*kN*m
+V_Ed,G = γ_G,a*V_g,k
 'Vet in de tabel: de maatgevende van 6.10a (vet_a) en 6.10b (vet_b); bij
 'gelijke uitkomst 6.10b.
 vet_a(x; y) = if(x > y; 700; 400)
@@ -1037,7 +1073,7 @@ pv2 = bool(u_var,2 > u_q,k,2)
 #show
 
 '<h6>5.2 Combinatietabel</h6>
-'Factor per belastinggeval; vet de ongunstigste van 6.10a en 6.10b, de zakking u in het punt uit 5.1<span class="alleen-scherm">. In de BGT telt de puntlast mee in plaats van de verdeelde last als die de grootste zakking geeft (norm-stand)</span>.
+'Factor per belastinggeval; vet de ongunstigste van 6.10a en 6.10b; u in het punt uit 5.1; bij de puntlast de maxima van BG1 en BG4 (BG5) opgeteld, een veilige bovengrens<span class="alleen-scherm">. In de BGT telt de puntlast mee in plaats van de verdeelde last als die de grootste zakking geeft (norm-stand)</span>.
 #if s23 ≥ 1
     '<table style="width:100%; border-collapse:collapse; font-size:0.85em; line-height:1.25;">
     '<tr style="border-bottom:1.5px solid #374151;">
@@ -1146,6 +1182,16 @@ pv2 = bool(u_var,2 > u_q,k,2)
     '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(M_Ed,F2,b; M_Ed,F2,a)';">'M_Ed,F2,b'</td>
     '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(V_Ed,F2,b; V_Ed,F2,a)';">'V_Ed,F2,b'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
+    '<td style="padding:0 4px;">UGT alleen permanent (k<sub>mod,G</sub>)</td>
+    '<td style="padding:0 4px;">6.10a</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G,a'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right;">'M_Ed,G'</td>
+    '<td style="padding:0 4px; text-align:right;">'V_Ed,G'</td></tr>
+    '<tr style="border-bottom:1px solid #e5e7eb;">
     '<td style="padding:0 4px;">BGT karakteristiek veld 1</td>
     '<td style="padding:0 4px;">6.14b</td>
     '<td style="padding:0 4px; text-align:center;">1.0</td>
@@ -1223,6 +1269,14 @@ pv2 = bool(u_var,2 > u_q,k,2)
     '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(M_Ed,F1,b; M_Ed,F1,a)';">'M_Ed,F1,b'</td>
     '<td style="padding:0 4px; text-align:right; font-weight:'vet_b(V_Ed,F1,b; V_Ed,F1,a)';">'V_Ed,F1,b'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;">
+    '<td style="padding:0 4px;">UGT alleen permanent (k<sub>mod,G</sub>)</td>
+    '<td style="padding:0 4px;">6.10a</td>
+    '<td style="padding:0 4px; text-align:center;">'γ_G,a'</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:center; color:#9ca3af;">–</td>
+    '<td style="padding:0 4px; text-align:right;">'M_Ed,G'</td>
+    '<td style="padding:0 4px; text-align:right;">'V_Ed,G'</td></tr>
+    '<tr style="border-bottom:1px solid #e5e7eb;">
     '<td style="padding:0 4px;">BGT karakteristiek</td>
     '<td style="padding:0 4px;">6.14b</td>
     '<td style="padding:0 4px; text-align:center;">1.0</td>
@@ -1238,7 +1292,7 @@ pv2 = bool(u_var,2 > u_q,k,2)
     '<td style="padding:0 4px; text-align:right;" colspan="2">u = 'u_g,k + ψ_2*u_var' mm</td></tr>
     '</table>
 #end if
-'Bij de puntlast zijn de maxima van BG1 en BG4 (of BG5) opgeteld, ook waar ze niet samenvallen: een veilige bovengrens.
+'Bij de puntlast zijn de maxima van BG1 en BG4 (of BG5) opgeteld, ook waar ze niet samenvallen: een veilige bovengrens.<span class="alleen-scherm"></span>
 
 '<h6>5.3 Omhullende (UGT)</h6>
 '<i>De grootste uitkomsten van de UGT-combinaties (6.10a en 6.10b) uit de tabel in 5.2. De doorsnede is prismatisch, dus alleen de grootte telt: veld of steun.</i><span class="alleen-scherm"></span>
@@ -1395,57 +1449,97 @@ svg_mv = vy2 + o_Vn*v_s + 24
 
 # 6. Toetsing BGT — doorbuiging (§7.2)
 
-'<span class="alleen-scherm"></span>w<sub>inst</sub> uit de karakteristieke combinatie (6.14b), kruip k<sub>def</sub>·w<sub>qp</sub> uit de quasi-blijvende (6.16b), w<sub>fin</sub> = w<sub>inst</sub> + w<sub>kruip</sub> (7.2)<span class="alleen-scherm">. De permanente last kruipt volledig, de veranderlijke alleen voor het quasi-blijvende deel ψ<sub>2</sub>; w<sub>fin</sub> is dus gelijk aan (1 + k<sub>def</sub>)·u<sub>g</sub> + (1 + ψ<sub>2</sub>·k<sub>def</sub>)·u<sub>var</sub></span>.
+'w<sub>inst</sub> (6.14b), w<sub>kruip</sub> = k<sub>def</sub>·w<sub>qp</sub> (6.16b), w<sub>fin</sub> = w<sub>inst</sub> + w<sub>kruip</sub> (7.2), w<sub>bij</sub> = w<sub>fin</sub> − u<sub>g,k</sub> (NB bij EN 1990, A1.4)<span class="alleen-scherm">. w<sub>inst</sub> komt uit de karakteristieke combinatie, de kruip uit de quasi-blijvende. De permanente last kruipt volledig, de veranderlijke alleen voor het quasi-blijvende deel ψ<sub>2</sub>; w<sub>fin</sub> is dus gelijk aan (1 + k<sub>def</sub>)·u<sub>g</sub> + (1 + ψ<sub>2</sub>·k<sub>def</sub>)·u<sub>var</sub>. De bijkomende doorbuiging is wat na het aanbrengen van de afwerking nog bij komt: de eindstand min de momentane zakking onder de permanente last. Beide worden getoetst: de eindstand aan de grens voor w<sub>fin</sub>, de bijkomende aan 0,003 × L of, bij een brosse afwerking, 0,002 × L</span>.
 
 @select controleer "Controleer doorbuiging"
   Ja = 1
   Nee = 0
 @end
 
-@select grensfactor "Toelaatbare bijkomende doorbuiging"
+@select grensfactor "Grens eindstand w_fin"
   0.004 × L = 0.004
   0.003 × L = 0.003
   0.002 × L = 0.002
 @end
 
+@select grens_bij "Grens bijkomende doorbuiging w_bij"
+  0.003 × L = 0.003
+  0.002 × L = 0.002
+@end
+
 #if controleer ≡ 1
-    '<i>De zakkingen per veld komen uit 5.1; de opbouw van de combinaties staat in de tabel van 5.2.</i><span class="alleen-scherm"></span>
+    '<i>De zakkingen per veld komen uit 5.1; de opbouw van de combinaties staat in de tabel van 5.2. Op papier staat het tweede deel als uitkomst naast de uitwerking van veld 1.</i><span class="alleen-scherm"></span>
     w_inst = u_g,k + u_var to mm', 6.14b, veld 1'
     #if s23 ≥ 1
-        w_inst,2 = u_g,k,2 + u_var,2 to mm', 6.14b, tweede deel'
+        w_inst,2 = u_g,k,2 + u_var,2 to mm', 6.14b, tweede deel<span class="alleen-scherm"></span>'
     #end if
-    q_qp = 1.0*P_g,k + ψ_2*q_q,k to kN/m', 6.16b: lijnlast die langdurig blijft staan'
+    q_qp = 1.0*P_g,k + ψ_2*q_q,k to kN/m', 6.16b: lijnlast die langdurig blijft staan<span class="alleen-scherm"></span>'
     w_qp = 1.0*u_g,k + ψ_2*u_var to mm', 6.16b, veld 1'
     #if s23 ≥ 1
-        w_qp,2 = 1.0*u_g,k,2 + ψ_2*u_var,2 to mm', 6.16b, tweede deel'
+        w_qp,2 = 1.0*u_g,k,2 + ψ_2*u_var,2 to mm', 6.16b, tweede deel<span class="alleen-scherm"></span>'
     #end if
     w_kruip = k_def*w_qp to mm', kruip, veld 1'
     #if s23 ≥ 1
-        w_kruip,2 = k_def*w_qp,2 to mm', kruip, tweede deel'
+        w_kruip,2 = k_def*w_qp,2 to mm', kruip, tweede deel<span class="alleen-scherm"></span>'
     #end if
     w_fin = w_inst + w_kruip to mm', veld 1'
     #if s23 ≥ 1
-        w_fin,2 = w_inst,2 + w_kruip,2 to mm', tweede deel'
+        w_fin,2 = w_inst,2 + w_kruip,2 to mm', tweede deel<span class="alleen-scherm"></span>'
+        w_inst,2'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        w_qp,2'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        w_kruip,2'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        w_fin,2'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
     #end if
-    w_lim = grensfactor*L_th', grens veld 1'
+    w_bij = w_fin - u_g,k to mm'<span class="alleen-scherm">, bijkomend, veld 1</span><span class="alleen-scherm"></span>'
+    w_bij'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    #if s23 ≥ 1
+        w_bij,2 = w_fin,2 - u_g,k,2 to mm'<span class="alleen-scherm">, bijkomend, tweede deel</span><span class="alleen-scherm"></span>'
+        w_bij,2'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    #end if
+    w_lim = grensfactor*L_th'<span class="alleen-scherm">, grens eindstand veld 1</span><span class="alleen-scherm"></span>'
+    w_lim'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
     #if s3 ≡ 1
-        w_lim,2 = grensfactor*L_veld2', grens veld 2'
-        UC_doorbuiging = max(w_fin/w_lim; w_fin,2/w_lim,2)'<span class="alleen-scherm"></span>'
+        w_lim,2 = grensfactor*L_veld2'<span class="alleen-scherm">, grens eindstand veld 2</span><span class="alleen-scherm"></span>'
+        w_lim,2'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
     #else if s2 ≡ 1
-        w_lim,2 = grensfactor*2*a_over', grens uiteinde, als overspanning 2·a'
+        w_lim,2 = grensfactor*2*a_over'<span class="alleen-scherm">, grens eindstand uiteinde, als overspanning 2·a</span><span class="alleen-scherm"></span>'
+        w_lim,2'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    #end if
+    w_lim,bij = grens_bij*L_th'<span class="alleen-scherm">, grens bijkomend veld 1</span><span class="alleen-scherm"></span>'
+    w_lim,bij'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    #if s3 ≡ 1
+        w_lim,bij,2 = grens_bij*L_veld2'<span class="alleen-scherm">, grens bijkomend veld 2</span><span class="alleen-scherm"></span>'
+        w_lim,bij,2'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    #else if s2 ≡ 1
+        w_lim,bij,2 = grens_bij*2*a_over'<span class="alleen-scherm">, grens bijkomend uiteinde, als overspanning 2·a</span><span class="alleen-scherm"></span>'
+        w_lim,bij,2'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    #end if
+    #if s23 ≥ 1
         UC_doorbuiging = max(w_fin/w_lim; w_fin,2/w_lim,2)'<span class="alleen-scherm"></span>'
     #else
         UC_doorbuiging = w_fin/w_lim'<span class="alleen-scherm"></span>'
     #end if
-    #if s23 ≥ 1
-        UC_doorbuiging' (de grootste van w<sub>fin</sub>/w<sub>lim</sub> per veld)<span class="alleen-afdruk"></span>'
-    #else
-        UC_doorbuiging' (w<sub>fin</sub>/w<sub>lim</sub>)<span class="alleen-afdruk"></span>'
-    #end if
     #if UC_doorbuiging ≤ 1.0
-        '<span class="alleen-scherm">UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+        '<span class="alleen-scherm">UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>voldoet</b></span><span class="alleen-scherm"></span>
     #else
-        '<span class="alleen-scherm">UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'</span><span class="oordeel" style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+        '<span class="alleen-scherm">UC<sub>doorbuiging</sub> = w<sub>fin</sub>/w<sub>fin,max</sub> = 'UC_doorbuiging'</span><span class="oordeel" style="color: red"> > 1.0 → <b>voldoet niet</b></span><span class="alleen-scherm"></span>
+    #end if
+    #if s23 ≥ 1
+        UC_bij = max(w_bij/w_lim,bij; w_bij,2/w_lim,bij,2)'<span class="alleen-scherm"></span>'
+    #else
+        UC_bij = w_bij/w_lim,bij'<span class="alleen-scherm"></span>'
+    #end if
+    #if UC_bij ≤ 1.0
+        '<span class="alleen-scherm">UC<sub>bij</sub> = w<sub>bij</sub>/w<sub>bij,max</sub> = 'UC_bij'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>voldoet</b></span><span class="alleen-scherm"></span>
+    #else
+        '<span class="alleen-scherm">UC<sub>bij</sub> = w<sub>bij</sub>/w<sub>bij,max</sub> = 'UC_bij'</span><span class="oordeel" style="color: red"> > 1.0 → <b>voldoet niet</b></span><span class="alleen-scherm"></span>
+    #end if
+    '<span class="alleen-afdruk"></span>
+    UC_w = max(UC_doorbuiging; UC_bij)'<span class="alleen-scherm">, eindstand en bijkomend</span>'
+    #if UC_w ≤ 1.0
+        '<span class="oordeel" style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+    #else
+        '<span class="oordeel" style="color: red"> > 1.0 → <b>voldoet niet</b></span>
     #end if
 
     '<h6>Doorbuigingslijn<span class="alleen-scherm"></span></h6>
@@ -1527,11 +1621,12 @@ svg_mv = vy2 + o_Vn*v_s + 24
 #else
     'Doorbuiging wordt niet getoetst (Controleer doorbuiging = Nee).
     UC_doorbuiging = 0'<span class="alleen-scherm"></span>'
+    UC_bij = 0'<span class="alleen-scherm"></span>'
 #end if
 
 # 7. Toetsing BGT — trillingen (§7.3.3)
 
-'<span class="alleen-scherm"></span>Eigenfrequentie (7.5), stijfheid onder 1 kN (7.3) en responssnelheid (7.4); de laatste twee gelden bij f<sub>1</sub> ≥ 8 Hz<span class="alleen-scherm">. Daaronder vraagt §7.3.3(2) een volledige trillingsanalyse</span>.
+'Eigenfrequentie (7.5), stijfheid (7.3), responssnelheid (7.4); (7.3) en (7.4) alleen bij f<sub>1</sub> > 8 Hz, anders nader onderzoek (§7.3.3(1))<span class="alleen-scherm">. Het blad toetst f<sub>1</sub> > 8 Hz daarom als eigen voorwaarde, met UC = 8 Hz/f<sub>1</sub>: ligt f<sub>1</sub> niet boven de 8 Hz, dan is de trilling niet aangetoond</span>.
 
 @select controleer_trilling "Controleer trilling"
   Ja = 1
@@ -1551,10 +1646,10 @@ tril_aan = controleer_trilling*(1 - ond)
     a_tril = ?*(mm/kN)'<span class="alleen-scherm">, grenswaarde stijfheid (NB)</span><span class="kolom-4"></span>'
     b_tril = ?'<span class="alleen-scherm">, parameter bij de snelheidseis (figuur 7.2)</span><span class="kolom-4"></span>'
     '<h6>7.1 Stijfheden en eigenfrequentie (7.5)<span class="alleen-scherm"></span></h6>
-    '<i>Het beschot draagt loodrecht op de balken, de balken in de overspanning; beide per meter vloerbreedte. De trillende massa is alleen het permanente gewicht (§7.3.3): de vloer trilt in de staat waarin hij normaal wordt gebruikt.</i><span class="alleen-scherm"></span>
+    '<i>Per meter vloerbreedte: (EI)<sub>l</sub> in de overspanningsrichting, dus de balken, en (EI)<sub>b</sub> dwars daarop, het beschot (§7.3.3). De eigenfrequentie (7.5) hangt af van (EI)<sub>l</sub>, het aantal eigenmodi (7.7) van de verhouding (EI)<sub>l</sub>/(EI)<sub>b</sub>. De trillende massa is alleen het permanente gewicht (§7.3.3): de vloer trilt in de staat waarin hij normaal wordt gebruikt.</i><span class="alleen-scherm"></span>
     I_beschot = 1 m*t_vloer^3/12 to m^4'<span class="alleen-scherm"></span>'
-    EI_l = E_beschot*I_beschot/(1 m) to N*m^2/m', beschot<span class="alleen-scherm"></span>'
-    EI_b = E_mean*I_y/hoh to N*m^2/m', balken<span class="alleen-scherm"></span>'
+    EI_l = E_mean*I_y/hoh to N*m^2/m', balken, in de overspanningsrichting<span class="alleen-scherm"></span>'
+    EI_b = E_beschot*I_beschot/(1 m) to N*m^2/m', beschot, dwars op de balken<span class="alleen-scherm"></span>'
     m_opp = (G_k + g_balk/hoh)/(9.81 m/s^2) to kg/m^2', trillende massa<span class="alleen-scherm"></span>'
     #if schema ≡ 3
         L_tril = max(L_th; L_veld2)', langste veld<span class="alleen-scherm"></span>'
@@ -1565,11 +1660,16 @@ tril_aan = controleer_trilling*(1 - ond)
     EI_b'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
     m_opp'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
     L_tril'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
-    f_1 = π/(2*L_tril^2)*sqrt(EI_b/m_opp) to Hz
-    #if f_1 ≥ 8 Hz
-        '<span class="alleen-scherm">f<sub>1</sub> = 'f_1'</span><span class="oordeel" style="color: green"> ≥ 8 Hz → 7.3 en 7.4 gelden</span>
+    f_1 = π/(2*L_tril^2)*sqrt(EI_l/m_opp) to Hz'<span class="alleen-scherm"></span>'
+    #hide
+    'Ligt f_1 niet boven de 8 Hz, dan gelden (7.3) en (7.4) niet: niet aangetoond.
+    tril_na = bool(f_1 ≤ 8 Hz)
+    #show
+    f_1', (7.5)<span class="alleen-afdruk"></span>'
+    #if tril_na ≡ 0
+        '<span class="alleen-scherm">f<sub>1</sub> = 'f_1'</span><span class="oordeel" style="color: green"> > 8 Hz → (7.3) en (7.4) gelden</span>
     #else
-        '<span class="alleen-scherm">f<sub>1</sub> = 'f_1'</span><span class="oordeel" style="color: red"> < 8 Hz → de vereenvoudigde toets vervalt; §7.3.3(2) vraagt een volledige trillingsanalyse</span>
+        '<span class="alleen-scherm">f<sub>1</sub> = 'f_1'</span><span class="oordeel" style="color: red"> ≤ 8 Hz → <b>niet aangetoond</b>: (7.3) en (7.4) gelden niet, nader onderzoek volgens §7.3.3(1)</span>
     #end if
 
     '<h6>7.2 Criterium 1 — stijfheid onder 1 kN (formule 7.3)<span class="alleen-scherm"></span></h6>
@@ -1593,11 +1693,10 @@ tril_aan = controleer_trilling*(1 - ond)
         w_per_kN'<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
     #end if
     UC_tril_a = w_per_kN/a_tril'<span class="alleen-scherm"></span>'
-    UC_tril_a' (w<sub>per,kN</sub>/a<sub>tril</sub>)<span class="alleen-afdruk"></span>'
     #if UC_tril_a ≤ 1.0
-        '<span class="alleen-scherm">UC<sub>w/F</sub> = 'UC_tril_a'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>stijfheid voldoet</b></span>
+        '<span class="alleen-scherm">UC<sub>w/F</sub> = 'UC_tril_a'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>stijfheid voldoet</b></span><span class="alleen-scherm"></span>
     #else
-        '<span class="alleen-scherm">UC<sub>w/F</sub> = 'UC_tril_a'</span><span class="oordeel" style="color: red"> > 1.0 → <b>stijfheid voldoet niet</b></span>
+        '<span class="alleen-scherm">UC<sub>w/F</sub> = 'UC_tril_a'</span><span class="oordeel" style="color: red"> > 1.0 → <b>stijfheid voldoet niet</b></span><span class="alleen-scherm"></span>
     #end if
 
     '<h6>7.3 Criterium 2 — responssnelheid (formules 7.4, 7.6, 7.7)<span class="alleen-scherm"></span></h6>
@@ -1611,16 +1710,21 @@ tril_aan = controleer_trilling*(1 - ond)
     v_resp', (7.6)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     v_lim', (7.4)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     UC_tril_v = v_resp/v_lim'<span class="alleen-scherm"></span>'
-    UC_tril_v' (v<sub>resp</sub>/v<sub>lim</sub>)<span class="alleen-afdruk"></span>'
     #if UC_tril_v ≤ 1.0
-        '<span class="alleen-scherm">UC<sub>v</sub> = 'UC_tril_v'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>responssnelheid voldoet</b></span>
+        '<span class="alleen-scherm">UC<sub>v</sub> = 'UC_tril_v'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>responssnelheid voldoet</b></span><span class="alleen-scherm"></span>
     #else
-        '<span class="alleen-scherm">UC<sub>v</sub> = 'UC_tril_v'</span><span class="oordeel" style="color: red"> > 1.0 → <b>responssnelheid voldoet niet</b></span>
+        '<span class="alleen-scherm">UC<sub>v</sub> = 'UC_tril_v'</span><span class="oordeel" style="color: red"> > 1.0 → <b>responssnelheid voldoet niet</b></span><span class="alleen-scherm"></span>
     #end if
 
     '<span class="alleen-afdruk"></span>
-    UC_trilling = max(UC_tril_a; UC_tril_v)
-    #if UC_trilling ≤ 1.0
+    UC_f1 = 8 Hz/f_1'<span class="alleen-scherm">, voorwaarde f<sub>1</sub> > 8 Hz</span><span class="alleen-scherm"></span>'
+    UC_trilling = max(UC_tril_a; UC_tril_v; UC_f1)'<span class="alleen-scherm">: stijfheid (w<sub>per,kN</sub>/a<sub>tril</sub>), responssnelheid (v<sub>resp</sub>/v<sub>lim</sub>) en f<sub>1</sub> > 8 Hz (8 Hz/f<sub>1</sub>)</span>'
+    #hide
+    UC_tril_av = max(UC_tril_a; UC_tril_v)
+    #show
+    #if tril_na ≡ 1
+        '<span class="alleen-scherm">UC<sub>trilling</sub> = 'UC_trilling'</span><span class="oordeel" style="color: red"> → <b>trillingen niet aangetoond</b> (f<sub>1</sub> ≤ 8 Hz, §7.3.3(1))</span>
+    #else if UC_trilling ≤ 1.0
         '<span class="alleen-scherm">UC<sub>trilling</sub> = 'UC_trilling'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>trillingen voldoen</b></span>
     #else
         '<span class="alleen-scherm">UC<sub>trilling</sub> = 'UC_trilling'</span><span class="oordeel" style="color: red"> > 1.0 → <b>trillingen voldoen niet</b></span>
@@ -1628,9 +1732,17 @@ tril_aan = controleer_trilling*(1 - ond)
 #else if controleer_trilling ≡ 1
     'Trilling wordt niet getoetst: bij een onderslag niet van toepassing. De toets hoort bij de balklaag die op de onderslag rust.
     UC_trilling = 0'<span class="alleen-scherm"></span>'
+    #hide
+    tril_na = 0
+    UC_tril_av = 0
+    #show
 #else
     'Trilling wordt niet getoetst (Controleer trilling = Nee).
     UC_trilling = 0'<span class="alleen-scherm"></span>'
+    #hide
+    tril_na = 0
+    UC_tril_av = 0
+    #show
 #end if
 
 # 8. Toetsing UGT
@@ -1646,13 +1758,210 @@ UC_buiging' (σ<sub>m,y,d</sub>/f<sub>m,d</sub>)<span class="alleen-afdruk"></sp
 #end if
 
 '<h6>8.2 Afschuiving — §6.1.7 (6.13)</h6>
-τ_d = V_z,Ed*S_y/(b_balk*I_y) to N/mm^2
+#hide
+'Scheurfactor k_cr (§6.1.7(2)): de werkzame breedte is k_cr·b, met k_cr = 0,67
+'voor massief en gelamineerd hout; de f_v,k uit EN 338 en EN 14080 hoort daarbij.
+'De referentie-uitwerking rekent met de volle breedte, een factor 1/0,67 = 1,49
+'te gunstig; de norm-stand rekent met k_cr. Op het blad staat daarna de formule
+'van de gekozen tak, met dezelfde uitkomst als τ_d hier.
+k_cr = 0.67
+τ_d_xc = V_z,Ed*S_y/(b_balk*I_y) to N/mm^2
+τ_d_nb = V_z,Ed*S_y/(k_cr*b_balk*I_y) to N/mm^2
+τ_d = if(rekenwijze ≡ 1; τ_d_xc; τ_d_nb) to N/mm^2
+#show
+#if rekenwijze ≡ 1
+    τ_d = V_z,Ed*S_y/(b_balk*I_y) to N/mm^2', zonder k<sub>cr</sub> (referentie-uitwerking)'
+#else
+    τ_d = V_z,Ed*S_y/(k_cr*b_balk*I_y) to N/mm^2', k<sub>cr</sub> = 0,67 (§6.1.7(2))'
+#end if
 UC_afsch = τ_d/f_v,d'<span class="alleen-scherm"></span>'
 UC_afsch' (τ<sub>d</sub>/f<sub>v,d</sub>)<span class="alleen-afdruk"></span>'
 #if UC_afsch ≤ 1.0
     '<span class="alleen-scherm">UC<sub>afschuiving</sub> = τ<sub>d</sub>/f<sub>v,d</sub> = 'UC_afsch'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
 #else
     '<span class="alleen-scherm">UC<sub>afschuiving</sub> = τ<sub>d</sub>/f<sub>v,d</sub> = 'UC_afsch'</span><span class="oordeel" style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+#end if
+
+'<h6>8.3 Oplegdruk — §6.1.5 (6.3), k<sub>c,90</sub> volgens 6.1.5(4)</h6>
+'<i>Per steunpunt de grootste oplegreactie over de UGT-combinaties uit 5.2 (6.10a en 6.10b), met de puntlast op het steunpunt zelf, zoals bij V<sub>z,Ed</sub>. Het contactvlak is de breedte van de ligger maal de werkzame lengte l<sub>ef</sub>: de opleglengte plus 30 mm aan elke kant waar de ligger doorloopt (6.1.5(1)), dus aan de binnenzijde van een eindoplegging en aan weerszijden van een tussensteunpunt of het steunpunt onder een overstek. k<sub>c,90</sub> volgens 6.1.5(4): een ligger op losse steunpunten met l<sub>1</sub> ≥ 2h. Bij balken op een onderslag toetst het blad van de balklaag de onderzijde van de balk bij het tussensteunpunt (a<sub>steun</sub> = breedte van de onderslag). De bovenzijde van de onderslag onder die balken toetst geen van beide bladen: daar is de werkzame lengte de balkbreedte plus 2 × 30 mm, en k<sub>c,90</sub> = 1,0 zodra de vrije ruimte tussen de balken kleiner is dan 2h van de onderslag. Die zijde kan maatgevend zijn.</i><span class="alleen-scherm"></span>
+#hide
+'Oplegreactie in steunpunt i onder een lastset, in kN: 1 aan het begin van veld
+'1, 2 het tweede steunpunt (eind van veld 1), 3 het eind van veld 2.
+Rs(i; w1; w2; P1; P2; Ms) = if(i ≡ 1; Ra(w1; P1; Ms); if(i ≡ 3; Rc(w2; P2; Ms); w1*r_L1 + w2*(r_tot - r_L1) + P1 + P2 - Ra(w1; P1; Ms) - Rc(w2; P2; Ms)))
+'De grootste reactie over de tien UGT-combinaties uit 5.2, en de puntlast op het
+'steunpunt zelf: dezelfde veilige bovengrens als bij V_z,Ed. Rij 5 met de
+'puntlast op het uiteinde van een overstek geeft bij het steunpunt eronder meer
+'dan de puntlast zelf; die rij staat er dus ook in.
+Rmx(i) = max(Rs(i; c1_w1; c1_w2; 0; 0; c1_m); Rs(i; c2_w1; c2_w2; 0; 0; c2_m); Rs(i; c3_w1; c3_w2; 0; 0; c3_m); Rs(i; c4_w1; c4_w2; c4_P1; 0; c4_m); Rs(i; c4_w1; c4_w2; 0; c5_P2; c5_m); Rs(i; a1_w1; a1_w2; 0; 0; a1_m); Rs(i; a2_w1; a2_w2; 0; 0; a2_m); Rs(i; a3_w1; a3_w2; 0; 0; a3_m); Rs(i; a4_w1; a4_w2; a4_P1; 0; a4_m); Rs(i; a4_w1; a4_w2; 0; a5_P2; a5_m); γ_G*Rs(i; bw1(1); bw2(1); 0; 0; mb_1) + γ_Q*F_n; γ_G,a*Rs(i; bw1(1); bw2(1); 0; 0; mb_1) + γ_Q,a*F_n)
+'De kleinste reactie over dezelfde tien combinaties, zonder de bovengrens.
+Rmn(i) = min(Rs(i; c1_w1; c1_w2; 0; 0; c1_m); Rs(i; c2_w1; c2_w2; 0; 0; c2_m); Rs(i; c3_w1; c3_w2; 0; 0; c3_m); Rs(i; c4_w1; c4_w2; c4_P1; 0; c4_m); Rs(i; c4_w1; c4_w2; 0; c5_P2; c5_m); Rs(i; a1_w1; a1_w2; 0; 0; a1_m); Rs(i; a2_w1; a2_w2; 0; 0; a2_m); Rs(i; a3_w1; a3_w2; 0; 0; a3_m); Rs(i; a4_w1; a4_w2; a4_P1; 0; a4_m); Rs(i; a4_w1; a4_w2; 0; a5_P2; a5_m))
+'Alleen de permanente last, 6.10a (§8.5).
+Rg(i) = γ_G,a*Rs(i; bw1(1); bw2(1); 0; 0; mb_1)
+R_A,Ed = Rmx(1)*kN
+R_B,Ed = Rmx(2)*kN
+R_C,Ed = Rmx(3)*kN
+#show
+#if s3 ≡ 1
+    a_steun = ?*(mm)'<span class="alleen-scherm">, opleglengte op het tussensteunpunt; bij balken op een onderslag de breedte van de onderslag (0 of leeg: a<sub>opl</sub>)</span><span class="kolom-4"></span>'
+#else
+    #hide
+    a_steun = 0 mm
+    #show
+#end if
+#hide
+'Een blad uit een oudere versie kent a_steun niet; dan geldt de opleglengte.
+a_steun = if(a_steun > 0 mm; a_steun; a_opl)
+'Contactlengte bij het tweede steunpunt: bij twee velden het tussensteunpunt
+'(a_steun), bij een overstek het steunpunt onder de kraag (a_opl).
+l_B = if(s3 ≡ 1; a_steun; a_opl)
+'k_c,90 volgens 6.1.5(4) voor een ligger op losse steunpunten met l_1 ≥ 2h; bij
+'gelamineerd hout alleen bij een contactlengte tot 400 mm, anders 1,0.
+kc_l1 = bool(L_th ≥ 2*h_balk)*if(s3 ≡ 1; bool(L_veld2 ≥ 2*h_balk); 1)
+kc_gl = bool(max(a_opl; l_B) ≤ 400 mm)
+k_c,90 = if(kc_l1 ≡ 1; if(gelijmd ≡ 1; if(kc_gl ≡ 1; 1.75; 1); 1.5); 1)
+#show
+f_c,90,d = k_mod*f_c,90,k/γ_M'<span class="alleen-scherm"></span>'
+k_c,90'<span class="alleen-scherm">, 6.1.5(4)</span><span class="alleen-scherm"></span>'
+l_ef,e = a_opl + min(30 mm; a_opl)'<span class="alleen-scherm">, eindoplegging: 30 mm verlenging aan de binnenzijde</span><span class="alleen-scherm"></span>'
+#if s23 ≥ 1
+    l_ef,s = l_B + 2*min(30 mm; l_B)'<span class="alleen-scherm">, tweede steunpunt: 30 mm aan weerszijden</span><span class="alleen-scherm"></span>'
+#else
+    #hide
+    l_ef,s = l_ef,e
+    #show
+#end if
+R_A,Ed'<span class="alleen-scherm">, eindoplegging A</span><span class="kolom-4"></span>'
+#if s3 ≡ 1
+    R_B,Ed'<span class="alleen-scherm">, tussensteunpunt</span><span class="kolom-4"></span>'
+    R_C,Ed'<span class="alleen-scherm">, eindoplegging C</span><span class="kolom-4"></span>'
+#else if s2 ≡ 1
+    R_B,Ed'<span class="alleen-scherm">, steunpunt onder het overstek</span><span class="kolom-4"></span>'
+#end if
+l_ef,e'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+#if s23 ≥ 1
+    l_ef,s'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    '<i>Trek in een eindoplegging: R<sub>min</sub> is de kleinste reactie over de UGT-combinaties en over een evenwichtsset (EQU, NB tabel A1.2(A)) met 0,9·G op het veld van dat steunpunt en op het andere deel 1,1·G plus γ<sub>Q</sub>·q of γ<sub>Q</sub>·F; de verdeelde last en de puntlast staan, net als in 5.2, niet tegelijk. Een negatieve reactie moet met een verankering worden opgenomen.</i><span class="alleen-scherm"></span>
+    #hide
+    'EQU voor steunpunt A: 0,9·G op veld 1, en op het tweede deel 1,1·G met γ_Q·q
+    'of met γ_Q·F. Voor steunpunt C (twee velden) gespiegeld.
+    eq_G1 = 0.9*g_n
+    eq_G2 = 1.1*g_n
+    eA_q = Rs(1; eq_G1; eq_G2 + γ_Q*q_n; 0; 0; Mb(eq_G1; eq_G2 + γ_Q*q_n; 0; 0))
+    eA_F = Rs(1; eq_G1; eq_G2; 0; γ_Q*F_n; Mb(eq_G1; eq_G2; 0; γ_Q*F_n))
+    eC_q = Rs(3; eq_G2 + γ_Q*q_n; eq_G1; 0; 0; Mb(eq_G2 + γ_Q*q_n; eq_G1; 0; 0))
+    eC_F = Rs(3; eq_G2; eq_G1; γ_Q*F_n; 0; Mb(eq_G2; eq_G1; γ_Q*F_n; 0))
+    R_A,min = min(Rmn(1); eA_q; eA_F)*kN
+    R_C,min = if(s3 ≡ 1; min(Rmn(3); eC_q; eC_F); Rmn(1))*kN
+    #show
+    #if s3 ≡ 1
+        R_min = min(R_A,min; R_C,min)'<span class="alleen-scherm">, kleinste reactie in een eindoplegging (UGT en EQU)</span><span class="alleen-scherm"></span>'
+    #else
+        R_min = R_A,min'<span class="alleen-scherm">, kleinste reactie in de eindoplegging (UGT en EQU)</span><span class="alleen-scherm"></span>'
+    #end if
+    R_min', EQU<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    #if R_min < 0 kN
+        '<span class="oordeel" style="color: red"> < 0 → <b>trek</b>: verankering per 'if(ond ≡ 1; "onderslag"; "balk")' van ten minste '-R_min' kN</span>
+    #else
+        '<span class="oordeel" style="color: green"> ≥ 0 → geen trek in de eindopleggingen</span><span class="alleen-scherm"></span>
+    #end if
+#else
+    #hide
+    R_min = 0 kN
+    #show
+#end if
+#if s3 ≡ 1
+    σ_c,90,e = max(R_A,Ed; R_C,Ed)/(b_balk*l_ef,e) to N/mm^2'<span class="alleen-scherm">, eindopleggingen</span><span class="alleen-scherm"></span>'
+    σ_c,90,s = R_B,Ed/(b_balk*l_ef,s) to N/mm^2'<span class="alleen-scherm">, tussensteunpunt</span><span class="alleen-scherm"></span>'
+    UC_c90 = max(σ_c,90,e; σ_c,90,s)/(k_c,90*f_c,90,d)
+#else if s2 ≡ 1
+    σ_c,90,e = R_A,Ed/(b_balk*l_ef,e) to N/mm^2'<span class="alleen-scherm">, eindoplegging</span><span class="alleen-scherm"></span>'
+    σ_c,90,s = R_B,Ed/(b_balk*l_ef,s) to N/mm^2'<span class="alleen-scherm">, steunpunt onder het overstek</span><span class="alleen-scherm"></span>'
+    UC_c90 = max(σ_c,90,e; σ_c,90,s)/(k_c,90*f_c,90,d)
+#else
+    σ_c,90,e = max(R_A,Ed; R_B,Ed)/(b_balk*l_ef,e) to N/mm^2'<span class="alleen-scherm">, eindopleggingen</span><span class="alleen-scherm"></span>'
+    UC_c90 = σ_c,90,e/(k_c,90*f_c,90,d)
+    #hide
+    σ_c,90,s = 0 N/mm^2
+    #show
+#end if
+#if UC_c90 ≤ 1.0
+    '<span class="alleen-scherm">UC<sub>c,90</sub> = σ<sub>c,90,d</sub>/(k<sub>c,90</sub>·f<sub>c,90,d</sub>) = 'UC_c90'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+#else
+    '<span class="alleen-scherm">UC<sub>c,90</sub> = σ<sub>c,90,d</sub>/(k<sub>c,90</sub>·f<sub>c,90,d</sub>) = 'UC_c90'</span><span class="oordeel" style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+#end if
+
+#if s23 ≥ 1
+    '<h6>8.4 Kip bij het steunmoment — §6.3.3 (6.30 t/m 6.34), l<sub>ef</sub> volgens tabel 6.1</h6>
+    '<i>Bij een positief moment is de gedrukte bovenrand gesteund door het beschot, of bij een onderslag door de balken erop: daar geen kip. Bij het steunmoment is de onderrand gedrukt. l<sub>ef</sub> is de langste zone met een negatief moment naast het steunpunt, over alle UGT-combinaties, gerekend als een constant moment (tabel 6.1: 1,0·l) en zonder de aftrek van 0,5h voor een last op de getrokken rand; het steunpunt houdt de ligger tegen kantelen. Bij een overstek is dat de hele kraag.</i><span class="alleen-scherm"></span>
+    #hide
+    'Zone met een negatief moment: vanaf het steunpunt tot het laatste punt waar
+    'de omhullende Mo_min niet onder nul komt, in 48 stappen per deel.
+    i_n = 0
+    #for i = 0 : 48
+    i_n = if(Mo_min(r_L1*i/48) ≥ 0; i; i_n)
+    #loop
+    l_neg,1 = r_L1*(1 - i_n/48)*m
+    i_n = 0
+    #for i = 0 : 48
+    i_n = if(Mo_min(r_tot - (r_tot - r_L1)*i/48) ≥ 0; i; i_n)
+    #loop
+    l_neg,2 = (r_tot - r_L1)*(1 - i_n/48)*m
+    M_Ed,B = o_Ms*kN*m
+    #show
+    l_ef = max(l_neg,1; l_neg,2)'<span class="alleen-scherm">, tabel 6.1</span><span class="alleen-scherm"></span>'
+    σ_m,crit = 0.78*b_balk^2*E_0,05/(h_balk*l_ef) to N/mm^2'<span class="alleen-scherm">, (6.32)</span><span class="alleen-scherm"></span>'
+    λ_rel,m = sqrt(f_m,k/σ_m,crit)'<span class="alleen-scherm">, (6.30)</span><span class="alleen-scherm"></span>'
+    #hide
+    k_crit = if(λ_rel,m ≤ 0.75; 1; if(λ_rel,m ≤ 1.4; 1.56 - 0.75*λ_rel,m; 1/λ_rel,m^2))
+    #show
+    l_ef'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    σ_m,crit'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    λ_rel,m'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+    #if k_crit < 1
+        k_crit'<span class="alleen-scherm">, (6.34)</span><span class="kolom-4"></span>'
+        UC_kip = M_Ed,B/(W_y*k_crit*f_m,d)
+        #if UC_kip ≤ 1.0
+            '<span class="alleen-scherm">UC<sub>kip</sub> = σ<sub>m,d</sub>/(k<sub>crit</sub>·f<sub>m,d</sub>) = 'UC_kip'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+        #else
+            '<span class="alleen-scherm">UC<sub>kip</sub> = σ<sub>m,d</sub>/(k<sub>crit</sub>·f<sub>m,d</sub>) = 'UC_kip'</span><span class="oordeel" style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+        #end if
+    #else
+        '<i>Met k<sub>crit</sub> = 1 is de kiptoets gelijk aan de buigtoets bij het steunmoment en daarmee gedekt door 8.1; op papier staat hij daarom niet apart.</i><span class="alleen-scherm"></span>
+        k_crit', gedekt door 8.1<span class="kolom-4"></span>'
+        UC_kip = M_Ed,B/(W_y*k_crit*f_m,d)'<span class="alleen-scherm"></span>'
+    #end if
+#else
+    #hide
+    k_crit = 1
+    UC_kip = 0
+    #show
+#end if
+
+'<h6>8.5 Alleen permanente belasting — 6.10a met k<sub>mod,G</sub> = 'k_mod,G' (§3.1.3(2))</h6>
+'<i>De combinatie met alleen de permanente last (γ<sub>G,a</sub>·G, zie 5.2) hoort bij de duurklasse blijvend: k<sub>mod</sub> is die van de kortst durende last in de combinatie. Buiging (met k<sub>crit</sub> bij het steunmoment), afschuiving en oplegdruk zoals hierboven, met die k<sub>mod</sub>.</i><span class="alleen-scherm"></span>
+#hide
+f_m,d,G = k_mod,G*f_m,k_eff/γ_M
+f_v,d,G = k_mod,G*f_v,k/γ_M
+f_c,90,d,G = k_mod,G*f_c,90,k/γ_M
+M_Ed,G,veld = γ_G,a*M_g,veld*kN*m
+M_Ed,G,steun = γ_G,a*M_g,steun*kN*m
+τ_G_xc = V_Ed,G*S_y/(b_balk*I_y) to N/mm^2
+τ_G_nb = V_Ed,G*S_y/(k_cr*b_balk*I_y) to N/mm^2
+τ_G = if(rekenwijze ≡ 1; τ_G_xc; τ_G_nb) to N/mm^2
+'De reacties zoals in 8.3: de eindopleggingen op l_ef,e, het tweede steunpunt
+'op l_ef,s (alleen bij twee velden of een overstek).
+R_G,e = max(Rg(1); if(s3 ≡ 1; Rg(3); if(s2 ≡ 1; Rg(1); Rg(2))))*kN
+R_G,s = s23*Rg(2)*kN
+σ_c,90,G = max(R_G,e/(b_balk*l_ef,e); R_G,s/(b_balk*l_ef,s)) to N/mm^2
+#show
+UC_G,m = max(M_Ed,G,veld; M_Ed,G,steun/k_crit)/(W_y*f_m,d,G)'<span class="alleen-scherm">, buiging</span><span class="alleen-scherm"></span>'
+UC_G,v = τ_G/f_v,d,G'<span class="alleen-scherm">, afschuiving</span><span class="alleen-scherm"></span>'
+UC_G,c90 = σ_c,90,G/(k_c,90*f_c,90,d,G)'<span class="alleen-scherm">, oplegdruk</span><span class="alleen-scherm"></span>'
+UC_G = max(UC_G,m; UC_G,v; UC_G,c90)
+#if UC_G ≤ 1.0
+    '<span class="alleen-scherm">UC<sub>G</sub> = 'UC_G'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+#else
+    '<span class="alleen-scherm">UC<sub>G</sub> = 'UC_G'</span><span class="oordeel" style="color: red"> > 1.0 → <b>voldoet niet</b></span>
 #end if
 
 # 9. Samenvatting
@@ -1662,19 +1971,31 @@ UC_afsch' (τ<sub>d</sub>/f<sub>v,d</sub>)<span class="alleen-afdruk"></span>'
 '(voldoet, maar zonder marge), anders groen.
 kl_buig = if(UC_buiging > 1; 1; if(UC_buiging > 0.9; 2; 3))
 kl_afsch = if(UC_afsch > 1; 1; if(UC_afsch > 0.9; 2; 3))
+kl_c90 = if(UC_c90 > 1; 1; if(UC_c90 > 0.9; 2; 3))
+kl_kip = if(UC_kip > 1; 1; if(UC_kip > 0.9; 2; 3))
+kl_G = if(UC_G > 1; 1; if(UC_G > 0.9; 2; 3))
 kl_door = if(UC_doorbuiging > 1; 1; if(UC_doorbuiging > 0.9; 2; 3))
+kl_bij = if(UC_bij > 1; 1; if(UC_bij > 0.9; 2; 3))
 kl_tril = if(UC_trilling > 1; 1; if(UC_trilling > 0.9; 2; 3))
 c_1 = "#b91c1c"
 c_2 = "#b45309"
 c_3 = "#047857"
 kleur_buig = if(kl_buig ≡ 1; c_1; if(kl_buig ≡ 2; c_2; c_3))
 kleur_afsch = if(kl_afsch ≡ 1; c_1; if(kl_afsch ≡ 2; c_2; c_3))
+kleur_c90 = if(kl_c90 ≡ 1; c_1; if(kl_c90 ≡ 2; c_2; c_3))
+kleur_kip = if(kl_kip ≡ 1; c_1; if(kl_kip ≡ 2; c_2; c_3))
+kleur_G = if(kl_G ≡ 1; c_1; if(kl_G ≡ 2; c_2; c_3))
 kleur_door = if(kl_door ≡ 1; c_1; if(kl_door ≡ 2; c_2; c_3))
+kleur_bij = if(kl_bij ≡ 1; c_1; if(kl_bij ≡ 2; c_2; c_3))
 kleur_tril = if(kl_tril ≡ 1; c_1; if(kl_tril ≡ 2; c_2; c_3))
 oordeel_buig = if(UC_buiging ≤ 1; "voldoet"; "voldoet niet")
 oordeel_afsch = if(UC_afsch ≤ 1; "voldoet"; "voldoet niet")
+oordeel_c90 = if(UC_c90 ≤ 1; "voldoet"; "voldoet niet")
+oordeel_kip = if(UC_kip ≤ 1; "voldoet"; "voldoet niet")
+oordeel_G = if(UC_G ≤ 1; "voldoet"; "voldoet niet")
 oordeel_door = if(UC_doorbuiging ≤ 1; "voldoet"; "voldoet niet")
-oordeel_tril = if(UC_trilling ≤ 1; "voldoet"; "voldoet niet")
+oordeel_bij = if(UC_bij ≤ 1; "voldoet"; "voldoet niet")
+oordeel_tril = if(tril_na ≡ 1; "niet aangetoond: f₁ ≤ 8 Hz"; if(UC_trilling ≤ 1; "voldoet"; "voldoet niet"))
 #show
 
 '<table class="alleen-scherm" style="width:100%; border-collapse:collapse; font-size:0.95em;">
@@ -1693,12 +2014,34 @@ oordeel_tril = if(UC_trilling ≤ 1; "voldoet"; "voldoet niet")
 '<td style="padding:2px 8px;">§6.1.7 (6.13)</td>
 '<td style="padding:2px 8px; text-align:right; font-weight:700; color:'kleur_afsch'">'UC_afsch'</td>
 '<td style="padding:2px 8px; color:'kleur_afsch'">'oordeel_afsch'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:2px 8px;">Oplegdruk</td>
+'<td style="padding:2px 8px;">§6.1.5 (6.3)</td>
+'<td style="padding:2px 8px; text-align:right; font-weight:700; color:'kleur_c90'">'UC_c90'</td>
+'<td style="padding:2px 8px; color:'kleur_c90'">'oordeel_c90'</td></tr>
+#if s23 ≥ 1
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:2px 8px;">Kip bij het steunmoment</td>
+'<td style="padding:2px 8px;">§6.3.3 (6.33)</td>
+'<td style="padding:2px 8px; text-align:right; font-weight:700; color:'kleur_kip'">'UC_kip'</td>
+'<td style="padding:2px 8px; color:'kleur_kip'">'oordeel_kip'</td></tr>
+#end if
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:2px 8px;">Alleen permanent (k<sub>mod,G</sub>)</td>
+'<td style="padding:2px 8px;">§3.1.3(2), 6.10a</td>
+'<td style="padding:2px 8px; text-align:right; font-weight:700; color:'kleur_G'">'UC_G'</td>
+'<td style="padding:2px 8px; color:'kleur_G'">'oordeel_G'</td></tr>
 #if controleer ≡ 1
 '<tr style="border-bottom:1px solid #e5e7eb;">
-'<td style="padding:2px 8px;">Doorbuiging</td>
+'<td style="padding:2px 8px;">Doorbuiging, eindstand</td>
 '<td style="padding:2px 8px;">§7.2 (7.2)</td>
 '<td style="padding:2px 8px; text-align:right; font-weight:700; color:'kleur_door'">'UC_doorbuiging'</td>
 '<td style="padding:2px 8px; color:'kleur_door'">'oordeel_door'</td></tr>
+'<tr style="border-bottom:1px solid #e5e7eb;">
+'<td style="padding:2px 8px;">Doorbuiging, bijkomend</td>
+'<td style="padding:2px 8px;">NB bij EN 1990, A1.4</td>
+'<td style="padding:2px 8px; text-align:right; font-weight:700; color:'kleur_bij'">'UC_bij'</td>
+'<td style="padding:2px 8px; color:'kleur_bij'">'oordeel_bij'</td></tr>
 #else
 '<tr style="border-bottom:1px solid #e5e7eb;">
 '<td style="padding:2px 8px;">Doorbuiging</td>
@@ -1721,13 +2064,23 @@ oordeel_tril = if(UC_trilling ≤ 1; "voldoet"; "voldoet niet")
 #end if
 '</table>
 
-UC_max = max(UC_doorbuiging; UC_buiging; UC_afsch; UC_trilling)'<span class="alleen-scherm"></span>'
+UC_max = max(UC_doorbuiging; UC_bij; UC_buiging; UC_afsch; UC_c90; UC_kip; UC_G; UC_trilling)'<span class="alleen-scherm"></span>'
 UC_max'<span class="alleen-afdruk"></span>'
-#if UC_max ≤ 1.0
+#hide
+'Alles behalve de voorwaarde f_1 > 8 Hz. Voldoet de rest, dan is de balklaag bij
+'f_1 ≤ 8 Hz niet afgekeurd maar niet aangetoond: er is een nader onderzoek nodig.
+UC_rest = max(UC_doorbuiging; UC_bij; UC_buiging; UC_afsch; UC_c90; UC_kip; UC_G; UC_tril_av)
+#show
+#if tril_na*bool(UC_rest ≤ 1) ≡ 1
+    '<span class="alleen-scherm"><b>Maatgevende UC = 'UC_max'</b></span><span class="oordeel" style="color: red"> → <b>Balklaag niet aangetoond</b>: f<sub>1</sub> ≤ 8 Hz, nader onderzoek naar de trillingen (§7.3.3(1))</span>
+#else if UC_max ≤ 1.0
     '<span class="alleen-scherm"><b>Maatgevende UC = 'UC_max'</b></span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>Balklaag voldoet</b></span>
 #else
     '<span class="alleen-scherm"><b>Maatgevende UC = 'UC_max'</b></span><span class="oordeel" style="color: red"> > 1.0 → <b>Balklaag voldoet niet</b></span>
 #end if
+#if R_min < 0 kN
+    '<span style="color: #b91c1c"><b>Trek in een eindoplegging:</b> verankering per 'if(ond ≡ 1; "onderslag"; "balk")' van ten minste '-R_min' kN (8.3).</span>
+#end if
 
-'Niet getoetst: de oplegdruk (§6.1.5) en kip; de balk is zijdelings gesteund door het beschot. De afschuiving rekent met de volle balkbreedte, zonder k<sub>cr</sub> (§6.1.7(2)).
+'Aangenomen: bovenrand gesteund door beschot of balken ('if(s23 ≥ 1; "kip alleen bij het steunmoment"; "geen kip")'). Buiten dit blad: ondersteuning'if(ond ≡ 1; ", verbindingen en de druk onder de balken op de bovenzijde van de onderslag"; " en verbindingen")'.'if(rekenwijze ≡ 1; " Afschuiving zonder k<sub>cr</sub>, als de referentie-uitwerking."; "")'
 `;
