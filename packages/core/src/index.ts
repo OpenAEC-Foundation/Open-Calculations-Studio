@@ -10,6 +10,11 @@ export {
   LIGGER_PUNT, LIGGER_LAST, LIGGER_STATUS,
 } from './ligger.js';
 export {
+  raamwerkOplossing, raamwerkReacties, raamwerkVerplaatsingen, raamwerkStatus, raamwerkExtremen,
+  raamwerkInterpoleer, raamwerkSvgPunten, raamwerkVormPunten, raamwerkKnik, raamwerkSamenvatting, raamwerkZakking,
+  RAAMWERK_LAST, RAAMWERK_RICHTING, RAAMWERK_STATUS, RAAMWERK_GEEN_KNIK,
+} from './raamwerk.js';
+export {
   generateIfcx,
   generateIfc4x3Step,
   generateProjectIfcx,
