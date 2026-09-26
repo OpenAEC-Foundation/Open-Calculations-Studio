@@ -9,8 +9,9 @@
  *
  * Daarna de gevallen zonder referentieblad die het blad volgens de norm
  * afhandelt: een resultante buiten de doorsnede (Φ = 0, UC = ∞), een moment
- * zonder normaalkracht, trek, en een vloer aan één zijde met een te korte
- * oplegging (§5.5.1.2(11)).
+ * zonder normaalkracht, trek, een vloer aan één zijde met een te korte
+ * oplegging (§5.5.1.2(11)), het teken van M_mEd in de lage-belastingstak, een
+ * penant kleiner dan 0,1 m² ((6.3)) en een N_Ed,max kleiner dan N_Ed.
  *
  * Draaien:  node scripts/check-metselwerkwand.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -96,6 +97,36 @@ const GEVALLEN = [
     invoer: { ondersteuning: "5" }, verwacht: { rho_2: "1.00", h_ef: "2800" } },
   { naam: "houten vloer aan één zijde, kortere oplegging",
     invoer: { ondersteuning: "6" }, verwacht: { rho_2: "1.00", h_ef: "2800" }, tekst: /Let op/ },
+
+  // Lage-belastingstak met een moment op halve hoogte: het teken van M_mEd mag
+  // de uitkomst niet bepalen. N = 30, M_1Ed = 2: e_t = 66,7 > 30 → ρ_2 = 1,00,
+  // e_init = 2800/450 = 6,22; ratio_N = 30/(1000·120·3,493e-3) = 0,072 ≤ 0,1,
+  // e_cap = 60 − 30 000/(2·1000·3,493) = 55,7; ΔM_t = (72,9 − 55,7)·30 = 0,516 kNm.
+  // M_Ed,mc = |±1| + 0,516/2 = 1,258 → e_m = 41,9 + 6,2 = 48,15, A_1 = 0,198,
+  // u = (0,882 − 0,063)/(0,73 − 1,17·48,15/120) = 3,14, Φ_m = 0,198·e^(−4,94) = 0,0014,
+  // N_Rd,m = 0,0014·1000·120·3,493 = 0,59 kN → UC = 30/0,593 = 50,6.
+  // Met M_mEd = −1 gaf het blad eerder M_Ed,mc = −0,742 en UC = 1,00 "voldoet".
+  ...["1", "-1"].map((m) => ({
+    naam: `lage-belastingstak, M_mEd = ${m} kNm geeft dezelfde uitkomst`,
+    invoer: { N_Ed: "30", N_Ed_max: "30", M_1Ed: "2", M_mEd: m },
+    verwacht: { e_cap: "55.7", M_Edmc: "1.258", e_m: "48.15", UC_1: "50.6" }, voldoet: false,
+  })),
+
+  // Penant 400 × 120: A = 0,048 m² < 0,1 m², dus f_d maal 0,7 + 3·0,048 = 0,844
+  // (§6.1.2.1(3), (6.3)): f_d = 3,493·0,844 = 2,948. Φ verandert niet (E = 700·f_k):
+  // N_Rd = 0,605·400·120·2,948 = 85,6 → UC_1 = 55/85,6 = 0,64;
+  // N_Rd,m2 = 0,3604·400·120·2,948 = 51,0 → UC_2 = 55/51,0 = 1,08 (was 0,91 "voldoet").
+  { naam: "penant 400 × 120 — kleine doorsnede (6.3)",
+    invoer: { l_w: "400", N_Ed: "55", N_Ed_max: "55" },
+    verwacht: { A_w: "0.048", k_A: "0.844", f_d: "2.948", N_Rd: "85.6", UC_1: "0.64", N_Rdm2: "51.0", UC_2: "1.08" },
+    voldoet: false },
+
+  // N_Ed,max kleiner dan N_Ed: de NB bij 5.5.1.1(5) vraagt de grootste
+  // normaalkracht, dus ten minste N_Ed. Basisset met N_Ed,max = 140:
+  // UC_2 = 200/151,07 = 1,32 (was 140/151,07 = 0,93 "voldoet").
+  { naam: "N_Ed,max kleiner dan N_Ed — toets met N_Ed",
+    invoer: { N_Ed_max: "140" },
+    verwacht: { N_mx: "200", N_Rdm2: VIER_CIJFERS("151.07"), UC_2: "1.32" }, voldoet: false, tekst: /N Ed,max is kleiner dan N Ed/ },
 ];
 
 /** De slotzin van het blad: "Maatgevende UC = … → … voldoet (niet)". */

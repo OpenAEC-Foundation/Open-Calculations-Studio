@@ -9,13 +9,16 @@
  *      boutregels (8.31)–(8.33); vloeimoment (8.14)/(8.30); Johansen (8.6),
  *      (8.7), (8.9)–(8.11) met interpolatie tussen dunne en dikke plaat; het
  *      koordeffect met de grenzen van §8.2.2(2) en de restcapaciteit van de NB
- *      bij §8.2.2(5); axiaal (8.23)–(8.26) en (8.38)–(8.41); de groep met tabel
- *      8.1 of (8.34)/(8.35); de combinatie (8.27)/(8.28); de afstanden uit
- *      tabel 8.2, 8.4 en 8.6 en de detailleringseisen. Het blad moet daar op
- *      vier significante cijfers mee overeenkomen, en het eindoordeel moet
+ *      bij §8.2.2(5); axiaal (8.23)–(8.26) en (8.38)–(8.41), met een
+ *      vierkante of gegroefde nagel zonder profilering als gladde nagel; de
+ *      groep met tabel 8.1 of (8.34)/(8.35) en de scherpe hoek tussen kracht en
+ *      vezel; de combinatie (8.27)/(8.28); splijten (8.2)–(8.4); de afstanden
+ *      uit tabel 8.2, 8.4 en 8.6 en de detailleringseisen. Het blad moet daar
+ *      op vier significante cijfers mee overeenkomen, en het eindoordeel moet
  *      gelijk zijn.
- *   2. Voor twee gevallen een paar getallen die met de hand zijn nagerekend,
- *      zodat een fout die in beide uitwerkingen zit niet onopgemerkt blijft.
+ *   2. Voor een aantal gevallen een paar getallen die met de hand zijn
+ *      nagerekend, zodat een fout die in beide uitwerkingen zit niet
+ *      onopgemerkt blijft.
  *
  * Draaien:  node scripts/check-nagel-schroef.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -67,7 +70,10 @@ function uitwerking(v) {
   const dEf = mid === 4 ? 1.1 * v.d_1 : d;
   const stuikBout = mid === 4 ? dEf > 6 : d > 8;
   const boutregels = mid === 4 && dEf > 6;
-  const a = rad(v.α);
+  // Scherpe hoek tussen kracht en vezel: 150° is meetkundig gelijk aan 30°.
+  const aMod = Math.abs(v.α) % 180;
+  const an = Math.min(aMod, 180 - aMod);
+  const a = rad(an);
 
   const stuikHout = (rho) => {
     if (stuikBout) {
@@ -100,7 +106,9 @@ function uitwerking(v) {
   // Door gipsplaat geen axiale sterkte: het blad vraagt daar geen doortrekwaarde.
   const kopPlaat = v.plaat >= 5 ? 0 : v.f_head_p;
   let FaxRk, Ft = Infinity;
-  if (mid === 1) {
+  const lef = Math.min(tPen, v.l_g);
+  // Een vierkante of gegroefde nagel zonder profilering is axiaal een gladde nagel.
+  if (mid <= 2) {
     const fax = 20e-6 * rhoPunt ** 2, fhead = 70e-6 * rhoKop ** 2;
     const k = tPen >= 12 * d ? 1 : tPen >= 8 * d ? tPen / (4 * d) - 2 : 0;
     const uit = k * fax * d * tPen;
@@ -113,11 +121,11 @@ function uitwerking(v) {
     const kop = staalKop ? Infinity : plaatKop ? kopPlaat * v.d_h ** 2 : v.f_head_nk * v.d_h ** 2;
     FaxRk = Math.min(uit, kop);
   } else {
-    const lef = Math.min(tPen, v.l_g);
     const hoek = 1.2 * Math.cos(rad(v.α_s)) ** 2 + Math.sin(rad(v.α_s)) ** 2;
     const binnen = d >= 6 && d <= 12 && v.d_1 / d >= 0.6 && v.d_1 / d <= 0.75;
-    const uit = binnen
-      ? (0.52 * d ** -0.5 * Math.max(lef, 0.1) ** -0.1 * rhoPunt ** 0.8 * d * lef * Math.min(d / 8, 1)) / hoek
+    // Schroefdraad aan de puntzijde korter dan 6d: geen uittreksterkte (§8.7.2(3)).
+    const uit = lef < 6 * d ? 0 : binnen
+      ? (0.52 * d ** -0.5 * lef ** -0.1 * rhoPunt ** 0.8 * d * lef * Math.min(d / 8, 1)) / hoek
       : ((v.f_ax_in * d * lef) / hoek) * (rhoPunt / v.ρ_a) ** 0.8;
     const kop = staalKop ? Infinity : plaatKop ? kopPlaat * v.d_h ** 2 : v.f_head_k * v.d_h ** 2 * (rhoKop / v.ρ_a) ** 0.8;
     FaxRk = Math.min(uit, kop);
@@ -187,14 +195,32 @@ function uitwerking(v) {
     UCv = Math.max(evenwijdig, totaal);
   } else {
     const n0 = Math.min(v.n_1, v.n_1 ** 0.9 * (v.a_1 / (13 * d)) ** 0.25);
-    nEf = n0 + ((v.n_1 - n0) * v.α) / 90;
+    nEf = n0 + ((v.n_1 - n0) * an) / 90;
     UCv = (v.F_v_Ed * 1000) / (v.n_2 * nEf * ns * FvRd);
   }
   let UCax = 0, UCc = UCv;
   if (v.F_ax_Ed > 0) {
     const Rd = Math.min((nAx * kmod * FaxRk) / GM, mid === 4 ? (nAx * Ft) / GM2 : Infinity);
     UCax = (v.F_ax_Ed * 1000) / Rd;
-    UCc = mid === 1 ? UCax + UCv : UCax ** 2 + UCv ** 2;
+    UCc = mid <= 2 ? UCax + UCv : UCax ** 2 + UCv ** 2;
+  }
+
+  // ── splijten (8.2)–(8.4), naaldhout, w = 1 ──
+  // Alleen bij een belaste rand en een kracht onder een hoek met de vezel. Het
+  // element aan de puntzijde (1) of het andere (2); zijdelen tellen samen.
+  const splijt = v.rand === 1 && an > 0;
+  let UC90 = 0, ok90 = true;
+  if (splijt) {
+    // De keuze van het element bestaat alleen bij hout – hout; anders splijt het hout.
+    const el = op <= 2 ? (v.el_90 ?? 1) : 1, h = v.h_90 ?? 0, eta = v.η_in ?? 0;
+    const b = el === 1 ? (op === 2 || op === 5 ? 2 * v.t_1 : v.t_2) : (op === 2 ? v.t_2 : v.t_1);
+    const he = v.a_4 + (v.n_2 - 1) * (v.n_2 > 1 ? v.a_2 : 0);
+    ok90 = h > he;
+    if (ok90) {
+      const F90Rd = (kh * 14 * b * Math.sqrt(he / (1 - he / h))) / GM;
+      const deel = eta > 0 ? Math.min(Math.max(eta, 0.5), 1) : 1;
+      UC90 = (deel * v.F_v_Ed * 1000 * Math.sin(a)) / F90Rd;
+    }
   }
 
   // ── afstanden en detaillering ──
@@ -226,25 +252,32 @@ function uitwerking(v) {
   };
   const tHout = op <= 2 ? Math.min(v.t_1, v.t_2) : op === 5 ? v.t_1 : v.t_2;
   const tElem = op === 2 || op === 5 ? v.t_1 : v.t_2;
+  // Ook de schroefhoek telt als scherpe hoek met de vezel: 170° is 10°.
+  const asMod = Math.abs(v.α_s) % 180;
+  const asN = Math.min(asMod, 180 - asMod);
   const eisen = [
     v.a_1 >= min.a1 && (!gips || v.a_1 <= Math.min(60 * d, 150)),
     v.n_2 <= 1 || v.a_2 >= min.a2,
     v.a_3 >= min.a3,
     v.a_4 >= min.a4,
-    tPen >= (mid === 1 ? 8 : 6) * d,
+    tPen >= (mid <= 2 ? 8 : 6) * d,
     v.voorboren || boutregels || tHout >= Math.max(7 * d, ((13 * d - 30) * rhoMax) / 400),
     v.voorboren || (mid === 4 ? d <= 6 : rhoMax <= 500 && d <= 6),
     mid === 4 || v.n_1 * v.n_2 >= 2,
     !(op === 3 && v.plaat <= 4) || v.d_h >= 2 * d,
     mid === 4 || v.M_y_in > 0 || v.f_u >= 600,
-    !axSchroef || v.α_s >= 30,
+    !axSchroef || asN >= 30,
     !axSchroef || tElem >= 12 * d,
-    !(mid === 1 && v.F_ax_Ed > 0 && v.ax_lang === 1),
+    !axSchroef || lef >= 6 * d,
+    !(mid <= 2 && v.F_ax_Ed > 0 && v.ax_lang === 1),
     kmod > 0,
   ];
   const detailOk = eisen.every(Boolean);
 
-  return { kmod, tPen, My, FaxRk, koordRest, FvRk, FvRd, nEf, UCv, UCax, UCc, UCmax: Math.max(UCv, UCax, UCc), detailOk };
+  return {
+    kmod, tPen, My, FaxRk, koordRest, FvRk, FvRd, nEf, UCv, UCax, UCc, splijt, ok90, UC90,
+    UCmax: Math.max(UCv, UCax, UCc, UC90), detailOk,
+  };
 }
 
 const s4 = (x) => {
@@ -268,7 +301,9 @@ function verwachtingen(r, v) {
     F_v_Rk: ruim(r.FvRk), F_v_Rd: ruim(r.FvRd), n_ef: ruim(r.nEf), UC_v: ruim(r.UCv),
     F_ax_Rk: ruim(r.FaxRk), F_ax_koord: ruim(r.koordRest),
   };
-  if (v.F_ax_Ed > 0) Object.assign(uit, { UC_ax: ruim(r.UCax), UC_c: ruim(r.UCc) });
+  // Zonder uittreksterkte is UC_ax oneindig; dat toetst de regel met de maatgevende UC.
+  if (v.F_ax_Ed > 0 && Number.isFinite(r.UCax)) Object.assign(uit, { UC_ax: ruim(r.UCax), UC_c: ruim(r.UCc) });
+  if (r.splijt && r.ok90) uit.UC_90 = ruim(r.UC90);
   return uit;
 }
 
@@ -293,11 +328,16 @@ const SETS = [
     handwerk: { d_ef: "4.4", f_ax_k: "15.42", F_ax_a: "3817", F_ax_Rk: "1512", n_ef_ax: "7.943" },
   },
   {
-    naam: "3 — schroeven 10 × 200 (kern 6,4): boutregels, 45°, voorgeboord, GL24h op C24",
+    naam: "3 — schroeven 10 × 200 (kern 6,4): boutregels, 45°, voorgeboord, GL24h op C24, splijten in de balk h = 300",
     invoer: {
       middel: 4, d_v: 10, d_1: 6.4, l_v: 200, l_g: 100, d_h: 18, f_u: 800, f_tens_k: 28, voorboren: 1,
       klasse_1: 9, α: 45, n_1: 3, n_2: 2, a_1: 60, a_2: 50, a_3: 100, a_4: 50, t_1: 80, t_2: 140, F_v_Ed: 10, rand: 1,
+      h_90: 300,
     },
+    // Met de hand, splijten van element 2 (b = 140): h_e = 50 + 50 = 100;
+    // F_90,Rk = 14·140·√(100/(1 − 100/300)) = 1960·12,247 = 24 005 N;
+    // F_90,Rd = 0,8·24 005/1,3 = 14,77 kN; F_90,Ed = 10·sin 45° = 7,071 kN; UC = 0,4787.
+    handwerk: { h_e: "100", F_90_Rd: "14.77", UC_90: "0.4787" },
   },
   {
     naam: "4 — OSB/3 18 mm op C18 met ringnagels, klimaatklasse 2, kort",
@@ -339,6 +379,83 @@ const SETS = [
     naam: "10 — OSB in klimaatklasse 3: niet toegestaan",
     invoer: { opbouw: 3, plaat: 1, t_1: 18, klimaat: 3, middel: 3, d_v: 2.8, l_v: 63, d_h: 6.5, l_g: 40 },
   },
+  {
+    naam: "11 — vierkante nagels zonder profilering, kortdurend op trek: axiaal als gladde nagel, (8.27)",
+    invoer: { middel: 2, F_ax_Ed: 1.0 },
+    // Met de hand: f_ax,k = 20·10⁻⁶·350² = 2,45; f_head,k = 70·10⁻⁶·350² = 8,575;
+    // t_pen = 52 ≥ 12d, k_pen = 1; (8.24a) 2,45·3,4·52 = 433,2; (8.24b) 2,45·3,4·38 +
+    // 8,575·8² = 865,3; F_ax,Rd = 10·0,8·433,2/1,3 = 2666 N, UC_ax = 1000/2666 = 0,3752.
+    // M_y = 0,45·600·3,4^2,6 = 6504; mechanisme (d) 1070,9 + koord (433,2·0,6248)/4 = 67,7
+    // geeft 1138,5; UC_v = 4000/(2·4,369·0,8·1138,5/1,3) = 0,6535; (8.27) 0,3752 + 0,6535 = 1,029.
+    handwerk: { f_ax_k: "2.45", F_ax_Rk: "433.2", UC_ax: "0.3752", UC_v: "0.6535", UC_c: "1.029" },
+  },
+  {
+    naam: "12 — vierkante nagels zonder profilering met een langdurige axiale belasting: niet toegestaan",
+    invoer: { middel: 2, F_ax_Ed: 0.5, ax_lang: 1 },
+  },
+  {
+    naam: "13 — vierkante nagels zonder profilering 3,4 × 63: t_pen = 25 mm tussen 6d en 8d",
+    invoer: { middel: 2, l_v: 63 },
+    // Met de hand: t_pen = 63 − 38 = 25 mm = 7,35d < 8d = 27,2 mm: indringdiepte
+    // voldoet niet (§8.3.1.2) en geen uittreksterkte, dus ook geen koordeffect (§8.3.2(7)).
+    handwerk: { t_pen: "25", k_pen: "0", F_ax_Rk: "0", F_ax_koord: "0" },
+  },
+  {
+    naam: "14 — schroeven 6 × 100 met 20 mm draad aan de puntzijde, op trek: draad korter dan 6d",
+    invoer: {
+      middel: 4, d_v: 6, d_1: 4, l_v: 100, l_g: 20, d_h: 12, f_u: 800, f_head_k: 10.5, f_tens_k: 11,
+      t_1: 45, t_2: 120, a_1: 80, a_2: 30, a_3: 100, a_4: 30, F_ax_Ed: 1.5, F_v_Ed: 3,
+    },
+    // Met de hand: ℓ_ef = min(55; 20) = 20 mm < 6d = 36 mm: geen uittreksterkte (§8.7.2(3)),
+    // dus F_ax,Rk = 0 en geen koordeffect; de trek kan niet worden opgenomen.
+    handwerk: { ℓ_ef: "20", F_ax_a: "0", F_ax_Rk: "0", F_ax_koord: "0" },
+  },
+  {
+    naam: "15 — gladde nagels, kracht onder 150° met de vezel: rekent als 30°",
+    invoer: { α: 150, n_1: 10, a_1: 24 },
+    // Met de hand: a_1 = 7,06d, k_ef = 0,7 + 0,15·0,059/3 = 0,7029, n_ef = 10^0,7029 = 5,046;
+    // UC_v,0 = 4000·cos 30°/(2·5,046·608,5) = 0,5641 > UC_v,t = 4000/(20·608,5) = 0,3287.
+    handwerk: { n_ef: "5.046", UC_v: "0.5641" },
+  },
+  {
+    naam: "16 — schroeven 10 × 200 als set 3, kracht onder 120° met de vezel: rekent als 60°",
+    invoer: {
+      middel: 4, d_v: 10, d_1: 6.4, l_v: 200, l_g: 100, d_h: 18, f_u: 800, f_tens_k: 28, voorboren: 1,
+      klasse_1: 9, α: 120, n_1: 3, n_2: 2, a_1: 60, a_2: 50, a_3: 100, a_4: 50, t_1: 80, t_2: 140, F_v_Ed: 10, rand: 1,
+      h_90: 300,
+    },
+    // Met de hand: n_ef,0 = min(3; 3^0,9·(60/130)^0,25) = 2,2155; (8.35) met 60°:
+    // n_ef = 2,2155 + 0,7845·60/90 = 2,738, niet 3,262 zoals met 120° (dat is meer dan n).
+    handwerk: { n_ef: "2.738" },
+  },
+  {
+    naam: "17 — gladde nagels, kracht loodrecht op de vezel naar de belaste rand, h = 200 bij de oplegging: splijten",
+    invoer: { α: 90, rand: 1, eind: 0, F_v_Ed: 6, h_90: 200 },
+    // Met de hand (8.4): h_e = 25 + 25 = 50; F_90,Rk = 14·71·√(50/(1 − 50/200)) = 8116 N;
+    // F_90,Rd = 0,8·8116/1,3 = 4,994 kN; F_90,Ed = 6 kN (alles aan één zijde); UC = 1,201.
+    handwerk: { b_90: "71", h_e: "50", F_90_Rd: "4.994", UC_90: "1.201" },
+  },
+  {
+    naam: "18 — als 17, maar element 1 splijt en de kracht verdeelt zich gelijk over beide zijden",
+    invoer: { α: 90, rand: 1, eind: 0, F_v_Ed: 6, h_90: 200, el_90: 2, η_in: 0.5 },
+    // Met de hand: F_90,Rk = 14·38·8,165 = 4344 N; F_90,Rd = 0,8·4344/1,3 = 2,673 kN;
+    // F_90,Ed = 0,5·6 = 3 kN; UC = 1,122.
+    handwerk: { b_90: "38", F_90_Rd: "2.673", F_90_Ed: "3", UC_90: "1.122" },
+  },
+  {
+    naam: "19 — kracht onder 45° naar de belaste rand zonder hoogte van het element: niet volledig getoetst",
+    invoer: { α: 45, rand: 1 },
+  },
+  {
+    naam: "20 — schroeven als set 2 op trek, schroefhoek ingevoerd als 170°",
+    invoer: {
+      middel: 4, d_v: 6, d_1: 4, l_v: 100, l_g: 60, d_h: 12, f_u: 800, f_head_k: 10.5, f_tens_k: 11,
+      t_1: 45, t_2: 120, a_1: 80, a_2: 30, a_3: 100, a_4: 30, F_ax_Ed: 3, F_v_Ed: 5, α_s: 170,
+    },
+    // Met de hand: de scherpe hoek tussen schroefas en vezel is 180 − 170 = 10° < 30°:
+    // de detaillering voldoet niet (§8.7.2(4)); (8.38) blijft gelijk aan 10°, want
+    // 1,2·cos² + sin² is symmetrisch.
+  },
 ];
 
 let fouten = 0;
@@ -350,36 +467,53 @@ for (const set of SETS) {
   fouten += toets(`${set.naam} — narekening`, got, verwachtingen(r, v));
   if (set.handwerk) fouten += toets(`${set.naam} — handberekening`, got, set.handwerk);
 
-  // Eindoordeel en maatgevende UC staan in een tekstregel.
-  const m = got.text.match(/Maatgevende UC = ([\d.]+|∞)/);
+  // Eindoordeel en maatgevende UC staan in de slotzin; het oordeel wordt net zo
+  // gelezen als de app dat doet (bladResultaat.ts).
+  const slot = got.text.lastIndexOf("Maatgevende UC");
+  const zin = slot >= 0 ? got.text.slice(slot, slot + 240) : "";
+  const m = zin.match(/Maatgevende UC = ([\d.]+|∞)/);
   const ucBlad = m ? (m[1] === "∞" ? Infinity : parseFloat(m[1])) : NaN;
-  // Zonder sterkte (k_mod = 0) noemt het blad geen UC maar de reden.
-  const ucOk = Number.isFinite(r.UCmax)
-    ? Number.isFinite(ucBlad) && Math.abs(ucBlad - r.UCmax) <= Math.max(0.002 * r.UCmax, 1e-4)
-    : !m && /De verbinding voldoet niet: dit plaatmateriaal/.test(got.text);
-  const voldoet = /de verbinding voldoet(?! niet)/i.test(got.text);
-  const wil = r.UCmax <= 1 && r.detailOk;
+  // Zonder sterkte (k_mod = 0) noemt het blad geen UC maar de reden; zonder
+  // uittreksterkte onder trek is de UC oneindig.
+  const ucOk = r.kmod === 0
+    ? !m && /De verbinding voldoet niet: dit plaatmateriaal/.test(got.text)
+    : Number.isFinite(r.UCmax)
+      ? Number.isFinite(ucBlad) && Math.abs(ucBlad - r.UCmax) <= Math.max(0.002 * r.UCmax, 1e-4)
+      : ucBlad === Infinity;
+  const voldoet = !/voldoe[nt] niet/.test(zin) && /voldoe[nt]/.test(zin);
+  const wil = r.ok90 && r.UCmax <= 1 && r.detailOk;
   const oordeelOk = voldoet === wil;
   if (!ucOk) fouten++;
   if (!oordeelOk) fouten++;
   console.log(`  ${ucOk ? "OK    " : "FOUT  "} UC_max     ons ${String(ucBlad).padStart(10)}   narekening ${s4(r.UCmax)}`);
-  console.log(`  ${oordeelOk ? "OK    " : "FOUT  "} oordeel    ons ${voldoet ? "voldoet" : "voldoet niet"}   narekening ${wil ? "voldoet" : "voldoet niet"}${r.detailOk ? "" : " (detaillering)"}`);
+  console.log(`  ${oordeelOk ? "OK    " : "FOUT  "} oordeel    ons ${voldoet ? "voldoet" : "voldoet niet"}   narekening ${wil ? "voldoet" : "voldoet niet"}${r.detailOk ? "" : " (detaillering)"}${r.ok90 ? "" : " (splijten niet getoetst)"}`);
 }
 
-// Twee meldingen die in het blad moeten staan.
-{
-  const v = { ...STANDAARD, ...SETS[8].invoer };
+// Meldingen die in het blad moeten staan, per set.
+const MELDINGEN = [
+  [9, "gladde nagel axiaal", /geen blijvende of langdurige axiale belasting/],
+  [10, "OSB in klimaatklasse 3", /mag in klimaatklasse 3 niet worden toegepast/],
+  [12, "vierkante nagel axiaal, als gladde nagel", /geen blijvende of langdurige axiale belasting/],
+  [14, "schroefdraad aan de puntzijde", /Schroefdraad aan de puntzijde, 6d \(§8\.7\.2\(3\)\) 20 36 voldoet niet/],
+  [15, "hoek buiten 0 tot 90°", /gerekend is met de scherpe hoek tussen kracht en vezel, 30°/],
+  [19, "hoogte voor splijten ontbreekt", /Splijten §8\.1\.4 — hoogte h ontbreekt .*voldoet niet: splijten is niet getoetst/],
+  [20, "schroefhoek boven 90°", /De hoek tussen de schroefas en de vezel is kleiner dan 30°/],
+];
+for (const [nr, naam, patroon] of MELDINGEN) {
+  const v = { ...STANDAARD, ...SETS[nr - 1].invoer };
   const got = reken(tpl, Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)])));
-  const ok = /geen blijvende of langdurige axiale belasting/.test(got.text);
+  const ok = patroon.test(got.text);
   if (!ok) fouten++;
-  console.log(`\nMelding gladde nagel axiaal\n  ${ok ? "OK    " : "FOUT  "} "geen blijvende of langdurige axiale belasting"`);
+  console.log(`\nMelding ${naam} (set ${nr})\n  ${ok ? "OK    " : "FOUT  "} ${patroon.source}`);
 }
-{
-  const v = { ...STANDAARD, ...SETS[9].invoer };
-  const got = reken(tpl, Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)])));
-  const ok = /mag in klimaatklasse 3 niet worden toegepast/.test(got.text);
+
+// Een hoek boven 90° levert dezelfde uitkomst als de scherpe hoek.
+for (const [a, b, set] of [[150, 30, SETS[14].invoer], [180, 0, SETS[14].invoer], [120, 60, SETS[15].invoer]]) {
+  const uit = (hoek) => reken(tpl, Object.fromEntries(Object.entries({ ...STANDAARD, ...set, α: hoek }).map(([k, x]) => [k, String(x)]))).values;
+  const va = uit(a), vb = uit(b);
+  const ok = ["n_ef", "UC_v", "F_v_Rd"].every((k) => Number.isFinite(va[k]) && va[k] === vb[k]);
   if (!ok) fouten++;
-  console.log(`\nMelding OSB in klimaatklasse 3\n  ${ok ? "OK    " : "FOUT  "} "mag in klimaatklasse 3 niet worden toegepast"`);
+  console.log(`\nHoek ${a}° tegen ${b}°\n  ${ok ? "OK    " : "FOUT  "} n_ef ${va.n_ef} / ${vb.n_ef}, UC_v ${va.UC_v} / ${vb.UC_v}`);
 }
 
 afronden(fouten, "Nagel- en schroefverbinding");

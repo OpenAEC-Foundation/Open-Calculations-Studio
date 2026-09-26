@@ -1,4 +1,5 @@
 import { useDesigner, Dim, Ro, Defs, loadMark, HDim, VDim, fmt, clamp } from "./designerKit";
+import { useBladUitkomst, ucTekst } from "./bladResultaat";
 import "./VoetplaatDesigner.css";
 
 /**
@@ -19,9 +20,11 @@ import "./VoetplaatDesigner.css";
  *     draadeinde): of het afschuifvlak door de draad of door de schacht gaat,
  *     bepaalt of met A_s of met A gerekend wordt.
  *
- * De weerstanden in de kop en de voet zijn dezelfde toetsing als in het
- * rekenblad — zie templates/boutberekening.ts, dat op zes referentiebladen is
- * gecalibreerd. Wijkt hier iets af, dan lopen de twee uit de pas.
+ * De weerstanden, de u.c.'s en het oordeel in de kop en de voet komen uit het
+ * doorgerekende blad (templates/boutberekening.ts): de k₁-tak, de rekenwijze
+ * en de invoerfouten beslist het blad, het beeld rekent ze niet na. Alleen de
+ * afstandseisen van tabel 3.3 kleurt het beeld zelf, met dezelfde regel als
+ * het blad: p₁ en p₂ tellen zodra ze in de weerstand zitten.
  */
 const MARKER = "Boutberekening";
 
@@ -50,13 +53,8 @@ const RING: Record<number, [number, number]> = {
 };
 /** Treksterkte van het boutmateriaal f_ub [N/mm²] — tabel 3.1. */
 const FUB: Record<number, number> = { 46: 400, 48: 400, 56: 500, 58: 500, 68: 600, 88: 800, 109: 1000 };
-/** α_v bij een afschuifvlak door de draad — 0,6 voor 4.6/5.6/8.8, anders 0,5 (tabel 3.4). */
-const AV: Record<number, number> = { 46: 0.6, 48: 0.5, 56: 0.6, 58: 0.5, 68: 0.5, 88: 0.6, 109: 0.5 };
 /** Treksterkte plaatmateriaal f_u [N/mm²] — NB bij NEN-EN 1993-1-1, t ≤ 40 mm. */
 const FU: Record<number, number> = { 235: 360, 275: 430, 355: 490 };
-
-const γ_M2 = 1.25;
-const k_2 = 0.9;
 
 const DEFAULTS: Record<string, number> = {
   staalsoort: 235, boutkwaliteit: 88, boutdiameter: 16,
@@ -100,8 +98,10 @@ function Zeskantaanzicht(props: { ax: number; y: number; breedte: number; hoogte
 
 export default function BoutDesigner() {
   const ctx = useDesigner(MARKER, DEFAULTS);
+  // Vóór de vroege return: de volgorde van de hooks moet vast liggen.
+  const uitkomst = useBladUitkomst();
   if (!ctx.actief) return null;
-  const { d, set, box, wrapRef, xc } = ctx;
+  const { d, set, box, wrapRef } = ctx;
 
   const fy = Math.round(d("staalsoort"));
   const kwal = Math.round(d("boutkwaliteit"));
@@ -111,61 +111,44 @@ export default function BoutDesigner() {
   const randpos = Math.round(d("randpositie"));    // 1 = randbout (loodrecht)
   const t = Math.max(1, d("t_plaat"));
   const e1 = Math.max(1, d("e_1")), p1 = Math.max(1, d("p_1"));
-  const e2 = Math.max(1, d("e_2")), p2 = Math.max(1, d("p_2"));
+  // p₂ = 0 bij een randbout: geen tweede bout loodrecht op de kracht, zoals in het blad.
+  const eenKolom = randpos === 1 && !(d("p_2") > 0);
+  const e2 = Math.max(1, d("e_2")), p2 = eenKolom ? 0 : Math.max(1, d("p_2"));
   const nv = Math.max(1, Math.round(d("n_v")));
   const FvEd = Math.max(0, d("F_v_Ed")), FtEd = Math.max(0, d("F_t_Ed"));
   const overlap = Math.round(d("overlaptype"));    // 2 = enkele overlap, één boutrij
   const d0 = GAT[M] ?? M + 2, dk = EW[M] ?? M * 1.7;
 
-  // ── toetsing volgens tabel 3.4 — spiegelt templates/boutberekening.ts ──────
+  // Tabelwaarden voor de toelichting bij de invoer.
   const A_s = AS[M] ?? (Math.PI * M * M) / 4;
   const A = (Math.PI * M * M) / 4;
   const f_ub = FUB[kwal] ?? 800;
   const f_u = FU[fy] ?? 360;
-  // Splitspunt (register punt 6): §3.6.1(3) vraagt het gemiddelde van de maat
-  // over de platte kanten en over de hoeken; de referentie-uitwerking vult alleen de
-  // sleutelwijdte in. Dezelfde keuze als in templates/boutberekening.ts, anders
-  // toont dit paneel een andere B_p,Rd dan de uitwerking ernaast.
-  const d_m = xc ? (SW[M] ?? M * 1.5) : ((SW[M] ?? M * 1.5) + (EW[M] ?? M * 1.7)) / 2;
 
-  const A_v = vlak === 1 ? A_s : A;
-  const α_v = vlak === 1 ? (AV[kwal] ?? 0.6) : 0.6;
-
-  const FtRd = (k_2 * f_ub * A_s) / γ_M2 / 1000;          // kN
-  const FvRd = (α_v * f_ub * A_v) / γ_M2 / 1000;          // kN, per afschuifvlak
-  const FvRdTot = nv * FvRd;
-
-  const k1rand = (2.8 * e2) / d0 - 1.7;
-  const k1bin = (1.4 * p2) / d0 - 1.7;
-  const k_1 = Math.min(randpos === 1 ? k1rand : k1bin, 2.5);
-  const α_d = pos === 1 ? e1 / (3 * d0) : p1 / (3 * d0) - 0.25;
-  const α_b = Math.min(α_d, f_ub / f_u, 1.0);
-  const FbRdTab = (k_1 * α_b * f_u * M * t) / γ_M2 / 1000;   // kN, tabel 3.4
-  // §3.6.1(10): een enkele overlap met één boutrij kan de rotatie uit de
-  // excentriciteit van het ene afschuifvlak niet opnemen; de stuikweerstand is
-  // dan begrensd, en sluitringen onder kop én moer zijn vereist.
-  const FbRdCap = (1.5 * f_u * M * t) / γ_M2 / 1000;
-  const FbRd = overlap === 2 ? Math.min(FbRdTab, FbRdCap) : FbRdTab;
-  const capBijt = overlap === 2 && FbRdCap < FbRdTab;
-  const BpRd = (0.6 * Math.PI * d_m * t * f_u) / γ_M2 / 1000;
-
+  // ── weerstanden en oordeel: uit het doorgerekende blad ─────────────────────
+  const g = uitkomst?.getallen ?? {};
+  const w = (naam: string, dec: number) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));
+  // k₁,XC staat alleen in het blad als de rekenwijze de stuikweerstand verandert.
+  const k1 = g.k_1_XC !== undefined ? "k_1_XC" : "k_1";
+  // §3.6.1(10) is maatgevend als de gehanteerde F_b,Rd op de grens ligt.
+  const capBijt = overlap === 2 && g.F_b_Rd !== undefined && g.F_b_Rd_cap !== undefined
+    && Math.abs(g.F_b_Rd - g.F_b_Rd_cap) < 0.01;
+  const r = uitkomst?.resultaat;
   const belast = FvEd + FtEd > 0;
-  const UC = belast
-    ? Math.max(FvEd / FvRdTot, FvEd / FbRd, FtEd / FtRd, FtEd / BpRd,
-               FvEd / FvRdTot + FtEd / (1.4 * FtRd))
-    : 0;
 
-  // Minimum- en maximumeisen uit EN 1993-1-8 tabel 3.3. p₁ en p₂ tellen alleen
-  // mee als de bout in die richting een binnenste bout is — net als in het blad.
+  // Minimum- en maximumeisen uit EN 1993-1-8 tabel 3.3. p₁ en p₂ tellen mee
+  // zodra ze in de weerstand zitten — net als in het blad. Onder een minimum
+  // is fout; boven het maximum is, net als in het blad, alleen een signaal.
   const pmax = Math.min(14 * t, 200);
   const eisen = [
-    { naam: "e₁", w: e1, grens: 1.2 * d0, ok: e1 >= 1.2 * d0, actief: true },
-    { naam: "e₂", w: e2, grens: 1.2 * d0, ok: e2 >= 1.2 * d0, actief: true },
-    { naam: "p₁", w: p1, grens: 2.2 * d0, ok: p1 >= 2.2 * d0 && p1 <= pmax, actief: pos === 2 },
-    { naam: "p₂", w: p2, grens: 2.4 * d0, ok: p2 >= 2.4 * d0 && p2 <= pmax, actief: randpos === 2 },
-  ];
+    { naam: "e₁", w: e1, grens: 1.2 * d0, max: Infinity, actief: true },
+    { naam: "e₂", w: e2, grens: 1.2 * d0, max: Infinity, actief: true },
+    { naam: "p₁", w: p1, grens: 2.2 * d0, max: pmax, actief: pos === 2 },
+    { naam: "p₂", w: p2, grens: 2.4 * d0, max: pmax, actief: !eenKolom },
+  ].map((e) => ({ ...e, ok: e.w >= e.grens, boven: e.w > e.max }));
   const alleOk = eisen.every((e) => !e.actief || e.ok);
-  const ok = belast ? UC <= 1.0 && alleOk : alleOk;
+  const boven = eisen.some((e) => e.actief && e.boven);
+  const ok = belast ? r?.voldoet === true : alleOk;
 
   // ── layout ────────────────────────────────────────────────────────────────
   const capH = 24, gap = 14;
@@ -176,7 +159,7 @@ export default function BoutDesigner() {
   const L = 2 * e1 + p1;          // overlap in de krachtsrichting
   const B = 2 * e2 + p2;          // loodrecht daarop
   const kolX = [e1, e1 + p1];     // hartlijnen langs de kracht
-  const rijY = [e2, e2 + p2];
+  const rijY = eenKolom ? [e2] : [e2, e2 + p2];
   // Buiten de overlap lopen de platen door tot een breuklijn; daarachter de krachten.
   // In een smal paneel worden die stukken korter, zodat de overlap de ruimte houdt.
   const extPx = clamp(W * 0.11, 30, 72), pijl = clamp(W * 0.08, 16, 44);
@@ -220,8 +203,11 @@ export default function BoutDesigner() {
         <strong>Boutberekening — tabel 3.4</strong>
         <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
           {belast
-            ? `u.c. = ${fmt(UC, 2)} ${UC <= 1.0 ? "✓ voldoet" : "✗ voldoet niet"}`
-            : alleOk ? "✓ afstanden binnen tabel 3.3" : "✗ afstand buiten tabel 3.3"}
+            ? r && r.uc !== null && r.voldoet !== null
+              ? `u.c. = ${ucTekst(r.uc)} ${r.voldoet ? "✓ voldoet" : "✗ voldoet niet"}`
+              : "—"
+            : !alleOk ? "✗ afstand onder het minimum van tabel 3.3"
+            : boven ? "✓ minima van tabel 3.3, steek boven het maximum" : "✓ afstanden binnen tabel 3.3"}
         </span>
       </div>
 
@@ -293,14 +279,14 @@ export default function BoutDesigner() {
           <label title="Eindafstand loodrecht op de kracht">e<sub>2</sub>
             <input type="number" step={5} value={e2} onChange={(e) => set("e_2", parseFloat(e.target.value))} />
           </label>
-          <label title="Steek loodrecht op de kracht — telt alleen bij een binnenste bout">p<sub>2</sub>
-            <input type="number" step={5} value={p2} onChange={(e) => set("p_2", parseFloat(e.target.value))} />
+          <label title="Steek loodrecht op de kracht — 0 = geen tweede bout loodrecht op de kracht">p<sub>2</sub>
+            <input type="number" step={5} min={0} value={d("p_2")} onChange={(e) => set("p_2", parseFloat(e.target.value))} />
           </label>
           <span className="gd-note">Tabel 3.3: {eisen.map((e) => (
-            <span key={e.naam} style={{ color: !e.actief ? "#9ca3af" : e.ok ? "#047857" : "#b91c1c" }}>
+            <span key={e.naam} style={{ color: !e.actief ? "#9ca3af" : !e.ok ? "#b91c1c" : e.boven ? "#b45309" : "#047857" }}>
               {e.naam} {e.actief ? `≥ ${fmt(e.grens, 1)}` : "n.v.t."}{" "}
             </span>
-          ))}{(pos === 2 || randpos === 2) && <> · p ≤ {fmt(pmax)}</>}</span>
+          ))}{(pos === 2 || !eenKolom) && <> · p ≤ {fmt(pmax)}</>}</span>
 
           <span className="vd-ctrl-h">Krachten (kN) — 0 = alleen weerstanden</span>
           <label title="Afschuifkracht op de bout">F<sub>v,Ed</sub>
@@ -311,14 +297,14 @@ export default function BoutDesigner() {
           </label>
           {belast && (
             <span className="gd-note">
-              afschuiving {fmt(FvEd / FvRdTot, 2)} · stuik {fmt(FvEd / FbRd, 2)} ·
-              trek {fmt(FtEd / FtRd, 2)} · doorponsen {fmt(FtEd / BpRd, 2)} ·
-              interactie {fmt(FvEd / FvRdTot + FtEd / (1.4 * FtRd), 2)}
+              afschuiving {w("UC_v", 2)} · stuik {w("UC_b", 2)} ·
+              trek {w("UC_t", 2)} · doorponsen {w("UC_p", 2)} ·
+              interactie {w("UC_vt", 2)}
             </span>
           )}
           {overlap === 2 && (
             <span className="gd-note" style={{ color: capBijt ? "#b45309" : undefined }}>
-              §3.6.1(10): F<sub>b,Rd</sub> ≤ {fmt(FbRdCap, 1)} kN
+              §3.6.1(10): F<sub>b,Rd</sub> ≤ {w("F_b_Rd_cap", 1)} kN
               {capBijt ? " — maatgevend" : " — niet maatgevend"}. Sluitringen onder kop én moer vereist.
             </span>
           )}
@@ -367,7 +353,7 @@ export default function BoutDesigner() {
                 <HDim k="bp" x0={px(e1 + p1)} x1={px(L)} y={yPl1 + 26} ext={yPl1 + 4} />
                 {/* maatlijnen loodrecht, over het doorlopende stuk van plaat B */}
                 <VDim k="bp" y0={yPl0} y1={py(e2)} x={px(L) + xDim} ext={px(L) + 4} />
-                <VDim k="bp" y0={py(e2)} y1={py(e2 + p2)} x={px(L) + xDim} ext={px(L) + 4} />
+                {!eenKolom && <VDim k="bp" y0={py(e2)} y1={py(e2 + p2)} x={px(L) + xDim} ext={px(L) + 4} />}
                 <VDim k="bp" y0={py(e2 + p2)} y1={yPl1} x={px(L) + xDim} ext={px(L) + 4} />
               </svg>
 
@@ -375,7 +361,7 @@ export default function BoutDesigner() {
               <Dim ctx={ctx} name="p_1" value={p1} x={px(e1 + p1 / 2)} y={yPl1 + 26} step={5} label="p1" />
               <Ro text={fmt(e1)} x={px(e1 + p1 + e1 / 2)} y={yPl1 + 26} title="gelijk aan e₁ aan de andere zijde" />
               <Dim ctx={ctx} name="e_2" value={e2} x={px(L) + xDim} y={py(e2 / 2)} step={5} label="e2" />
-              <Dim ctx={ctx} name="p_2" value={p2} x={px(L) + xDim} y={py(e2 + p2 / 2)} step={5} label="p2" />
+              {!eenKolom && <Dim ctx={ctx} name="p_2" value={p2} x={px(L) + xDim} y={py(e2 + p2 / 2)} step={5} label="p2" />}
               <Ro text={fmt(e2)} x={px(L) + xDim} y={py(e2 + p2 + e2 / 2)} title="gelijk aan e₂ aan de andere zijde" />
               <Ro text="F" x={xA0 - 8 - pijl / 2} y={py(B / 2) - 15} kleur="#dc2626" title="kracht op plaat A" />
               <Ro text="F" x={xB1 + 8 + pijl / 2} y={py(B / 2) - 15} kleur="#dc2626" title="kracht op plaat B" />
@@ -464,13 +450,13 @@ export default function BoutDesigner() {
           <br />De gele markering is de bout waarvoor de stuikweerstand bepaald wordt: de positie in
           de krachtsrichting bepaalt α<sub>d</sub>, die loodrecht daarop k<sub>1</sub>.</span>
         <span className="vd-live">
-          F<sub>t,Rd</sub> = {fmt(FtRd, 1)} · F<sub>v,Rd</sub> = {fmt(FvRd, 1)} kN/vlak
-          {nv > 1 && <> ({fmt(FvRdTot, 1)} over {nv})</>} ·
-          F<sub>b,Rd</sub> = {fmt(FbRd, 1)}
-          {capBijt && <> (§3.6.1(10) begrenst {fmt(FbRdTab, 1)} → {fmt(FbRdCap, 1)})</>} ·
-          B<sub>p,Rd</sub> = {fmt(BpRd, 1)} kN ·
-          k<sub>1</sub> = {fmt(k_1, 3)} · α<sub>d</sub> = {fmt(α_d, 3)} · α<sub>b</sub> = {fmt(α_b, 3)} ·
-          α<sub>v</sub> = {fmt(α_v, 1)} · A<sub>v</sub> = {fmt(A_v)} mm²
+          F<sub>t,Rd</sub> = {w("F_t_Rd", 1)} · F<sub>v,Rd</sub> = {w("F_v_Rd", 1)} kN/vlak
+          {nv > 1 && <> ({w("F_v_Rd_tot", 1)} over {nv})</>} ·
+          F<sub>b,Rd</sub> = {w("F_b_Rd", 1)}
+          {capBijt && <> (begrensd door §3.6.1(10))</>} ·
+          B<sub>p,Rd</sub> = {w("B_p_Rd", 1)} kN ·
+          k<sub>1</sub> = {w(k1, 3)} · α<sub>d</sub> = {w("α_d", 3)} · α<sub>b</sub> = {w("α_b", 3)} ·
+          α<sub>v</sub> = {w("α_v", 1)} · A<sub>v</sub> = {w("A_v", 0)} mm²
         </span>
       </div>
     </div>

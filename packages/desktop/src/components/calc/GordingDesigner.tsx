@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
-import { useProjectGetal, useBelastingFactoren, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useBladUitkomst, ucTekst } from "./bladResultaat";
+import { UitkomstKop } from "./designerKit";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
@@ -11,14 +13,17 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
  * (transparant, verticale scheidingslijn, streepjes-maatlijnen zonder pijlen,
  * responsief via ResizeObserver, gecentreerd, uniforme fit-schaal).
  *
- * NB: dit is (voorlopig) alleen het visueel — de rekenregels volgen nog.
+ * Het beeld rekent zelf niets: de kop toont de maatgevende UC en het oordeel
+ * van het blad (templates/gording.ts), de voetregel de afzonderlijke toetsen
+ * uit dezelfde uitwerking. Eerder rekende het beeld een eigen, afwijkende
+ * toetsing na.
  */
 const MARKER = "Gording";
 
 const DAK: { v: number; label: string }[] = [
   { v: 1, label: "Plat dak" }, { v: 2, label: "Schuin dak" },
 ];
-// Gording-profielen (b × h in mm)
+// Gording-profielen (b × h in mm), dezelfde lijst als in het blad
 const PROF: { v: number; label: string; b: number; h: number }[] = [
   { v: 1, label: "58 × 150", b: 58, h: 150 },
   { v: 2, label: "71 × 171", b: 71, h: 171 },
@@ -27,41 +32,28 @@ const PROF: { v: number; label: string; b: number; h: number }[] = [
   { v: 5, label: "85 × 250", b: 85, h: 250 },
   { v: 6, label: "100 × 250", b: 100, h: 250 },
   { v: 7, label: "100 × 300", b: 100, h: 300 },
+  { v: 8, label: "96 × 296", b: 96, h: 296 },
 ];
 const STERKTE: { v: number; label: string }[] = [
   { v: 1, label: "C18" }, { v: 2, label: "C24" }, { v: 3, label: "C30" },
 ];
-// EN 338 karakteristiek — f_m,k, f_v,k, E_mean [N/mm²]
-const MAT: Record<number, { fmk: number; fvk: number; E: number }> = {
-  1: { fmk: 18, fvk: 3.4, E: 9000 },
-  2: { fmk: 24, fvk: 4.0, E: 11000 },
-  3: { fmk: 30, fvk: 4.0, E: 12000 },
-};
 const KLIMAAT: { v: number; label: string }[] = [
   { v: 1, label: "1" }, { v: 2, label: "2" }, { v: 3, label: "3" },
-];
-// Windgebied NL (NEN-EN 1991-1-4 NB Tabel NB.1) — v_b0
-const WINDGEBIED: { v: number; label: string; vb0: number }[] = [
-  { v: 1, label: "I — Kust", vb0: 29.5 }, { v: 2, label: "II", vb0: 27.0 }, { v: 3, label: "III — Overig", vb0: 24.5 },
-];
-// Terreincategorie (NB Tabel NB.3) — z0, z_min
-const TERREIN: { v: number; label: string; z0: number; zmin: number }[] = [
-  { v: 1, label: "0 — Zee/kust", z0: 0.005, zmin: 1 },
-  { v: 2, label: "II — Onbebouwd", z0: 0.2, zmin: 4 },
-  { v: 3, label: "III — Bebouwd", z0: 0.5, zmin: 7 },
 ];
 const GRENS: { v: number; label: string }[] = [
   { v: 0.004, label: "0,004 × L" }, { v: 0.003, label: "0,003 × L" }, { v: 0.002, label: "0,002 × L" },
 ];
 
+// q_par staat op 0: een ontlasting door muurplaat en nokgording is gunstig en
+// moet daar apart worden aangetoond, dus die vult de gebruiker zelf in.
 const DEFAULTS: Record<string, number> = {
   dakType: 2, profiel: 5, L_dag: 5000, a_opl: 75, n_gording: 3,
   t_beschot: 18, I_manual: 0, I_beschot: 486000, E_beschot: 5000,
   sterkteklasse: 2, klimaatklasse: 1, l_h: 4500, h_v: 3000,
-  g_pannen: 0.4, g_panlat: 0.04, g_dakplaat: 0.09899, g_plafond: 0.2, q_par: 1,
-  varType: 1, Q_k: 2, q_var: 0,
+  g_pannen: 0.4, g_panlat: 0.04, g_dakplaat: 0.09899, g_plafond: 0.2, q_par: 0,
+  Q_k: 2, q_var: 0,
   s_k: 0.70, sk_manual: 0, mu1_val: 0.702, mu1_manual: 0,
-  z_wind: 9, windbron: 1, q_wind_hand: 0,
+  z_wind: 9, windbron: 1, q_wind_hand: 0, c_pe_zuig: -0.7,
   controleer: 1, grensfactor: 0.004, dubbele: 1,
 };
 
@@ -85,10 +77,8 @@ export default function GordingDesigner() {
     [activeId, seedWaarden],
   );
 
-  // Windgebied en terreincategorie volgen uit de locatie van het project; de
-  // referentiehoogte z_wind hoort wél bij dit constructiedeel.
-  const windgebied = useProjectGetal("windgebied", 2);
-  const terreincategorie = useProjectGetal("terreincategorie", 2);
+  // De uitkomst en de toetsen van het blad zelf.
+  const uitkomst = useBladUitkomst();
   const [editing, setEditing] = useState<string | null>(null);
   const [loadTab, setLoadTab] = useState(0);            // 0=permanent 1=veranderlijk 2=wind 3=sneeuw
 
@@ -106,12 +96,6 @@ export default function GordingDesigner() {
     for (const [k, v] of Object.entries(DEFAULTS)) seed[k] = String(v);
     seedBladWaarden(seed);
   }, [isGording, activeId, seedBladWaarden, exemplaar]);
-
-  // Het rekenblad rekent q_p sinds backlogpunt 1 zélf uit windgebied,
-  // terreincategorie en z_wind; de designer schreef hier vroeger een uitgerekende
-  // q_wind naar de store, en dat is nu dood gewicht — het blad zou hem overschrijven.
-  // De keten hieronder blijft bestaan voor het beeld in deze pane en is dezelfde
-  // als die in gording.ts; scripts/check-gording.mjs (wind1 t/m wind7) bewaakt hem.
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -146,7 +130,6 @@ export default function GordingDesigner() {
   const tBeschot = d("t_beschot");
   const Imanual = Math.round(d("I_manual"));
   const Iauto = (1000 * tBeschot ** 3) / 12;            // I per m breedte = 1000·t³/12
-  const Ibeschot = Imanual === 1 ? d("I_beschot") : Iauto;
   const Ebeschot = d("E_beschot");
   const sterkte = Math.round(d("sterkteklasse"));
   const lH = d("l_h");                                  // horizontale projectie [mm]
@@ -160,122 +143,24 @@ export default function GordingDesigner() {
   const grens = d("grensfactor");
   const dubbele = Math.round(d("dubbele"));
   const klim = Math.round(d("klimaatklasse"));
-  // Gevolgklasse komt van het project, niet van dit blad.
-  const factoren = useBelastingFactoren();
-  const varType = Math.round(d("varType"));
   const Qk = d("Q_k"), qVar = d("q_var");
   const skManual = Math.round(d("sk_manual"));
   const skAuto = 0.70;                                  // NL uniforme grondwaarde (NEN-EN 1991-1-3 NB)
-  const sk = skManual === 1 ? d("s_k") : skAuto;
   const mu1Manual = Math.round(d("mu1_manual"));
-  const Cpe = 0.70, Cpi = -0.30;                        // vaste NB-waarden (zone F-G-H) → netto 1,0
-  const wg = WINDGEBIED.find((w) => w.v === Math.round(windgebied)) ?? WINDGEBIED[1];
-  const tc = TERREIN.find((t) => t.v === Math.round(terreincategorie)) ?? TERREIN[1];
   const zWind = d("z_wind");
-  // Extreme stuwdruk q_p (NEN-EN 1991-1-4 NB) — reproduceert de referentie-uitwerking exact
-  const vb = wg.vb0;                                    // c_dir=c_season=1
-  const rhoLucht = 1.25;
-  const zEff = Math.max(zWind, tc.zmin);
-  const krWind = 0.19 * (tc.z0 / 0.05) ** 0.07;
-  const cr = krWind * Math.log(zEff / tc.z0);
-  const vm = cr * vb;                                   // c_o=1
-  const Iv = 1 / Math.log(zEff / tc.z0);               // k_l=1, c_o=1
-  const qpWind = ((1 + 7 * Iv) * 0.5 * rhoLucht * vm ** 2) / 1000;  // [kN/m²]
+  const cpeZuig = d("c_pe_zuig");
 
-  // ── afgeleide geometrie ───────────────────────────────────────────────────
+  // ── afgeleide geometrie (alleen voor de tekening) ────────────────────────
   const alpha = dakType === 1 ? 0 : Math.atan2(hV, lH);  // rad
   const alphaDeg = (alpha * 180) / Math.PI;
-  const ca = Math.cos(alpha), sa = Math.sin(alpha);
   const slopeLen = Math.hypot(lH, hV);                   // daklengte [mm]
   const hohSlope = slopeLen / (nG + 1);                  // h.o.h. langs dakvlak
 
-  // ── rekenregels (EN 1995-1-1) — gecalibreerd op de referentie-uitwerking (Set 1/2/3, exact) ──
-  const mat = MAT[sterkte] ?? MAT[2];
-  const gammaM = 1.30, km = 0.7;
-  const kmod = klim === 3 ? 0.70 : 0.90;                 // duurklasse Kort (wind/sneeuw)
-  const kdef = klim === 1 ? 0.60 : klim === 2 ? 0.80 : 2.00;
-  const bP = prof.b, hP = prof.h;                        // b = zwakke-as-dikte, h = sterke-as-hoogte
-  const A = bP * hP;
-  const Iy = (bP * hP ** 3) / 12, Iz = (hP * bP ** 3) / 12;
-  const Wy = Iy / (hP / 2), Wz = Iz / (bP / 2);
-  const Sy = (bP * hP ** 2) / 8, Sz = (hP * bP ** 2) / 8;
-  const kh = (dep: number) => (dep < 150 ? Math.min((150 / dep) ** 0.2, 1.3) : 1.0);
-  const fmyd = (kmod * mat.fmk * kh(hP)) / gammaM;       // sterke as (diepte h)
-  const fmzd = (kmod * mat.fmk * kh(bP)) / gammaM;       // zwakke as (diepte b)
-  const fvd = (kmod * mat.fvk) / gammaM;
-  const Emod = mat.E;
-  const gG = (A * 5.5) / 1e6;                            // eigengewicht [kN/m] (550 kg/m³ · g=10)
-
-  const slopeM = slopeLen / 1000, hohM = hohSlope / 1000;
-  const Lth = L_dag + a_opl, LthM = Lth / 1000;          // theoretische overspanning [mm]/[m]
-
-  // belastingsgeval 1 — permanent (⊥ = sterke as, ∥ = zwakke as)
-  const PgPerp = Pgk * ca, PgPar = Pgk * sa;
-  const PgParTot = slopeM * PgPar + nG * gG * sa;
-  const PgParG = (PgParTot - qPar) / nG;                 // ∥ per gording (na ontlasting q∥)
-  const PgPerpG = hohM * PgPerp + gG * ca;               // ⊥ per gording (incl. eigengewicht)
-  const line = (q: number, I: number) => ({
-    M: (q * LthM ** 2) / 8, V: (q * LthM) / 2, u: (5 / 384) * q * Lth ** 4 / (Emod * I),
-  });
-  const gPerp = line(PgPerpG, Iy), gPar = line(PgParG, Iz);
-
-  // belastingsgeval 2 — veranderlijk: geconcentreerd Q_k (k_r kapt op 1,0; dakbeschot via 3e term)
-  // of verdeeld q_k (op grondvlak, zoals sneeuw). Keuze via varType.
-  const kr = Math.min(1, 0.37 + (0.8 * hohM) / 1.0 - (Ebeschot * Ibeschot) / 1e6 / 50000);
-  const FQperp = Qk * ca * kr, FQpar = Qk * sa * kr;
-  const pt = (F: number, I: number) => ({
-    M: (F * LthM) / 4, V: F / kr, u: (1 / 48) * F * 1e3 * Lth ** 3 / (Emod * I),
-  });
-  const Qc_perp = pt(FQperp, Iy), Qc_par = pt(FQpar, Iz);
-  Qc_perp.V = Qk * ca; Qc_par.V = Qk * sa;               // dwarskracht = volle puntlast-component
-  const qv = hohM * qVar * ca;                           // verdeeld: verticale lijnlast [kN/m]
-  const Qd_perp = line(qv * ca, Iy), Qd_par = line(qv * sa, Iz);
-  const QPerp = varType === 2 ? Qd_perp : Qc_perp;       // actieve veranderlijke
-  const QPar = varType === 2 ? Qd_par : Qc_par;
-
-  // belastingsgeval 3 — sneeuw (μ1 uit dakhelling; per grondvlak → dakvlak)
-  const mu1Auto = alphaDeg <= 30 ? 0.8 : alphaDeg >= 60 ? 0 : (0.8 * (60 - alphaDeg)) / 30;
-  const mu1 = mu1Manual === 1 ? d("mu1_val") : mu1Auto;
-  const Psn = mu1 * sk;
-  const qsn = hohM * Psn * ca;                           // verticale lijnlast [kN/m]
-  const snPerp = line(qsn * ca, Iy), snPar = line(qsn * sa, Iz);
-
-  // belastingsgeval 4 — wind (alleen ⊥ op dakvlak)
-  const Pw = (Cpe - Cpi) * qpWind;
-  const qw = hohM * Pw;
-  const wPerp = line(qw, Iy);
-
-  // BGT — doorbuiging per richting (ψ2 = 0 voor dak/wind/sneeuw)
-  const uVarPerp = Math.max(QPerp.u, snPerp.u, wPerp.u);
-  const uVarPar = Math.max(QPar.u, snPar.u);
-  const wfy = (1 + kdef) * gPerp.u + uVarPerp;
-  const wfz = (1 + kdef) * gPar.u + uVarPar;
-  const wlim = grens * Lth;
-  const UC_wy = controleer === 1 ? wfy / wlim : 0;
-  const UC_wz = controleer === 1 && dubbele === 1 ? wfz / wlim : 0;
-
-  // UGT — 3 combinaties (permanent + één leidende veranderlijke), γ_G en γ_Q
-  // bij de gevolgklasse (tabel NB.4/NB.5)
-  const gG_ = factoren.gG, gQ_ = factoren.gQ;
-  const combo = (vPerp: { M: number; V: number }, vPar: { M: number; V: number }) => ({
-    My: gG_ * gPerp.M + gQ_ * vPerp.M, Mz: gG_ * gPar.M + gQ_ * vPar.M,
-    Vz: gG_ * gPerp.V + gQ_ * vPerp.V, Vy: gG_ * gPar.V + gQ_ * vPar.V,
-  });
-  const zero = { M: 0, V: 0 };
-  const combos = [combo(QPerp, QPar), combo(snPerp, snPar), combo(wPerp, zero)];
-  const uc611 = (c: { My: number; Mz: number }) => (c.My * 1e6) / Wy / fmyd + (km * (c.Mz * 1e6)) / Wz / fmzd;
-  const uc612 = (c: { My: number; Mz: number }) => (km * (c.My * 1e6)) / Wy / fmyd + (c.Mz * 1e6) / Wz / fmzd;
-  const shear = (c: { Vz: number; Vy: number }) => {
-    const ty = (c.Vz * 1e3 * Sy) / (bP * Iy), tz = (c.Vy * 1e3 * Sz) / (hP * Iz);
-    return Math.hypot(ty, tz) / fvd;
-  };
-  const factorPar = dubbele === 1 ? 1 : 0;              // zonder dubbele buiging: alleen sterke as
-  const UC_611 = Math.max(...combos.map((c) => (c.My * 1e6) / Wy / fmyd + factorPar * (km * (c.Mz * 1e6)) / Wz / fmzd));
-  const UC_612 = dubbele === 1 ? Math.max(...combos.map(uc612)) : 0;
-  const UC_shear = Math.max(...combos.map(shear));
-  const UC_max = Math.max(UC_611, UC_612, UC_shear, UC_wy, UC_wz);
-  const ok = UC_max <= 1.0;
-  void uc611;
+  // ── uitkomsten van het blad; "—" zolang het blad ze niet toont ─────────────
+  const g = uitkomst?.getallen ?? {};
+  const w = (naam: string) => (g[naam] === undefined ? "—" : ucTekst(g[naam]));
+  // q_p staat op het blad als het blad hem berekent, anders de ingevulde q_wind.
+  const qpBlad = g.q_p ?? g.q_wind;
 
   // ── layout: vult het tekengebied, gecentreerd, uniforme schaal ────────────
   const capH = 26;
@@ -354,12 +239,7 @@ export default function GordingDesigner() {
 
   return (
     <div className="vd-panel">
-      <div className="vd-head">
-        <strong>Parametrisch beeld — gording</strong>
-        <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
-          UC<sub>max</sub> = {fmt(UC_max, 2)} {ok ? "✓ voldoet" : "✗ voldoet niet"}
-        </span>
-      </div>
+      <UitkomstKop titel="Parametrisch beeld — gording" uitkomst={uitkomst} />
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
         <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
@@ -377,7 +257,7 @@ export default function GordingDesigner() {
           <label>Dagmaat (mm)
             <input type="number" step={50} value={L_dag} onChange={(e) => setVal("L_dag", parseFloat(e.target.value))} />
           </label>
-          <label>Opleglengte (mm)
+          <label>Opleglengte per oplegging (mm)
             <input type="number" step={5} value={a_opl} onChange={(e) => setVal("a_opl", parseFloat(e.target.value))} />
           </label>
           <label>Aantal gordingen
@@ -436,17 +316,13 @@ export default function GordingDesigner() {
             )}
             {loadTab === 1 && (
               <>
-                <label style={{ gap: 6 }}>
-                  <span className="gd-chk">
-                    <input type="checkbox" checked={varType === 2} onChange={(e) => setVal("varType", e.target.checked ? 2 : 1)} />
-                    Verdeeld q<sub>k</sub> (kN/m²)
-                  </span>
-                  <input type="number" step={0.1} value={qVar} disabled={varType !== 2} onChange={(e) => setVal("q_var", parseFloat(e.target.value))} />
-                </label>
                 <label>Q<sub>k</sub> geconcentreerd (kN)
-                  <input type="number" step={0.5} value={Qk} disabled={varType === 2} onChange={(e) => setVal("Q_k", parseFloat(e.target.value))} />
+                  <input type="number" step={0.5} value={Qk} onChange={(e) => setVal("Q_k", parseFloat(e.target.value))} />
                 </label>
-                <div className="gd-note">Aanvinken = verdeelde last q<sub>k</sub>; anders geconcentreerde last Q<sub>k</sub>.</div>
+                <label>q<sub>k</sub> verdeeld (kN/m²)
+                  <input type="number" step={0.1} value={qVar} onChange={(e) => setVal("q_var", parseFloat(e.target.value))} />
+                </label>
+                <div className="gd-note">Het blad toetst Q<sub>k</sub> en q<sub>k</sub> elk als eigen combinatie; q<sub>k</sub> = 0 laat die combinatie weg.</div>
               </>
             )}
             {loadTab === 2 && (
@@ -455,9 +331,12 @@ export default function GordingDesigner() {
                   <input type="number" step={0.5} value={zWind} onChange={(e) => setVal("z_wind", parseFloat(e.target.value))} />
                 </label>
                 <label>Extreme stuwdruk q<sub>p</sub> (kN/m²)
-                  <input type="number" value={+qpWind.toFixed(3)} disabled />
+                  <input type="number" value={qpBlad !== undefined ? +qpBlad.toFixed(3) : ""} disabled />
                 </label>
-                <div className="gd-note">C<sub>pe</sub> = 0,70 (zone F-G-H), C<sub>pi</sub> = −0,30 — vaste NB-waarden.</div>
+                <label>c<sub>pe</sub> bij zuiging
+                  <input type="number" step={0.1} value={cpeZuig} onChange={(e) => setVal("c_pe_zuig", parseFloat(e.target.value))} />
+                </label>
+                <div className="gd-note">Negatief, voor de dakzone van deze gording bij A = h.o.h. × L; het blad rekent opwaarts met c<sub>pi</sub> = +0,2.</div>
               </>
             )}
             {loadTab === 3 && (
@@ -475,12 +354,12 @@ export default function GordingDesigner() {
                     <input type="checkbox" checked={mu1Manual === 1} onChange={(e) => setVal("mu1_manual", e.target.checked ? 1 : 0)} />
                     Vormcoëfficiënt μ<sub>1</sub>
                   </span>
-                  <input type="number" step={0.01} value={mu1Manual === 1 ? d("mu1_val") : +mu1Auto.toFixed(3)} disabled={mu1Manual !== 1} onChange={(e) => setVal("mu1_val", parseFloat(e.target.value))} />
+                  <input type="number" step={0.01} value={mu1Manual === 1 ? d("mu1_val") : g["μ_1"] !== undefined ? +g["μ_1"].toFixed(3) : ""} disabled={mu1Manual !== 1} onChange={(e) => setVal("mu1_val", parseFloat(e.target.value))} />
                 </label>
               </>
             )}
           </div>
-          <label>q∥ (kN/m)
+          <label>q∥ door muurplaat en nokgording (kN/m)
             <input type="number" step={0.1} value={qPar} onChange={(e) => setVal("q_par", parseFloat(e.target.value))} />
           </label>
 
@@ -582,7 +461,7 @@ export default function GordingDesigner() {
       <div className="vd-foot">
         <span>Klik op een blauwe maat om die te wijzigen — stroomt direct terug in de rekensheet.</span>
         <span className="vd-live">
-          α = {fmt(alphaDeg, 1)}° · daklengte {Math.round(slopeLen)} mm · h.o.h. {Math.round(hohSlope)} mm · buiging (6.11) {fmt(UC_611, 2)} · (6.12) {fmt(UC_612, 2)} · afschuiving {fmt(UC_shear, 2)} · doorbuiging w<sub>y</sub> {fmt(UC_wy, 2)} · w<sub>z</sub> {fmt(UC_wz, 2)}
+          α = {fmt(alphaDeg, 1)}° · daklengte {Math.round(slopeLen)} mm · h.o.h. {Math.round(hohSlope)} mm · buiging (6.11) {w("UC_611")} · (6.12) {w("UC_612")} · afschuiving {w("UC_afsch")} · oplegdruk {w("UC_c90")} · kip {w("UC_kip")} · doorbuiging w<sub>y</sub> {w("UC_wy")} · w<sub>z</sub> {w("UC_wz")}
         </span>
       </div>
     </div>

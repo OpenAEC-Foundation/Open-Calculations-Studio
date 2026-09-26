@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
 import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useBladUitkomst } from "./bladResultaat";
+import { UitkomstKop } from "./designerKit";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
@@ -9,9 +11,9 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
  * (roloplegging + drukkracht F) en onderscharnier. Zelfde stijl als de andere
  * designers.
  *
- * De UC's in de kop en de voet zijn dezelfde toetsingen als in het rekenblad
- * (templates/kolom.ts, gecalibreerd op 3 referentieberekeningen): druk §6.1.4,
- * druk + buiging §6.2.4, afschuiving §6.1.7, knik §6.3.2, kip + knik §6.3.3.
+ * De UC's in de kop en de voet komen uit het doorgerekende blad
+ * (templates/kolom.ts): het beeld rekent de toetsing niet na, dus beeld en
+ * uitwerking tonen hetzelfde getal, ook in de norm-stand.
  */
 const MARKER = "Houten kolom";
 
@@ -33,18 +35,6 @@ const KLIMAAT: { v: number; label: string }[] = [
 const DUURKLASSE: { v: number; label: string }[] = [
   { v: 1, label: "Blijvend" }, { v: 2, label: "Middellang" }, { v: 3, label: "Kort" },
 ];
-// EN 338 karakteristiek — f_m,k, f_c,0,k, f_v,k, E_0,05 [N/mm²]
-const MAT: Record<number, { fmk: number; fc0k: number; fvk: number; E005: number }> = {
-  1: { fmk: 18, fc0k: 18, fvk: 3.4, E005: 6000 },
-  2: { fmk: 24, fc0k: 21, fvk: 4.0, E005: 7400 },
-  3: { fmk: 30, fc0k: 23, fvk: 4.0, E005: 8000 },
-};
-// k_mod gezaagd hout (EN 1995 Tabel 3.1) — [klimaatklasse 1/2, klimaatklasse 3]
-const KMOD: Record<number, [number, number]> = {
-  1: [0.6, 0.5], 2: [0.8, 0.65], 3: [0.9, 0.7],
-};
-const GAMMA_M = 1.3, K_M = 0.7, BETA_C = 0.2;
-
 const DEFAULTS: Record<string, number> = {
   profiel: 5, L: 3200, Lcr_y: 3200, Lcr_z: 3200, Lcr: 3200,
   N_Ed: 10, M_yA_Ed: 0, M_yB_Ed: 0, q_z_Ed: 0,
@@ -71,6 +61,8 @@ export default function KolomDesigner() {
     [activeId, seedWaarden],
   );
   const [editing, setEditing] = useState<string | null>(null);
+  // De uitkomst en de tussenwaarden van het blad zelf.
+  const uitkomst = useBladUitkomst();
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 760, h: 540 });
@@ -109,62 +101,16 @@ export default function KolomDesigner() {
   // ── invoer ──────────────────────────────────────────────────────────────
   const profId = Math.round(d("profiel"));
   const prof = PROFILES[profId] ?? PROFILES[5];
-  const b = prof.b, h = prof.h;
+  const b = prof.b;
   const L = d("L"), Lcr_y = d("Lcr_y"), Lcr_z = d("Lcr_z"), Lcr = d("Lcr");
   const N_Ed = d("N_Ed"), M_yA = d("M_yA_Ed"), M_yB = d("M_yB_Ed"), q_z = d("q_z_Ed");
   const sterkte = Math.round(d("sterkteklasse")), klim = Math.round(d("klimaatklasse"));
   const duur = Math.round(d("duurklasse"));
 
-  // ── toetsing (zelfde regels als templates/kolom.ts) ──────────────────────
-  const mat = MAT[sterkte] ?? MAT[2];
-  const kmod = (KMOD[duur] ?? KMOD[1])[klim === 3 ? 1 : 0];
-  const kh = (dim: number) => (dim < 150 ? Math.min((150 / dim) ** 0.2, 1.3) : 1);
-  const fmyd = (kmod * mat.fmk * kh(h)) / GAMMA_M;      // k_h met de hoogte h
-  const fmzd = (kmod * mat.fmk * kh(b)) / GAMMA_M;      // k_h met de breedte b
-  const fc0d = (kmod * mat.fc0k) / GAMMA_M;             // géén k_h op druk
-  const fvd = (kmod * mat.fvk) / GAMMA_M;
-
-  const A = b * h;
-  const Iy = (b * h ** 3) / 12, Iz = (h * b ** 3) / 12;
-  const Wy = Iy / (h / 2);
-  const Sy = (b * h ** 2) / 8;
-  const iy = Math.sqrt(Iy / A), iz = Math.sqrt(Iz / A);
-
-  // snedekrachten: eindmoment + veldmoment uit q_z, dwarskracht incl. koppelkracht
-  const M_Ed = (Math.max(Math.abs(M_yA), Math.abs(M_yB)) + (q_z * (L / 1000) ** 2) / 8) * 1e6; // Nmm
-  const V_Ed = (q_z * (L / 1000)) / 2 + Math.abs(M_yA - M_yB) / (L / 1000);                    // kN
-  const sigC = (N_Ed * 1e3) / A;
-  const sigMy = M_Ed / Wy;
-  const tau = (V_Ed * 1e3 * Sy) / (b * Iy);
-
-  // knik §6.3.2
-  const relSlender = (lcr: number, i: number) => (lcr / i / Math.PI) * Math.sqrt(mat.fc0k / mat.E005);
-  const lamRelY = relSlender(Lcr_y, iy), lamRelZ = relSlender(Lcr_z, iz);
-  const kc = (lamRel: number) => {
-    if (lamRel <= 0.3) return 1;
-    const k = 0.5 * (1 + BETA_C * (lamRel - 0.3) + lamRel ** 2);
-    return 1 / (k + Math.sqrt(k ** 2 - lamRel ** 2));
-  };
-  const kcy = kc(lamRelY), kcz = kc(lamRelZ);
-
-  // kip §6.3.3 — l_ef = 0,9·L + 2h, begrensd op L; De referentie-uitwerking rekent hier met de
-  // kolomlengte L, de ongesteunde lengte L_cr komt in §6.3.3 niet terug.
-  const lef = Math.min(0.9 * L + 2 * h, L);
-  const sigMcrit = ((0.78 * b ** 2) / (h * lef)) * mat.E005;
-  const lamRelM = Math.sqrt(mat.fmk / sigMcrit);
-  const kcrit = lamRelM <= 0.75 ? 1 : lamRelM <= 1.4 ? 1.56 - 0.75 * lamRelM : 1 / lamRelM ** 2;
-
-  const UC_62 = sigC / fc0d;
-  const UC_619 = (sigC / fc0d) ** 2 + sigMy / fmyd;
-  const UC_620 = (sigC / fc0d) ** 2 + (K_M * sigMy) / fmyd;
-  const UC_613 = tau / fvd;
-  const UC_623 = sigC / (kcy * fc0d) + sigMy / fmyd;
-  const UC_624 = sigC / (kcz * fc0d) + (K_M * sigMy) / fmyd;
-  const UC_635 = (sigMy / (kcrit * fmyd)) ** 2 + sigC / (kcz * fc0d);
-  const UC_max = Math.max(UC_62, UC_619, UC_620, UC_613, UC_623, UC_624, UC_635);
-  const ok = UC_max <= 1.0;
   const fmt = (v: number, dec = 2) => v.toFixed(dec).replace(".", ",");
-  void fmzd; // dit blad kent geen belasting om de zwakke as (σ_m,z,d = 0)
+  // Tussenwaarden uit de uitwerking; "—" zolang het blad ze niet toont.
+  const g = uitkomst?.getallen ?? {};
+  const w = (naam: string, dec = 2) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));
 
   // ── klikbare chips ────────────────────────────────────────────────────────
   function Dim(props: { name: string; value: number; x: number; y: number; step?: number; factor?: number; unit?: string; label?: string }) {
@@ -236,12 +182,7 @@ export default function KolomDesigner() {
 
   return (
     <div className="vd-panel">
-      <div className="vd-head">
-        <strong>Parametrisch beeld — kolom</strong>
-        <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
-          UC<sub>max</sub> = {fmt(UC_max, 2)} {ok ? "✓ voldoet" : "✗ voldoet niet"}
-        </span>
-      </div>
+      <UitkomstKop titel="Parametrisch beeld — kolom" uitkomst={uitkomst} />
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
         <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
@@ -350,7 +291,7 @@ export default function KolomDesigner() {
       <div className="vd-foot">
         <span>Klik op een blauwe maat of rode kracht om die te wijzigen — stroomt direct terug in de rekensheet.</span>
         <span className="vd-live">
-          profiel {prof.name} · λ<sub>rel,y</sub> {fmt(lamRelY, 2)} · λ<sub>rel,z</sub> {fmt(lamRelZ, 2)} · k<sub>c,y</sub> {fmt(kcy, 2)} · k<sub>c,z</sub> {fmt(kcz, 2)} · k<sub>crit</sub> {fmt(kcrit, 2)} · druk (6.2) {fmt(UC_62, 2)} · (6.19) {fmt(UC_619, 2)} · afschuiving {fmt(UC_613, 2)} · knik (6.23) {fmt(UC_623, 2)} · (6.24) {fmt(UC_624, 2)} · kip (6.35) {fmt(UC_635, 2)}
+          profiel {prof.name} · M<sub>y,Ed</sub> {w("M_yEd")} kNm · λ<sub>rel,y</sub> {w("λ_rel_y")} · λ<sub>rel,z</sub> {w("λ_rel_z")} · k<sub>c,y</sub> {w("k_cy")} · k<sub>c,z</sub> {w("k_cz")} · k<sub>crit</sub> {w("k_crit")} · druk (6.2) {w("UC_62")} · (6.19) {w("UC_619")} · afschuiving {w("UC_613")} · knik (6.23) {w("UC_623")} · (6.24) {w("UC_624")} · kip (6.35) {w("UC_635")}
         </span>
       </div>
     </div>

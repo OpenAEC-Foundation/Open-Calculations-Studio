@@ -1,0 +1,95 @@
+/**
+ * Controlescript voor de bladen van templates/en1991.ts: opgelegde belasting,
+ * sneeuw en wind (NEN-EN 1991-1-1, -1-3 en -1-4 met NB).
+ *
+ * Geen referentieblad; elke verwachting is een handberekening, hieronder bij
+ * de set uitgeschreven. Windgebied II en terreincategorie II uit de
+ * projectgegevens, z = 10 m:
+ *
+ *   k_r = 0,19·(0,2/0,05)^0,07 = 0,2094     c_r = k_r·ln(10/0,2) = 0,8190
+ *   v_m = 0,8190·27,0 = 22,11 m/s            I_v = 1/ln(50) = 0,2556
+ *   q_p = (1 + 7·0,2556)·0,5·1,25·22,11² = 852,5 N/m² → 0,8525 kN/m²
+ *
+ * Netto winddruk met c_pi = +0,2 (zuiging) en −0,3 (druk), 7.2.9(6).
+ *
+ * Draaien:  node scripts/check-en1991-belastingen.mjs
+ * Vereist een gebouwde core:  npm --prefix packages/core run build
+ */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { reken, toets, afronden } from "./lib/refcheck.mjs";
+
+const BRON = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../packages/desktop/src/templates/en1991.ts"),
+  "utf8",
+);
+
+/** Eén blad uit een bestand met meerdere `export const x = \`…\`;`. */
+function blad(naam) {
+  const kop = `export const ${naam} = \``;
+  const i = BRON.indexOf(kop);
+  if (i < 0) throw new Error(`blad ${naam} niet gevonden`);
+  return BRON.slice(i + kop.length, BRON.indexOf("`;", i + kop.length));
+}
+
+const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 1, windgebied: 2, terreincategorie: 2, DesignLife: 50 };
+let fouten = 0;
+
+// ── Wind ─────────────────────────────────────────────────────────────────────
+const wind = blad("en1991Windbelasting");
+const W = (zone, A, extra = {}) => reken(wind, { zone_cpe: String(zone), z: "10", A_bel: String(A), ...extra }, PROJECT);
+
+// Zone F, A = 1 m²: c_pe,1 = −2,5. Zuiging (−2,5 − 0,2)·0,8525 = −2,302; druk (−2,5 + 0,3)·0,8525 = −1,876.
+// (Het blad gaf eerder −1,279: alleen c_pe,10 en c_pi = −0,3.)
+fouten += toets("wind zone F, A = 1 m²", W(6, 1), { q_p: "0.8525", c_pe: "-2.5", w_z: "-2.302", w_d: "-1.876", w_net: "-2.302", F_w: "-2.302" });
+// Zone F, A = 10 m²: c_pe,10 = −1,8 → (−1,8 − 0,2)·0,8525 = −1,705.
+fouten += toets("wind zone F, A = 10 m²", W(6, 10), { w_net: "-1.705" });
+// Zone G, A = 10 m²: (−1,2 − 0,2)·0,8525 = −1,194.
+fouten += toets("wind zone G, A = 10 m²", W(7, 10), { w_net: "-1.194" });
+// Zone I, ±0,2: druk (0,2 + 0,3)·0,8525 = +0,4263; zuiging (−0,2 − 0,2)·0,8525 = −0,341.
+fouten += toets("wind zone I", W(9, 10), { w_d: "0.4263", w_z: "-0.341", w_net: "0.4263" });
+// Zone A, A = 5 m²: c_pe = −1,4 + 0,2·log10(5) = −1,2602; (−1,2602 − 0,2)·0,8525 = −1,245; F_w = −1,245·5 = −6,224.
+fouten += toets("wind zone A, A = 5 m²", W(1, 5), { c_pe: "-1.260", w_net: "-1.245", F_w: "-6.224" });
+// Zone D, A = 10 m²: (0,8 + 0,3)·0,8525 = 0,9378.
+fouten += toets("wind zone D, A = 10 m²", W(4, 10), { w_net: "0.9378" });
+// Zone E, h/d = 3: c_pe = −0,5 − 0,2·(3 − 1)/4 = −0,6; (−0,6 − 0,2)·0,8525 = −0,682.
+fouten += toets("wind zone E, h/d = 3", W(5, 10, { hd: "3" }), { c_pe: "-0.6", w_net: "-0.682" });
+// Zelf ingevulde c_pe = −0,9: (−0,9 − 0,2)·0,8525 = −0,9378.
+fouten += toets("wind c_pe zelf ingevuld", W(0, 10, { c_pe_hand: "-0.9" }), { c_pe: "-0.9", w_net: "-0.9378" });
+
+// ── Sneeuw ───────────────────────────────────────────────────────────────────
+const sneeuw = blad("en1991Sneeuwbelasting");
+const S = (v) => reken(sneeuw, v, PROJECT);
+
+// Plat dak: 0,8·1,0·1,0·0,7 = 0,56.
+fouten += toets("sneeuw plat dak", S({ α: "0" }), { μ_1: "0.8", s: "0.56", s_maatgevend: "0.56" });
+// α = 40°: μ_1 = 0,8·(60 − 40)/30 = 0,5333 → 0,3733 (gaf eerder NaN).
+fouten += toets("sneeuw α = 40°", S({ α: "40" }), { μ_1: "0.5333", s: "0.3733" });
+// Kiel, ᾱ = 20°: μ_2 = 0,8 + 0,8·20/30 = 1,333 → 0,9333 (gaf eerder 0,8 → 0,56, en s_maatgevend = s).
+fouten += toets("sneeuw kiel ᾱ = 20°", S({ α: "20", ophoping: "1", α_1: "20", α_2: "20" }), { μ_2: "1.333", s_2: "0.9333", s_maatgevend: "0.9333" });
+// Kiel, ᾱ = 40°: μ_2 = 1,6 → 1,12.
+fouten += toets("sneeuw kiel ᾱ = 40°", S({ α: "40", ophoping: "1", α_1: "30", α_2: "50" }), { μ_2: "1.6", s_2: "1.12", s_maatgevend: "1.12" });
+// Hoger bouwdeel, h = 3, b_1 = 10, b_2 = 8, plat: μ_w = 18/6 = 3,0 (≤ 2·3/0,7 = 8,57; ≤ 4); l_s = 6 m; s_2 = 2,1.
+fouten += toets("sneeuw tegen hoger bouwdeel", S({ α: "0", ophoping: "2", h_sp: "3", b_1: "10", b_2: "8", α_b: "0" }), { l_s: "6", μ_w: "3", μ_s: "0", μ_2: "3", s_2: "2.1", s_maatgevend: "2.1" });
+// Idem, hoog dak 30°: μ_s = 0,8·10/6 = 1,333 (helft van 0,8·s_k·10 als driehoek over 6 m); μ_2 = 4,333; s_2 = 3,033.
+fouten += toets("sneeuw hoger bouwdeel, dak 30°", S({ α: "0", ophoping: "2", h_sp: "3", b_1: "10", b_2: "8", α_b: "30" }), { μ_s: "1.333", μ_2: "4.333", s_2: "3.033" });
+// μ_w-grenzen: h = 1, b_1 + b_2 = 30 → 15, maar ≤ 2·1/0,7 = 2,857.
+fouten += toets("sneeuw μ_w begrensd op γh/s_k", S({ α: "0", ophoping: "2", h_sp: "1", b_1: "20", b_2: "10", α_b: "0" }), { μ_w: "2.857", l_s: "5" });
+// Dakrand h = 1,0: 2·1/0,7 = 2,857 → 2,0; s_2 = 1,4; l_s = max(2; 5) = 5.
+fouten += toets("sneeuw dakrand 1,0 m", S({ α: "0", ophoping: "3", h_ob: "1" }), { μ_2: "2", l_s: "5", s_2: "1.4" });
+// Dakrand h = 0,5: 2·0,5/0,7 = 1,429 → s_2 = 1,0.
+fouten += toets("sneeuw dakrand 0,5 m", S({ α: "0", ophoping: "3", h_ob: "0.5" }), { μ_2: "1.429", s_2: "1" });
+
+// ── Opgelegde belasting op een dak ───────────────────────────────────────────
+const gebruik = blad("en1991Gebruiksbelasting");
+const G = (v) => reken(gebruik, v, PROJECT);
+// 17°: 4 − 0,2·17 = 0,6 (gaf eerder een foutmelding); direct onder het dakbeschot 2,0 kN.
+fouten += toets("dak 17°, direct onder het dakbeschot", G({ daktype: "1", α_dak: "17", dakelement: "1" }), { q_dak: "0.6", Q_dak: "2" });
+// 10°: 1,0.  30°, overige elementen: q = 0 maar Q_k = 1,5 kN (gaf eerder 0 kN).
+fouten += toets("dak 10°", G({ daktype: "1", α_dak: "10", dakelement: "1" }), { q_dak: "1", Q_dak: "2" });
+fouten += toets("dak 30°, overige elementen", G({ daktype: "1", α_dak: "30", dakelement: "2" }), { q_dak: "0", Q_dak: "1.5" });
+// Vloer C2 met wand 1-2 kN/m: 4,0 + 0,8 = 4,8; Q_k = 7.
+fouten += toets("vloer C2 met scheidingswand", G({ gebruikscategorie: "8", scheidingswand: "2" }), { q_k: "4", Q_k: "7", q_totaal: "4.8" });
+
+afronden(fouten, "EN 1991 belastingen");

@@ -5,12 +5,17 @@
  * uitkomsten daarom op twee manieren na:
  *
  *   1. Een onafhankelijke uitwerking in JavaScript: α_p, α_s en de wrijvings-
- *      hoek uit tabel 7.c, Koppejan (7.6.2.3(e)) met de grens van 15 MPa, de
- *      schachtwrijving over ΔL, ξ3 en ξ4 uit tabel A.10a of A.10b, γ_t, de
- *      variatiecoëfficiënt, en de negatieve kleef volgens 7.3.2.2(d) met de
- *      spanning over de grondwaterstand heen geïntegreerd. Het blad moet daar
- *      op vier significante cijfers mee overeenkomen.
- *   2. Voor het standaardgeval de getallen van een handberekening.
+ *      hoek uit tabel 7.c, Koppejan (7.6.2.3(e)) met de grens van 15 MPa en
+ *      bij een avegaarpaal traject III ten hoogste 2 MPa, de schachtwrijving
+ *      over ΔL (niet verder dan de onderkant van de lagen met negatieve kleef),
+ *      ξ3 en ξ4 uit tabel A.10a of A.10b, γ_t, de variatiecoëfficiënt, en de
+ *      negatieve kleef volgens 7.3.2.2(d) met de spanning over de
+ *      grondwaterstand heen geïntegreerd. Het blad moet daar op vier
+ *      significante cijfers mee overeenkomen.
+ *   2. Voor een aantal sets de getallen van een handberekening.
+ *
+ * Het eindoordeel kent drie uitkomsten: voldoet niet (UC > 1), niet
+ * aangetoond (VC > 12 %) en voldoet.
  *
  * Draaien:  node scripts/check-paal.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -65,11 +70,20 @@ function uitwerking(v) {
     const a = v.a_p / 1000, b = v.b_p / 1000;
     Ab = a * b; O = 2 * (a + b); Deq = b > 1.5 * a ? a : Math.sqrt((4 * Ab) / Math.PI); s = v.s_p;
   }
+  // Positieve schachtwrijving alleen onder de lagen met negatieve kleef.
+  const zDraag = v.nk === 1 ? v.z_mv - [1, 2, 3, 4, 5].slice(0, v.n_l).reduce((t, j) => t + v[`d_${j}`], 0) : v.z_kop;
+  const dLmax = Math.max(Math.min(v.z_kop, zDraag) - v.z_punt, 0);
   const R = [];
+  let begrensd = false, ingekort = false;
   for (let j = 1; j <= v.n_s; j++) {
-    const qb = Math.min(0.5 * ap * v.β * s * ((v[`q_cI_${j}`] + v[`q_cII_${j}`]) / 2 + v[`q_cIII_${j}`]), 15);
+    // Avegaarpaal: traject III begint met ten hoogste 2 MPa en wordt naar boven nooit hoger.
+    const qIII = v.paaltype === 5 ? Math.min(v[`q_cIII_${j}`], 2) : v[`q_cIII_${j}`];
+    if (qIII < v[`q_cIII_${j}`]) begrensd = true;
+    const dL = Math.min(v[`ΔL_${j}`], dLmax);
+    if (dL < v[`ΔL_${j}`]) ingekort = true;
+    const qb = Math.min(0.5 * ap * v.β * s * ((v[`q_cI_${j}`] + v[`q_cII_${j}`]) / 2 + qIII), 15);
     const Rb = Ab * qb * 1000;
-    const Rs = O * as * Math.min(v[`q_cs_${j}`], 15) * 1000 * v[`ΔL_${j}`];
+    const Rs = O * as * Math.min(v[`q_cs_${j}`], 15) * 1000 * dL;
     R.push({ qb, Rb, Rs, Rc: Rb + Rs });
   }
   const gem = R.reduce((s2, r) => s2 + r.Rc, 0) / R.length;
@@ -99,7 +113,8 @@ function uitwerking(v) {
     }
   }
   const UC = (v.F_c_d + Fnk) / Rcd;
-  return { Ab, O, Deq, R, gem, min, x3, x4, Rck, Rcd, VC, Fnk, UC };
+  const oordeel = UC > 1 ? "voldoet niet" : VC > 0.12 ? "niet aangetoond" : "voldoet";
+  return { Ab, O, Deq, R, gem, min, x3, x4, Rck, Rcd, VC, Fnk, UC, oordeel, begrensd, ingekort };
 }
 
 const s4 = (x) => {
@@ -143,10 +158,15 @@ const SETS = [
     },
   },
   {
-    naam: "3 — prefab met hoge conusweerstand (q_b,max afgetopt op 15 MPa), bovenbelasting, grondwater midden in laag 2",
+    naam: "3 — prefab met hoge conusweerstand (q_b,max afgetopt op 15 MPa), bovenbelasting, grondwater midden in laag 2, ΔL ingekort",
     invoer: {
       n_s: 1, q_cI_1: 32, q_cII_1: 30, q_cIII_1: 28, q_cs_1: 18, ΔL_1: 5, q_mv: 10, d_gw: 3.2,
     },
+    // Met de hand: kleeflagen 2 + 3 + 5 = 10 m onder NAP −0,5 → z_draag = −10,5; punt −15 →
+    // ΔL ten hoogste 4,5 m (ingevuld 5). q_b,max = min(½·0,7·(31 + 28); 15) = 15 MPa;
+    // R_b = 0,0841·15 000 = 1261,5; R_s = 1,16·0,010·15 000·4,5 = 783,0 → 2044,5 kN.
+    // n = 1: ξ = 1,39 → R_c;k = 1470,9; R_c;d = 1225,7 kN. UC = (450 + 174,5)/1225,7 = 0,510.
+    handwerk: { ΔL_1: "4.5", R_scal_1: "783.0", R_ccal_1: "2045", R_cd: "1226", UC: "0.510" },
   },
   {
     naam: "4 — rechthoekige paal 250 × 450 (D_eq = a), s = 0,9, zes sonderingen met grote spreiding",
@@ -156,12 +176,60 @@ const SETS = [
     },
   },
   {
-    naam: "5 — avegaarpaal Ø 400 (in de grond gevormd, δ = φ), drie sonderingen, zandige laag met φ = 32,5°",
+    naam: "5 — avegaarpaal Ø 400 (in de grond gevormd, δ = φ), drie sonderingen, zandige laag met φ = 32,5°, traject III en ΔL begrensd",
     invoer: {
       paaltype: 5, vorm: 1, D: 400, n_s: 3, n_l: 4, φ_4: 32.5, d_4: 2, γ_4: 18, γ_sat_4: 20,
     },
+    // Met de hand: q_c;III = 12/11/11 → 2 MPa. q_b,max = 0,28·(15 + 2) = 4,76; 0,28·(13 + 2) = 4,20;
+    // 0,28·(14 + 2) = 4,48 MPa. Kleeflagen 12 m → z_draag = −12,5; ΔL = 3 → 2,5 m.
+    // R_b = 0,12566·4760 = 598,2; R_s = 1,2566·0,006·10 000·2,5 = 188,5 → R_c;cal,1 = 786,7 kN;
+    // R_c;cal,2 = 527,8 + 169,6 = 697,4; R_c;cal,3 = 563,0 + 169,6 = 732,6 kN.
+    // n = 3: ξ3 = ξ4 = 1,30 → R_c;k = min(738,9; 697,4)/1,30 = 536,5; R_c;d = 447,1 kN.
+    // UC = (450 + 158,2)/447,1 = 1,360.
+    handwerk: { q_bmax_1: "4.76", q_bmax_2: "4.20", R_ccal_1: "786.7", R_ccal_2: "697.4", R_cd: "447.1", UC: "1.360" },
+  },
+  {
+    naam: "6 — avegaarpaal Ø 400 zonder negatieve kleef: q_c;III = 12/11 MPa begrensd op 2 MPa",
+    invoer: { paaltype: 5, vorm: 1, D: 400, nk: 0 },
+    // Met de hand: q_b,max,1 = 0,5·0,56·((16 + 14)/2 + 2) = 4,76 MPa; R_b = 0,12566·4760 = 598,2;
+    // R_s = 1,2566·0,006·10 000·3 = 226,2 → 824,4 kN. Sondering 2: 0,28·15 = 4,20 MPa →
+    // 527,8 + 203,6 = 731,4 kN. n = 2: R_c;k = 731,4/1,32 = 554,1; R_c;d = 461,7 kN; UC = 450/461,7 = 0,975.
+    handwerk: { q_bmax_1: "4.76", R_ccal_1: "824.4", R_ccal_2: "731.4", R_cd: "461.7", UC: "0.975" },
+  },
+  {
+    naam: "7 — avegaarpaal met traject III al onder 2 MPa: geen begrenzing",
+    invoer: { paaltype: 5, vorm: 1, D: 400, nk: 0, q_cIII_1: 1.5, q_cIII_2: 2 },
+    // Met de hand: q_b,max,1 = 0,28·(15 + 1,5) = 4,62 MPa; q_b,max,2 = 0,28·(13 + 2) = 4,20 MPa.
+    handwerk: { q_bmax_1: "4.62", q_bmax_2: "4.20" },
+  },
+  {
+    naam: "8 — standaard met ΔL = 8 m: ingekort tot 4,5 m onder de kleeflagen",
+    invoer: { ΔL_1: 8, ΔL_2: 8 },
+    // Met de hand: R_s,1 = 1,16·0,010·10 000·4,5 = 522; R_c;cal,1 = 794,7 + 522 = 1316,7;
+    // R_c;cal,2 = 0,0841·8400 + 1,16·0,010·9000·4,5 = 706,4 + 469,8 = 1176,2 kN.
+    // n = 2: R_c;k = 1176,2/1,32 = 891,1; R_c;d = 742,6 kN; UC = 545,1/742,6 = 0,734.
+    handwerk: { R_scal_1: "522.0", R_ccal_2: "1176", R_cd: "742.6", UC: "0.734" },
+  },
+  {
+    naam: "9 — als set 4 met F_c;d = 300 kN: UC onder 1, maar VC boven 12 %",
+    invoer: {
+      vorm: 3, a_p: 250, b_p: 450, s_p: 0.9, n_s: 6, F_c_d: 300,
+      q_cI_1: 25, q_cII_1: 22, q_cIII_1: 20, q_cs_1: 12, q_cI_2: 8, q_cII_2: 7, q_cIII_2: 6, q_cs_2: 5,
+    },
+    // Met de hand: F_nk = 1,40·0,25·328 = 114,8 kN; UC = (300 + 114,8)/562,4 = 0,738 → niet aangetoond.
+    handwerk: { R_cd: "562.4", UC: "0.738" },
   },
 ];
+
+/** Het eindoordeel zoals het blad het in de slotzin geeft. */
+function oordeelBlad(tekst) {
+  const i = tekst.lastIndexOf("Maatgevende UC");
+  const zin = i < 0 ? "" : tekst.slice(i, i + 200);
+  if (/voldoet niet/.test(zin)) return "voldoet niet";
+  if (/niet aangetoond/.test(zin)) return "niet aangetoond";
+  if (/draagvermogen \(7\.1\) voldoet/.test(zin)) return "voldoet";
+  return "?";
+}
 
 let fouten = 0;
 for (const set of SETS) {
@@ -171,10 +239,19 @@ for (const set of SETS) {
   const r = uitwerking(v);
   fouten += toets(`${set.naam} — narekening`, got, verwachtingen(r, v));
   if (set.handwerk) fouten += toets(`${set.naam} — handberekening`, got, set.handwerk);
-  const voldoet = /de paal voldoet(?! niet)/.test(got.text);
-  const ok = voldoet === (r.UC <= 1);
+  const oordeel = oordeelBlad(got.text);
+  const ok = oordeel === r.oordeel;
   if (!ok) fouten++;
-  console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${voldoet ? "voldoet" : "voldoet niet"}   narekening ${r.UC <= 1 ? "voldoet" : "voldoet niet"}`);
+  console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${oordeel}   narekening ${r.oordeel}`);
+  // Een begrenzing op traject III of ΔL meldt het blad, en alleen dan.
+  for (const [wel, patroon, wat] of [
+    [r.begrensd, /avegaarpaal: traject III ten hoogste 2 MPa/, "traject III begrensd op 2 MPa"],
+    [r.ingekort, /ingekort tot de paallengte onder de lagen met negatieve kleef/, "ΔL ingekort"],
+  ]) {
+    const gemeld = patroon.test(got.text);
+    if (gemeld !== wel) fouten++;
+    if (wel || gemeld) console.log(`  ${gemeld === wel ? "OK    " : "FOUT  "} melding    ${wat}${wel ? "" : " (onterecht)"}`);
+  }
   // Boven 12 % spreiding moet het blad waarschuwen.
   if (r.VC > 0.12) {
     const melding = /variatiecoëfficiënt is groter dan 12 %/.test(got.text);

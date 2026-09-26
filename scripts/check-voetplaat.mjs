@@ -7,10 +7,13 @@
  *
  *   1. Een onafhankelijke uitwerking in JavaScript: de T-stukken onder druk
  *      (§6.2.5), de ankerrij met de voetplaat op buiging (tabel 6.2 en 6.6),
- *      de krachtsverdeling bij N en M (tabel 6.7), de kegelbreuk, afschuiving
- *      met wrijving en α_bc (§6.2.2), de interactie per anker (tabel 3.4) en
- *      de hoeklassen.
- *   2. Voor de standaardset met moment de getallen van een handberekening.
+ *      bij ankers binnen het profiel het T-stuk rond het lijf (tabel 6.4), de
+ *      krachtsverdeling bij N en M (tabel 6.7), de kegelbreuk, afschuiving
+ *      met wrijving en α_bc (§6.2.2), de interactie per anker (tabel 3.4), de
+ *      hoeklassen en de voorwaarden voor blokhoogte, randafstand (tabel 3.3)
+ *      en plaatdikte (tabel 3.1).
+ *   2. Voor een aantal sets de getallen van een handberekening, en bij de
+ *      invoercontroles de melding in het blad.
  *
  * Daarnaast: de profieltabel van het beeld moet gelijk lopen met de matrix in
  * het blad.
@@ -45,7 +48,9 @@ const FUB = { 4.6: 400, 5.6: 500, 8.8: 800, 10.9: 1000 };
 // ── Onafhankelijke uitwerking; eenheden N en mm ─────────────────────────────
 function uitwerking(v) {
   const p = PROFIEL[v.profile];
-  const fy = v.staalsoort, fu = { 235: 360, 275: 430, 355: 490 }[fy], bw = { 235: 0.8, 275: 0.85, 355: 0.9 }[fy];
+  // Tabel 3.1 (EN 10025-2): t ≤ 40 mm voor de kolom; de plaat naar haar dikte.
+  const fy = v.staalsoort, fu = { 235: 360, 275: 430, 355: 510 }[fy], bw = { 235: 0.8, 275: 0.85, 355: 0.9 }[fy];
+  const fyp = v.t_p <= 40 ? fy : fy - 20, fup = v.t_p <= 40 ? fu : { 235: 360, 275: 410, 355: 470 }[fy];
   const flush = v.ank_opzet === 1 || v.ank_opzet === 6;
   const na = v.ank_opzet === 1 ? 2 : v.ank_opzet === 2 || v.ank_opzet === 6 ? 4 : 6;
   const dp = flush ? Math.min(v.d_p, p.h) : Math.max(v.d_p, p.h), bp = Math.max(v.b_p, p.b);
@@ -59,7 +64,7 @@ function uitwerking(v) {
   const fcd = v.betonklasse / 1.5;
   const kj = v.positie === 1 ? Math.min(3, 1 + v.h_b / Math.max(bp, dp)) : 1;
   const fjd = (2 / 3) * kj * fcd;
-  const c = v.t_p * Math.sqrt(fy / (3 * fjd));
+  const c = v.t_p * Math.sqrt(fyp / (3 * fjd));
   const cp = (dp - p.h) / 2, ci = Math.min(c, (p.h - 2 * p.tf) / 2);
   const Fcpl = fjd * (p.tf + Math.min(c, cp) + ci) * Math.min(p.b + 2 * c, bp);
   const Njrd = 2 * Fcpl + fjd * Math.min(p.tw + 2 * c, bp) * Math.max(0, p.h - 2 * p.tf - 2 * c);
@@ -73,11 +78,23 @@ function uitwerking(v) {
     const lcp = Math.min(2 * Math.PI * mx, Math.PI * mx + w, Math.PI * mx + 2 * e);
     const lnc = Math.min(4 * mx + 1.25 * ex, e + 2 * mx + 0.625 * ex, 0.5 * bp, 0.5 * w + 2 * mx + 0.625 * ex);
     const l1 = Math.min(lcp, lnc);
-    const Mpl1 = 0.25 * l1 * v.t_p ** 2 * fy, Mpl2 = 0.25 * lnc * v.t_p ** 2 * fy;
+    const Mpl1 = 0.25 * l1 * v.t_p ** 2 * fyp, Mpl2 = 0.25 * lnc * v.t_p ** 2 * fyp;
     const n = Math.min(ex, 1.25 * mx);
     const Lb = 8 * d + v.t_g + v.t_p + 0.6 * d, Lbs = (8.8 * mx ** 3 * As) / (l1 * v.t_p ** 3);
     const F12 = (2 * Mpl1) / mx, F2 = (2 * Mpl2 + n * 2 * Ftrd) / (mx + n), F3 = 2 * Ftrd, Ffl = p.b * p.tf * fy;
     FTrd = Lb > Lbs ? Math.min(F12, F3, Ffl) : Math.min(F12, F2, F3, Ffl);
+  } else if (N < 0) {
+    // T-stuk rond het lijf (tabel 6.4, rij zonder verstijving): per kant n_a/2
+    // ankers; F_T,Rd geldt voor het hele T-stuk, dus voor alle ankers samen.
+    const mw = yg - p.tw / 2 - 0.8 * Math.SQRT2 * v.hoeklas, ew = bp / 2 - yg, sw = 2 * xh;
+    const lcp = v.ank_opzet === 1 ? 2 * Math.PI * mw : Math.min(4 * Math.PI * mw, 2 * Math.PI * mw + 2 * sw);
+    const lnc = v.ank_opzet === 1 ? 4 * mw + 1.25 * ew : Math.min(8 * mw + 2.5 * ew, 4 * mw + 1.25 * ew + sw);
+    const l1 = Math.min(lcp, lnc);
+    const Mpl1 = 0.25 * l1 * v.t_p ** 2 * fyp, Mpl2 = 0.25 * lnc * v.t_p ** 2 * fyp;
+    const n = Math.min(ew, 1.25 * mw);
+    const Lb = 8 * d + v.t_g + v.t_p + 0.6 * d, Lbs = (8.8 * mw ** 3 * As * (na / 2)) / (l1 * v.t_p ** 3);
+    const F12 = (2 * Mpl1) / mw, F2 = (2 * Mpl2 + n * na * Ftrd) / (mw + n), F3 = na * Ftrd, Fwb = l1 * p.tw * fy;
+    FTrd = Lb > Lbs ? Math.min(F12, F3, Fwb) : Math.min(F12, F2, F3, Fwb);
   }
 
   // krachtsverdeling
@@ -87,7 +104,7 @@ function uitwerking(v) {
     if (M > 0) schar = true;
     else if (N >= 0) UCc = N / Njrd;
     else {
-      Fta = -N / na; UCt = Fta / Ftrd; Fgroep = -N;
+      Fta = -N / na; UCt = -N / FTrd; Fgroep = -N;
       sx = v.ank_opzet === 6 ? 2 * xh : 0; sy = 2 * yg;
     }
   } else {
@@ -120,24 +137,29 @@ function uitwerking(v) {
   const F2vb = ((0.44 - 0.0003 * fyb) * fub * As) / 1.25;
   const d0 = d + (d <= 14 ? 1 : d <= 24 ? 2 : 3);
   const e1 = dp / 2 - xmax, e2 = bp / 2 - ymax;
-  const ab = Math.min(e1 / (3 * d0), fub / fu, 1), k1s = Math.max(Math.min((2.8 * e2) / d0 - 1.7, 2.5), 0);
-  const F1vb = (k1s * ab * fu * d * v.t_p) / 1.25;
+  const ab = Math.min(e1 / (3 * d0), fub / fup, 1), k1s = Math.max(Math.min((2.8 * e2) / d0 - 1.7, 2.5), 0);
+  const F1vb = (k1s * ab * fup * d * v.t_p) / 1.25;
   const Fvb = Math.min(F1vb, F2vb);
   const nv = v.gatspeling === 1 ? na : 0;
   const Vrd = Ff + nv * Fvb;
-  const UCv = V / Vrd;
+  // Geen dwarskracht is UC 0, ook zonder weerstand; dwarskracht zonder weerstand voldoet niet.
+  const UCv = V > 0 ? V / Vrd : 0;
   const UCtv = Fta > 0 && nv > 0 ? Math.max(V - Ff, 0) / nv / Fvb + Fta / (1.4 * Ftrd) : 0;
 
-  // lassen
+  // lassen: f_u van het zwakste deel (§4.5.3.2(6)), dus van de plaat
   const Ffl = Math.max(M / (p.h - p.tf) - (N * p.b * p.tf) / p.A, 0);
-  const afl = (Math.SQRT2 * (Ffl / (2 * p.b - p.tw)) * bw * 1.25) / fu;
+  const afl = (Math.SQRT2 * (Ffl / (2 * p.b - p.tw)) * bw * 1.25) / fup;
   const Aw = (p.h - 2 * p.tf) * p.tw;
   const Fdw = (Math.max(-N, 0) * Aw) / p.A / (2 * (p.h - 2 * p.tf)), Fla = V / (2 * (p.h - 2 * p.tf));
-  const aw = (Math.sqrt(2 * Fdw ** 2 + 3 * Fla ** 2) * bw * 1.25) / fu;
+  const aw = (Math.sqrt(2 * Fdw ** 2 + 3 * Fla ** 2) * bw * 1.25) / fup;
   const UClas = Math.max(3, afl, aw) / v.hoeklas;
 
+  // Voorwaarden die los van de UC "voldoet niet" geven: blokhoogte (standaard
+  // 50 mm onder de ankerplaat), randafstand ≥ 1,2·d_0 (tabel 3.3), plaat ≤ 80 mm.
+  const ok = v.h_b >= v.h_ef + (v.c_onder ?? 50) && Math.min(e1, e2) >= 1.2 * d0 && v.t_p <= 80;
+
   const UCmax = Math.max(UCc, UCt, UCk, UCv, UCtv, UClas);
-  return { kj, fjd, c, Fcpl, Njrd, FCrd, Ftrd, FTrd, FT, UCc, UCt, UCk, F2vb, F1vb, Vrd, UCv, UCtv, UClas, UCmax, schar };
+  return { kj, fjd, c, Fcpl, Njrd, FCrd, Ftrd, FTrd, FT, UCc, UCt, UCk, F2vb, F1vb, Vrd, UCv, UCtv, UClas, UCmax, schar, ok };
 }
 
 const s4 = (x) => {
@@ -157,6 +179,8 @@ function verwachtingen(r, v) {
   for (const [k, x] of [["UC_c", r.UCc], ["UC_t", r.UCt], ["UC_kegel", r.UCk], ["UC_tv", r.UCtv]]) if (x > 0) uit[k] = ruim(x);
   if (r.FTrd !== null) uit.F_T_Rd = ruim(r.FTrd / 1e3);
   if (r.FT > 0) uit.F_T = ruim(r.FT / 1e3);
+  // Dwarskracht zonder weerstand: het blad geeft een melding in plaats van een oneindige UC.
+  for (const k of ["UC_v", "UC_max"]) if (!Number.isFinite(Number(uit[k].waarde))) delete uit[k];
   return uit;
 }
 
@@ -180,6 +204,10 @@ const SETS = [
   {
     naam: "3 — groot moment met weinig druk, S355, 6 ankers (opzet 5), ongescheurd",
     invoer: { staalsoort: 355, ank_opzet: 5, N_Ed: 50, M_Ed: 90, V_Ed: 30, t_p: 30, gescheurd: 0, hoeklas: 8 },
+    // S355 met t ≤ 40 mm: f_u = 510 N/mm² (tabel 3.1; eerder 490). Stuik:
+    // α_b = min(40/(3·26); 800/510; 1) = 0,5128, k_1 = min(2,8·40/26 − 1,7; 2,5) = 2,5 →
+    // F_1,vb,Rd = 2,5·0,5128·510·24·30/1,25 = 376,6 kN. V_Rd blijft 0,2·50 + 6·56,0 = 346,2 kN.
+    handwerk: { F_1_vb_Rd: "376.6", V_Rd: "346.2" },
   },
   {
     naam: "4 — opwaartse kracht met klein moment: beide ankerrijen getrokken, M20 5.6",
@@ -201,6 +229,55 @@ const SETS = [
     naam: "8 — dunne plaat met de ankers ver van de flens: wrikkracht voor de ankers (L_b ≤ L_b*)",
     invoer: { t_p: 10, d_p: 520, e_d: 40, N_Ed: 20, M_Ed: 40, d_anker: 16, kwaliteit: 4.6 },
   },
+  {
+    naam: "9 — HEA 200, opzet 1, dunne plaat, opwaarts: de plaat buigt rond het lijf",
+    invoer: { profile: 21, ank_opzet: 1, d_p: 190, b_p: 200, t_p: 10, d_anker: 16, h_ef: 300, h_b: 400, N_Ed: -150 },
+    // Met de hand: y_g = (3,25 + 100)/2 = 51,63; m_w = 51,63 − 3,25 − 0,8·√2·6 = 41,59 mm;
+    // e_w = 100 − 51,63 = 48,38 mm; l_eff = min(2π·41,59 = 261,3; 4·41,59 + 1,25·48,38 = 226,8)
+    // = 226,8 mm; M_pl = 0,25·226,8·10²·235 = 1,333 kNm → F_T,1-2 = 2·1,333/0,04159 = 64,1 kN.
+    // Dat is de weerstand van het hele T-stuk, dus van beide ankers samen (tabel 6.2: in
+    // modus 3 is het ΣF_t,Rd van alle ankers). UC_t = 150/64,1 = 2,34.
+    handwerk: { F_T_Rd: "64.1", UC_t: "2.34" },
+  },
+  {
+    naam: "10 — HEA 200, opzet 6: vier ankers, per kant twee als groep langs het lijf",
+    invoer: { profile: 21, ank_opzet: 6, d_p: 190, b_p: 200, t_p: 10, d_anker: 16, h_ef: 300, h_b: 400, N_Ed: -150 },
+    // Met de hand: s = 2·x_h = 2·(95 − 10)/2 = 85 mm; l_eff,cp = min(4π·41,59 = 522,6;
+    // 2π·41,59 + 2·85 = 431,3); l_eff,nc = min(8·41,59 + 2,5·48,38 = 453,6; 226,8 + 85 = 311,8)
+    // → l_eff = 311,8 mm; M_pl = 0,25·311,8·10²·235 = 1,832 kNm; F_T,1-2 = 2·1,832/0,04159
+    // = 88,1 kN voor de vier ankers samen. UC_t = 150/88,1 = 1,70.
+    handwerk: { F_T_Rd: "88.1", UC_t: "1.70" },
+  },
+  {
+    naam: "11 — opwaarts zonder dwarskracht, vergrote gaten: geen afschuifweerstand nodig",
+    invoer: { N_Ed: -100, gatspeling: 0 },
+    // V_Rd = 0 en V_Ed = 0: UC_v = 0; maatgevend is de las met 3/6 = 0,50 → voldoet.
+    handwerk: { V_Rd: "0", UC_v: "0", UC_max: "0.500" },
+  },
+  {
+    naam: "12 — dwarskracht zonder wrijving en met vergrote gaten: geen afschuifweerstand",
+    invoer: { N_Ed: 100, wrijving: 0, gatspeling: 0, V_Ed: 10 },
+    melding: /Geen afschuifweerstand/,
+  },
+  {
+    naam: "13 — plaat van 50 mm: f_y en f_u van de plaat voor 40 < t ≤ 80 mm, ondersabeling 60 mm",
+    invoer: { t_p: 50, d_p: 560, e_d: 50, d_anker: 30, M_Ed: 180, N_Ed: 100, t_g: 60 },
+    // Tabel 3.1, S235 met 40 < t ≤ 80: f_y = 215 N/mm². k_j = 1 + 300/560 = 1,536,
+    // f_jd = 2/3·1,536·16,67 = 17,06 → c = 50·√(215/(3·17,06)) = 102,5 mm. Ankerrij:
+    // m_x = 230 − 150 − 6,79 = 73,21 mm, l_eff = 0,5·380 = 190 mm → M_pl = 0,25·190·50²·215
+    // = 25,53 kNm → F_T,1-2 = 2·25,53/0,07321 = 697,5 kN. t_g = 60 > 50: f_ck,g ≥ f_ck = 25.
+    handwerk: { f_y_p: "215", c: "102.5", F_T_12_Rd: "697.5", f_ck_g: "25" },
+  },
+  {
+    naam: "14 — verankering dieper dan het blok: h_ef = 400 in een blok van 300 mm",
+    invoer: { N_Ed: -150, h_ef: 400, h_b: 300 },
+    melding: /te laag voor de verankeringsdiepte/,
+  },
+  {
+    naam: "15 — randafstand 25 mm bij M24: kleiner dan 1,2·d_0 = 31,2 mm (tabel 3.3)",
+    invoer: { e_d: 25, e_b: 25 },
+    melding: /randafstand van de ankers is kleiner/,
+  },
 ];
 
 let fouten = 0;
@@ -216,10 +293,16 @@ for (const set of SETS) {
     ok = /een scharnierende kolomvoet kan het moment niet overbrengen/.test(got.text);
   } else {
     const voldoet = /de verbinding voldoet(?! niet)/.test(got.text);
-    ok = voldoet === r.UCmax <= 1;
-    console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${voldoet ? "voldoet" : "voldoet niet"}   narekening ${r.UCmax <= 1 ? "voldoet" : "voldoet niet"}`);
+    const wil = r.ok && r.UCmax <= 1;
+    ok = voldoet === wil;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${voldoet ? "voldoet" : "voldoet niet"}   narekening ${wil ? "voldoet" : "voldoet niet"}`);
   }
   if (!ok) fouten++;
+  if (set.melding) {
+    const gezien = set.melding.test(got.text);
+    if (!gezien) fouten++;
+    console.log(`  ${gezien ? "OK    " : "FOUT  "} melding    ${set.melding.source}`);
+  }
 }
 
 // ── De profieltabel van het beeld loopt gelijk met het blad ─────────────────

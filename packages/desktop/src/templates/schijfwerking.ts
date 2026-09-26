@@ -2,33 +2,44 @@
  * Schijfwerking — houten wandschijf (racking) volgens NEN-EN 1995-1-1 §9.2.4.2,
  * methode A, die de Nederlandse bijlage voorschrijft.
  *
- * Opneembare schuifkracht (9.21)/(9.22), kracht in de eindstijlen (9.23), druk
- * loodrecht op de vezel in de regel (§6.1.5), knik van de gedrukte eindstijl
- * (§6.3.2), plooi van de beplating (9.2.4.2(11)) en de afstand van de
- * verbindingsmiddelen (10.8.2(1)).
+ * Opneembare schuifkracht per paneel (9.20)–(9.22), kracht in de eindstijlen
+ * (9.23), druk loodrecht op de vezel in de regel (§6.1.5), knik van de gedrukte
+ * eindstijl (§6.3.2), het anker, glijden van de onderregel, de schuifspanning in
+ * de beplating (NB bij 9.2.4.2(15)), plooi van de beplating (9.2.4.2(11)) en de
+ * afstand van de verbindingsmiddelen (10.8.2(1)).
  *
  * Status: de rekenregels zijn eerder naast referentiebladen van de
- * referentie-uitwerking gelegd (zie de notities in SchijfwerkingDesigner.tsx),
- * maar die vergelijking staat niet in een controlescript.
+ * referentie-uitwerking gelegd, maar die vergelijking staat niet in een
+ * controlescript.
  * check-schijfwerking.mjs rekent het blad met de hand na; de module blijft op
  * "controleren".
  *
- * Aan de veilige kant van de norm, net als de referentie-uitwerking:
- *   • F_f,Rd zonder de verhoging 1,2 voor randverbindingsmiddelen (9.2.4.2(5));
- *   • plooi met de h.o.h.-afstand in plaats van de dagmaat (9.2.4.2(11));
- *   • verbindingsmiddelen hoogstens 150 mm h.o.h., ook bij schroeven waar
- *     10.8.2(1) 200 mm toestaat;
- *   • druk ⊥ op het contactvlak van de stijl, zonder de 30 mm uitbreiding van §6.1.5.
+ * Vier punten volgen de projectinstelling rekenwijze (docs/afwijkingen-referentie.md).
+ * Met rekenwijze 1 aan de veilige kant, zoals de referentie-uitwerking; met 0
+ * volgens de norm:
+ *   • F_f,Rd zonder of met de verhoging 1,2 langs de plaatranden (9.2.4.2(5));
+ *   • plooi met de h.o.h.-afstand of met de dagmaat (9.2.4.2(11));
+ *   • verbindingsmiddelen hoogstens 150 mm h.o.h., of 200 mm bij schroeven
+ *     (10.8.2(1));
+ *   • druk ⊥ op het contactvlak van de stijl, zonder of met de uitbreiding van
+ *     §6.1.5(1) aan de binnenzijde.
  *
- * Volgens de norm aangevuld:
- *   • platen smaller dan h/4 tellen niet mee (9.2.4.2(2));
+ * In beide standen volgens de norm:
+ *   • de sterkte per paneel, met n volle platen plus een restpaneel, elk met zijn
+ *     eigen c_i; een paneel smaller dan h/4 telt niet mee (9.2.4.2(2));
+ *   • de hefboom in (9.23) is de meetellende lengte Σ b_i·c_i gedeeld door c_i
+ *     van de breedste plaat: een smal restpaneel draagt minder, en de volle
+ *     plaat aan het eind krijgt de grootste trekkracht;
  *   • de gedrukte eindstijl krijgt de grootste van F1 en F2: wind komt uit
  *     beide richtingen;
- *   • druk ⊥ rekent met het contactvlak van de stijl. Eerder stond hier de
- *     doorsnede van de regel, wat bij een regel dikker dan de stijl een te
- *     groot vlak gaf;
- *   • de kniklengte uit het vlak is de stijllengte h − 2·t_regel (was
- *     h − t_stijl − t_regel; gelijk zolang stijl en regel even dik zijn).
+ *   • druk ⊥ rekent met het contactvlak van de stijl, niet met de doorsnede van
+ *     de regel;
+ *   • de kniklengte uit het vlak is de stijllengte h − 2·t_regel.
+ *
+ * Het anker, glijden en de plaat worden alleen getoetst als hun capaciteit is
+ * ingevuld; anders zegt de slotzin dat die toetsen apart aangetoond moeten
+ * worden. De detailleringsregels tellen, net als in hsbStabiliteit, als voldoet
+ * of voldoet niet en niet mee in de maatgevende UC.
  *
  * Variabelenamen komen exact overeen met de designer, zodat beeld en sheet
  * dezelfde invoer delen (de waarden van dit exemplaar).
@@ -36,10 +47,8 @@
 
 export const schijfwerking = `"Schijfwerking — houten wandschijf (EN 1995-1-1 §9.2.4)
 
-'<i>Wandschijf van stijl- en regelwerk met beplating, belast door een horizontale
-'schuifkracht (racking) en gerekend met methode A (§9.2.4.2). De wand is aan beide
-'einden verankerd. Wandpanelen met een deur- of raamopening tellen niet mee
-'(9.2.4.2(6)): b is de wandlengte zonder openingen.</i>
+'<i>Wandschijf met beplating, methode A (§9.2.4.2), aan beide einden verankerd. b is de wandlengte
+'zonder openingen (9.2.4.2(6)).</i>
 
 # 1. Verbinding & beplating
 
@@ -48,22 +57,23 @@ export const schijfwerking = `"Schijfwerking — houten wandschijf (EN 1995-1-1 
   Nagel = 2
 @end
 
-F_f_Rd = ?', rekenwaarde per verbindingsmiddel F_f,Rd [kN] volgens hoofdstuk 8, zonder de verhoging 1,2 van 9.2.4.2(5)'
-s_verb = ?', h.o.h. verbindingsmiddelen langs de plaatranden [mm]'
+F_f_Rd = ?*(kN)', rekenwaarde per verbindingsmiddel volgens hoofdstuk 8, zonder de verhoging 1,2 van 9.2.4.2(5)'
+s_verb = ?*(mm)', h.o.h. verbindingsmiddelen langs de plaatranden'
 
 @select n_zijdig "Aantal zijdige beplating"
   Enkelzijdig = 1
   Dubbelzijdig, aan beide zijden dezelfde plaat en verbinding = 2
 @end
 
-t_bepl = ?', dikte beplating [mm]'
+t_bepl = ?*(mm)', dikte beplating'
+f_v,d = ?*(N/mm^2)', rekenwaarde afschuifsterkte van de beplating, k_mod·f_v,k/γ_M; 0 = niet getoetst'
 
 # 2. Stijl & regel
 
-t_stijl = ?', dikte stijl, in het vlak van de wand [mm]'
-b_stijl = ?', breedte stijl, haaks op de wand [mm]'
-t_regel = ?', dikte regel [mm]'
-b_regel = ?', breedte regel [mm]'
+t_stijl = ?*(mm)', dikte stijl, in het vlak van de wand'
+b_stijl = ?*(mm)', breedte stijl, haaks op de wand'
+t_regel = ?*(mm)', dikte regel'
+b_regel = ?*(mm)', breedte regel'
 
 @select detail_AC "Detailaansluiting van de eindstijl"
   Regel doorlopend = 1
@@ -84,104 +94,159 @@ b_regel = ?', breedte regel [mm]'
 
 # 3. Geometrie
 
-b = ?', lengte van de wandschijf zonder openingen [mm]'
-h = ?', hoogte van de wandschijf [mm]'
-bi = ?', breedte van een beplatingsplaat [mm]'
-hoh = ?', h.o.h. afstand van de stijlen [mm]'
+b = ?*(mm)', lengte van de wandschijf zonder openingen'
+h = ?*(mm)', hoogte van de wandschijf'
+bi = ?*(mm)', breedte van een beplatingsplaat'
+hoh = ?*(mm)', h.o.h. afstand van de stijlen'
 
-# 4. Belasting
+# 4. Belasting en verankering
 
-F1 = ?', verticale last linksboven (A) [kN]'
-F2 = ?', verticale last rechtsboven (B) [kN]'
-F_ivEd = ?', horizontale schuifkracht F_i,v,Ed [kN]'
+F1 = ?*(kN)', rekenwaarde (6.10b) van de verticale last op de eindstijl linksboven (A)'
+F2 = ?*(kN)', rekenwaarde (6.10b) van de verticale last op de eindstijl rechtsboven (B)'
+F_ivEd = ?*(kN)', rekenwaarde van de horizontale schuifkracht F_i,v,Ed'
+G_k,eind = ?*(kN)', karakteristieke permanente last op de minst belaste eindstijl; werkt gunstig op het anker'
+F_a,Rd = ?*(kN)', rekenwaarde trekcapaciteit van het anker per wandeinde; 0 = niet getoetst'
+v_Rd = ?*(kN/m)', rekenwaarde schuifverankering van de onderregel per meter; 0 = niet getoetst'
 
 # 5. Materiaal (EN 338)
 
 #hide
 'Materiaalmatrix: [id | f_c,0,k | f_c,90,k | f_v,k | E_0,05]
 matmat = [1; 2; 3 |18; 21; 23 |2.2; 2.5; 2.7 |3.4; 4.0; 4.0 |6000; 7400; 8000]
-f_c0k = hlookup(matmat; sterkteklasse; 1; 2)
-f_c90k = hlookup(matmat; sterkteklasse; 1; 3)
-E_005 = hlookup(matmat; sterkteklasse; 1; 5)
+f_c0k = hlookup(matmat; sterkteklasse; 1; 2)*N/mm^2
+f_c90k = hlookup(matmat; sterkteklasse; 1; 3)*N/mm^2
+E_005 = hlookup(matmat; sterkteklasse; 1; 5)*N/mm^2
 γ_M = 1.30
-'Wind is kortdurend (tabel 2.2 van de NB): k_mod 0,90 in klimaatklasse 1 en 2, 0,70 in 3.
 k_mod = if(klimaatklasse ≡ 3; 0.70; 0.90)
 k_c90 = 1.25
 β_c = 0.2
-pi_ = 3.14159265
 #show
-k_mod', wind: belastingsduurklasse kort'
-f_c0d = f_c0k*k_mod/γ_M', rekenwaarde druksterkte ∥ [N/mm²]'
-f_c90d = f_c90k*k_c90*k_mod/γ_M', rekenwaarde druksterkte ⊥, met k_c,90 = 1,25 [N/mm²]'
+k_mod', wind is kortdurend (Tabel 3.1); γ_M = 1,30 voor gezaagd hout (Tabel 2.3)'
+f_c0d = f_c0k*k_mod/γ_M', rekenwaarde druksterkte ∥'
+f_c90d = f_c90k*k_c90*k_mod/γ_M', rekenwaarde druksterkte ⊥, met k_c,90 = 1,25'
 
 # 6. Opneembare horizontale belasting — methode A (§9.2.4.2)
 
-b_o = h/2', (9.22) [mm]'
-c_i = min(1; bi/b_o)', plaatbreedtefactor (9.22)'
-#if bi ≥ h/4
-    F_ivRd = F_f_Rd*b*c_i*n_zijdig/s_verb', opneembare horizontale belasting (9.21) [kN]'
-#else
-    '<span style="color: red">De plaatbreedte b<sub>i</sub> is kleiner dan h/4: methode A telt zulke
-    'platen niet mee (9.2.4.2(2)).</span>
-    F_ivRd = 0', geen bijdrage [kN]'
+b_o = h/2', (9.22)'
+n_pl = floor(b/bi)', aantal volle platen'
+b_rest = b - n_pl*bi', breedte van het restpaneel'
+c_i = min(1; bi/b_o)', plaatbreedtefactor van een volle plaat (9.22)'
+c_rest = min(1; b_rest/b_o)', en van het restpaneel'
+#hide
+b_ef = bool(bi ≥ h/4)*n_pl*bi*c_i + bool(b_rest ≥ h/4)*b_rest*c_rest
+#show
+b_ef', Σ b_i·c_i van de volle platen en het restpaneel; een paneel smaller dan h/4 telt niet mee (9.2.4.2(2))'
+#if bi < h/4
+    '<span style="color: red">De plaatbreedte b<sub>i</sub> is kleiner dan h/4: methode A telt zulke platen niet mee (9.2.4.2(2)).</span>
+#else if b < h/4
+    '<span style="color: red">De wand is korter dan h/4: methode A telt hem niet mee (9.2.4.2(2)).</span>
+#else if bool(b_rest > 1 mm)*bool(b_rest < h/4) ≡ 1
+    '<span style="color:#b45309">Het restpaneel is smaller dan h/4 en telt niet mee. Zet het anker op de stijl aan het eind van de laatste volle plaat, of veranker het restpaneel apart (9.2.4.2(10), fig. 9.6).</span>
 #end if
-#if F_ivRd > 0
-    UC_sterkte = F_ivEd/F_ivRd
+#hide
+F_ivRd,xc = F_f_Rd*b_ef*n_zijdig/s_verb
+F_ivRd,nb = 1.2*F_f_Rd*b_ef*n_zijdig/s_verb
+#show
+F_ivRd = if(rekenwijze ≡ 1; F_ivRd,xc; F_ivRd,nb) to kN', (9.20)/(9.21); de verhoging 1,2 langs de plaatranden (9.2.4.2(5)) alleen volgens de norm'
+#if F_ivRd > 0 kN
+    #if F_ivEd ≤ F_ivRd
+        UC_sterkte = F_ivEd/F_ivRd', voldoet'
+    #else
+        UC_sterkte = F_ivEd/F_ivRd', voldoet niet'
+    #end if
 #else
     #hide
     UC_sterkte = 1/0
     #show
-#end if
-#if UC_sterkte ≤ 1.0
-    'UC<sub>sterkte</sub> = F<sub>i,v,Ed</sub>/F<sub>i,v,Rd</sub> = 'UC_sterkte'<span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
-#else
-    'UC<sub>sterkte</sub> = F<sub>i,v,Ed</sub>/F<sub>i,v,Rd</sub> = 'UC_sterkte'<span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
+    'UC<sub>sterkte</sub> = ∞: er telt geen paneel mee.
 #end if
 
 # 7. Verankering & gedrukte eindstijl
 
-F_itEd = F_ivEd*h/b', trek- en drukkracht in de eindstijlen (9.23) [kN]'
-F_tot = F_itEd + max(F1; F2)', totale last op de gedrukte eindstijl [kN]'
-'<i>Wind komt uit beide richtingen; daarom krijgt de gedrukte eindstijl de grootste van
-'F1 en F2. Het anker aan de trekzijde neemt F<sub>i,t,Ed</sub> op, verminderd met de gunstig
-'werkende permanente last.</i>
+#hide
+c_ref = min(1; min(b; bi)/b_o)
+#show
+L_ef = if(b_ef > 0 mm; b_ef/c_ref; b)', hefboom (9.23): Σ b_i·c_i gedeeld door c_i van de breedste plaat'
+F_itEd = F_ivEd*h/L_ef to kN', trek- en drukkracht in de eindstijlen (9.23)'
+N_t = max(0 kN; F_itEd - 0.9*G_k,eind) to kN', trekkracht in het anker, γ_G,inf = 0,9 op de permanente last'
+#if F_a,Rd > 0 kN
+    #if N_t ≤ F_a,Rd
+        UC_anker = N_t/F_a,Rd', voldoet'
+    #else
+        UC_anker = N_t/F_a,Rd', voldoet niet'
+    #end if
+#else
+    #hide
+    UC_anker = 0
+    #show
+    '<i>Anker: niet getoetst, geen F<sub>a,Rd</sub> ingevuld.</i>
+#end if
+#if v_Rd > 0 kN/m
+    #if F_ivEd ≤ v_Rd*b
+        UC_glijden = F_ivEd/(v_Rd*b)', glijden van de onderregel, voldoet'
+    #else
+        UC_glijden = F_ivEd/(v_Rd*b)', glijden van de onderregel, voldoet niet'
+    #end if
+#else
+    #hide
+    UC_glijden = 0
+    #show
+    '<i>Glijden van de onderregel: niet getoetst, geen v<sub>Rd</sub> ingevuld.</i>
+#end if
+τ_d = F_ivEd/(n_zijdig*L_ef*t_bepl) to N/mm^2', schuifspanning in de volle plaat'
+#if f_v,d > 0 N/mm^2
+    #if τ_d ≤ f_v,d
+        UC_plaat = τ_d/f_v,d', NB bij 9.2.4.2(15), voldoet'
+    #else
+        UC_plaat = τ_d/f_v,d', NB bij 9.2.4.2(15), voldoet niet'
+    #end if
+#else
+    #hide
+    UC_plaat = 0
+    #show
+    '<i>Schuifspanning in de plaat: niet getoetst, geen f<sub>v,d</sub> ingevuld.</i>
+#end if
+F_tot = F_itEd + max(F1; F2)', totale last op de gedrukte eindstijl: wind komt uit beide richtingen'
 
 '<h6>7.1 Druk loodrecht op de vezel — regel onder de eindstijl (§6.1.5)</h6>
-'De toets op de regel geldt alleen als de <b>regel doorloopt</b>; loopt de <b>stijl door</b>, dan
-'draagt de stijl direct af en vervalt de toets.
+#hide
+A_c90,xc = t_stijl*min(b_stijl; b_regel)
+A_c90,nb = (t_stijl + min(30 mm; t_stijl; (hoh - t_stijl)/2))*min(b_stijl; b_regel)
+#show
 #if detail_AC < 1.5
-    A_c90 = t_stijl*min(b_stijl; b_regel)', contactvlak van de stijl op de regel [mm²]'
-    σ_c90d = F_tot*1000/A_c90', drukspanning ⊥ [N/mm²]'
-    UC_druk90 = σ_c90d/f_c90d
-    #if UC_druk90 ≤ 1.0
-        'UC<sub>druk⊥</sub> = σ<sub>c,90,d</sub>/f<sub>c,90,d</sub> = 'UC_druk90'<span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
+    A_c90 = if(rekenwijze ≡ 1; A_c90,xc; A_c90,nb)', contactvlak van de stijl op de regel; volgens de norm +30 mm aan de binnenzijde (§6.1.5(1))'
+    σ_c90d = F_tot/A_c90 to N/mm^2', drukspanning ⊥'
+    #if σ_c90d ≤ f_c90d
+        UC_druk90 = σ_c90d/f_c90d', voldoet'
     #else
-        'UC<sub>druk⊥</sub> = σ<sub>c,90,d</sub>/f<sub>c,90,d</sub> = 'UC_druk90'<span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
+        UC_druk90 = σ_c90d/f_c90d', voldoet niet'
     #end if
 #else
     #hide
     UC_druk90 = 0
     #show
-    '<i>Stijl doorlopend: druk ⊥ op de regel niet van toepassing.</i>
+    '<i>Stijl doorlopend: de stijl draagt direct af, druk ⊥ op de regel is niet van toepassing.</i>
 #end if
 
 # 8. Detaillering
 
-'<h6>8.1 Plooi beplating (9.2.4.2(11))</h6>
-p_opn = 100', grens voor de slankheid van de plaat'
-UC_plooi = hoh/t_bepl/p_opn
-#if UC_plooi ≤ 1.0
-    'UC<sub>plooi</sub> = (h.o.h./t)/100 = 'UC_plooi'<span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
+#hide
+UC_plooi,xc = hoh/t_bepl/100
+UC_plooi,nb = (hoh - t_stijl)/t_bepl/100
+s_max,xc = 150 mm
+s_max,nb = if(verbindingsmiddel ≡ 1; 200 mm; 150 mm)
+UC_hoh,xc = s_verb/s_max,xc
+UC_hoh,nb = s_verb/s_max,nb
+#show
+UC_plooi = if(rekenwijze ≡ 1; UC_plooi,xc; UC_plooi,nb)', plooi (9.2.4.2(11)): h.o.h.-afstand, volgens de norm de dagmaat, gedeeld door 100·t'
+UC_hoh = if(rekenwijze ≡ 1; UC_hoh,xc; UC_hoh,nb)', h.o.h. langs de plaatranden (10.8.2(1)): hoogstens 150 mm, volgens de norm 200 mm bij schroeven'
+#hide
+ok_detail = bool(UC_plooi ≤ 1)*bool(UC_hoh ≤ 1)
+#show
+#if ok_detail ≡ 1
+    'Detaillering:<span style="color: green"> <b>voldoet</b></span>
 #else
-    'UC<sub>plooi</sub> = (h.o.h./t)/100 = 'UC_plooi'<span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
-#end if
-
-'<h6>8.2 H.o.h. verbindingsmiddelen langs de plaatranden (10.8.2(1)), hoogstens 150 mm</h6>
-UC_hoh = s_verb/150
-#if UC_hoh ≤ 1.0
-    'UC<sub>h.o.h.</sub> = s/150 = 'UC_hoh'<span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
-#else
-    'UC<sub>h.o.h.</sub> = s/150 = 'UC_hoh'<span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
+    'Detaillering:<span style="color: red"> <b>voldoet niet</b></span> — zie de regel met een waarde boven 1,0.
 #end if
 
 # 9. Gedrukte eindstijl op druk + knik (§6.3.2)
@@ -194,50 +259,45 @@ i_z = t_stijl/sqrt(12)
 'beplating hem bij elk verbindingsmiddel vast.
 L_cry = h - 2*t_regel
 L_crz = s_verb
-λ_rely = L_cry/i_y/pi_*sqrt(f_c0k/E_005)
-λ_relz = L_crz/i_z/pi_*sqrt(f_c0k/E_005)
+λ_rely = L_cry/i_y/π*sqrt(f_c0k/E_005)
+λ_relz = L_crz/i_z/π*sqrt(f_c0k/E_005)
 k_y = 0.5*(1 + β_c*(λ_rely - 0.3) + λ_rely^2)
 k_z = 0.5*(1 + β_c*(λ_relz - 0.3) + λ_relz^2)
 k_cy = if(λ_rely ≤ 0.3; 1; 1/(k_y + sqrt(k_y^2 - λ_rely^2)))
 k_cz = if(λ_relz ≤ 0.3; 1; 1/(k_z + sqrt(k_z^2 - λ_relz^2)))
-σ_c0d = F_tot*1000/A_stijl
+σ_c0d = F_tot/A_stijl to N/mm^2
 #show
-L_cry', kniklengte uit het vlak: stijllengte tussen de regels [mm]'
-λ_rely
-k_cy
-σ_c0d', drukspanning in de stijl [N/mm²]'
-UC_stijl = max(σ_c0d/(k_cy*f_c0d); σ_c0d/(k_cz*f_c0d))
-#if UC_stijl ≤ 1.0
-    'UC<sub>stijl</sub> = σ<sub>c,0,d</sub>/(k<sub>c</sub>·f<sub>c,0,d</sub>) = 'UC_stijl'<span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
+L_cry', kniklengte uit het vlak: stijllengte tussen de regels'
+λ_rely', relatieve slankheid (6.21)'
+k_cy', knikfactor (6.25); in het vlak kniklengte = h.o.h. verbindingsmiddelen'
+σ_c0d', drukspanning in de stijl'
+#if max(σ_c0d/(k_cy*f_c0d); σ_c0d/(k_cz*f_c0d)) ≤ 1
+    UC_stijl = max(σ_c0d/(k_cy*f_c0d); σ_c0d/(k_cz*f_c0d))', voldoet'
 #else
-    'UC<sub>stijl</sub> = 'UC_stijl'<span style="color: red"> > 1,0 → <b>voldoet niet</b></span>
+    UC_stijl = max(σ_c0d/(k_cy*f_c0d); σ_c0d/(k_cz*f_c0d))', voldoet niet'
 #end if
 
 # 10. Samenvatting
 
-UC_max = max(UC_sterkte; UC_druk90; UC_plooi; UC_hoh; UC_stijl)
-#if UC_max ≤ 1.0
+UC_max = max(UC_sterkte; UC_druk90; UC_stijl; UC_anker; UC_glijden; UC_plaat)
+#hide
+volledig = bool(F_a,Rd > 0 kN)*bool(v_Rd > 0 kN/m)*bool(f_v,d > 0 N/mm^2)
+#show
+#if UC_max > 1.0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>Schijfwerking voldoet niet</b></span>
+#else if ok_detail ≡ 0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>Schijfwerking voldoet niet: de detaillering klopt niet</b></span>
+#else if volledig ≡ 1
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>Schijfwerking voldoet</b></span>
 #else
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>Schijfwerking voldoet niet</b></span>
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>schijf en eindstijl voldoen</b></span>; de toetsen zonder ingevulde capaciteit (anker, glijden, plaat) apart aantonen.
 #end if
 
 '<hr/>
-'<i>Aandachtspunten:
-'<ul>
-'<li><b>Nog niet vastgelegd:</b> de rekenregels zijn naast referentiebladen gelegd, maar die
-'vergelijking staat niet in een controlescript. De module blijft op controleren.</li>
-'<li>Aan de veilige kant van de norm, net als de referentie-uitwerking: F<sub>f,Rd</sub> zonder de
-'verhoging 1,2 van 9.2.4.2(5), plooi met de h.o.h.-afstand in plaats van de dagmaat, 150 mm als
-'grootste h.o.h. ook bij schroeven (10.8.2(1) staat daar 200 mm toe) en druk ⊥ zonder de 30 mm
-'uitbreiding van het contactvlak (§6.1.5).</li>
-'<li>Platen smaller dan h/4 tellen niet mee (9.2.4.2(2)). Bij dubbelzijdige beplating met
-'verschillende platen of verbindingen mag van de zwakste zijde maar 75 % of 50 % worden
-'opgeteld (9.2.4.2(7)); vul dan enkelzijdig in en tel zelf op.</li>
-'<li>Bij de tussenstijlen mag de afstand van de verbindingsmiddelen hoogstens tweemaal die langs
-'de plaatranden zijn, met een maximum van 300 mm (9.2.4.2(12) en 10.8.2(1)).</li>
-'<li>Wind is kortdurend (tabel 2.2 van de Nederlandse bijlage): k<sub>mod</sub> = 0,90 in
-'klimaatklasse 1 en 2, 0,70 in klimaatklasse 3. γ<sub>M</sub> = 1,30 voor gezaagd hout, ongeacht de
-'gevolgklasse; die zit in de belasting.</li>
-'</ul></i>
+'<i>Aandachtspunten:</i>
+#if rekenwijze ≡ 1
+    '<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Aan de veilige kant vereenvoudigd: F<sub>f,Rd</sub> zonder de verhoging 1,2 van 9.2.4.2(5), plooi met de h.o.h.-afstand in plaats van de dagmaat, hoogstens 150 mm h.o.h. ook bij schroeven, en druk ⊥ zonder de uitbreiding van het contactvlak (§6.1.5(1)).</li><li>Dubbelzijdig met verschillende platen of verbindingen: de zwakste zijde telt maar voor 75 % of 50 % (9.2.4.2(7)); vul dan enkelzijdig in en tel zelf op.</li><li>Op de tussenstijlen hoogstens tweemaal de afstand langs de plaatranden, en niet meer dan 300 mm (9.2.4.2(12) en 10.8.2(1)).</li></ul>
+#else
+    '<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Dubbelzijdig met verschillende platen of verbindingen: de zwakste zijde telt maar voor 75 % of 50 % (9.2.4.2(7)); vul dan enkelzijdig in en tel zelf op.</li><li>Op de tussenstijlen hoogstens tweemaal de afstand langs de plaatranden, en niet meer dan 300 mm (9.2.4.2(12) en 10.8.2(1)).</li></ul>
+#end if
 `;

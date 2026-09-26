@@ -10,6 +10,10 @@
  * Bij de basis (c 30 tegen 3Ø = 48) speelt dat niet; bij Ø6 met c 60 wel, en
  * dan geeft de referentie-uitwerking een KORTERE verankering dan de norm toestaat.
  *
+ * Elke set draait daarna ook in de norm-stand (`rekenwijze` = 0): alles eindig,
+ * en waar het splitspunt bijt wordt l_bd daar langer. Tot slot een staaf op druk
+ * (tabel 8.2 en (8.7)) met een handberekening; daarvoor bestaat geen referentie.
+ *
  * Draaien:  node scripts/check-verankeringslengte.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
@@ -54,13 +58,42 @@ const REFERENTIES = [
     // en zakt door tot de ondergrens van 100 mm. Tabel 8.2 geeft voor een rechte
     // staaf α₁ = 1,00 en dan is 115 mm nodig — dat is `l_bd,nb`. In de
     // referentiestand is `l_bd` dus 100 en niet 115.
-    verwacht: { "α_1": "1", l_bd_nb: "115", l_bd: "100" } },
+    verwacht: { "α_1": "1", l_bd_nb: "115", l_bd: "100" },
+    // In de referentiestand staat de ingekorte lengte als rode regel bij de conclusie.
+    melding: /Korter dan tabel 8\.2 toestaat/ },
+
+  { blad: "document7B — lijst per diameter, Ø8 met c 30",
+    invoer: { diameter: "8", c_dek: "30" },
+    // c_d = 30 > 3Ø = 24: de referentie-uitwerking zet α₁ op 0,70, dus
+    // l_bd = 0,7·0,7·218,2 = 106,9 mm; tabel 8.2 geeft 1,0·0,7·218,2 = 152,7 mm.
+    // Het afgedrukte product moet dezelfde α₁ tonen als het getal erachter.
+    verwacht: { "α_2": "0.7", l_bd_nb: "153", l_bd: "107" },
+    melding: /0\.7 · 0\.7 · 1 · 1 · 1 · 218\.2 = 106\.9 mm/ },
 ];
 
 let fouten = 0;
 for (const ref of REFERENTIES) {
   const got = reken(tpl, { ...BASIS, ...ref.invoer }, PROJECT);
   fouten += toets(ref.blad, got, ref.verwacht, {});
+  if (ref.melding) {
+    const gezien = ref.melding.test(got.text);
+    if (!gezien) fouten++;
+    console.log(`  ${gezien ? "OK    " : "FOUT  "} tekst      ${ref.melding.source}`);
+  }
+  // Norm-stand: alles eindig; waar het splitspunt bijt wordt l_bd langer.
+  const nb = reken(tpl, { ...BASIS, ...ref.invoer }, { rekenwijze: 0 });
+  const bijt = ref.verwacht.l_bd_nb !== undefined;
+  fouten += toetsNormStand(ref.blad, got, nb, { l_bd: bijt ? "hoger" : "gelijk" });
+}
+
+// ── Staaf op druk: geen referentie, handberekening ──────────────────────────
+{
+  const got = reken(tpl, { ...BASIS, staafkracht: "2" }, PROJECT);
+  // Tabel 8.2 op druk: α₁ = α₂ = α₃ = α₅ = 1, dus l_bd = l_b,rqd = (16/4)·434,8/3,985
+  // = 436,4 mm. Ondergrens (8.7): max(0,6·436,4 = 261,8; 10·16; 100) = 261,8 mm.
+  // Op trek zou α₂ = 1 − 0,15·(30 − 16)/16 = 0,869 zijn en l_bd 379 mm.
+  fouten += toets("druk — C45/55 · Ø16 · c 30 · recht, staaf op druk (handberekening)", got,
+    { "α_1": "1", "α_2": "1", l_b_min: "261.8", l_bd: "436.4" });
 }
 
 afronden(fouten, "Verankeringslengte");

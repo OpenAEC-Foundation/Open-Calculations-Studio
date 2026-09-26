@@ -55,6 +55,18 @@ fouten += toets("boven de grens — 1400 kg bitumen", zwaar, { q_f_k: "823.3", U
   console.log(`  ${ok ? "OK    " : "FOUT  "} slotzin   ${zin.slice(0, 90)}`);
 }
 
+// Afdruk beknopt: alleen materialen met massa, geen invoerhulp of interne notities.
+// Handberekening: 1000 × 18 + 400 × 42 = 34 800 MJ over 100 m² → 348 MJ/m², UC 0,696.
+const kort = reken(tpl, { A_f: "100", m_hout: "1000", m_bitumen: "400" }, PROJECT);
+fouten += toets("beknopte afdruk — alleen hout en bitumen", kort, { Q_totaal: "34800", q_f_k: "348", UC_max: "0.696" });
+{
+  const zichtbaar = ["Q_pir", "Q_eps", "Q_pvc", "Q_pe", "Q_overig", "Q_a", "Q_b"].filter((q) => q in kort.values);
+  const ruis = ["Schatting", "Aandachtspunten", "Nog niet geverifieerd", "Vul per materiaal"].filter((t) => kort.text.includes(t));
+  const ok = zichtbaar.length === 0 && ruis.length === 0;
+  if (!ok) fouten++;
+  console.log(`  ${ok ? "OK    " : "FOUT  "} geen nulregels of hulptekst   ${[...zichtbaar, ...ruis].join(", ") || ""}`);
+}
+
 // Zonder vloeroppervlakte: geen deling door nul maar een melding en ∞.
 const leeg = reken(tpl, { ...BASIS, A_f: "0" }, PROJECT);
 {

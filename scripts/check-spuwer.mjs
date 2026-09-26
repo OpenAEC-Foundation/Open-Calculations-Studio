@@ -8,6 +8,11 @@
  * De u.c. staat niet als losse grootheid in het blad maar in de conclusieregel;
  * die wordt daarom uit de gerenderde tekst gehaald.
  *
+ * De referentiebladen geven ook een ronde spuwer bij gelijke d_nd (160 / 160 /
+ * 80 / 160 / 160 mm). Het blad drukt die niet meer af: het is geen minimale
+ * maat, want §7.3(3) vraagt voor een ronde spuwer ten minste 117 mm. Het
+ * script bewaakt dat die maat niet terugkomt.
+ *
  * Draaien:  node scripts/check-spuwer.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
@@ -21,19 +26,19 @@ const BASIS = { A_afv: "600", n_sp: "3", b_sp: "600", h_sp: "80", h_nd: "50", t_
 const REFERENTIES = [
   { blad: "1S — n 3 · b 600 · h 80 · h_nd 50 · t 50 jaar",
     invoer: {},
-    verwacht: { d_nd: "45.7", d_hw: "96", h_min: "76", d_min: "160", UC: "0.95" } },
+    verwacht: { d_nd: "45.7", d_hw: "96", h_min: "76", UC: "0.95" } },
   { blad: "2S — n 2 (minder spuwers, zelfde dak)",
     invoer: { n_sp: "2" },
-    verwacht: { d_nd: "59.8", d_hw: "110", h_min: "90", d_min: "160", UC: "1.12" } },
+    verwacht: { d_nd: "59.8", d_hw: "110", h_min: "90", UC: "1.12" } },
   { blad: "3S — n 2 · b 300 (halve spuwerbreedte)",
     invoer: { n_sp: "2", b_sp: "300" },
-    verwacht: { d_nd: "95.0", d_hw: "145", h_min: "125", d_min: "80", UC: "1.56" } },
+    verwacht: { d_nd: "95.0", d_hw: "145", h_min: "125", UC: "1.56" } },
   { blad: "4S — n 2 · h 100 (hogere spuwer)",
     invoer: { n_sp: "2", h_sp: "100" },
-    verwacht: { d_nd: "59.8", d_hw: "110", h_min: "90", d_min: "160", UC: "0.90" } },
+    verwacht: { d_nd: "59.8", d_hw: "110", h_min: "90", UC: "0.90" } },
   { blad: "5S — n 2 · h_nd 30 (lagere drempel)",
     invoer: { n_sp: "2", h_nd: "30" },
-    verwacht: { d_nd: "59.8", d_hw: "90", h_min: "90", d_min: "160", UC: "1.12" } },
+    verwacht: { d_nd: "59.8", d_hw: "90", h_min: "90", UC: "1.12" } },
 
   // 6S t/m 8S: n 3 · b 600 · h 80 · h_nd 30, alleen de referentieperiode wisselt.
   // Toetst tabel NB.1 — i_r per ontwerplevensduur.
@@ -61,6 +66,10 @@ for (const ref of REFERENTIES) {
   const m = got.text.match(/u\.c\.\s*=\s*([\d.]+)/);
   const afgeleid = m ? { UC: parseFloat(m[1]) } : {};
   fouten += toets(ref.blad, got, ref.verwacht, {}, afgeleid);
+  if (/ronde spuwer/i.test(got.text)) {
+    fouten++;
+    console.log('  FOUT   het blad drukt weer een ronde-spuwerdiameter af');
+  }
 }
 
 afronden(fouten, "Spuwer");

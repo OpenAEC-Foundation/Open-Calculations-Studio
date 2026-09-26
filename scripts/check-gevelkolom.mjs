@@ -8,7 +8,10 @@
  *      NEN-EN 1991-1-4 met NB (q_p uit windgebied en terreincategorie, c_pe
  *      voor de gevelzones van tabel NB.6 – 7.1, c_pi), doorsnedeklasse (tabel
  *      5.2), doorsnede (§6.2), knik om beide assen en torsieknik om de as van
- *      de regels, M_cr volgens bijlage NB.NB met χ_LT volgens 6.3.2.3 — bij
+ *      de regels — voor de knik zonder buiging met de grootste drukkracht van
+ *      beide combinaties en een effectief lijf als dat bij zuivere druk in
+ *      klasse 4 valt (NEN-EN 1993-1-5 §4.4) —, M_cr volgens bijlage NB.NB met
+ *      χ_LT volgens 6.3.2.3 — bij
  *      winddruk voor álle velden tussen de regels, niet alleen de onderste
  *      helft zoals het blad — en de interactie volgens bijlage B. Het blad moet
  *      daar op vier significante cijfers mee overeenkomen.
@@ -134,7 +137,13 @@ function uitwerking(v, P) {
     chiTF = chi(lTF, az);
   }
   const chizT = Math.min(chiz, chiTF), lzT = Math.max(lz, lTF);
-  const Nb = Math.min(chiy, chizT) * A * fy;
+  // Knik zonder buiging: de grootste N van beide combinaties, zonder wind is dat
+  // zuivere druk. Lijf in klasse 4 (c/t > 42ε) → ρ met ψ = 1 en k_σ = 4.
+  const Nmax = Math.max(N, (v.N_Ed_max ?? 0) * 1000);
+  const lp = cw / tw / (28.4 * eps * 2);
+  const rho = cw / tw <= 42 * eps ? 1 : Math.min(1, (lp - 0.22) / (lp * lp));
+  const Aeff = A - (1 - rho) * cw * tw;
+  const Nb = Math.min(chiy, chizT) * Aeff * fy;
 
   // kip: M_cr volgens NB.NB, χ_LT volgens 6.3.2.3
   const S = Math.sqrt((E * Iw) / (G * It));
@@ -189,13 +198,13 @@ function uitwerking(v, P) {
   const qk = Math.max(w.wd, w.wz) * v.b_belast;
   const delta = (5 * qk * L ** 4) / (384 * E * Iy);
   const UC = {
-    V: V / Vpl, d: UCd, N: N / Nb, LTd: Md / Mbd, LTz: Mz / Mbz,
+    V: V / Vpl, d: UCd, N: Nmax / Nb, LTd: Md / Mbd, LTz: Mz / Mbz,
     d661: ny + (kyy * Md) / Mbd, d662: nz + (kzyd * Md) / Mbd,
     z661: ny + (kyy * Mz) / Mbz, z662: nz + (kzyz * Mz) / Mbz,
     δ: delta / (L / v.VerplGrens),
   };
   return {
-    w, klasse, kst, Wy, Npl, Mc, MN, Av, Vpl, Ncry, Ncrz, chiy, chiz, NcrTF, chiTF, Nb, S, chiLTd, Mcrd, Mbd,
+    w, klasse, kst, Nmax, rho, Aeff, Wy, Npl, Mc, MN, Av, Vpl, Ncry, Ncrz, chiy, chiz, NcrTF, chiTF, Nb, S, chiLTd, Mcrd, Mbd,
     Mcrz, chiLTz, Mbz, kyy, kzyd, kzyz, delta, UC, UCmax: Math.max(...Object.values(UC)),
   };
 }
@@ -213,7 +222,7 @@ function verwachtingen(r, v) {
     klasse: String(r.klasse), W_y: ruim(r.Wy / 1e3), N_pl_Rd: ruim(r.Npl / 1e3), M_c_Rd: ruim(r.Mc / 1e6),
     A_v: ruim(r.Av), V_pl_Rd: ruim(r.Vpl / 1e3), UC_V: ruim(r.UC.V), UC_d: ruim(r.UC.d),
     N_cr_y: ruim(r.Ncry / 1e3), χ_y: ruim(r.chiy), N_cr_z: ruim(r.Ncrz / 1e3), χ_z: ruim(r.chiz),
-    N_b_Rd: ruim(r.Nb / 1e3), UC_N: ruim(r.UC.N), S: ruim(r.S / 1e3),
+    N_max: ruim(r.Nmax / 1e3), N_b_Rd: ruim(r.Nb / 1e3), UC_N: ruim(r.UC.N), S: ruim(r.S / 1e3),
     χ_LT_d: ruim(r.chiLTd), M_b_Rd_d: ruim(r.Mbd / 1e6), UC_LT_d: ruim(r.UC.LTd),
     M_cr_z: ruim(r.Mcrz / 1e6), χ_LT_z: ruim(r.chiLTz), M_b_Rd_z: ruim(r.Mbz / 1e6), UC_LT_z: ruim(r.UC.LTz),
     k_yy: ruim(r.kyy), k_zy_d: ruim(r.kzyd), k_zy_z: ruim(r.kzyz),
@@ -223,6 +232,7 @@ function verwachtingen(r, v) {
   if (v.windbron !== 3) Object.assign(uit, { c_pe_D: ruim(r.w.cD), c_pe_z: ruim(r.w.cz) });
   if (v.windbron === 1) uit.q_p = ruim(r.w.qp);
   if (r.klasse <= 2) uit.M_N_Rd = ruim(r.MN / 1e6);
+  if (r.rho < 1) Object.assign(uit, { ρ_w: ruim(r.rho), A_eff: ruim(r.Aeff / 1e2) });
   if (r.kst) Object.assign(uit, { N_cr_TF: ruim(r.NcrTF / 1e3), χ_TF: ruim(r.chiTF) });
   else uit.M_cr_d = ruim(r.Mcrd / 1e6);
   return uit;
@@ -271,6 +281,12 @@ const SETS = [
     naam: "6 — HEA 800, CC1, h/b > 2 (kipkromme c), vijf regels",
     CC: 1,
     invoer: { windbron: 3, profile: 40, L: 12, b_belast: 6, n_r: 5, w_d_hand: 1.0, w_z_hand: 1.0, N_Ed: 100 },
+    // Met de hand, knik zonder buiging (zuivere druk): c_w = 790 − 2·28 − 2·30 =
+    // 674 mm, c/t = 44,93 > 42ε = 42 → lijf in klasse 4. λ̄_p = 44,93/(28,4·2) =
+    // 0,7911 → ρ = (0,7911 − 0,22)/0,7911² = 0,9125; A_eff = 28 580 − 0,0875·674·15
+    // = 27 696 mm². N_b,Rd = χ_TF·A_eff·f_y = 0,4185·27 696·235 = 2724 kN (met het
+    // bruto oppervlak was het 2811 kN).
+    handwerk: { ρ_w: "0.9125", A_eff: "277.0", N_b_Rd: "2724" },
   },
   {
     naam: "7 — kleine kolom op de hoek: windgebied I, bebouwd, zone A, belaste oppervlakte 7,5 m²",
@@ -292,6 +308,24 @@ const SETS = [
     naam: "9 — IPE 600 S355 met een grote drukkracht: lijf in klasse 4",
     invoer: { windbron: 3, profile: 18, staalkwaliteit: 355, L: 6, b_belast: 5, n_r: 2, w_d_hand: 0.5, w_z_hand: 0.4, N_Ed: 2000 },
   },
+  {
+    naam: "10 — standaard, met N_Ed,max = 300 kN uit de combinatie zonder wind: knik maatgevend",
+    invoer: { N_Ed_max: 300 },
+    // Met de hand: lijf bij zuivere druk c/t = 35,01 ≤ 42ε, dus het bruto oppervlak.
+    // N_b,Rd = χ_TF·A·f_y = 0,4486·5380·235 = 567,2 kN → UC_N = 300/567,2 = 0,5289,
+    // groter dan 0,3098 van (6.62) bij zuiging in de windcombinatie.
+    handwerk: { N_max: "300", N_b_Rd: "567.2", UC_N: "0.5289", UC_max: "0.5289" },
+  },
+  {
+    naam: "11 — IPE 300 S355 met N_Ed,max = 450 kN: lijf bij zuivere druk in klasse 4, in de windcombinatie klasse 1",
+    invoer: { windbron: 3, staalkwaliteit: 355, w_d_hand: 0.6, w_z_hand: 0.5, N_Ed: 50, N_Ed_max: 450 },
+    // Met de hand: ε = 0,8136, c/t = 35,01 > 42ε = 34,17 → klasse 4 bij zuivere druk.
+    // λ̄_p = 35,01/(28,4·0,8136·2) = 0,7577 → ρ = (0,7577 − 0,22)/0,7577² = 0,9366;
+    // A_eff = 5380 − 0,0634·248,6·7,1 = 5268 mm². Torsieknik: N_cr,TF = 801,3 kN,
+    // λ̄ = √(5380·355/801 300) = 1,544, Φ = 1,920 → χ_TF = 0,3266 (maatgevend, χ_y =
+    // 0,8783). N_b,Rd = 0,3266·5268·355 = 610,8 kN → UC_N = 450/610,8 = 0,7368.
+    handwerk: { ρ_w: "0.9366", A_eff: "52.68", χ_TF: "0.3266", N_b_Rd: "610.8", UC_N: "0.7368" },
+  },
 ];
 
 let fouten = 0;
@@ -307,7 +341,9 @@ for (const set of SETS) {
   // Het oordeel: klasse 4 heeft een eigen zin, anders volgt het uit UC_max.
   let ok;
   if (r.klasse === 4) {
-    ok = /de doorsnede valt in klasse 4, en die valt buiten deze module/.test(got.text);
+    // De slotzin begint met "Maatgevende UC", zodat de rapportkop ook "voldoet niet" leest.
+    ok = /de doorsnede valt in klasse 4, en die valt buiten deze module/.test(got.text) &&
+      /Maatgevende UC = [\d.]+ → de kolom voldoet niet/.test(got.text);
     console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    klasse 4 gemeld`);
   } else {
     const voldoet = /de kolom voldoet(?! niet)/.test(got.text);

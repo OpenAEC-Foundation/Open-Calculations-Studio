@@ -5,11 +5,15 @@
  *
  * De horizontale kracht is de wind (karakteristiek, maal γ_Q bij de
  * gevolgklasse) plus de kracht uit de scheefstand van de gestabiliseerde
- * kolommen (5.3.2). Getoetst: trek op de bruto doorsnede (6.6) en op de netto
+ * kolommen (5.3.2), vergroot met 1/(1 − 1/α_cr) als 3 ≤ α_cr < 10 (5.2.1,
+ * 5.2.2(5)B). α_cr telt alleen de verlenging van de diagonaal en is dus een
+ * bovengrens. Getoetst: trek op de bruto doorsnede (6.6) en op de netto
  * doorsnede bij de aansluiting — strip volgens (6.7), hoekprofiel aan één been
- * volgens EN 1993-1-8 (3.11) tot (3.13) —, bij een enkele diagonaal ook druk
- * volgens 6.3.1 met de effectieve slankheid van bijlage BB.1.2, en de
- * horizontale verplaatsing volgens de NB bij EN 1990 A1.4.3.
+ * volgens EN 1993-1-8 (3.11) tot (3.13) —, bij een geboute aansluiting de
+ * blokschuif volgens EN 1993-1-8 (3.9) of (3.10), bij een enkele diagonaal ook
+ * druk volgens 6.3.1 met de effectieve slankheid van bijlage BB.1.2, en de
+ * horizontale verplaatsing volgens de NB bij EN 1990 A1.4.3. Bij een gelaste
+ * aansluiting staat alleen de benodigde keelvlakte van de las (4.4) erin.
  *
  * Profielen: strippen (id 1–15) en gelijkzijdige hoekprofielen volgens
  * EN 10056-1 (id 16–30). Geen referentieberekening beschikbaar;
@@ -18,7 +22,7 @@
 
 export const verticaalWindverband = `"Verticaal windverband — EN 1993-1-1 en EN 1993-1-8
 
-'<i>De diagonaal van een stabiliteitsvak voert de horizontale kracht op het vak af naar de fundering. In een X-kruis werkt per windrichting alleen de getrokken diagonaal; de andere wordt slap. Een enkele diagonaal krijgt bij de ene windrichting trek en bij de andere druk. Getoetst worden trek op de bruto en de netto doorsnede, bij een enkele diagonaal ook knik, en de horizontale verplaatsing van het vak.</i>
+'<i>In een X-kruis werkt per windrichting alleen de getrokken diagonaal; een enkele diagonaal krijgt afwisselend trek en druk.</i>
 
 # 1. Profiel en materiaal
 
@@ -71,16 +75,17 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
   S355 = 355
 @end
 
-f_y = staalkwaliteit*N/mm^2', tabel 3.1, t ≤ 40 mm'
 #hide
+f_y = staalkwaliteit*N/mm^2
 fu_tab = if(staalkwaliteit ≡ 235; 360; if(staalkwaliteit ≡ 275; 430; 490))
-#show
-f_u = fu_tab*N/mm^2', tabel 3.1'
+f_u = fu_tab*N/mm^2
 E = 210000 N/mm^2
 γ_M0 = 1.0
 γ_M1 = 1.0
-γ_M2 = 1.25', NB bij 6.1(1) en EN 1993-1-8 tabel 2.1'
+γ_M2 = 1.25
 ε = sqrt(235 N/mm^2/f_y)
+#show
+'S'staalkwaliteit': f<sub>y</sub> = 'f_y' N/mm², f<sub>u</sub> = 'f_u' N/mm² (tabel 3.1, t ≤ 40 mm), E = 210 000 N/mm². γ<sub>M0</sub> = γ<sub>M1</sub> = 1,0 en γ<sub>M2</sub> = 1,25 (NB bij 6.1(1), EN 1993-1-8 tabel 2.1).
 
 #hide
 'Profieltabel: id | soort (1 strip, 2 hoek) | b | t (mm) | A (cm²) | e (cm) | I_y | I_v (cm⁴)
@@ -110,21 +115,45 @@ sin_α = h_v/L_d
 
 # 3. Belasting
 
-'<i>De windkracht is karakteristiek; de rekenwaarde volgt met γ<sub>Q</sub> bij de gevolgklasse uit de projectgegevens. Daarbij komt de kracht uit de scheefstand van de kolommen die dit verband stabiliseert: H = φ·V<sub>Ed</sub> met φ = φ<sub>0</sub>·α<sub>h</sub>·α<sub>m</sub> (5.5). Die mag vervallen als de horizontale rekenbelasting ten minste 0,15·V<sub>Ed</sub> is (5.3.2(4)B).</i>
+'<i>Wind maal γ<sub>Q</sub> plus de scheefstand van de kolommen die dit verband stabiliseert (5.3.2), zo nodig vergroot voor de tweede orde (5.2).</i>
 F_w,k = ?*(kN)', karakteristieke windkracht op dit vak'
 V_Ed = ?*(kN)', verticale rekenbelasting op de kolommen die dit verband stabiliseert'
 m_k = ?', aantal kolommen dat die belasting draagt'
-γ_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))', tabel NB.4 of NB.5 van NEN-EN 1990'
+#hide
+γ_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))
+#show
+γ_Q', bij CC uit de projectgegevens — tabel NB.4 of NB.5 van NEN-EN 1990'
 F_w,Ed = γ_Q*F_w,k to kN
 α_h = min(max(2/sqrt(h_v/(1 m)); 2/3); 1)', hoogte h in m (5.3.2(3))'
 α_m = sqrt(0.5*(1 + 1/max(m_k; 1)))
 φ = α_h*α_m/200', initiële scheefstand, φ_0 = 1/200'
 #if F_w,Ed ≥ 0.15*V_Ed
-    H_imp = 0 kN', mag vervallen: F_w,Ed ≥ 0,15·V_Ed'
+    H_imp = 0 kN', mag vervallen: F_w,Ed ≥ 0,15·V_Ed (5.3.2(4)B)'
 #else
     H_imp = φ*V_Ed to kN', equivalente horizontale kracht uit de scheefstand'
 #end if
-F_h,Ed = F_w,Ed + H_imp to kN', horizontale rekenkracht op het vak'
+#hide
+k_cr = 1
+ok_2e = 1
+#show
+#if V_Ed > 0 kN
+    α_cr = h_v*E*A*cos_α^2/(V_Ed*L_d)', (5.2) met alleen de verlenging van de diagonaal; gatspeling en slappe kolommen maken hem kleiner'
+    #if α_cr < 3
+        #hide
+        ok_2e = 0
+        #show
+        '<b style="color:#b91c1c">α<sub>cr</sub> &lt; 3: vergroten volgens 5.2.2(5)B is niet toegestaan; een tweede-orde-analyse is nodig.</b>
+    #else if α_cr < 10
+        k_cr = 1/(1 - 1/α_cr)', vergroting van F_w,Ed en H_imp — 5.2.2(5)B, bij meer bouwlagen 5.2.2(6)B'
+    #else
+        'α<sub>cr</sub> ≥ 10: eerste orde volstaat (5.2.1(3)).
+    #end if
+#end if
+#if k_cr > 1
+    F_h,Ed = k_cr*(F_w,Ed + H_imp) to kN', horizontale rekenkracht op het vak'
+#else
+    F_h,Ed = F_w,Ed + H_imp to kN', horizontale rekenkracht op het vak'
+#end if
 N_Ed = F_h,Ed/cos_α to kN', normaalkracht in de werkende diagonaal'
 F_v,Ed = N_Ed*sin_α to kN', verticale component op kolom en fundering'
 
@@ -140,24 +169,25 @@ F_v,Ed = N_Ed*sin_α to kN', verticale component op kolom en fundering'
 #if aansluiting ≥ 1
     d_0 = ?*(mm)', gatdiameter'
     p_1 = ?*(mm)', steek van de bouten in de krachtrichting'
-    e_2 = ?*(mm)', randafstand loodrecht op de kracht, in het aangesloten been of de strip'
+    e_1 = ?*(mm)', eindafstand van de laatste bout tot het eind van de diagonaal'
+    e_2 = ?*(mm)', randafstand loodrecht op de kracht, tot de vrije rand van het aangesloten been of de rand van de strip'
     #if soort ≡ 1
         n_d = ?', aantal gaten naast elkaar in één doorsnede van de strip'
     #end if
 #end if
 
-# 5. Trek (§6.2.3 en EN 1993-1-8 §3.10.3)
+# 5. Trek (§6.2.3 en EN 1993-1-8 §3.10)
 
 N_pl,Rd = A*f_y/γ_M0 to kN', bruto doorsnede (6.6)'
 #if aansluiting ≡ 0
-    '<i>Gelast: de netto doorsnede speelt niet mee. Voor een gelijkzijdig hoekprofiel dat met één been is aangelast, is de effectieve doorsnede de bruto doorsnede (EN 1993-1-8 §4.13).</i>
+    '<i>Gelast: bruto doorsnede; ook voor een hoekprofiel dat met één been is aangelast (EN 1993-1-8 §4.13).</i>
     N_t,Rd = N_pl,Rd
 #else if soort ≡ 1
     A_net = A - n_d*d_0*t_p to mm^2', netto doorsnede'
     N_u,Rd = 0.9*A_net*f_u/γ_M2 to kN', (6.7)'
     N_t,Rd = min(N_pl,Rd; N_u,Rd)
 #else
-    '<i>Een hoekprofiel dat met één been en één rij bouten is aangesloten, mag centrisch belast worden gerekend met een effectieve netto doorsnede (EN 1993-1-8 §3.10.3(2)); β volgt uit tabel 3.8, lineair tussen p<sub>1</sub> = 2,5·d<sub>0</sub> en 5,0·d<sub>0</sub>.</i>
+    '<i>Eén been met één rij bouten: effectieve netto doorsnede volgens EN 1993-1-8 §3.10.3(2), β lineair uit tabel 3.8.</i>
     A_net = A - d_0*t_p to mm^2', netto doorsnede, één gat'
     #if aansluiting ≡ 1
         N_u,Rd = 2.0*(e_2 - 0.5*d_0)*t_p*f_u/γ_M2 to kN', (3.11), één bout'
@@ -172,6 +202,68 @@ N_pl,Rd = A*f_y/γ_M0 to kN', bruto doorsnede (6.6)'
 #end if
 UC_t = N_Ed/N_t,Rd', trek'
 
+#hide
+UC_bs = 0
+ok_bs = 1
+toon_bs = 0
+#show
+#if aansluiting ≡ 0
+    '<b>Las</b> — f<sub>vw,d</sub> volgens (4.4) met β<sub>w</sub> uit tabel 4.1; de las en de knoopplaat zijn verder niet getoetst.
+    #hide
+    β_w = if(staalkwaliteit ≡ 235; 0.8; if(staalkwaliteit ≡ 275; 0.85; 0.9))
+    #show
+    f_vw,d = f_u/(sqrt(3)*β_w*γ_M2) to N/mm^2
+    A_w,nodig = N_Ed/f_vw,d to mm^2', benodigde Σ a·l_eff van de lasnaden'
+#else if soort ≡ 1
+    #if n_d ≤ 1
+        '<i>Strip met één rij bouten: geen blokschuif; de netto doorsnede (6.7) gaat voor, het uitscheuren vóór de bouten zit in de stuiktoets (tabel 3.4) van het boutblad.</i>
+    #else if e_1 ≤ 0 mm
+        #hide
+        ok_bs = 0
+        #show
+        '<b style="color:#b91c1c">Blokschuif (EN 1993-1-8 §3.10.2) niet getoetst: vul e<sub>1</sub> in.</b>
+    #else
+        '<b>Blokschuif</b> — centrisch (3.9), gaten op e<sub>2</sub> van beide randen; A<sub>nt</sub> van het blok tussen de buitenste rijen of van de twee randstroken, de kleinste.
+        #hide
+        'Bij drie of meer bouten gerekend met drie: meer bouten geven een grotere A_nv.
+        n_b = min(aansluiting; 3)
+        #show
+        A_nt = min(b_p - 2*e_2 - (n_d - 1)*d_0; 2*e_2 - d_0)*t_p to mm^2
+        A_nv = 2*(e_1 + (n_b - 1)*p_1 - (n_b - 0.5)*d_0)*t_p to mm^2
+        V_eff,Rd = f_u*A_nt/γ_M2 + f_y*A_nv/(sqrt(3)*γ_M0) to kN', (3.9)'
+        #hide
+        toon_bs = 1
+        #show
+    #end if
+#else if e_1 ≤ 0 mm
+    #hide
+    ok_bs = 0
+    #show
+    '<b style="color:#b91c1c">Blokschuif (EN 1993-1-8 §3.10.2) niet getoetst: vul e<sub>1</sub> in.</b>
+#else
+    '<b>Blokschuif</b> — één rij bouten in één been, excentrisch (3.10); scheurt in trek naar de vrije rand van het been.
+    #hide
+    'Bij drie of meer bouten gerekend met drie: meer bouten geven een grotere A_nv.
+    n_b = min(aansluiting; 3)
+    #show
+    A_nt = (e_2 - 0.5*d_0)*t_p to mm^2
+    A_nv = (e_1 + (n_b - 1)*p_1 - (n_b - 0.5)*d_0)*t_p to mm^2
+    V_eff,Rd = 0.5*f_u*A_nt/γ_M2 + f_y*A_nv/(sqrt(3)*γ_M0) to kN', (3.10)'
+    #hide
+    toon_bs = 1
+    #show
+#end if
+#if toon_bs ≡ 1
+    #if min(A_nt; A_nv) > 0 mm^2
+        UC_bs = N_Ed/V_eff,Rd', blokschuif'
+    #else
+        #hide
+        ok_bs = 0
+        #show
+        '<b style="color:#b91c1c">Blokschuif: A<sub>nt</sub> of A<sub>nv</sub> ≤ 0 — controleer e<sub>1</sub>, e<sub>2</sub>, p<sub>1</sub> en d<sub>0</sub>.</b>
+    #end if
+#end if
+
 # 6. Druk (§6.3.1 en bijlage BB.1.2)
 
 #hide
@@ -179,7 +271,7 @@ ok_druk = 1
 UC_c = 0
 #show
 #if verbandtype ≡ 1
-    '<i>In een X-kruis of met tegengestelde diagonalen werkt een diagonaal alleen op trek: bij de andere windrichting neemt de andere diagonaal het over. Een druktoets is dan niet nodig; de gedrukte diagonaal mag slap worden.</i>
+    '<i>X-kruis of tegengestelde diagonalen: de gedrukte diagonaal mag slap worden, dus geen druktoets.</i>
 #else if soort ≡ 1
     #hide
     ok_druk = 0
@@ -191,7 +283,7 @@ UC_c = 0
     #show
     '<b style="color:#b91c1c">Met één bout moet de excentriciteit van de aansluiting in de druktoets worden meegenomen (BB.1.2(2)); dat doet deze module niet. Sluit aan met ten minste twee bouten of met een las.</b>
 #else
-    '<i>Tabel 5.2, gelijkzijdig hoekprofiel: klasse 3 zolang b/t ≤ 11,5·ε. Met ten minste twee bouten of een las zijn de uiteinden voldoende ingeklemd om de excentriciteit te verwaarlozen; dan geldt de effectieve slankheid van (BB.1), met de lengte van knoop tot knoop. Kromme b voor hoekprofielen (tabel 6.2).</i>
+    '<i>Klasse 3 zolang b/t ≤ 11,5·ε (tabel 5.2); met ten minste twee bouten of een las de effectieve slankheid van (BB.1) over de lengte van knoop tot knoop, kromme b (tabel 6.2).</i>
     k_b = b_p/t_p/ε', b/t, uitgedrukt in ε'
     #if k_b > 11.5
         #hide
@@ -214,8 +306,7 @@ UC_c = 0
 
 # 7. Horizontale verplaatsing (BGT)
 
-'<i>De verplaatsing van de bovenkant van het vak door de verlenging van de diagonaal onder de karakteristieke wind: u = F<sub>w,k</sub>·L<sub>d</sub>/(E·A·cos²α). De vervorming van kolommen en regels is niet meegenomen.</i>
-u_h = F_w,k*L_d/(E*A*cos_α^2) to mm
+u_h = F_w,k*L_d/(E*A*cos_α^2) to mm', door de verlenging van de diagonaal onder de karakteristieke wind'
 
 @select grens_u "Toelaatbare horizontale verplaatsing (NB bij EN 1990, A1.4.3)"
   h/300 — per bouwlaag, of één bouwlaag = 300
@@ -282,12 +373,17 @@ th2 = th*tschaal
 # 9. Samenvatting
 
 #hide
-UC_max = max(UC_t; UC_c; UC_u)
+UC_max = max(UC_t; UC_c; UC_u; UC_bs)
 #show
 UC_max', grootste van de toetsen hieronder'
 '<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
 '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:4px 8px;">Toets</th><th style="text-align:left; padding:4px 8px;">Norm</th><th style="text-align:right; padding:4px 8px;">UC</th><th style="text-align:left; padding:4px 8px;">Oordeel</th></tr>
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Trek</td><td style="padding:4px 8px;">§6.2.3, EN 1993-1-8 §3.10.3</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_t)'">'UC_t'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_t)'">'oordeel(UC_t)'</td></tr>
+#if ok_bs ≡ 0
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Blokschuif</td><td style="padding:4px 8px;">EN 1993-1-8 §3.10.2</td><td style="padding:4px 8px; text-align:right; color:#b91c1c">—</td><td style="padding:4px 8px; color:#b91c1c">niet getoetst</td></tr>
+#else if toon_bs ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Blokschuif</td><td style="padding:4px 8px;">EN 1993-1-8 §3.10.2</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_bs)'">'UC_bs'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_bs)'">'oordeel(UC_bs)'</td></tr>
+#end if
 #if verbandtype ≡ 2
     #if ok_druk ≡ 1
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Druk (knik)</td><td style="padding:4px 8px;">§6.3.1, BB.1.2</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_c)'">'UC_c'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_c)'">'oordeel(UC_c)'</td></tr>
@@ -299,7 +395,11 @@ UC_max', grootste van de toetsen hieronder'
 '</table>
 
 #if ok_druk ≡ 0
-    '<b style="color:#b91c1c">Het verband voldoet niet: de druk bij omkerende wind is met deze keuze niet op te nemen of niet te toetsen (zie hoofdstuk 6).</b>
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar de druk bij omkerende wind is met deze keuze niet op te nemen of niet te toetsen (hoofdstuk 6) → <b>het verband voldoet niet</b></span>
+#else if ok_bs ≡ 0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar de blokschuif is niet getoetst (hoofdstuk 5) → <b>het verband voldoet niet</b></span>
+#else if ok_2e ≡ 0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b91c1c">, maar α<sub>cr</sub> &lt; 3 vraagt een tweede-orde-analyse (hoofdstuk 3) → <b>het verband voldoet niet</b></span>
 #else if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>het verband voldoet</b></span>
 #else
@@ -308,5 +408,5 @@ UC_max', grootste van de toetsen hieronder'
 
 '<hr/>
 '<i>Aandachtspunten en vereenvoudigingen:</i>
-'<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>De bouten zelf (afschuiving en stuik) en het uitscheuren van de boutgroep (EN 1993-1-8 §3.10.2) zijn niet getoetst; daarvoor is er een apart rekenblad voor bouten.</li><li>De kolommen, de regels en de fundering krijgen de verticale component F<sub>v,Ed</sub>; die zijn hier niet getoetst.</li><li>De scheefstand is voor één bouwlaag gerekend, met de hoogte van het vak voor α<sub>h</sub>. Stabiliseert het verband meer lagen, vul dan de totale verticale belasting in.</li><li>De verplaatsing telt alleen de verlenging van de diagonaal. Met slappe kolomvoeten of verbindingen met speling wordt ze groter.</li><li>Een hoekprofiel dat aan één been is aangesloten, is onder druk gerekend met de effectieve slankheid van BB.1.2; die geldt als de aansluitingen de verdraaiing van de uiteinden voldoende beperken.</li></ul>
+'<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>De bouten zelf (afschuiving en stuik) zijn niet getoetst; daarvoor is er een apart rekenblad voor bouten. De knoopplaat is nergens getoetst.</li><li>De kolommen, de regels en de fundering krijgen de verticale component F<sub>v,Ed</sub>; die zijn hier niet getoetst.</li><li>De scheefstand is voor één bouwlaag gerekend, met de hoogte van het vak voor α<sub>h</sub>. Stabiliseert het verband meer lagen, vul dan de totale verticale belasting in.</li><li>De verplaatsing telt alleen de verlenging van de diagonaal. Met slappe kolomvoeten of verbindingen met speling wordt ze groter.</li><li>Een hoekprofiel dat aan één been is aangesloten, is onder druk gerekend met de effectieve slankheid van BB.1.2; die geldt als de aansluitingen de verdraaiing van de uiteinden voldoende beperken.</li></ul>
 `;

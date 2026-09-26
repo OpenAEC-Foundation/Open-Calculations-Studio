@@ -2,8 +2,8 @@
  * Toetsing van een houten balklaag (enkelvoudig opgelegde balk) onder
  * gelijkmatige + puntlast, conform EN 1995-1-1 (Eurocode 5) + NEN-EN NB.
  *
- * Gebaseerd op het CH1-tabblad van een typische 3BM-werkberekening
- * (3086 Aanbouw Doevelskerc) met dezelfde structuur:
+ * Niet in gebruik: het blad staat niet in templates/index.ts en is vervangen
+ * door balklaag.ts. Opbouw:
  *   1. Geometrie + materiaal
  *   2. Belastingen (G_k + q_k + Q_k)
  *   3. Belastingscombinaties (UGT 6.10a/b, BGT 6.14b/16b)
@@ -71,9 +71,9 @@ h_p = hlookup(profiles_b_h; profile; 1; 3)*mm
 @end
 
 #hide
-'Houtsterkte-eigenschappen — EN 338 (alle in N/mm² behalve ρ_k in kg/m³)
-'  [id(C-klasse) | f_m,k | f_t,0,k | f_c,0,k | f_v,k | E_0,mean | E_0,05 | rho_k]
-strength_C = [14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |8; 10; 11; 12; 13; 14; 16; 18; 21; 24 |16; 17; 18; 19; 20; 21; 22; 23; 25; 26 |1.7; 1.8; 2.0; 2.2; 2.4; 2.5; 2.8; 3.0; 3.4; 3.8 |7000; 8000; 9000; 9500; 10000; 11000; 11500; 12000; 13000; 14000 |4700; 5400; 6000; 6400; 6700; 7400; 7700; 8000; 8700; 9400 |290; 310; 320; 330; 340; 350; 370; 380; 400; 420]
+'Houtsterkte-eigenschappen — EN 338 (alle in N/mm² behalve ρ_mean in kg/m³)
+'  [id(C-klasse) | f_m,k | f_t,0,k | f_c,0,k | f_v,k | E_0,mean | E_0,05 | ρ_mean | f_c,90,k]
+strength_C = [14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |8; 10; 11; 12; 13; 14; 16; 18; 21; 24 |16; 17; 18; 19; 20; 21; 22; 23; 25; 26 |1.7; 1.8; 2.0; 2.2; 2.4; 2.5; 2.8; 3.0; 3.4; 3.8 |7000; 8000; 9000; 9500; 10000; 11000; 11500; 12000; 13000; 14000 |4700; 5400; 6000; 6400; 6700; 7400; 7700; 8000; 8700; 9400 |350; 370; 380; 400; 410; 420; 450; 460; 480; 500 |2.0; 2.2; 2.2; 2.3; 2.4; 2.5; 2.5; 2.7; 2.7; 2.8]
 
 f_m,k = hlookup(strength_C; houtkwaliteit; 1; 2)*N/mm^2
 f_t,0,k = hlookup(strength_C; houtkwaliteit; 1; 3)*N/mm^2
@@ -81,7 +81,8 @@ f_c,0,k = hlookup(strength_C; houtkwaliteit; 1; 4)*N/mm^2
 f_v,k = hlookup(strength_C; houtkwaliteit; 1; 5)*N/mm^2
 E_0,mean = hlookup(strength_C; houtkwaliteit; 1; 6)*N/mm^2
 E_0,05 = hlookup(strength_C; houtkwaliteit; 1; 7)*N/mm^2
-ρ_k = hlookup(strength_C; houtkwaliteit; 1; 8)*kg/m^3
+ρ_mean = hlookup(strength_C; houtkwaliteit; 1; 8)*kg/m^3
+f_c,90,k = hlookup(strength_C; houtkwaliteit; 1; 9)*N/mm^2
 
 'k_def uit Tabel 3.2: hangt af van klimaatklasse, hier voor gezaagd hout
 #if klimaatklasse ≡ 1
@@ -118,8 +119,8 @@ G_k,vlak = ?*(kN/m^2)', eigen gewicht + permanente afwerking (kN/m²)'
 q_k,vlak = ?*(kN/m^2)', gebruikersbelasting (kN/m²)'
 Q_k = ?*(kN)', puntlast in midden — 0 als niet relevant (kN)'
 
-'Eigen gewicht balk per m¹: g = b·h·ρ
-g_eigen = b_p*h_p*ρ_k*9.81 m/s^2
+'Eigen gewicht balk per m¹: g = b·h·ρ_mean
+g_eigen = b_p*h_p*ρ_mean*9.81 m/s^2
 
 G_k = G_k,vlak*hoh + g_eigen', permanente lijnlast (kN/m)'
 q_k = q_k,vlak*hoh', variabele lijnlast (kN/m)'
@@ -127,14 +128,14 @@ q_k = q_k,vlak*hoh', variabele lijnlast (kN/m)'
 # 3. Belastingscombinaties
 
 #hide
-'γ-factoren — NEN-EN 1990 NB Tabel A1.2(B) groep C (RC2/CC2)
-γ_G,6.10a = 1.22
-γ_Q,6.10a = 1.35
-γ_G,6.10b = 1.08
-γ_Q,6.10b = 1.35
-ψ_0 = 0.40', algemene categorieën woon/kantoor — Tabel A1.1'
-ψ_1 = 0.20
-ψ_2 = 0.10
+'γ-factoren — NEN-EN 1990 NB Tabel A1.2(B), naar de gevolgklasse van het project
+γ_G,6.10a = if(CC ≡ 1; 1.2; if(CC ≡ 3; 1.5; 1.35))
+γ_Q,6.10a = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))
+γ_G,6.10b = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))
+γ_Q,6.10b = γ_Q,6.10a
+ψ_0 = 0.40', categorie A — Tabel NB.2 — A1.1'
+ψ_1 = 0.50
+ψ_2 = 0.30
 k_r = 0.7', puntlast-spreiding 0.5×0.5 m (vereenvoudigd)'
 #show
 
@@ -219,8 +220,6 @@ UC_V = τ_d/f_v,d
 l_opl = ?*(mm)', opleglengte van de balk (mm)'
 
 #hide
-'f_c,90,k volgt uit dezelfde C-klasse — vereenvoudigd 2.4 N/mm² voor C16-C30
-f_c,90,k = if(houtkwaliteit ≤ 16; 2.2; if(houtkwaliteit ≤ 30; 2.4; 2.7))*N/mm^2
 k_c,90 = 1.50', §6.1.5(3) — balk op steun, korte oplegging'
 #show
 
@@ -239,7 +238,7 @@ UC_C90 = σ_c,90,d/(k_c,90*f_c,90,d)
 
 n_kipsteunen = ?', aantal tussenliggende kipsteunen (0 = geen)'
 
-l_ef = l_ov/(n_kipsteunen + 1)*0.9', effectieve lengte (k_ef ≈ 0.9 voor UDL)'
+l_ef = l_ov/(n_kipsteunen + 1)*0.9 + 2*h_p', kiplengte, Tabel 6.1: 0,9·l plus 2h voor last op de drukrand'
 
 σ_m,crit = 0.78*b_p^2*E_0,05/(h_p*l_ef)
 λ_rel,m = sqrt(f_m,k/σ_m,crit)
@@ -306,10 +305,10 @@ UC_u,bij = u_bij/u_bij,lim
 '<ul>
 '<li>Belasting-duur "middellang" hardcoded. Bij andere categorieën (kort/zeer kort/permanent)
 'wijkt k<sub>mod</sub> af; pas dan §3.1.3 + Tabel 3.1 toe.</li>
-'<li>Eigen gewicht balk via ρ<sub>k</sub>·b·h·g (zonder veiligheid). De aansluitende afwerking
+'<li>Eigen gewicht balk via ρ<sub>mean</sub>·b·h·g (zonder veiligheid). De aansluitende afwerking
 '(plafond, vloer-finish) verdisconteer je in G<sub>k,vlak</sub>.</li>
 '<li>Lastreductie k<sub>r</sub> voor puntlast op 0.5×0.5 m belastingvlak gefixeerd op 0.7.</li>
 '<li>Trillingscontrole §7.3 (vloer-resonantie f<sub>1</sub> ≥ 8 Hz) niet in deze sheet.</li>
-'<li>Kniklengte = staaflengte; k_ef ≈ 0.9 voor UDL. Voor andere ondersteuningstype 6.3.3.3.</li>
+'<li>Kiplengte 0,9·l + 2h (Tabel 6.1, last op de drukrand). Voor andere ondersteuningstypen: Tabel 6.1.</li>
 '</ul></i>
 `;

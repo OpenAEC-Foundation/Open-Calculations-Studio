@@ -15,10 +15,13 @@
  *
  * Blad 2 raakt register punt 14: f_m = 15 is groter dan 2·f_b = 10. Het
  * referentieprogramma rekent toch met 15; in de norm-stand geldt 10, en
- * daarmee een lagere f_k en een hogere u.c.
+ * daarmee een lagere f_k en een hogere u.c. Ook is de plaat daar breder dan
+ * de wand (a_t = 160 op t = 150): de referentie telt de hele plaat mee, de
+ * norm-stand alleen het deel op de wand.
  *
  * Daarna de gevallen zonder referentieblad: steengroep 2 (β = 1,0),
- * A_b/A_ef boven 0,45, de nevenvoorwaarden in het eindoordeel en trek.
+ * A_b/A_ef boven 0,45, de nevenvoorwaarden in het eindoordeel, trek en een
+ * oplegplaat die buiten de wand steekt.
  *
  * Draaien:  node scripts/check-opleg-metselwerk.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -108,18 +111,70 @@ for (const g of GEVALLEN) {
   console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel   ${voldoet ? "voldoet" : "voldoet niet"}`);
 }
 
+// ── Oplegplaat buiten de wand ─────────────────────────────────────────────
+// A_b telt volgens §6.1.3(2) alleen het deel van de plaat dat op de wand ligt.
+// De plaat ligt gecentreerd onder de last: van exc − a_t/2 tot exc + a_t/2.
+// De referentiestand houdt a_L·a_t aan en meldt dat in rood; de norm-stand
+// rekent met a_L·a_t,ef. Blad 1 als basis (f_d = 5,938/1,5 = 3,959, t = 200,
+// l_efm = 200 + 300 + 736,1 = 1236,1, A_ef = 247 220, h_c = 2550, a_1 = 300).
+//
+// a) a_t = 300 op t = 200, N_Edc = 250 → N_Ed = 251,1:
+//    a_t,ef = 100 − (−100) = 200, A_b = 200·200 = 40 000, A_b/A_ef = 0,1618
+//    β_calc = (1 + 0,3·300/2550)·(1,5 − 1,1·0,1618) = 1,369 > β_max = 1,25 + 300/5100 = 1,309
+//    N_Rdc = 1,309·40 000·3,959/1000 = 207,2 kN → UC = 251,1/207,2 = 1,21
+//    (de hele plaat, 60 000 mm², gaf 303,2 kN en UC 0,83)
+// b) a_t = 200, exc = 50, N_Edc = 160 → N_Ed = 161,1: de plaat loopt van −50
+//    tot +150 op een wand van ±100, a_t,ef = 100 − (−50) = 150, A_b = 30 000,
+//    β = β_max = 1,309, N_Rdc = 1,309·30 000·3,959/1000 = 155,4 → UC = 1,04
+const PLAAT = [
+  { naam: "plaat breder dan de wand — a_t = 300 op t = 200",
+    invoer: { a_t: "300", N_Edc: "250" },
+    xc: { A_b: "60000", N_Rdc: "303.2", UC: "0.83" },
+    nb: { a_t_ef: "200", A_b: "40000", "β": "1.31", N_Rdc: "207.2", UC: "1.21" } },
+  { naam: "plaat uit het hart — a_t = 200, exc = 50",
+    invoer: { a_t: "200", exc: "50", N_Edc: "160" },
+    xc: { A_b: "40000", UC: "0.78" },
+    nb: { a_t_ef: "150", A_b: "30000", "β": "1.31", N_Rdc: "155.4", UC: "1.04" } },
+];
+for (const p of PLAAT) {
+  const invoer = { ...BASIS, ...REFERENTIES[0].invoer, ...p.invoer };
+  const xc = reken(tpl, invoer, PROJECT);
+  fouten += toets(`${p.naam} — referentiestand`, xc, p.xc);
+  const melding = /steekt buiten de wand/.test(xc.text);
+  if (!melding) fouten++;
+  console.log(`  ${melding ? "OK    " : "FOUT  "} melding   de plaat steekt buiten de wand`);
+  const nb = reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 });
+  fouten += toets(`${p.naam} — norm-stand`, nb, p.nb);
+  const zin = slotzin(nb);
+  const zakt = /voldoet niet/.test(zin);
+  if (!zakt) fouten++;
+  console.log(`  ${zakt ? "OK    " : "FOUT  "} oordeel   ${zakt ? "voldoet niet" : "voldoet"}`);
+  if (/steekt buiten de wand/.test(nb.text)) {
+    fouten++;
+    console.log("  FOUT   de norm-stand meldt de referentiekeuze");
+  }
+}
+
 // ── Norm-stand ────────────────────────────────────────────────────────────
-// Blad 1: f_m = 15 ≤ 2·12 → niets verandert. Blad 2: f_m wordt 2·5 = 10, dus
-// f_k en N_Rdc dalen en de u.c. stijgt.
+// Blad 1: f_m = 15 ≤ 2·12 en de plaat ligt op de wand → niets verandert.
+// Blad 2: f_m wordt 2·5 = 10 en A_b = 200·150 = 30 000 in plaats van 32 000,
+// dus f_k en N_Rdc dalen en de u.c. stijgt: f_k = 0,6·5^0,65·10^0,25 = 3,037,
+// f_d = 1,519, β = β_max = 1,25, N_Rdc = 1,25·30 000·1,519/1000 = 56,95,
+// UC = 51,1/56,95 = 0,90.
 const RICHTING = [
   { f_k: "gelijk", N_Rdc: "gelijk", UC: "gelijk" },
   { f_k: "lager", N_Rdc: "lager", UC: "hoger" },
+];
+const NORM_WAARDEN = [
+  null,
+  { f_k: "3.04", A_b: "30000", "β": "1.25", N_Rdc: "56.95", UC: "0.90" },
 ];
 REFERENTIES.forEach((ref, i) => {
   const invoer = { ...BASIS, ...ref.invoer };
   const xc = reken(tpl, invoer, PROJECT);
   const nb = reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 });
   fouten += toetsNormStand(ref.blad, xc, nb, RICHTING[i]);
+  if (NORM_WAARDEN[i]) fouten += toets(`${ref.blad} — norm-stand, met de hand`, nb, NORM_WAARDEN[i]);
 });
 
 afronden(fouten, "Oplegging op metselwerk");
