@@ -13,6 +13,16 @@
  * Netto winddruk met c_pi = +0,2 (zuiging) en −0,3 (druk), 7.2.9(6), of met
  * één ingevulde c_pi bij een dominante gevel, 7.2.9(5).
  *
+ * Ontwerplevensduur 100 jaar (A1.1(2) van de NB bij NEN-EN 1990), p = 0,01:
+ *   wind, windgebied II (K = 0,234, n = 0,5, tabel NB.2):
+ *     c_prob² = (1 − 0,234·ln(−ln 0,99))/(1 − 0,234·ln(−ln 0,98))
+ *             = (1 + 0,234·4,6001)/(1 + 0,234·3,9019) = 2,0764/1,9131 = 1,0854
+ *     c_prob = 1,0418;  q_p = 1,0854·0,8525 = 0,9253 kN/m²
+ *   sneeuw (D.1), V = 0,8:
+ *     (1 − 0,8·(√6/π)·(ln(−ln 0,99) + 0,57722))/(1 + 2,5923·0,8)
+ *     = (1 + 0,6238·4,0229)/3,0738 = 3,5093/3,0738 = 1,1417;  s_k = 0,7992 kN/m²
+ *     (ter controle bij 15 jaar: 0,751, gelijk aan tabel NB.2: s_k15 = 0,75·s_k50)
+ *
  * Draaien:  node scripts/check-en1991-belastingen.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
@@ -48,8 +58,14 @@ fouten += toets("wind zone F, A = 1 m²", W(6, 1), { q_p: "0.8525", c_pe: "-2.5"
 fouten += toets("wind zone F, A = 10 m²", W(6, 10), { w_net: "-1.705" });
 // Zone G, A = 10 m²: (−1,2 − 0,2)·0,8525 = −1,194.
 fouten += toets("wind zone G, A = 10 m²", W(7, 10), { w_net: "-1.194" });
-// Zone I, ±0,2: druk (0,2 + 0,3)·0,8525 = +0,4263; zuiging (−0,2 − 0,2)·0,8525 = −0,341.
-fouten += toets("wind zone I", W(9, 10), { w_d: "0.4263", w_z: "-0.341", w_net: "0.4263" });
+// Zone I, A = 10 m² (tabel NB.7 – 7.2: +0,2 en c_pe,10 = −0,2): druk (0,2 + 0,3)·0,8525 = +0,4263;
+// zuiging (−0,2 − 0,2)·0,8525 = −0,341.
+fouten += toets("wind zone I, A = 10 m²", W(9, 10), { c_pe_I: "-0.2", w_d: "0.4263", w_z: "-0.341", w_net: "0.4263" });
+// Zone I, A = 1 m²: zuiging met c_pe,1 = −0,5 → (−0,5 − 0,2)·0,8525 = −0,5968 (gaf eerder −0,341 met −0,2);
+// druk blijft +0,4263. F_w = (−0,5 − 0,2)·0,8525·1 = −0,5968.
+fouten += toets("wind zone I, A = 1 m²", W(9, 1), { c_pe: "0.2", c_pe_I: "-0.5", w_d: "0.4263", w_z: "-0.5968", w_net: "-0.5968", F_w: "-0.5968" });
+// Zone I, A = 2 m²: c_pe = −0,5 + 0,3·log10(2) = −0,4097; (−0,4097 − 0,2)·0,8525 = −0,5198.
+fouten += toets("wind zone I, A = 2 m²", W(9, 2), { c_pe_I: "-0.4097", w_z: "-0.5198", w_net: "-0.5198" });
 // Zone A, A = 5 m²: c_pe = −1,4 + 0,2·log10(5) = −1,2602; (−1,2602 − 0,2)·0,8525 = −1,245; F_w = −1,245·5 = −6,224.
 fouten += toets("wind zone A, A = 5 m²", W(1, 5), { c_pe: "-1.260", w_net: "-1.245", F_w: "-6.224" });
 // Zone D, A = 10 m²: (0,8 + 0,3)·0,8525 = 0,9378.
@@ -65,11 +81,21 @@ fouten += toets("wind zone F, dominante gevel c_pi = +0,72", W(6, 1, { inwendig:
 fouten += toets("wind zone I, dominante gevel c_pi = −0,6", W(9, 10, { inwendig: "2", c_pi: "-0.6" }), { w_net: "0.682", F_w: "6.82" });
 // Zone I met c_pi = +0,72: c_pe = −0,2 → (−0,2 − 0,72)·0,8525 = −0,7843.
 fouten += toets("wind zone I, dominante gevel c_pi = +0,72", W(9, 10, { inwendig: "2", c_pi: "0.72" }), { w_net: "-0.7843" });
+// Idem bij A = 1 m²: c_pe,1 = −0,5 → (−0,5 − 0,72)·0,8525 = −1,040; F_w = −1,040.
+fouten += toets("wind zone I, A = 1 m², dominante gevel c_pi = +0,72", W(9, 1, { inwendig: "2", c_pi: "0.72" }), { w_net: "-1.040", F_w: "-1.040" });
+// c_pi = −0,1 bij A = 1 m²: |−0,5 + 0,1| = 0,4 > |0,2 + 0,1| = 0,3, dus zuiging: −0,4·0,8525 = −0,341.
+fouten += toets("wind zone I, A = 1 m², dominante gevel c_pi = −0,1", W(9, 1, { inwendig: "2", c_pi: "-0.1" }), { w_net: "-0.341" });
 // F_w kiest zelf, want c_s·c_d staat alleen op c_pe (5.5, 5.6). c_pe = −0,06, c_s·c_d = 0,8, A = 10 m²:
 //   w_z = (−0,06 − 0,2)·0,8525 = −0,2217 en w_d = (−0,06 + 0,3)·0,8525 = 0,2046 → w_net zuiging;
 //   F_z = (0,8·−0,06 − 0,2)·0,8525·10 = −2,114 en F_d = (−0,048 + 0,3)·8,525 = 2,148 → F_w druk (gaf eerder −2,114).
 fouten += toets("wind F_w met c_s·c_d < 1", W(0, 10, { c_pe_hand: "-0.06", bouwwerkfactor: "3", cs_cd: "0.8" }),
   { w_z: "-0.2217", w_d: "0.2046", w_net: "-0.2217", F_w: "2.148" });
+// Ontwerplevensduur 100 jaar (zie de kop): c_prob = 1,042, q_p = 0,9253; zone F, A = 10 m²: (−1,8 − 0,2)·0,9253 = −1,851.
+fouten += toets("wind, ontwerplevensduur 100 jaar", reken(wind, { zone_cpe: "6", z: "10", A_bel: "10" }, { ...PROJECT, DesignLife: 100 }),
+  { c_prob: "1.042", q_p: "0.9253", w_net: "-1.851" });
+// 25 jaar: geen verlaging, q_p blijft 0,8525 (aan de veilige kant).
+fouten += toets("wind, ontwerplevensduur 25 jaar", reken(wind, { zone_cpe: "6", z: "10", A_bel: "10" }, { ...PROJECT, DesignLife: 25 }),
+  { q_p: "0.8525", w_net: "-1.705" });
 
 // ── Sneeuw ───────────────────────────────────────────────────────────────────
 const sneeuw = blad("en1991Sneeuwbelasting");
@@ -77,6 +103,11 @@ const S = (v) => reken(sneeuw, v, PROJECT);
 
 // Plat dak: 0,8·1,0·1,0·0,7 = 0,56.
 fouten += toets("sneeuw plat dak", S({ α: "0" }), { μ_1: "0.8", s: "0.56", s_maatgevend: "0.56" });
+// Ontwerplevensduur 100 jaar (zie de kop): s_k = 1,1417·0,7 = 0,7992; s = 0,8·0,7992 = 0,6393 (gaf eerder 0,56).
+fouten += toets("sneeuw plat dak, ontwerplevensduur 100 jaar", reken(sneeuw, { α: "0" }, { ...PROJECT, DesignLife: 100 }),
+  { f_sn: "1.142", s_k: "0.7992", s: "0.6393" });
+// 25 jaar: s_k blijft 0,7.
+fouten += toets("sneeuw plat dak, ontwerplevensduur 25 jaar", reken(sneeuw, { α: "0" }, { ...PROJECT, DesignLife: 25 }), { s_k: "0.7", s: "0.56" });
 // α = 40°: μ_1 = 0,8·(60 − 40)/30 = 0,5333 → 0,3733 (gaf eerder NaN).
 fouten += toets("sneeuw α = 40°", S({ α: "40" }), { μ_1: "0.5333", s: "0.3733" });
 // Kiel, ᾱ = 20°: μ_2 = 0,8 + 0,8·20/30 = 1,333 → 0,9333 (gaf eerder 0,8 → 0,56, en s_maatgevend = s).
@@ -104,5 +135,7 @@ fouten += toets("dak 10°", G({ daktype: "1", α_dak: "10", dakelement: "1" }), 
 fouten += toets("dak 30°, overige elementen", G({ daktype: "1", α_dak: "30", dakelement: "2" }), { q_dak: "0", Q_dak: "1.5" });
 // Vloer C2 met wand 1-2 kN/m: 4,0 + 0,8 = 4,8; Q_k = 7.
 fouten += toets("vloer C2 met scheidingswand", G({ gebruikscategorie: "8", scheidingswand: "2" }), { q_k: "4", Q_k: "7", q_totaal: "4.8" });
+// C, omsloten afzonderlijke verkeersruimte, niet C5 (tabel NB.1 – 6.2): q_k = 5,0, Q_k = 3 (ontbrak eerder).
+fouten += toets("vloer C, omsloten verkeersruimte", G({ gebruikscategorie: "15" }), { q_k: "5", Q_k: "3", q_totaal: "5" });
 
 afronden(fouten, "EN 1991 belastingen");

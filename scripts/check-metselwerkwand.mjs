@@ -11,9 +11,11 @@
  * afhandelt: een resultante buiten de doorsnede (Φ = 0, UC = ∞), een moment
  * zonder normaalkracht, trek, een vloer aan één zijde met een te korte
  * oplegging (§5.5.1.2(11)), het teken van M_mEd in de lage-belastingstak, een
- * penant kleiner dan 0,1 m² ((6.3)), een N_Ed,max kleiner dan N_Ed en de
- * ondergrens 0,3 van ρ_3 in (5.7). In de norm-stand loopt de
- * minimale-excentriciteitstoets ook na een eerste afkeur.
+ * penant kleiner dan 0,1 m² ((6.3)), een N_Ed,max kleiner dan N_Ed, de
+ * ondergrens 0,3 van ρ_3 in (5.7), een slankheid boven 27 in de
+ * minimale-excentriciteitstoets, φ_∞ uit tabel NB-3 en een langsvoeg
+ * (§3.6.1.2(6)). In de norm-stand loopt de minimale-excentriciteitstoets ook
+ * na een eerste afkeur, en geldt f_m ≤ 2·f_b.
  *
  * Draaien:  node scripts/check-metselwerkwand.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -25,7 +27,7 @@ const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 1 };
 
 const BASIS = {
   ondersteuning: "1", n_rand: "2", l_w: "1000", h_w: "2800", t_w: "120", L_v: "3000",
-  steensoort: "3", f_b: "12", morteltype: "1", f_m: "15", steencategorie: "1", phi_inf: "1.5",
+  steensoort: "3", f_b: "12", morteltype: "1", f_m: "15", langsvoeg: "1", steencategorie: "1",
   N_Ed: "200", N_Ed_max: "200", M_1Ed: "0", M_mEd: "0", M_2Ed: "0",
 };
 
@@ -142,6 +144,43 @@ const GEVALLEN = [
     invoer: { n_rand: "3", L_v: "500" },
     verwacht: { n_eff: "3", rho_n: "0.300", h_ef: "840", Phi_m: "0.860", UC_1: "0.55",
                 h_ef2: "840", Phi_m2: "0.792", UC_2: "0.60" }, voldoet: true },
+
+  // Slankheid boven 27 in de minimale-excentriciteitstoets: een capaciteitstoets
+  // (NB bij 5.5.1.1(5) en 6.1.2.2(1)(ii)); de grens 27 van §5.5.1.4 hoort bij
+  // h_ef uit stap 5. Baksteen fb 20 + M10, t = 100, N = 40:
+  // f_k = 0,6·20^0,65·10^0,25 = 7,479, f_d = 4,399; λ = 0,75·2800/100 = 21.
+  // λ_2 = 28 > 27 → φ_∞ = 0,7 (tabel NB-3), e_k2 = 0,002·0,7·28·√(100·10) = 1,24,
+  // e_mk2 = 11,24, A_1 = 0,775, λ_F = 28·√(1/700) = 1,058,
+  // u = 0,9953/(0,73 − 0,1315) = 1,663, Φ_m2 = 0,775·e^(−1,383) = 0,194,
+  // N_Rd,m2 = 0,194·100 000·4,399/1000 = 85,6 → UC_2 = 0,47. UC_max = 21/27 = 0,78.
+  // Eerder telde λ_2/27 = 1,04 mee en gaf het blad "voldoet niet".
+  { naam: "λ_2 = 28 in de minimale-excentriciteitstoets — alleen via e_k",
+    invoer: { steensoort: "1", f_b: "20", f_m: "10", t_w: "100", N_Ed: "40", N_Ed_max: "40" },
+    verwacht: { lam: "21.0", lam_2: "28.0", phi_inf: "0.7", e_k2: "1.24", Phi_m2: "0.194",
+                UC_2: "0.47", UC_max: "0.78" }, voldoet: true },
+
+  // φ_∞ uit tabel NB-3 (NB bij 3.7.4(2)): kalkzandsteen met metselmortel 1,1.
+  // Basisset met t = 100, N = 60: λ_2 = 28, e_k2 = 0,002·1,1·28·√1000 = 1,948,
+  // e_mk2 = 11,948, A_1 = 0,761, u = 0,9953/(0,73 − 0,1398) = 1,686,
+  // Φ_m2 = 0,761·e^(−1,422) = 0,1836, N_Rd,m2 = 0,1836·100 000·3,493/1000 = 64,1
+  // → UC_2 = 0,94. Met de vroegere standaard φ_∞ = 0 van het beeld: 0,80.
+  { naam: "φ_∞ = 1,1 voor kalkzandsteen met metselmortel (tabel NB-3)",
+    invoer: { t_w: "100", N_Ed: "60", N_Ed_max: "60" },
+    verwacht: { phi_inf: "1.1", e_k2: "1.948", Phi_m2: "0.1836", N_Rdm2: "64.1", UC_2: "0.94" }, voldoet: true },
+  { naam: "φ_∞ = 0,8 voor kalkzandsteen met lijmmortel", invoer: { morteltype: "2", f_m: "12.5" },
+    verwacht: { phi_inf: "0.8" } },
+  { naam: "φ_∞ = 1,9 voor betonsteen met metselmortel", invoer: { steensoort: "5" },
+    verwacht: { phi_inf: "1.9" } },
+
+  // Langsvoeg (§3.6.1.2(6)): K = 0,8·0,6 = 0,48. Baksteen fb 20 + M10,
+  // t = 210, N = 600: f_k = 0,8·7,479 = 5,983. Φ verandert niet (E = 700·f_k,
+  // λ_F hangt niet van f_k af), dus N_Rd schaalt met 0,8: UC_1 = 0,806/0,8 =
+  // 1,01. Zonder langsvoeg voldoet dezelfde wand (0,81).
+  { naam: "langsvoeg — K maal 0,8",
+    invoer: { steensoort: "1", f_b: "20", f_m: "10", t_w: "210", N_Ed: "600", N_Ed_max: "600", langsvoeg: "2" },
+    verwacht: { K: "0.48", f_k: "5.983", UC_1: "1.01" }, voldoet: false },
+  { naam: "langsvoeg met lijmmortel — melding", invoer: { morteltype: "2", f_m: "12.5", langsvoeg: "2" },
+    verwacht: { K: "0.64" }, tekst: /geeft de norm geen f k/ },
 ];
 
 /** De slotzin van het blad: "Maatgevende UC = … → … voldoet (niet)". */
@@ -174,7 +213,15 @@ for (const g of GEVALLEN) {
 
 // ── Norm-stand ────────────────────────────────────────────────────────────
 // In de referentiesets is f_m = 15 ≤ 2·f_b: de norm-stand verandert niets.
-// Met baksteen fb 5 + M15 grijpt f_m ≤ 2·f_b wel in (register punt 14).
+// Met baksteen fb 5 + M15 grijpt f_m ≤ 2·f_b wel in (register punt 14):
+// f_k = 0,6·5^0,65·10^0,25 = 3,04 in plaats van 0,6·5^0,65·15^0,25 = 3,36. De
+// referentiestand meldt dat in rood, de norm-stand niet.
+//
+// Langsvoeg: baksteen fb 20 + M10, t = 210, N = 600, K = 0,48, f_d = 3,520.
+// De referentie slaat de tweede toets over (UC_1 = 1,01). Norm-stand:
+// e_mk2 = max(10; 0,05·210) = 10,5, A_1 = 0,9, λ_F = 13,33·√(1/700) = 0,504,
+// u = 0,441/0,6715 = 0,657, Φ_m2 = 0,9·e^(−0,216) = 0,725,
+// N_Rd,m2 = 0,725·1000·210·3,520/1000 = 536,2 → UC_2 = 600/536,2 = 1,12.
 //
 // De referentie slaat de minimale-excentriciteitstoets over zodra de eerste
 // toets niet voldoet; de norm-stand voert hem altijd uit. Set 9 (CC3, M5):
@@ -185,20 +232,32 @@ for (const g of GEVALLEN) {
 // → UC_2 = 200/114,8 = 1,74. De referentie geeft als maatgevende UC 1,04.
 const NORM = [
   { naam: "metselwerkwand-1", invoer: {},
-    richting: { f_k: "gelijk", N_Rd: "gelijk", UC_1: "gelijk" } },
+    richting: { f_k: "gelijk", N_Rd: "gelijk", UC_1: "gelijk" }, melding: false },
   { naam: "baksteen fb 5 + M15", invoer: { steensoort: "1", f_b: "5" },
-    richting: { f_k: "lager", N_Rd: "lager", UC_1: "hoger" } },
+    richting: { f_k: "lager", N_Rd: "lager", UC_1: "hoger" },
+    xc: { f_k: "3.36" }, waarden: { f_k: "3.04" }, melding: true },
   { naam: "metselwerkwand-9 — minimale excentriciteit na een eerste afkeur", invoer: { f_m: "5" },
     project: { CC: 3 }, richting: { UC_1: "gelijk", UC_max: "hoger" },
     waarden: { N_Rdm2: "114.8", UC_2: "1.74", UC_max: "1.74" } },
+  { naam: "langsvoeg — minimale excentriciteit na een eerste afkeur",
+    invoer: { steensoort: "1", f_b: "20", f_m: "10", t_w: "210", N_Ed: "600", N_Ed_max: "600", langsvoeg: "2" },
+    richting: { f_k: "gelijk", UC_1: "gelijk", UC_max: "hoger" },
+    waarden: { N_Rdm2: "536.2", UC_2: "1.12", UC_max: "1.12" } },
 ];
+const MELDING_2FB = /f m is groter dan 2·f b/;
 for (const n of NORM) {
   const invoer = { ...BASIS, ...n.invoer };
   const project = { ...PROJECT, ...n.project };
   const xc = reken(tpl, invoer, project);
   const nb = reken(tpl, invoer, { ...project, rekenwijze: 0 });
   fouten += toetsNormStand(n.naam, xc, nb, n.richting);
+  if (n.xc) fouten += toets(`${n.naam} — referentiestand`, xc, n.xc);
   if (n.waarden) fouten += toets(`${n.naam} — norm-stand, met de hand`, nb, n.waarden);
+  if (n.melding !== undefined) {
+    const ok = MELDING_2FB.test(xc.text) === n.melding && !MELDING_2FB.test(nb.text);
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} melding   f_m > 2·f_b ${n.melding ? "alleen in de referentiestand" : "nergens"}`);
+  }
 }
 
 afronden(fouten, "Dragende metselwerkwand");

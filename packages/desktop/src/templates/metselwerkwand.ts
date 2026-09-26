@@ -24,13 +24,13 @@
  *
  * Uit de referentiebladen afgeleide keuzes van de referentie-uitwerking:
  *   • E = 700·f_k (NB bij 3.7.2(2)) — bevestigd op f_k = 5,94 / 9,00 / 4,51.
- *   • e_k = 0 zolang λ ≤ λ_c = 27 (NB bij 6.1.2.2(2)); φ_∞ (tabel NB-3) telt
- *     pas daarboven, waar de wand al niet aan §5.5.1.4 voldoet.
+ *   • e_k = 0 zolang λ ≤ λ_c = 27 (NB bij 6.1.2.2(2)).
  *   • K, α en β uit tabel NB-2: metselmortel altijd α = 0,65 / β = 0,25;
  *     lijmmortel per steensoort. Getoetst: lijmmortel op baksteen (set 8) en op
  *     cellenbeton (oplegmodule).
  *   • f_b ≤ 75 (metselmortel) / 50 (lijmmortel) en f_m ≤ 20 (NB bij 3.6.1.2);
  *     f_m ≤ 2·f_b bij metselmortel alleen in de norm-stand (register punt 14).
+ *     De referentiestand meldt het verschil in rood.
  *   • γ_M volgens tabel NB-1: gelijk voor CC2 en CC3 (set 9); CC1 0,2 lager.
  *   • Een verticale randsteuning vervalt bij L_v ≥ 15·t (n = 3, set 4) resp.
  *     L_v ≥ 30·t (n = 4, set 7 blijft n = 4 bij L_v = 2000 < 3600). L_v is de
@@ -74,6 +74,17 @@
  *     5.5.1.1(5) vraagt de grootste normaalkracht, dus nooit minder dan N_Ed.
  *   • ρ_3 volgens (5.7) is niet kleiner dan 0,3. Dat grijpt pas in bij n = 3
  *     met L_v < 0,2·h; geen referentieset komt daar.
+ *   • De minimale-excentriciteitstoets is een capaciteitstoets (NB bij
+ *     5.5.1.1(5) en 6.1.2.2(1)(ii)). De grens λ ≤ 27 van §5.5.1.4(2) hoort bij
+ *     h_ef volgens §5.5.1.2 (stap 5); bij h_ef2 telt boven λ_c = 27 alleen e_k
+ *     mee. Alle referentiesets hebben λ_2 ≤ 27.
+ *   • φ_∞ volgt uit tabel NB-3 (NB bij 3.7.4(2)) via steensoort en morteltype;
+ *     betonsteen rekent met 1,9/1,7, lichtbetonsteen (2,0) kent het blad niet.
+ *     φ_∞ telt in de minimale-excentriciteitstoets ook bij een wand die aan
+ *     §5.5.1.4 voldoet. Eerder was φ_∞ vrije invoer (in het beeld standaard 0).
+ *   • Een langsvoeg (mortelvoeg evenwijdig aan het wandvlak) geeft K maal 0,8
+ *     (§3.6.1.2(6)). De factor geldt voor metselmortel; met lijmmortel meldt
+ *     het blad dat de norm geen f_k geeft.
  *
  * Variabelenamen komen exact overeen met MetselwerkwandDesigner.tsx.
  */
@@ -121,24 +132,31 @@ f_b = ?', genormaliseerde druksterkte steen f_b [N/mm²] — fb-waarde (baksteen
   Lijmmortel = 2
 @end
 
-f_m = ?', mortelsterkte f_m [N/mm²] — M-klasse (metselmortel) of L-klasse (lijmmortel); bij lijmmortel niet van invloed op f_k (β=0)'
+f_m = ?', mortelsterkte f_m [N/mm²] — M-klasse (metselmortel) of L-klasse (lijmmortel); bij lijmmortel alleen van invloed bij baksteen ≤ 25 % (β = 0,1, tabel NB-2)'
 
-@select steencategorie "Steencategorie / uitvoeringsklasse (basis γ_M)"
+@select langsvoeg "Mortelvoeg evenwijdig aan het wandvlak (langsvoeg)"
+  geen: in elke laag reikt één steen over de volle wanddikte = 1
+  wel, over de hele wandlengte of een deel ervan (bijvoorbeeld een steense wand met strekkenlagen) = 2
+@end
+
+@select steencategorie "Steencategorie (γ_M, tabel NB-1)"
   Categorie I = 1
   Categorie II = 2
 @end
 
-phi_inf = ?', eindkruipcoëfficiënt φ_∞ (tabel NB-3); telt alleen boven λ_c = 27, waar de wand al op de slankheid afkeurt'
-
 #hide
-'Kolommen: [id | K_metsel | K_lijm | α_lijm | β_lijm], alle uit tabel NB-2.
+'Kolommen: [id | K_metsel | K_lijm | α_lijm | β_lijm | φ_∞ metsel | φ_∞ lijm]:
+'K, α en β uit tabel NB-2, φ_∞ uit tabel NB-3 (NB bij 3.7.4(2)).
 'Metselmortel heeft altijd α = 0,65 en β = 0,25. Tegen een referentie getoetst:
 'kalkzandsteen<25%+metselmortel (set 1-6, 9), baksteen<25%+lijmmortel (set 8) en
 'cellenbeton<25%+lijmmortel (oplegmodule).
-steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.80; 0.70; 0.80; 0.65; 0.80; 0.65; 0.80 |0.75; 0.70; 0.85; 0.85; 0.85; 0.85; 0.85 |0.10; 0; 0; 0; 0; 0; 0]
-K = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 3); hlookup(steenmat; steensoort; 1; 2))
+steenmat = [1; 2; 3; 4; 5; 6; 7 |0.6; 0.5; 0.6; 0.5; 0.6; 0.5; 0.6 |0.80; 0.70; 0.80; 0.65; 0.80; 0.65; 0.80 |0.75; 0.70; 0.85; 0.85; 0.85; 0.85; 0.85 |0.10; 0; 0; 0; 0; 0; 0 |0.7; 0.7; 1.1; 1.1; 1.9; 1.9; 0.6 |0.5; 0.5; 0.8; 0.8; 1.7; 1.7; 0.5]
+K_tab = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 3); hlookup(steenmat; steensoort; 1; 2))
+'§3.6.1.2(6): met een langsvoeg K maal 0,8.
+K = K_tab*if(langsvoeg ≡ 2; 0.8; 1)
 alfa = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 4); 0.65)
 bexp = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 5); 0.25)
+phi_inf = if(morteltype ≡ 2; hlookup(steenmat; steensoort; 1; 7); hlookup(steenmat; steensoort; 1; 6))
 'EN 771-1 t/m 6 kent alleen categorie I en II.
 gam_base = if(steencategorie ≡ 1; 1.7; 2.2)
 gam_M = gam_base - if(CC ≡ 1; 0.2; 0)
@@ -155,11 +173,24 @@ K_E = 700
 A_w = l_w*t_w to m^2
 #show
 
-K', factor K (steengroep + morteltype)'
+#if langsvoeg ≡ 2
+    K', factor K: tabel NB-2 maal 0,8 voor de langsvoeg (§3.6.1.2(6))'
+    #if morteltype ≡ 2
+        '<span style="color: #b45309"><b>Let op:</b> §3.6.1.2(6) geeft de factor 0,8 alleen voor metselmortel;
+        'voor lijmmortel met een langsvoeg geeft de norm geen f<sub>k</sub>. Dit blad rekent ook dan met 0,8·K.</span>
+    #end if
+#else
+    K', factor K (tabel NB-2)'
+#end if
 alfa', exponent α'
 bexp', exponent β'
 gam_M
 f_k = K*f_beff^alfa*f_meff^bexp*N/mm^2', karakteristieke druksterkte metselwerk (3.2)'
+#if rekenwijze ≡ 1 and f_meff_XC > f_meff_nb
+    '<span style="color: red"><b>Let op:</b> f<sub>m</sub> is groter dan 2·f<sub>b</sub>. Met de rekenwijze "de
+    'referentie-uitwerking volgen" rekent het blad met f<sub>m</sub> = 'f_meff_XC' N/mm², volgens de NB bij 3.6.1.2
+    'met 2·f<sub>b</sub> = 'f_meff_nb' N/mm²: f<sub>k</sub> is te hoog en de uitkomst te gunstig.</span>
+#end if
 #if A_w < 0.1*m^2
     A_w = l_w*t_w to m^2', doorsnede van de wand of het penant, kleiner dan 0,1 m²'
     k_A = 0.7 + 3*A_w/m^2', reductie voor een kleine doorsnede (6.3)'
@@ -168,6 +199,7 @@ f_k = K*f_beff^alfa*f_meff^bexp*N/mm^2', karakteristieke druksterkte metselwerk 
     f_d = f_k/gam_M', rekenwaarde druksterkte (3.1)'
 #end if
 E_mw = K_E*f_k', elasticiteitsmodulus E = 700·f_k (NB bij 3.7.2(2))'
+phi_inf', eindkruipcoëfficiënt φ_∞ (NB bij 3.7.4(2), tabel NB-3); telt alleen boven λ_c = 27'
 
 # 3. Belastingen (rekenwaarden)
 
@@ -308,18 +340,13 @@ N_Rd = min(N_Rdt; N_Rdb; N_Rdm)', maatgevende capaciteit'
 # 9. Minimale excentriciteit — NB bij 5.5.1.1(5)
 
 '<i>Grootste normaalkracht, ρ<sub>2</sub> = 1,00 (een verticale randsteuning blijft meetellen) en een
-'constante eerste-orde excentriciteit van ten minste 10 mm en h<sub>ef</sub>/300.</i>
+'constante eerste-orde excentriciteit van ten minste 10 mm en h<sub>ef</sub>/300. Dit is een toets op
+'capaciteit (NB bij 6.1.2.2(1)(ii)): de grens λ ≤ 27 staat in stap 5, hier telt daarboven alleen e<sub>k</sub>.</i>
 h_ef2 = rho_nm*h_w', effectieve hoogte met rho_2 = 1,00 (5.2)'
 e_m2 = max(10*mm; h_ef2/300)', constante minimale excentriciteit'
 
 #if UC_1 ≤ 1.0 or (rekenwijze ≡ 0 and N_Ed ≥ 0 kN)
-    lam_2 = h_ef2/t_ef
-    UC_lam2 = lam_2/27
-    #if lam_2 ≤ 27
-        'λ = h<sub>ef2</sub>/t<sub>ef</sub> = 'lam_2' ≤ 27 — u.c. = 'UC_lam2'<span style="color: green"> → <b>voldoet</b></span>
-    #else
-        'λ = h<sub>ef2</sub>/t<sub>ef</sub> = 'lam_2' > 27 — u.c. = 'UC_lam2'<span style="color: red"> → <b>voldoet niet</b></span>
-    #end if
+    lam_2 = h_ef2/t_ef', slankheid bij ρ_2 = 1,00'
     #if lam_2 ≤ 27
         e_k2 = 0*mm', kruip-excentriciteit bij h_ef2, nul bij λ ≤ λ_c = 27'
     #else
@@ -349,18 +376,16 @@ e_m2 = max(10*mm; h_ef2/300)', constante minimale excentriciteit'
         UC_2 = 1/0
         #show
     #end if
-    UC_lam2m = UC_lam2
 #else
     'Niet uitgevoerd: de wand voldoet al niet op de eerste toets.
     #hide
     UC_2 = 0
-    UC_lam2m = 0
     #show
 #end if
 
 # 10. Samenvatting
 
-UC_max = max(UC_lam; UC_lam2m; UC_1; UC_2)
+UC_max = max(UC_lam; UC_1; UC_2)
 #if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1.0 → <b>Dragende metselwerkwand voldoet</b></span>
 #else

@@ -17,15 +17,18 @@
  * Uit de referentiebladen afgeleide keuzes van de referentie-uitwerking:
  *   • d_nd rekent met de breedte van één spuwer maal het aantal (b·n), dus met
  *     de totale spuwerbreedte in meters.
- *   • De regenwaterbelasting gebruikt 10 kN/m³ (96 mm → 0,96 kN/m²), niet 9,81.
  *   • h_min = 30 + d_hw − h_nd, wat neerkomt op d_nd + 30: de 30 mm uit §7.3(3)
  *     tegen verstopping wordt bovenop de wáterstand in de spuwer gelegd. Een
  *     hogere drempel h_nd verlaagt de u.c. dus niet, wel de waterstand d_hw.
  *   • Tabel NB.1 (i_r per referentieperiode), alle vier geverifieerd:
  *     5 jaar → 0,000027 · 15 jaar → 0,000041 · 50 jaar → 0,00005 · 100 jaar → 0,000056.
- *     De tabel zelf (NB:2019) geeft 1 jaar 0,0215, 15 jaar 0,0406 en 100 jaar
- *     0,0561 (×10⁻³ m/s): de referentie interpoleert 5 jaar en rondt af. In de
- *     UC scheelt dat ten hoogste 0,4 % (15 jaar hoger, 100 jaar 0,1 % lager).
+ *     De tabel zelf (7.2(4), NB:2019) geeft 1 jaar 0,0215, 15 jaar 0,0406 en
+ *     100 jaar 0,0561 (×10⁻³ m/s), tussenliggend lineair: de referentie
+ *     interpoleert 5 jaar en rondt af. Splitspunt (register punt 20): de
+ *     norm-stand rekent met de tabelwaarden zelf. In de UC scheelt dat ten
+ *     hoogste 0,4 % (15 jaar hoger, 100 jaar 0,1 % lager).
+ * De regenwaterbelasting rekent met γ_w = 10 kN/m³ (96 mm → 0,96 kN/m²). Dat
+ * schrijft de NB zelf voor (7.2(1) en 7.2(8)); het is geen afwijking.
  *
  * De referentie-uitwerking drukt ook een "ronde spuwer bij gelijke d_nd" af:
  * de diameter uit (7.7) die dezelfde waterhoogte geeft. Dit blad laat die weg.
@@ -55,14 +58,19 @@ h_nd = ?*(mm)', bovenzijde dakbedekking tot onderzijde spuwer h_nd'
 @end
 
 #hide
-'Tabel NB.1 — regenintensiteit i_r [m³/s]/m² per referentieperiode. Alle vier de
-'waarden zijn tegen een referentieberekening geverifieerd.
+'Tabel NB.1 (7.2(4)) — regenintensiteit i_r [m³/s]/m² per referentieperiode, tussenliggend lineair.
+'Splitspunt (register punt 20): de referentie-uitwerking rondt af; alle vier tegen een referentieberekening geverifieerd.
 irtab = [5; 15; 50; 100 |0.000027; 0.000041; 0.00005; 0.000056]
-i_r = hlookup(irtab; t_ref; 1; 2)
+i_r_xc = hlookup(irtab; t_ref; 1; 2)
+i_r_nb = if(t_ref ≡ 5; 0.0215 + (5 - 1)/(15 - 1)*(0.0406 - 0.0215); if(t_ref ≡ 15; 0.0406; if(t_ref ≡ 50; 0.0500; 0.0561)))/1000
+i_r = if(rekenwijze ≡ 1; i_r_xc; i_r_nb)
 #show
 
 b_tot = n_sp*b_sp', som van de spuwerbreedten'
-i_r', regenintensiteit uit Tabel NB.1 [m³/s]/m²'
+i_r', regenintensiteit uit tabel NB.1 (7.2(4)) [m³/s]/m²'
+#if rekenwijze ≡ 1 and i_r_xc ≠ i_r_nb
+    '<i>Tabel NB.1 geeft 'i_r_nb' [m³/s]/m²; de referentie-uitwerking rekent met de afgeronde waarde.</i>
+#end if
 
 # 2. Regenwaterdebiet — (7.2)
 
@@ -80,7 +88,7 @@ d_nd = 0.7*(Q_h/(b_m*n_sp))^(2/3)*1000*mm', waterhoogte boven de onderzijde van 
 # 4. Waterstand en regenwaterbelasting — (7.8)
 
 d_hw = d_nd + h_nd', waterhoogte t.p.v. de spuwer'
-q_rw = 10*kN/m^3*d_hw to kN/m^2', regenwaterbelasting t.p.v. de spuwer'
+q_rw = 10*kN/m^3*d_hw to kN/m^2', regenwaterbelasting t.p.v. de spuwer, γ_w = 10 kN/m³ (7.2(1), NB)'
 
 # 5. Minimale spuwerhoogte — §7.3(3)
 

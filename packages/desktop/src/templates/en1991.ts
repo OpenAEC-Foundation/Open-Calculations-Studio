@@ -25,9 +25,15 @@
  * tabel gelijke of lagere waarden, de scherpe rand ligt dan aan de veilige
  * kant; bij een afgeschuinde (mansarde)rand c_pe zelf invullen.
  * Inwendig zonder dominante gevel +0,2 of −0,3, de ongunstigste (7.2.9(6)):
- * netto zuiging met +0,2 en netto druk met −0,3; zone I met c_pe = ±0,2. Bij
- * een dominante gevel één ingevulde c_pi (7.2.9(5)). De kracht F_w neemt
+ * netto zuiging met +0,2 en netto druk met −0,3. Zone I met druk +0,2 en
+ * zuiging c_pe,10 = −0,2 / c_pe,1 = −0,5 (tabel NB.7 – 7.2). Bij een
+ * dominante gevel één ingevulde c_pi (7.2.9(5)). De kracht F_w neemt
  * zelf de ongunstigste, want c_s·c_d staat alleen op het uitwendige deel.
+ *
+ * Ontwerplevensduur boven 50 jaar (A1.1(2) van de NB bij NEN-EN 1990): wind
+ * met c_prob volgens opmerking 4 bij 4.2, K uit tabel NB.2 en n = 0,5, p = 1/t;
+ * sneeuw volgens bijlage D (D.1) met V = 0,8 (NB). Onder 50 jaar blijft de
+ * 50-jaarswaarde staan; dat ligt aan de veilige kant.
  * scripts/check-en1991-belastingen.mjs rekent de uitkomsten met de hand na.
  */
 
@@ -47,6 +53,7 @@ A -- Trappen woonfunctie (qk=2.0, Qk=3.0) = 3
 A -- Balkons woonfunctie (qk=2.5, Qk=3.0) = 4
 B -- Kantoorfunctie (qk=2.5, Qk=3.0) = 5
 B -- Omsloten verkeersruimte kantoor (qk=3.0, Qk=3.0) = 6
+C -- Omsloten afzonderlijke verkeersruimte, niet C5 (qk=5.0, Qk=3.0) = 15
 C1 -- Tafels, stoelen, vrije loop (qk=4.0, Qk=3.0) = 7
 C2 -- Vaste zitplaatsen (qk=4.0, Qk=7.0) = 8
 C3 -- Vrij van obstakels, expositie (qk=5.0, Qk=7.0) = 9
@@ -59,7 +66,7 @@ D2 -- Warenhuizen (qk=4.0, Qk=7.0) = 14
 
 #hide
 'Tabel: categorie | q_k (kN/m²) | Q_k (kN)
-vloeren = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14 | 3.0; 1.75; 2.0; 2.5; 2.5; 3.0; 4.0; 4.0; 5.0; 5.0; 5.0; 4.0; 4.0; 4.0 | 3.0; 3.0; 3.0; 3.0; 3.0; 3.0; 3.0; 7.0; 7.0; 7.0; 7.0; 7.0; 7.0; 7.0]
+vloeren = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15 | 3.0; 1.75; 2.0; 2.5; 2.5; 3.0; 4.0; 4.0; 5.0; 5.0; 5.0; 4.0; 4.0; 4.0; 5.0 | 3.0; 3.0; 3.0; 3.0; 3.0; 3.0; 3.0; 7.0; 7.0; 7.0; 7.0; 7.0; 7.0; 7.0; 3.0]
 q_k = hlookup(vloeren; gebruikscategorie; 1; 2)*(kN/m^2)
 Q_k = hlookup(vloeren; gebruikscategorie; 1; 3)*kN
 #show
@@ -118,7 +125,15 @@ export const en1991Sneeuwbelasting = `"Sneeuwbelasting — NEN-EN 1991-1-3 + NB
 
 # 1. Grondwaarde en coëfficiënten
 
-s_k = 0.7 kN/m^2', heel Nederland (NB bij 4.1)'
+#if DesignLife > 50
+    #hide
+    f_sn = (1 - 0.8*sqrt(6)/pi*(log(-log(1 - 1/DesignLife)) + 0.57722))/(1 + 2.5923*0.8)
+    #show
+    f_sn', ontwerplevensduur boven 50 jaar: (D.1) met V = 0,8 (NB bij bijlage D) en P_n = 1/t'
+    s_k = f_sn*0.7 kN/m^2', 0,7 kN/m² in heel Nederland (NB bij 4.1), aangepast volgens A1.1(2) van de NB bij NEN-EN 1990'
+#else
+    s_k = 0.7 kN/m^2', heel Nederland (NB bij 4.1)'
+#end if
 C_e = 1.0', blootstellingscoëfficiënt (5.2(7), NB)'
 C_t = 1.0', warmtecoëfficiënt (5.2(8), NB)'
 'ψ<sub>0</sub> = 0; ψ<sub>1</sub> = 0,2; ψ<sub>2</sub> = 0 (tabel NB.2 – A1.1 van NEN-EN 1990).
@@ -215,9 +230,15 @@ z0_ruw = if(terreincategorie ≡ 1; 0.005; if(terreincategorie ≡ 2; 0.2; 0.5))
 zmin_ruw = if(terreincategorie ≡ 1; 1; if(terreincategorie ≡ 2; 4; 7))
 ze_ruw = max(z/(1*m); zmin_ruw)
 verh = ze_ruw/z0_ruw
-vm_ruw = 0.19*(z0_ruw/0.05)^0.07*log(verh)*vb0_ruw
+K_prob = if(windgebied ≡ 1; 0.2; if(windgebied ≡ 2; 0.234; 0.281))
+t_prob = max(DesignLife; 50)
+cprob_ruw = sqrt((1 - K_prob*log(-log(1 - 1/t_prob)))/(1 - K_prob*log(-log(0.98))))
+vm_ruw = 0.19*(z0_ruw/0.05)^0.07*log(verh)*cprob_ruw*vb0_ruw
 #show
 v_b0 = vb0_ruw*(m/s)', basiswindsnelheid, windgebied uit de projectgegevens (tabel NB.1); c_dir = c_season = 1'
+#if DesignLife > 50
+    c_prob = cprob_ruw', ontwerplevensduur boven 50 jaar: (4.2) met p = 1/t, K uit tabel NB.2 en n = 0,5 (opmerking 4 bij 4.2)'
+#end if
 z_0 = z0_ruw*m', terreincategorie uit de projectgegevens (tabel NB.3 – 4.1)'
 z_e = ze_ruw*m', ten minste z_min'
 k_r = 0.19*(z0_ruw/0.05)^0.07', terreinfactor (4.5)'
@@ -253,7 +274,7 @@ Wand: zone E, lijzijde (c_pe = -0.5 tot -0.7) = 5
 Plat dak: zone F (c_pe,10 = -1.8; c_pe,1 = -2.5) = 6
 Plat dak: zone G (c_pe,10 = -1.2; c_pe,1 = -2.0) = 7
 Plat dak: zone H (c_pe,10 = -0.7; c_pe,1 = -1.2) = 8
-Plat dak: zone I (c_pe = +/-0.2) = 9
+Plat dak: zone I (c_pe = +0.2; zuiging c_pe,10 = -0.2; c_pe,1 = -0.5) = 9
 Zelf invullen = 0
 @end
 
@@ -265,6 +286,7 @@ A_bel = ?*(m^2)', belaste oppervlakte van het element'
 #end if
 #hide
 cpe(c1; c10) = if(A_bel ≥ 10 m^2; c10; if(A_bel ≤ 1 m^2; c1; c1 - (c1 - c10)*log10(A_bel/(1 m^2))))
+c_pe,I = cpe(-0.5; -0.2)
 #show
 #if zone_cpe ≡ 1
     c_pe = cpe(-1.4; -1.2)', zone A: c_pe,1 = −1,4; c_pe,10 = −1,2'
@@ -283,11 +305,12 @@ cpe(c1; c10) = if(A_bel ≥ 10 m^2; c10; if(A_bel ≤ 1 m^2; c1; c1 - (c1 - c10)
 #else if zone_cpe ≡ 8
     c_pe = cpe(-1.2; -0.7)', zone H: c_pe,1 = −1,2; c_pe,10 = −0,7'
 #else if zone_cpe ≡ 9
-    c_pe = 0.2', zone I: +0,2 en −0,2'
+    c_pe = 0.2', zone I, druk'
+    c_pe,I', zone I, zuiging: c_pe,1 = −0,5; c_pe,10 = −0,2 (tabel NB.7 – 7.2)'
 #else
     c_pe = c_pe,hand
 #end if
-#if zone_cpe ≠ 0 and zone_cpe ≠ 3 and zone_cpe ≠ 5 and zone_cpe ≠ 9
+#if zone_cpe ≠ 0 and zone_cpe ≠ 3 and zone_cpe ≠ 5
     #if A_bel ≥ 10 m^2
         '<i>A ≥ 10 m²: c<sub>pe,10</sub>.</i>
     #else if A_bel ≤ 1 m^2
@@ -306,12 +329,12 @@ Dominante gevel: c_pi invullen = 2
 
 #hide
 c_pe,d = c_pe
-c_pe,z = if(zone_cpe ≡ 9; -c_pe; c_pe)
+c_pe,z = if(zone_cpe ≡ 9; c_pe,I; c_pe)
 #show
 #if inwendig ≡ 2
     c_pi = ?', 0,75 of 0,9 × c_pe ter plaatse van de openingen in de dominante gevel (7.2.9(5))'
     #hide
-    c_pe,dom = if(zone_cpe ≡ 9; if(c_pi ≥ 0; -0.2; 0.2); c_pe)
+    c_pe,dom = if(zone_cpe ≡ 9; if(abs(c_pe,I - c_pi) ≥ abs(0.2 - c_pi); c_pe,I; 0.2); c_pe)
     #show
     w_net = q_p*(c_pe,dom - c_pi) to kN/m^2', negatief is zuiging'
     F_w = (cs_cd*c_pe,dom - c_pi)*q_p*A_bel to kN', kracht op het element (5.5, 5.6)'

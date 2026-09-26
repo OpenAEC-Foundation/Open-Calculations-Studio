@@ -14,14 +14,14 @@
  * Bladen 1 en 2 in CC1: γ_M = 1,5 (categorie I) en 2,0 (categorie II), tabel NB-1.
  *
  * Blad 2 raakt register punt 14: f_m = 15 is groter dan 2·f_b = 10. Het
- * referentieprogramma rekent toch met 15; in de norm-stand geldt 10, en
- * daarmee een lagere f_k en een hogere u.c. Ook is de plaat daar breder dan
- * de wand (a_t = 160 op t = 150): de referentie telt de hele plaat mee, de
- * norm-stand alleen het deel op de wand.
+ * referentieprogramma rekent toch met 15 en de referentiestand meldt dat in
+ * rood; in de norm-stand geldt 10, en daarmee een lagere f_k en een hogere
+ * u.c. Ook is de plaat daar breder dan de wand (a_t = 160 op t = 150): de
+ * referentie telt de hele plaat mee, de norm-stand alleen het deel op de wand.
  *
  * Daarna de gevallen zonder referentieblad: steengroep 2 (β = 1,0),
- * A_b/A_ef boven 0,45, de nevenvoorwaarden in het eindoordeel, trek en een
- * oplegplaat die buiten de wand steekt.
+ * A_b/A_ef boven 0,45, de nevenvoorwaarden in het eindoordeel, trek, een
+ * langsvoeg (§3.6.1.2(6)) en een oplegplaat die buiten de wand steekt.
  *
  * Draaien:  node scripts/check-opleg-metselwerk.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -32,7 +32,7 @@ const tpl = laadTemplate("oplegMetselwerk.ts");
 const PROJECT = { CC: 1, K_FI: 0.9, rekenwijze: 1 };
 
 const BASIS = {
-  morteltype: "1", f_m: "15", h: "2800", h_k: "250",
+  morteltype: "1", f_m: "15", langsvoeg: "1", h: "2800", h_k: "250",
   a_L: "200", a_t: "160", L_r: "2000", exc: "0", q_Edc: "5.5",
 };
 
@@ -97,6 +97,10 @@ const GEVALLEN = [
   { naam: "trek op de oplegging", ref: 1, invoer: { N_Edc: "-50" },
     verwacht: { N_Ed: "-48.9" }, uc: "∞", voldoet: false },
   { naam: "blad 2 zelf voldoet", ref: 1, invoer: {}, verwacht: {}, voldoet: true },
+  // Langsvoeg (§3.6.1.2(6)): K = 0,8·0,6 = 0,48, f_k = 0,8·5,938 = 4,750,
+  // f_d = 3,167; N_Rdc = 0,8·165,78 = 132,6 → UC = 361,1/132,6 = 2,72.
+  { naam: "blad 1 met een langsvoeg — K maal 0,8", ref: 0, invoer: { langsvoeg: "2" },
+    verwacht: { K: "0.48", f_k: "4.750", N_Rdc: "132.6", UC: "2.72" }, voldoet: false },
 ];
 
 /** De slotzin van het blad: "Maatgevende UC = … → Oplegging voldoet (niet)". */
@@ -178,12 +182,42 @@ const NORM_WAARDEN = [
   null,
   { f_k: "3.04", A_b: "30000", "β": "1.25", N_Rdc: "56.95", UC: "0.90" },
 ];
+const MELDING_2FB = /f m is groter dan 2·f b/;
+/** De melding f_m > 2·f_b staat er alleen in de referentiestand, en alleen als het verschil optreedt. */
+function toetsMelding(naam, xc, nb, verwacht) {
+  const ok = MELDING_2FB.test(xc.text) === verwacht && !MELDING_2FB.test(nb.text);
+  console.log(`  ${ok ? "OK    " : "FOUT  "} melding   f_m > 2·f_b ${verwacht ? "alleen in de referentiestand" : "nergens"}   (${naam})`);
+  return ok ? 0 : 1;
+}
 REFERENTIES.forEach((ref, i) => {
   const invoer = { ...BASIS, ...ref.invoer };
   const xc = reken(tpl, invoer, PROJECT);
   const nb = reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 });
   fouten += toetsNormStand(ref.blad, xc, nb, RICHTING[i]);
   if (NORM_WAARDEN[i]) fouten += toets(`${ref.blad} — norm-stand, met de hand`, nb, NORM_WAARDEN[i]);
+  fouten += toetsMelding(ref.blad, xc, nb, i === 1);
 });
+
+// Hoe groot punt 14 kan worden: baksteen fb 5 + M20, categorie I, CC2, t = 200,
+// a_t = 150, a_1 = 300, N_Edc = 70 → N_Ed = 71,1 kN. l_efm = 1236,1,
+// A_b = 30 000, A_b/A_ef = 0,121, β = β_max = 1,25 + 300/5100 = 1,309.
+// Referentie: f_k = 0,6·5^0,65·20^0,25 = 3,612, f_d = 2,125,
+//   N_Rdc = 1,309·30 000·2,125/1000 = 83,4 → UC = 0,85 (voldoet).
+// Norm:       f_k = 0,6·5^0,65·10^0,25 = 3,037, f_d = 1,787,
+//   N_Rdc = 1,309·30 000·1,787/1000 = 70,2 → UC = 1,01 (voldoet niet).
+{
+  const naam = "baksteen fb 5 + M20 — f_m > 2·f_b beslist het oordeel";
+  const invoer = { ...BASIS, steensoort: "1", f_b: "5", f_m: "20", steencategorie: "1",
+                   t: "200", a_t: "150", a_1: "300", N_Edc: "70" };
+  const xc = reken(tpl, invoer, { ...PROJECT, CC: 2 });
+  const nb = reken(tpl, invoer, { ...PROJECT, CC: 2, rekenwijze: 0 });
+  fouten += toets(`${naam} — referentiestand`, xc, { f_k: "3.612", N_Rdc: "83.4", UC: "0.85" });
+  fouten += toets(`${naam} — norm-stand, met de hand`, nb, { f_k: "3.037", N_Rdc: "70.2", UC: "1.01" });
+  fouten += toetsMelding(naam, xc, nb, true);
+  const oordeel = [xc, nb].map((r) => /voldoet niet/.test(slotzin(r)));
+  const ok = !oordeel[0] && oordeel[1];
+  if (!ok) fouten++;
+  console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel   referentiestand voldoet, norm-stand voldoet niet`);
+}
 
 afronden(fouten, "Oplegging op metselwerk");

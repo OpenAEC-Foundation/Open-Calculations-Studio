@@ -35,6 +35,12 @@
  * boven het maximum is alleen een signaal, want de voetnoot bij de maxima
  * beperkt ze tot gedrukte en aan weer blootgestelde delen.
  *
+ * De NB bij 3.1.1(3) sluit de boutklassen 4.8 en 5.8 uit. Ze staan niet in
+ * de keuzelijst; een opgeslagen blad met zo'n klasse keurt af. f_u van
+ * de plaat volgt tabel 3.1 van NEN-EN 1993-1-1 naar t (t ≤ 40 mm of
+ * 40 < t ≤ 80 mm). Daarboven geeft tabel 3.1 geen waarde; f_u komt dan uit de
+ * productnorm (NB bij 3.2.1(1)) en het blad keurt af.
+ *
  * AFWIJKING — binnenste bout loodrecht op de kracht. de referentie-uitwerking
  * trekt de twee assen samen tot één keuzelijst en neemt voor k₁ altijd het
  * minimum van beide takken. Voor een randbout is dat precies de tabel; alleen
@@ -64,9 +70,7 @@ export const boutberekening = `"Boutberekening — weerstanden van één bout vo
 
 @select boutkwaliteit "Boutkwaliteit"
   4.6 = 46
-  4.8 = 48
   5.6 = 56
-  5.8 = 58
   6.8 = 68
   8.8 = 88
   10.9 = 109
@@ -121,8 +125,10 @@ fub_ = if(boutkwaliteit ≡ 46; 400; if(boutkwaliteit ≡ 48; 400; if(boutkwalit
 fyb_ = if(boutkwaliteit ≡ 46; 240; if(boutkwaliteit ≡ 48; 320; if(boutkwaliteit ≡ 56; 300; if(boutkwaliteit ≡ 58; 400; if(boutkwaliteit ≡ 68; 480; if(boutkwaliteit ≡ 88; 640; 900))))))
 'α_v = 0,6 voor 4.6, 5.6 en 8.8; 0,5 voor 4.8, 5.8, 6.8 en 10.9 (tabel 3.4).
 avd_ = if(boutkwaliteit ≡ 46; 0.6; if(boutkwaliteit ≡ 56; 0.6; if(boutkwaliteit ≡ 88; 0.6; 0.5)))
-'Staalsoort: f_u uit tabel 3.1 van NEN-EN 1993-1-1, t ≤ 40 mm; de NB laat die tabel toe (3.2.1(1)).
-fu_ = if(staalsoort ≡ 235; 360; if(staalsoort ≡ 275; 430; 490))
+'4.8 en 5.8 staan niet meer in de keuzelijst (NB bij 3.1.1(3)); een opgeslagen blad met die klasse keurt af.
+toegelaten = if(boutkwaliteit ≡ 48 or boutkwaliteit ≡ 58; 0; 1)
+'Staalsoort: f_u uit tabel 3.1 van NEN-EN 1993-1-1 naar de plaatdikte; de NB laat die tabel toe (3.2.1(1)).
+fu_ = if(t_plaat ≤ 40 mm; if(staalsoort ≡ 235; 360; if(staalsoort ≡ 275; 430; 490)); if(staalsoort ≡ 235; 360; if(staalsoort ≡ 275; 410; 470)))
 'Gatdiameter bij normale gatspeling (EN 1090-2): +1 mm t/m M14, +2 mm t/m M24, +3 mm daarboven.
 d0_ = if(boutdiameter ≡ 12; 13; if(boutdiameter ≡ 16; 18; if(boutdiameter ≡ 20; 22; if(boutdiameter ≡ 24; 26; if(boutdiameter ≡ 27; 30; if(boutdiameter ≡ 30; 33; 39))))))
 'Spanningsoppervlak van de draad volgens ISO 898-1.
@@ -140,7 +146,13 @@ f_ub = fub_*N/mm^2
 f_yb = fyb_*N/mm^2
 f_u = fu_*N/mm^2
 #show
-'Bout M'boutdiameter': d<sub>0</sub> = 'd_0' mm (normale gatspeling), A<sub>s</sub> = 'A_s' mm², A = 'A' mm², f<sub>ub</sub> = 'f_ub' N/mm² (tabel 3.1). Plaat: f<sub>u</sub> = 'f_u' N/mm². γ<sub>M2</sub> = 'γ_M2'.
+'Bout M'boutdiameter': d<sub>0</sub> = 'd_0' mm (normale gatspeling), A<sub>s</sub> = 'A_s' mm², A = 'A' mm², f<sub>ub</sub> = 'f_ub' N/mm² (tabel 3.1). Plaat: f<sub>u</sub> = 'f_u' N/mm² (NEN-EN 1993-1-1 tabel 3.1, bij t = 't_plaat' mm). γ<sub>M2</sub> = 'γ_M2'.
+#if toegelaten ≡ 0
+    '<b style="color:#b91c1c">Boutklasse 'boutkwaliteit/10' is niet toegelaten (NB bij 3.1.1(3)).</b>
+#end if
+#if t_plaat > 80 mm
+    '<b style="color:#b91c1c">t = 't_plaat' mm > 80 mm: tabel 3.1 van NEN-EN 1993-1-1 geeft geen f<sub>u</sub>; die volgt dan uit de productnorm (NB bij 3.2.1(1)) en valt buiten dit blad.</b>
+#end if
 
 # 3. Trekweerstand — tabel 3.4
 
@@ -276,7 +288,11 @@ belast = (F_v,Ed + F_t,Ed)/(1*kN)
     stuikfout = if(F_v,Ed > 0 kN; if(F_b,Rd > 0 kN; 0; 1); 0)
     maatfout = if(tekort ≡ 0; 0; 1)
     #show
-    #if stuikfout ≡ 1
+    #if toegelaten ≡ 0
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar boutklasse 'boutkwaliteit/10' is niet toegelaten (NB bij 3.1.1(3)) → <b>voldoet niet</b></span>
+    #else if t_plaat > 80 mm
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar t > 80 mm ligt buiten tabel 3.1 van NEN-EN 1993-1-1 (f<sub>u</sub> uit de productnorm, NB bij 3.2.1(1)) → <b>voldoet niet</b></span>
+    #else if stuikfout ≡ 1
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar F<sub>b,Rd</sub> ≤ 0: k<sub>1</sub> of α<sub>d</sub> is niet positief (een rand- of steekafstand is te klein) → <b>voldoet niet</b></span>
     #else if maatfout ≡ 1
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar 'tekort' afstand(en) onder het minimum van tabel 3.3 → <b>voldoet niet</b></span>

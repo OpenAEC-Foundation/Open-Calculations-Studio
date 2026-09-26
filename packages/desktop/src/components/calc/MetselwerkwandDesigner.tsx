@@ -53,6 +53,11 @@ const MORTELTYPE: { v: number; label: string }[] = [
 ];
 const VOEG_METSEL = [5, 10, 15];
 const VOEG_LIJM = [10, 12.5];
+// Mortelvoeg evenwijdig aan het wandvlak: K maal 0,8 (§3.6.1.2(6)), in het blad.
+// φ_∞ is geen invoer: het blad neemt hem uit tabel NB-3 bij steen en mortel.
+const LANGSVOEG: { v: number; label: string }[] = [
+  { v: 1, label: "geen" }, { v: 2, label: "wel (K × 0,8)" },
+];
 const KWALITEIT: Record<Steen["kwal"], { v: number; label: string }[]> = {
   fb: [5, 10, 15, 20, 25, 30, 35, 40].map((v) => ({ v, label: `fb ${v}` })),
   CS: [12, 16, 20, 24, 30].map((v) => ({ v, label: `CS${v}` })),
@@ -71,7 +76,7 @@ const CATEGORIE: { v: number; label: string }[] = [
 const DEFAULTS: Record<string, number> = {
   ondersteuning: 1, n_rand: 2,
   l_w: 1000, h_w: 2800, t_w: 120, L_v: 3000,
-  steencategorie: 1, steensoort: 3, morteltype: 1, f_b: 12, f_m: 15, phi_inf: 0,
+  steencategorie: 1, steensoort: 3, morteltype: 1, f_b: 12, f_m: 15, langsvoeg: 1,
   N_Ed: 200, N_Ed_max: 200, M_1Ed: 0, M_mEd: 0, M_2Ed: 0,
 };
 
@@ -144,7 +149,7 @@ export default function MetselwerkwandDesigner() {
   const catId = Math.round(d("steencategorie"));
   const morteltype = Math.round(d("morteltype"));
   const isLijm = morteltype === 2;
-  const fb = d("f_b"), fmRaw = d("f_m"), phiInf = d("phi_inf");
+  const fb = d("f_b"), fmRaw = d("f_m"), langsvoeg = Math.round(d("langsvoeg"));
   const N_Ed = d("N_Ed"), N_Ed_max = d("N_Ed_max");
   const M_1 = d("M_1Ed"), M_m = d("M_mEd"), M_2 = d("M_2Ed");
 
@@ -332,8 +337,10 @@ export default function MetselwerkwandDesigner() {
               {(isLijm ? VOEG_LIJM : VOEG_METSEL).map((v) => <option key={v} value={v}>{(isLijm ? "L" : "M") + v}</option>)}
             </select>
           </label>
-          <label title="Eindkruipcoëfficiënt voor e_k (6.8), tabel NB-3 — telt pas mee boven λ_c = 27 (NB bij 6.1.2.2(2))">Eindkruipgetal φ<sub>∞</sub>
-            <input type="number" step={0.1} value={phiInf} onChange={(e) => setVal("phi_inf", parseFloat(e.target.value))} />
+          <label title="Mortelvoeg evenwijdig aan het wandvlak, over de hele wandlengte of een deel ervan (bijvoorbeeld een steense wand met strekkenlagen): K maal 0,8 (§3.6.1.2(6))">Langsvoeg
+            <select value={langsvoeg} onChange={(e) => setVal("langsvoeg", parseInt(e.target.value))}>
+              {LANGSVOEG.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
+            </select>
           </label>
 
           <span className="vd-ctrl-h">Belasting</span>

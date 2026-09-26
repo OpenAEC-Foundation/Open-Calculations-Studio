@@ -28,6 +28,14 @@
  * In beide standen volgens de norm:
  *   • de sterkte per paneel, met n volle platen plus een restpaneel, elk met zijn
  *     eigen c_i; een paneel smaller dan h/4 telt niet mee (9.2.4.2(2));
+ *   • bij een horizontale naad telt een paneel smaller dan 0,5·h voor 0,85 mee
+ *     (NB bij 9.2.4.2(17)); in de referentiestand blijft de sterkte daarmee
+ *     1/1,2 van die volgens de norm;
+ *   • gipsplaat: minimaal 12,5 mm dik (NB bij 3.8(3)), type A en F alleen in
+ *     klimaatklasse 1, type H en FH en gipsvezelplaat in 1 en 2 (NB bij 3.8(1)
+ *     en (2)); beide tellen als detaillering. De reductie bij stijlen op
+ *     a ≥ 35·t (NB bij 9.2.4.2(18)) rekent het blad niet: de slotzin zegt dan
+ *     "niet volledig getoetst";
  *   • de hefboom in (9.23) is de meetellende lengte Σ b_i·c_i gedeeld door c_i
  *     van de breedste plaat: een smal restpaneel draagt minder, en de volle
  *     plaat aan het eind krijgt de grootste trekkracht;
@@ -71,6 +79,13 @@ s_verb = ?*(mm)', h.o.h. verbindingsmiddelen langs de plaatranden'
   Dubbelzijdig, aan beide zijden dezelfde plaat en verbinding = 2
 @end
 
+@select plaat "Plaatmateriaal"
+  Houtachtige plaat = 1
+  Gipskartonplaat type A of F = 2
+  Gipskartonplaat type H of FH = 3
+  Gipsvezelplaat = 4
+@end
+
 t_bepl = ?*(mm)', dikte beplating'
 f_v,d = ?*(N/mm^2)', rekenwaarde afschuifsterkte van de beplating, k_mod·f_v,k/γ_M; 0 = niet getoetst'
 
@@ -104,6 +119,11 @@ b = ?*(mm)', lengte van de wandschijf zonder openingen'
 h = ?*(mm)', hoogte van de wandschijf'
 bi = ?*(mm)', breedte van een beplatingsplaat'
 hoh = ?*(mm)', h.o.h. afstand van de stijlen'
+
+@select naad "Horizontale naad in de beplating"
+  Nee = 0
+  Ja, alle plaatranden schuifvast verbonden = 1
+@end
 
 # 4. Belasting en verankering
 
@@ -155,8 +175,19 @@ b_ef', Σ b_i·c_i van de volle platen en het restpaneel; een paneel smaller dan
     '<span style="color:#b45309">Het restpaneel is smaller dan h/4 en telt niet mee. Zet het anker op de stijl aan het eind van de laatste volle plaat, of veranker het restpaneel apart (9.2.4.2(10), fig. 9.6).</span>
 #end if
 #hide
-F_ivRd,xc = F_f_Rd*b_ef*n_zijdig/s_verb
-F_ivRd,nb = 1.2*F_f_Rd*b_ef*n_zijdig/s_verb
+k_naad = if(naad ≡ 1; if(bi < 0.5*h; 0.85; 1); 1)
+k_naad,rest = if(naad ≡ 1; if(b_rest < 0.5*h; 0.85; 1); 1)
+#show
+#if naad ≡ 1
+    b_ef,v = bool(bi ≥ h/4)*n_pl*bi*c_i*k_naad + bool(b_rest ≥ h/4)*b_rest*c_rest*k_naad,rest', horizontale naad: een paneel smaller dan 0,5·h telt ×0,85 (NB bij 9.2.4.2(17))'
+#else
+    #hide
+    b_ef,v = b_ef
+    #show
+#end if
+#hide
+F_ivRd,xc = F_f_Rd*b_ef,v*n_zijdig/s_verb
+F_ivRd,nb = 1.2*F_f_Rd*b_ef,v*n_zijdig/s_verb
 #show
 F_ivRd = if(rekenwijze ≡ 1; F_ivRd,xc; F_ivRd,nb) to kN', (9.20)/(9.21); de verhoging 1,2 langs de plaatranden (9.2.4.2(5)) alleen volgens de norm'
 #if F_ivRd > 0 kN
@@ -252,7 +283,21 @@ UC_hoh,nb = s_verb/s_max,nb
 UC_plooi = if(rekenwijze ≡ 1; UC_plooi,xc; UC_plooi,nb)', plooi (9.2.4.2(11)): h.o.h.-afstand, volgens de norm de dagmaat, gedeeld door 100·t'
 UC_hoh = if(rekenwijze ≡ 1; UC_hoh,xc; UC_hoh,nb)', h.o.h. langs de plaatranden (10.8.2(1)): hoogstens 150 mm, volgens de norm 200 mm bij schroeven'
 #hide
-ok_detail = bool(UC_plooi ≤ 1)*bool(UC_hoh ≤ 1)
+'Gipskarton type A en F alleen in klimaatklasse 1, type H en FH en gipsvezelplaat in 1 en 2 (NB bij 3.8(1) en (2)).
+ok_klimaat = if(plaat ≡ 2; bool(klimaatklasse ≡ 1); if(plaat ≥ 3; bool(klimaatklasse ≤ 2); 1))
+UC_dikte = if(plaat ≥ 2; 12.5 mm/t_bepl; 0)
+#show
+#if plaat ≥ 2
+    UC_dikte', gipsplaat minimaal 12,5 mm dik (NB bij 3.8(3))'
+    #if ok_klimaat ≡ 0
+        '<span style="color: red">Deze gipsplaat is in klimaatklasse 'klimaatklasse' niet toegestaan (NB bij 3.8(1) en (2)).</span>
+    #end if
+    #if hoh ≥ 35*t_bepl
+        '<span style="color:#b45309">Stijlen op a ≥ 35·t: de NB bij 9.2.4.2(18) schrijft dan een reductie van de schijfsterkte voor. Dit blad rekent die niet; apart aantonen.</span>
+    #end if
+#end if
+#hide
+ok_detail = bool(UC_plooi ≤ 1)*bool(UC_hoh ≤ 1)*bool(UC_dikte ≤ 1)*ok_klimaat
 #show
 #if ok_detail ≡ 1
     'Detaillering:<span style="color: green"> <b>voldoet</b></span>
@@ -306,7 +351,8 @@ k_cy', knikfactor (6.25); in het vlak kniklengte = h.o.h. verbindingsmiddelen'
 
 UC_max = max(UC_sterkte; UC_druk90; UC_stijl; UC_anker; UC_glijden; UC_plaat)
 #hide
-volledig = bool(F_a,Rd > 0 kN)*bool(v_Rd > 0 kN/m)*bool(f_v,d > 0 N/mm^2)
+open_18 = bool(plaat ≥ 2)*bool(hoh ≥ 35*t_bepl)
+volledig = bool(F_a,Rd > 0 kN)*bool(v_Rd > 0 kN/m)*bool(f_v,d > 0 N/mm^2)*(1 - open_18)
 #show
 #if UC_max > 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>Schijfwerking voldoet niet</b></span>
@@ -314,6 +360,8 @@ volledig = bool(F_a,Rd > 0 kN)*bool(v_Rd > 0 kN/m)*bool(f_v,d > 0 N/mm^2)
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>Schijfwerking voldoet niet: de detaillering klopt niet</b></span>
 #else if volledig ≡ 1
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>Schijfwerking voldoet</b></span>
+#else if open_18 ≡ 1
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ≤ 1,0, maar <b>de schijf is niet volledig getoetst</b>: de reductie bij gips op a ≥ 35·t (NB bij 9.2.4.2(18)) apart aantonen.</span>
 #else
     '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ≤ 1,0, maar <b>de schijf is niet volledig getoetst</b>: anker, glijden of plaat zonder ingevulde capaciteit apart aantonen.</span>
 #end if

@@ -23,6 +23,13 @@
  * buitendiameter (§8.7.1(1)), met de hoogte h ook tot die overkant. De hoeken
  * α (kracht) en α_s (schroefas) tellen als de scherpe hoek met de vezel.
  *
+ * Het koordeffect is bij vierkante en geprofileerde nagels, dus ook ring- en
+ * schroefnagels, ten hoogste 25 % van het Johansen-deel (§8.2.2(2)). Het staal
+ * van de schroef op trek (8.40c) krijgt k_mod en γ_M = 1,3 voor verbindingen
+ * ((2.17), tabel 2.3; de NB bij 2.4.1 geeft geen andere waarde). Gipskarton
+ * type A en F alleen in klimaatklasse 1, en gipsplaat minimaal 12,5 mm dik
+ * (NB bij 3.8).
+ *
  * Geen referentieberekening beschikbaar; scripts/check-nagel-schroef.mjs
  * rekent de uitkomsten onafhankelijk na. Status in de catalogus: controleren.
  */
@@ -63,6 +70,9 @@ kleur_ok(b) = if(b ≡ 1; "#047857"; "#b91c1c")
   Hout – staalplaat – hout, dubbelsnedig = 5
 @end
 
+#hide
+gips_type = 1
+#show
 #if opbouw ≡ 3
     @select plaat "Plaatmateriaal (element 1)"
       OSB/3 (EN 300) = 1
@@ -72,6 +82,12 @@ kleur_ok(b) = if(b ≡ 1; "#047857"; "#b91c1c")
       Gipskartonplaat (NEN-EN 520) = 5
       Gipsvezelplaat (NEN-EN 15283-2) = 6
     @end
+    #if plaat ≡ 5
+        @select gips_type "Type gipskartonplaat"
+          A of F = 1
+          H of FH = 2
+        @end
+    #end if
     t_1 = ?*(mm)', dikte van de plaat'
     #if plaat ≡ 4
         ρ_pl = ?*(kg/m^3)', karakteristieke volumieke massa van het multiplex'
@@ -149,7 +165,8 @@ kmod_h = [1; 2; 3 |0.60; 0.60; 0.50 |0.70; 0.70; 0.55 |0.80; 0.80; 0.65 |0.90; 0
 'Platen, tabel 3.1 en voor gipsplaat tabel NB.2. Sleutel = 10 × plaat + klimaatklasse; 0 = niet toegestaan.
 kmod_p = [11; 12; 13; 21; 22; 23; 31; 32; 33; 41; 42; 43; 51; 52; 53; 61; 62; 63 |0.40; 0.30; 0; 0.40; 0.30; 0; 0.30; 0.20; 0; 0.60; 0.60; 0.50; 0.20; 0.15; 0; 0.20; 0.15; 0 |0.50; 0.40; 0; 0.50; 0.40; 0; 0.45; 0.30; 0; 0.70; 0.70; 0.55; 0.40; 0.30; 0; 0.40; 0.30; 0 |0.70; 0.55; 0; 0.70; 0.55; 0; 0.65; 0.45; 0; 0.80; 0.80; 0.65; 0.60; 0.45; 0; 0.60; 0.45; 0 |0.90; 0.70; 0; 0.90; 0.70; 0; 0.85; 0.60; 0; 0.90; 0.90; 0.70; 0.80; 0.60; 0; 0.80; 0.60; 0 |1.10; 0.90; 0; 1.10; 0.90; 0; 1.10; 0.80; 0; 1.10; 1.10; 0.90; 1.00; 0.80; 0; 1.00; 0.80; 0]
 k_mod,h = hlookup(kmod_h; klimaat; 1; duur + 1)
-k_mod,p = hlookup(kmod_p; 10*plaat + klimaat; 1; duur + 1)
+'Gipskarton type A en F alleen in klimaatklasse 1, type H en FH en gipsvezel in 1 en 2 (NB bij 3.8(1) en (2)).
+k_mod,p = hlookup(kmod_p; 10*plaat + klimaat; 1; duur + 1)*(1 - bool(plaat ≡ 5)*bool(gips_type ≡ 1)*bool(klimaat ≥ 2))
 #show
 #if opbouw ≤ 2
     ρ_1', element 1'
@@ -164,7 +181,7 @@ k_mod,h', hout (tabel 3.1)'
     k_mod,p', plaat (tabel 3.1, gipsplaat tabel NB.2)'
     k_mod = sqrt(k_mod,h*k_mod,p)', twee materialen (2.6)'
     #if k_mod,p ≡ 0
-        '<b style="color:#b91c1c">Dit plaatmateriaal mag in klimaatklasse 'klimaat' niet worden toegepast (tabel 3.1, §3.8).</b>
+        '<b style="color:#b91c1c">Dit plaatmateriaal mag in klimaatklasse 'klimaat' niet worden toegepast (tabel 3.1, NB bij 3.8(1) en (2)).</b>
     #end if
 #else
     k_mod = k_mod,h', een houtsoort, of hout met staal'
@@ -193,7 +210,6 @@ f_u = ?*(N/mm^2)', treksterkte van het draadmateriaal'
     ρ_a = ?*(kg/m^3)', volumieke massa waarbij f_head,k is bepaald'
     f_ax,in = ?*(N/mm^2)', uittreksterkte (EN 14592); alleen nodig buiten 6 ≤ d ≤ 12 mm of 0,6 ≤ d_1/d ≤ 0,75'
     α_s = ?', hoek tussen de schroefas en de vezelrichting, in graden'
-    γ_M2 = 1.25', staal van de schroef op trek (NEN-EN 1993-1-8 tabel 2.1)'
     #hide
     f_ax,nk = 0 N/mm^2
     f_head,nk = 0 N/mm^2
@@ -207,7 +223,6 @@ f_u = ?*(N/mm^2)', treksterkte van het draadmateriaal'
     ρ_a = 350 kg/m^3
     f_ax,in = 0 N/mm^2
     α_s = 90
-    γ_M2 = 1.25
     #show
     #if middel ≤ 2
         #hide
@@ -517,11 +532,13 @@ kop_plaat = bool(opbouw ≡ 3)
 # 7. Sterkte op afschuiving per verbindingsmiddel en per snede
 
 #hide
-p_ax = if(opbouw ≡ 3; if(plaat ≥ 5; 0; 1); 1)*if(middel ≡ 1; 0.15; if(middel ≡ 2; 0.25; if(middel ≡ 3; 0.50; 1)))
+'§8.2.2(2): ronde nagels (en nieten, NB) 15 %, vierkante en geprofileerde nagels 25 %, schroeven 100 %.
+p_ax = if(opbouw ≡ 3; if(plaat ≥ 5; 0; 1); 1)*if(middel ≡ 1; 0.15; if(middel ≤ 3; 0.25; 1))
 p_proc = 100*p_ax
 n_tot = max(n_1*n_2; 1)
 n_ef,ax = if(middel ≡ 4; n_tot^0.9; n_tot)
-F_ax,Rd0 = min(n_ef,ax*k_mod*F_ax,Rk/γ_M; n_ef,ax*F_t,Rk/γ_M2) to kN
+'Ook het staal van de schroef (8.40c) krijgt k_mod en γ_M voor verbindingen (2.17), tabel 2.3.
+F_ax,Rd0 = n_ef,ax*k_mod*min(F_ax,Rk; F_t,Rk)/γ_M to kN
 F_ax,Rk,koord = min(F_ax,Rk; F_t,Rk)
 #show
 #if F_ax,Ed > 0 kN
@@ -639,7 +656,7 @@ n_s', aantal sneden per verbindingsmiddel'
     n_ef,ax', meewerkend aantal op trek; bij schroeven n^0,9 (8.41)'
     F_ax,Rd = n_ef,ax*k_mod*F_ax,Rk/γ_M to kN', hout'
     #if middel ≡ 4
-        F_t,Rd = n_ef,ax*F_t,Rk/γ_M2 to kN', staal van de schroef'
+        F_t,Rd = n_ef,ax*k_mod*F_t,Rk/γ_M to kN', staal van de schroef (2.17)'
         UC_ax = F_ax,Ed/min(F_ax,Rd; F_t,Rd)', trek'
     #else
         UC_ax = F_ax,Ed/F_ax,Rd', trek'
@@ -751,7 +768,9 @@ ok_t12 = if(x_ax ≡ 1; bool(t_elem ≥ 12*d_v); 1)
 ok_draad = if(x_ax ≡ 1; bool(min(t_pen; l_g) ≥ 6*d_v); 1)
 ok_glad = bool(ax_lang ≡ 0)
 ok_mat = bool(k_mod > 0)
-ok_det = bool(UC_a1 ≤ 1)*bool(UC_a2 ≤ 1)*bool(UC_a3 ≤ 1)*bool(UC_a4 ≤ 1)*bool(UC_a4o ≤ 1)*bool(UC_pen ≤ 1)*ok_t18*ok_vb*ok_aantal*ok_kop*ok_fu*ok_hoek*ok_t12*ok_draad*ok_glad*ok_mat
+'Gipskarton- en gipsvezelplaat minimaal 12,5 mm (NB bij 3.8(3)).
+ok_gips_t = if(gips ≡ 1; bool(t_1 ≥ 12.5 mm); 1)
+ok_det = bool(UC_a1 ≤ 1)*bool(UC_a2 ≤ 1)*bool(UC_a3 ≤ 1)*bool(UC_a4 ≤ 1)*bool(UC_a4o ≤ 1)*bool(UC_pen ≤ 1)*ok_t18*ok_vb*ok_aantal*ok_kop*ok_fu*ok_hoek*ok_t12*ok_draad*ok_glad*ok_mat*ok_gips_t
 #show
 
 #if boutregels ≡ 1
@@ -790,6 +809,9 @@ ok_det = bool(UC_a1 ≤ 1)*bool(UC_a2 ≤ 1)*bool(UC_a3 ≤ 1)*bool(UC_a4 ≤ 1)
 #if x_ax ≡ 1
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Houtdikte voor tabel 8.6, 12d (§8.7.2(2))</td><td style="padding:3px 8px; text-align:right;">'t_elem'</td><td style="padding:3px 8px; text-align:right;">'12*d_v'</td><td style="padding:3px 8px; color:'kleur_ok(ok_t12)'">'if(ok_t12 ≡ 1; "voldoet"; "voldoet niet")'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Schroefdraad aan de puntzijde, 6d (§8.7.2(3))</td><td style="padding:3px 8px; text-align:right;">'ℓ_ef'</td><td style="padding:3px 8px; text-align:right;">'6*d_v'</td><td style="padding:3px 8px; color:'kleur_ok(ok_draad)'">'if(ok_draad ≡ 1; "voldoet"; "voldoet niet")'</td></tr>
+#end if
+#if gips ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Dikte gipsplaat (NB bij 3.8(3))</td><td style="padding:3px 8px; text-align:right;">'t_1'</td><td style="padding:3px 8px; text-align:right;">12.5</td><td style="padding:3px 8px; color:'kleur_ok(ok_gips_t)'">'if(ok_gips_t ≡ 1; "voldoet"; "voldoet niet")'</td></tr>
 #end if
 '</table>
 

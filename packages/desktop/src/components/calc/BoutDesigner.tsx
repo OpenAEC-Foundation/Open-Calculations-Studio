@@ -29,10 +29,10 @@ import "./VoetplaatDesigner.css";
 const MARKER = "Boutberekening";
 
 const STAAL = [{ v: 235, label: "S235" }, { v: 275, label: "S275" }, { v: 355, label: "S355" }];
+/** Zonder 4.8 en 5.8, die de NB bij 3.1.1(3) uitsluit; gelijk aan de keuzelijst van het blad. */
 const KWAL = [
-  { v: 46, label: "4.6" }, { v: 48, label: "4.8" }, { v: 56, label: "5.6" },
-  { v: 58, label: "5.8" }, { v: 68, label: "6.8" }, { v: 88, label: "8.8" },
-  { v: 109, label: "10.9" },
+  { v: 46, label: "4.6" }, { v: 56, label: "5.6" }, { v: 68, label: "6.8" },
+  { v: 88, label: "8.8" }, { v: 109, label: "10.9" },
 ];
 const MAAT = [12, 16, 20, 24, 27, 30, 36];
 /** Gatdiameter d₀ volgens EN 1090-2 (normale gatspeling). */
@@ -53,8 +53,9 @@ const RING: Record<number, [number, number]> = {
 };
 /** Treksterkte van het boutmateriaal f_ub [N/mm²] — tabel 3.1. */
 const FUB: Record<number, number> = { 46: 400, 48: 400, 56: 500, 58: 500, 68: 600, 88: 800, 109: 1000 };
-/** Treksterkte plaatmateriaal f_u [N/mm²] — tabel 3.1 van NEN-EN 1993-1-1, t ≤ 40 mm. */
+/** Treksterkte plaatmateriaal f_u [N/mm²] — tabel 3.1 van NEN-EN 1993-1-1, t ≤ 40 mm en 40 < t ≤ 80 mm. */
 const FU: Record<number, number> = { 235: 360, 275: 430, 355: 490 };
+const FU_80: Record<number, number> = { 235: 360, 275: 410, 355: 470 };
 
 const DEFAULTS: Record<string, number> = {
   staalsoort: 235, boutkwaliteit: 88, boutdiameter: 16,
@@ -128,7 +129,7 @@ export default function BoutDesigner() {
   const A_s = AS[M] ?? (Math.PI * M * M) / 4;
   const A = (Math.PI * M * M) / 4;
   const f_ub = FUB[kwal] ?? 800;
-  const f_u = FU[fy] ?? 360;
+  const f_u = (t <= 40 ? FU[fy] : FU_80[fy]) ?? 360;
 
   // ── weerstanden en oordeel: uit het doorgerekende blad ─────────────────────
   const w = (naam: string, dec: number) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));

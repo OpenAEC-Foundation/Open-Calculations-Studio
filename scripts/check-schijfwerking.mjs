@@ -197,4 +197,51 @@ fouten += toets("stijl doorlopend", reken(tpl, { ...BASIS, detail_AC: "2" }, PRO
   fouten += toets("schroeven op 200 mm, volgens de norm", reken(tpl, { ...BASIS, s_verb: "200" }, NORM), { UC_hoh: "1.00" });
 }
 
+// Horizontale naad (NB bij 9.2.4.2(17)): een paneel smaller dan 0,5·h = 1300 telt ×0,85.
+// Startwaarden: platen 1220 en rest 1100, beide < 1300, dus Σ b_i·c_i·k = 0,85 × 6655 = 5657;
+//   referentiestand 0,42 × 5657 × 2/150 = 31,68 kN; norm × 1,2 = 38,02 kN.
+//   Bij F_i,v,Ed = 40 kN: norm 40/38,02 = 1,052 (zonder de naad 40/44,72 = 0,894, "voldoet").
+//   De hefboom blijft 6655/0,9385 = 7092 mm: de naad verandert de sterkte, niet de geometrie.
+{
+  const invoer = { ...BASIS, naad: "1", F_ivEd: "40" };
+  fouten += toets("horizontale naad, platen 1220 < 0,5·h", reken(tpl, invoer, PROJECT),
+    { b_ef: "6655", b_ef_v: "5657", F_ivRd: "31.68", UC_sterkte: "1.263", L_ef: "7092" });
+  fouten += toets("horizontale naad, volgens de norm", reken(tpl, invoer, NORM),
+    { F_ivRd: "38.02", UC_sterkte: "1.052" });
+  fouten += toets("zonder naad, volgens de norm", reken(tpl, { ...BASIS, F_ivEd: "40" }, NORM),
+    { F_ivRd: "44.72", UC_sterkte: "0.894" });
+  // h = 2400: b_0 = 1200, de platen van 1220 zijn breder dan 0,5·h en houden c = 1 en k = 1;
+  // alleen het restpaneel van 1100 (c = 0,9167) gaat ×0,85:
+  //   Σ = 5 × 1220 + 0,85 × 1100 × 0,9167 = 6100 + 857,1 = 6957; norm 1,2 × 0,42 × 6957 × 2/150 = 46,75 kN
+  //   (zonder naad 6100 + 1008,3 = 7108 en 47,77 kN).
+  fouten += toets("horizontale naad, h = 2400: alleen het restpaneel", reken(tpl, { ...BASIS, h: "2400", naad: "1" }, NORM),
+    { b_ef: "7108", b_ef_v: "6957", F_ivRd: "46.75" });
+}
+
+// Gipsplaat (NB bij 3.8): minimaal 12,5 mm; type A en F alleen in klimaatklasse 1, H, FH
+// en gipsvezel in 1 en 2. Stijlen op a ≥ 35·t: de reductie van 9.2.4.2(18) staat niet in
+// het blad, dus "niet volledig getoetst". Alle capaciteiten ingevuld, zoals hierboven.
+{
+  const vol = { ...BASIS, G_k_eind: "3", F_a_Rd: "10", v_Rd: "5", f_v_d: "3.5" };
+  // Type A, 12,5 mm, klimaatklasse 1, h.o.h. 610 ≥ 35 × 12,5 = 437,5.
+  const a = reken(tpl, { ...vol, plaat: "2", t_bepl: "12.5" }, PROJECT);
+  fouten += toets("gips type A, 12,5 mm, h.o.h. 610", a, { UC_dikte: "1.00", UC_max: "0.556" });
+  zin("gips, a ≥ 35·t", a, [/niet volledig getoetst/, /9\.2\.4\.2\(18\)/]);
+  kop("gips, a ≥ 35·t", a, false);
+  // Type H op h.o.h. 400 < 437,5: niets open, voldoet.
+  const h = reken(tpl, { ...vol, plaat: "3", t_bepl: "12.5", hoh: "400" }, PROJECT);
+  zin("gips type H, h.o.h. 400", h, [/≤ 1,0 → Schijfwerking voldoet/]);
+  kop("gips type H, h.o.h. 400", h, true);
+  // Type A in klimaatklasse 2: niet toegestaan.
+  const kk2 = reken(tpl, { ...vol, plaat: "2", t_bepl: "12.5", hoh: "400", klimaatklasse: "2" }, PROJECT);
+  zin("gips type A in klimaatklasse 2", kk2, [/de detaillering klopt niet/]);
+  const ok = /Deze gipsplaat is in klimaatklasse 2 niet toegestaan/.test(kk2.text);
+  if (!ok) fouten++;
+  console.log(`  ${ok ? "OK    " : "FOUT  "} melding: gipsplaat niet toegestaan in klimaatklasse 2`);
+  // Type H van 12 mm: 12,5/12 = 1,042.
+  const dun = reken(tpl, { ...vol, plaat: "3", t_bepl: "12", hoh: "400" }, PROJECT);
+  fouten += toets("gips type H, 12 mm", dun, { UC_dikte: "1.042" });
+  zin("gips te dun", dun, [/de detaillering klopt niet/]);
+}
+
 afronden(fouten, "Schijfwerking");

@@ -17,11 +17,17 @@
  * een randbout zonder tweede bout loodrecht op de kracht (p₂ = 0, niet
  * ingevuld of gewist), een ongeldige p₂, een randbout waarbij de p₂-tak
  * maatgevend is, een steek boven het maximum van tabel 3.3 (signaal, geen
- * afkeur) en de binnenste bout loodrecht op de kracht in beide rekenwijzen.
+ * afkeur), de binnenste bout loodrecht op de kracht in beide rekenwijzen,
+ * f_u van de plaat bij 40 < t ≤ 80 mm en daarboven (tabel 3.1 van
+ * NEN-EN 1993-1-1) en een opgeslagen blad met boutklasse 4.8, die de NB bij
+ * 3.1.1(3) niet toelaat. Tot slot: blad en beeld bieden 4.8 en 5.8 niet aan.
  *
  * Draaien:  node scripts/check-boutberekening.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { laadTemplate, reken, toetsNormStand } from "./lib/refcheck.mjs";
 
 const tpl = laadTemplate("boutberekening.ts");
@@ -151,6 +157,41 @@ const HANDWERK = [
     // k₁ = min(2,189; 2,967; 2,5) = 2,189 → F_b,Rd = 112,1 kN.
     verwacht: { F_b_Rd: 112.1 },
   },
+  {
+    naam: "S355 · M24 · t 45 · e₁ = e₂ = 40 · p₂ = 0: f_u bij 40 < t ≤ 80 mm — norm",
+    standen: [0],
+    invoer: { staalsoort: "355", boutdiameter: "24", t_plaat: "45", e_1: "40", e_2: "40", p_2: "0", n_v: "2" },
+    // Tabel 3.1 van NEN-EN 1993-1-1, S355 met 40 < t ≤ 80 mm: f_u = 470 N/mm² (was 490).
+    // α_b = min(40/78; 800/470; 1) = 0,5128; k₁ = min(2,8·40/26 − 1,7 = 2,608; 2,5) = 2,5.
+    // F_b,Rd = 2,5·0,5128·470·24·45/1,25 = 520,6 kN (542,8 met 490).
+    // d_m = (36 + 39,55)/2 = 37,78 mm → B_p,Rd = 0,6·π·37,78·45·470/1,25 = 1204,8 kN (1256 met 490).
+    verwacht: { F_b_Rd: 520.6, B_p_Rd: 1204.8 },
+  },
+  {
+    naam: "Idem — referentiestand: f_u geldt ook daar, d_m = sleutelwijdte",
+    standen: [1],
+    invoer: { staalsoort: "355", boutdiameter: "24", t_plaat: "45", e_1: "40", e_2: "40", p_2: "0", n_v: "2" },
+    // F_b,Rd als hierboven; B_p,Rd = 0,6·π·36·45·470/1,25 = 1148,2 kN.
+    verwacht: { F_b_Rd: 520.6, B_p_Rd: 1148.2 },
+  },
+  {
+    naam: "Plaat van 90 mm: buiten tabel 3.1 (NB bij 3.2.1(1)) · F_v,Ed 20",
+    standen: [1, 0],
+    invoer: { t_plaat: "90", F_v_Ed: "20" },
+    // Tabel 3.1 gaat tot 80 mm; daarboven komt f_u uit de productnorm, en die kent het blad
+    // niet: nooit "voldoet".
+    verwacht: {},
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "Opgeslagen blad met boutklasse 4.8 · M16 · F_v,Ed 20",
+    standen: [1, 0],
+    invoer: { boutkwaliteit: "48", F_v_Ed: "20" },
+    // F_v,Rd = 0,5·400·157/1,25 = 25,12 kN → UC = 0,796, maar 4.8 is niet toegelaten
+    // (NB bij 3.1.1(3)): voldoet niet.
+    verwacht: { F_v_Rd: 25.12, UC_v: 0.796 },
+    oordeel: "voldoet niet",
+  },
 ];
 
 /** de referentie-uitwerking print op vier cijfers; die marge houden we aan. */
@@ -201,6 +242,22 @@ for (const set of HANDWERK) {
       if (!ok) fouten++;
       console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel  ons ${ons}   hand ${set.oordeel}`);
     }
+  }
+}
+
+// De NB bij 3.1.1(3) sluit 4.8 en 5.8 uit, dus ook niet te kiezen in blad of beeld.
+{
+  console.log("\nBoutklassen in de keuzelijst (NB bij 3.1.1(3))");
+  const b = tpl.indexOf("@select boutkwaliteit");
+  const blad = [...tpl.slice(b, tpl.indexOf("@end", b)).matchAll(/^\s+([\d.]+) = /gm)].map((m) => m[1]);
+  const ts = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../packages/desktop/src/components/calc/BoutDesigner.tsx"), "utf8");
+  const k = ts.indexOf("const KWAL");
+  const beeld = [...ts.slice(k, ts.indexOf("];", k)).matchAll(/label: "([\d.]+)"/g)].map((m) => m[1]);
+  const wil = "4.6, 5.6, 6.8, 8.8, 10.9";
+  for (const [waar, lijst] of [["blad", blad], ["beeld", beeld]]) {
+    const ok = lijst.join(", ") === wil;
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} ${waar.padEnd(6)} ${lijst.join(", ")}`);
   }
 }
 

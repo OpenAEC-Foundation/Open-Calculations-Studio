@@ -19,7 +19,7 @@
  *   6  trek in een eindoplegging bij een overstek en bij twee velden (EQU,
  *      NB tabel A1.2(A));
  *   7  de bijkomende doorbuiging naast de eindstand (NB bij EN 1990, A1.4);
- *   8  de ondergrens 1/3 voor k_r;
+ *   8  k_r volgens (NB.5.1): 1 buiten 0 < k_r ≤ 1, anders de ondergrens 1/3;
  *   9  het eigen gewicht van de gedragen balken bij een onderslag;
  *  10  kip bij het steunmoment (§6.3.3), met l_ef uit de zone met een
  *      negatief moment;
@@ -287,12 +287,31 @@ console.log("\n7. Bijkomende doorbuiging — 71×171 h.o.h. 450, t 25, L 4,05 m,
 
 console.log("\n8. k_r — h.o.h. 300, beschot 35 mm met E 10 000");
 {
-  // k_r,0 = 0,37 + 0,8·0,3 − 10 000·35³/12/5·10⁷ = 0,61 − 0,7146 = −0,1046:
-  // zonder ondergrens werkte de puntlast omhoog. Nu k_r = 1/3.
-  const a = reken({ hoh: "300", t_vloer: "35", E_beschot: "10000", F_k: "3" }, 0).alle;
-  gelijk("k_r,0 = −0,1046", a.k_r_0, -0.1046);
-  gelijk("k_r = 1/3", a.k_r, 1 / 3, { rel: 1e-3 });
-  gelijk("F_Q,k = 3/3 = 1,000 kN", a.F_Q_k, 1.0);
+  // (NB.5.1) geldt voor 0 < k_r ≤ 1. k_r,0 = 0,37 + 0,8·0,3 − 10 000·35³/12/5·10⁷
+  // = 0,61 − 0,7146 = −0,1046 ligt daarbuiten: geen reductie, k_r = 1 (zoals de
+  // gording). Het blad hield hier eerder 1/3 aan: een puntlast die 3× te laag was.
+  const a = reken({ hoh: "300", t_vloer: "35", E_beschot: "10000", F_k: "3" }, 0);
+  gelijk("k_r,0 = −0,1046", a.alle.k_r_0, -0.1046);
+  gelijk("k_r = 1 (buiten 0 < k_r ≤ 1)", a.alle.k_r, 1, { rel: 0, abs: 1e-9 });
+  gelijk("F_Q,k = 3,000 kN", a.alle.F_Q_k, 3.0);
+  waar("melding: buiten het geldigheidsgebied, geen reductie", /geen reductie, k r = 1/.test(a.tekst));
+  // Beschot 30 mm: k_r,0 = 0,61 − 10 000·30³/12/5·10⁷ = 0,61 − 0,45 = 0,16. Binnen het
+  // gebied, maar onder de ondergrens van het blad (veilige kant): k_r = 1/3.
+  const b = reken({ hoh: "300", t_vloer: "30", E_beschot: "10000", F_k: "3" }, 0);
+  gelijk("30 mm: k_r,0 = 0,160", b.alle.k_r_0, 0.16);
+  gelijk("30 mm: k_r = 1/3", b.alle.k_r, 1 / 3, { rel: 1e-3 });
+  gelijk("30 mm: F_Q,k = 3/3 = 1,000 kN", b.alle.F_Q_k, 1.0);
+  // De trillingstoets gebruikt dezelfde k_r (F_tril = 1 kN·k_r). 71×221 C24,
+  // L_d 4000 (L = 4050), h.o.h. 400, beschot 35 mm met E 11 000:
+  // k_r,0 = 0,37 + 0,32 − 11 000·35³/12/5·10⁷ = 0,69 − 0,786 = −0,096 → k_r = 1;
+  // I_y = 71·221³/12 = 63,86·10⁶ mm⁴; w = 1000·4050³/(48·11 000·63,86·10⁶) = 1,970 mm;
+  // w/F = 1,970 mm/kN > a = 1: UC 1,97, voldoet niet (met 1/3 was het 0,657, voldoet).
+  const c = reken({ L_d: "4000", hoh: "400", t_vloer: "35", E_beschot: "11000", G_k: "0.5", F_k: "3",
+    belastingcat: "1", controleer_trilling: "1" }, 0).alle;
+  gelijk("trilling: k_r,0 = −0,0960", c.k_r_0, -0.0960);
+  gelijk("trilling: F_tril = 1,000 kN", c.F_tril, 1.0);
+  gelijk("trilling: w_1kN = 1,970 mm", c.w_1kN, 1.970);
+  gelijk("trilling: UC_trilling = 1,970", c.UC_trilling, 1.970);
 }
 
 // ── 9. Gedragen balken op een onderslag ───────────────────────────────────

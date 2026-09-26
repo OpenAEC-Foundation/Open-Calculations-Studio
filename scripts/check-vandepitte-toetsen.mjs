@@ -4,7 +4,8 @@
  * Geen referentieblad; elke verwachting is een handberekening, hieronder bij
  * de set uitgeschreven. Het gaat vooral om de plekken waar een blad een
  * oordeel geeft: knik met χ of k_c in plaats van de Eulerlast, schuifspanning
- * tegen de materiaalsterkte, Mohr met θ_B = PaL/3EI en a_C voor hetzelfde
+ * tegen de materiaalsterkte (staal: f_y uit tabel 3.1 naar de dikte, boven
+ * 80 mm geen oordeel "voldoet"), Mohr met θ_B = PaL/3EI en a_C voor hetzelfde
  * lastgeval, de eigenfrequentie bij de gekozen randvoorwaarde, het vakwerk
  * als Warrenvakwerk met n velden.
  *
@@ -32,15 +33,47 @@ function blad(naam) {
 const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 1 };
 let fouten = 0;
 
+/** Het oordeel in de slotzin, zoals de rapportkop het leest. */
+function oordeel(naam, got, wil, melding) {
+  const i = got.text.lastIndexOf("Maatgevende UC");
+  const zin = i < 0 ? "" : got.text.slice(i, i + 240);
+  const ons = /voldoe[nt] niet/.test(zin) ? "voldoet niet" : /voldoe[nt]/.test(zin) ? "voldoet" : "—";
+  const ok = ons === wil && (!melding || melding.test(got.text));
+  if (!ok) fouten++;
+  console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ${naam}: ons ${ons}, hand ${wil}${melding ? `, melding ${melding.source}` : ""}`);
+}
+
 // ── Knik ─────────────────────────────────────────────────────────────────────
 const knik = blad("vandepitteKnikken");
 const K = { randvoorwaarden: "1.0", b: "100", h: "100", l: "3" };
-// S235, 100×100, l_k = 3 m, kromme c (α = 0,49):
-//   P_E = π²·210000·8,333·10⁶/3000² = 1919 kN;  λ̄ = √(10000·235/1919·10³) = 1,107
-//   Φ = 0,5·(1 + 0,49·0,907 + 1,107²) = 1,334;  χ = 1/(1,334 + √(1,334² − 1,107²)) = 0,4808
-//   N_b,Rd = 0,4808·10000·235 = 1130 kN;  UC bij 1500 kN = 1,328 (het blad gaf eerder 0,78 op de Eulerlast)
-fouten += toets("knik S235, kromme c", reken(knik, { ...K, N_Ed: "1500" }, PROJECT),
-  { P_E: "1919", λ_rel: "1.107", χ: "0.4808", N_bRd: "1130", UC_max: "1.328" });
+// S235, 40×100, l_k = 1 m, kromme c (α = 0,49); t = 40 mm → f_y = 235 (tabel 3.1):
+//   P_E = π²·210000·5,333·10⁵/1000² = 1105 kN;  λ̄ = √(4000·235/1105·10³) = 0,9222
+//   Φ = 0,5·(1 + 0,49·0,7222 + 0,9222²) = 1,1021;  χ = 1/(1,1021 + √(1,1021² − 0,9222²)) = 0,5863
+//   N_b,Rd = 0,5863·4000·235 = 551,1 kN;  UC bij 500 kN = 0,9073 (op de Eulerlast was het 0,45)
+{
+  const got = reken(knik, { ...K, b: "40", l: "1", N_Ed: "500" }, PROJECT);
+  fouten += toets("knik S235, 40 × 100, kromme c", got,
+    { f_y: "235", P_E: "1105", λ_rel: "0.9222", χ: "0.5863", N_bRd: "551.1", UC_max: "0.9073" });
+  oordeel("t = 40 mm", got, "voldoet");
+}
+// S355, ronde staaf D = 60, l = 1 m, kromme c: t = 60 mm → f_y = 335 (tabel 3.1, 40 < t ≤ 80).
+//   A = 2827 mm², I = 636 200 mm⁴ → P_E = 1318,5 kN; λ̄ = √(2827·335/1 318 540) = 0,8476
+//   Φ = 0,5·(1 + 0,49·0,6476 + 0,7184) = 1,0178; χ = 0,6323; N_b,Rd = 0,6323·2827·335 = 598,9 kN
+//   UC bij 600 kN = 1,002: voldoet niet (met f_y = 355 was het 619,1 kN en UC 0,969). Het blad
+//   drukt vier cijfers af: P_E 1319 en N_b,Rd 599.
+{
+  const got = reken(knik, { ...K, doorsnedevorm: "2", D: "60", l: "1", materiaal: "3", N_Ed: "600" }, PROJECT);
+  fouten += toets("knik S355, rond 60 mm: 40 < t ≤ 80", got,
+    { f_y: "335", P_E: "1319", λ_rel: "0.8476", χ: "0.6323", N_bRd: "599", UC_max: "1.002" });
+  oordeel("t = 60 mm", got, "voldoet niet");
+}
+// S235, 100×100, l = 3 m: t = 100 mm > 80 → tabel 3.1 geeft geen f_y (productnorm, NB bij
+// 3.2.1(1)); het blad keurt af. P_E hangt niet van f_y af: π²·210000·8,333·10⁶/3000² = 1919 kN.
+{
+  const got = reken(knik, { ...K, N_Ed: "500" }, PROJECT);
+  fouten += toets("knik S235, 100 × 100: t > 80 mm", got, { P_E: "1919" });
+  oordeel("t = 100 mm", got, "voldoet niet", /tabel 3\.1 van NEN-EN 1993-1-1 geeft geen f/);
+}
 // C24, kort, klimaatklasse 1: E_0,05 = 7400 → P_E = π²·7400·8,333·10⁶/3000² = 67,63 kN
 //   λ_rel = 103,9/π·√(21/7400) = 1,762;  k = 0,5·(1 + 0,2·1,462 + 1,762²) = 2,199
 //   k_c = 1/(2,199 + √(2,199² − 1,762²)) = 0,2846;  f_c,0,d = 0,9·21/1,3 = 14,54
@@ -63,8 +96,19 @@ fouten += toets("schuif C24, middellang", reken(schuif, { ...SR, materiaal: "4",
 fouten += toets("schuif C24, middellang, I-profiel",
   reken(schuif, { profieltype: "2", I_z: "1066666667", S_zmax: "4000000", t: "200", L: "6", q: "25", materiaal: "4", belastingduurklasse: "3" }, PROJECT),
   { τ_max: "1.406", k_cr: "0.8", τ_d: "1.758", UC_max: "0.7141" });
-// S235: τ_Rd = 235/√3 = 135,7; UC = 1,406/135,7 = 0,01036.
-fouten += toets("schuif S235", reken(schuif, { ...SR, materiaal: "1" }, PROJECT), { τ_Rd: "135.7", UC_max: "0.01036" });
+// S235, 20 × 400 (t = 20 mm): τ = 1,5·75 000/8000 = 14,06; τ_Rd = 235/√3 = 135,7; UC = 0,1036.
+{
+  const got = reken(schuif, { ...SR, b: "20", materiaal: "1" }, PROJECT);
+  fouten += toets("schuif S235, 20 × 400", got, { τ_max: "14.06", τ_Rd: "135.7", UC_max: "0.1036" });
+  oordeel("t = 20 mm", got, "voldoet");
+}
+// S355, 50 × 400 (t = 50 mm): f_y = 335 (tabel 3.1, 40 < t ≤ 80); τ = 1,5·75 000/20 000 = 5,625;
+// τ_Rd = 335/√3 = 193,4; UC = 0,02908 (met 355: 205,0 en 0,02744).
+fouten += toets("schuif S355, 50 × 400: 40 < t ≤ 80", reken(schuif, { ...SR, b: "50", materiaal: "3" }, PROJECT),
+  { f_y: "335", τ_Rd: "193.4", UC_max: "0.02908" });
+// S235, 200 × 400: t = 200 mm > 80 → buiten tabel 3.1, het blad keurt af.
+oordeel("schuif S235, 200 × 400: t > 80 mm", reken(schuif, { ...SR, materiaal: "1" }, PROJECT), "voldoet niet",
+  /tabel 3\.1 van NEN-EN 1993-1-1 geeft geen f/);
 // Cirkel D = 200: A = 31416 mm²; τ = 4/3·75000/31416 = 3,183 (eerder met A = b·h).
 fouten += toets("schuif cirkel", reken(schuif, { profieltype: "3", D: "200", L: "6", q: "25", materiaal: "0" }, PROJECT),
   { A: "31420", τ_max: "3.183" });
@@ -84,6 +128,10 @@ fouten += toets("Mohr q op het overstek", reken(mohr, { ...M, belastinggeval: "2
 fouten += toets("Mohr q op het veld", reken(mohr, { ...M, belastinggeval: "3" }, PROJECT), { a_1: "9.617", a_C: "-10.26", UC_max: "0.6411" });
 // q op veld en overstek: a_1 = 9,617 − 2,564 = 7,052; a_C = q·a·(3a³ + 4a²L − L³)/(24EI) = −4,559
 fouten += toets("Mohr q op veld en overstek", reken(mohr, { ...M, belastinggeval: "4" }, PROJECT), { a_1: "7.052", a_C: "-4.559" });
+// Grens 0,003·ℓ (vloer, A1.4.3(3) van de NB): v_veld = 18 mm, v_overstek = 0,003·4000 = 12 mm;
+// UC = max(9,617/18; 10,26/12) = max(0,5343; 0,8548) = 0,8548 (bij 0,004: 0,6411).
+fouten += toets("Mohr q op het veld, grens 0,003", reken(mohr, { ...M, belastinggeval: "3", grensfactor: "0.003" }, PROJECT),
+  { v_veld: "18", v_overstek: "12", UC_veld: "0.5343", UC_max: "0.8548" });
 
 // ── Eigenfrequentie ──────────────────────────────────────────────────────────
 const freq = blad("vandepitteEigenfrequentie");
@@ -105,6 +153,10 @@ fouten += toets("doorbuiging C24", door, { v_2: "10.40", v_1: "1.019", p_V: "8.9
   if (!ok) fouten++;
   console.log(`  ${ok ? "OK    " : "FOUT  "} geen oordeel "verwaarloosbaar" bij 8,9 %`);
 }
+// Vloer met scheurgevoelige scheidingswanden, grens 0,002·L (A1.4.3(3) van de NB): v_toel = 10 mm;
+// UC = 11,42/10 = 1,142 (met de standaardgrens 0,004·L: 0,571).
+fouten += toets("doorbuiging C24, grens 0,002", reken(blad("vandepitteDoorbuiging"),
+  { materiaal: "3", b: "200", h: "400", L: "5", q: "15", grensfactor: "0.002" }, PROJECT), { v_toel: "10", UC_max: "1.142" });
 // I-profiel (IPE 300): λ = 5381/1978 = 2,720; v_1 = 2,720·50·3000²/(8·81000·5381) = 0,3511.
 fouten += toets("doorbuiging I-profiel", reken(blad("vandepitteDoorbuiging"),
   { materiaal: "1", doorsnedevorm: "2", A: "5381", A_lijf: "1978", I: "83560000", L: "3", q: "50" }, PROJECT),
@@ -120,7 +172,11 @@ fouten += toets("doorbuiging I-profiel", reken(blad("vandepitteDoorbuiging"),
 const vakwerk = blad("vandepitteVirtueleArbeid");
 const V = { L: "12", H: "2", E: "210000", A_boven: "2000", A_onder: "2000", A_diag: "1000", F: "100" };
 fouten += toets("vakwerk, twee velden", reken(vakwerk, { ...V, n_v: "2" }, PROJECT),
-  { N_boven: "-150", N_onder: "75", N_diag: "90.14", δ_boven: "3.214", δ_onder: "1.607", δ_diag: "5.580", δ_totaal: "10.40" });
+  { N_boven: "-150", N_onder: "75", N_diag: "90.14", δ_boven: "3.214", δ_onder: "1.607", δ_diag: "5.580", δ_totaal: "10.40",
+    v_toel: "36", UC_max: "0.2889" });
+// Standaardgrens 0,003·L = 36 mm (de vroegere vaste L/300 = 40 mm is geen NB-waarde); als dakligger 0,004·L = 48 mm: 0,2167.
+fouten += toets("vakwerk, twee velden, grens 0,004", reken(vakwerk, { ...V, n_v: "2", grensfactor: "0.004" }, PROJECT),
+  { v_toel: "48", UC_max: "0.2167" });
 // Zes velden (l_v = 2 m, L_d = √5 = 2,236 m); F·l_v³/(4H²E) = 100000·2000³/(4·2000²·210000) = 238,1 mm³:
 //   boven Σk² = 1 + 4 + 9 + 4 + 1 = 19 → 238,1·19/2000 = 2,262
 //   onder Σ(k − ½)² = 2·(0,25 + 2,25 + 6,25) = 17,5 → 238,1·17,5/2000 = 2,083

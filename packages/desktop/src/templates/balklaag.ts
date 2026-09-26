@@ -402,10 +402,12 @@ kr_een = max(bool(schema ≡ 4); bool(ligger ≡ 2))
 #else
     '<i>Een puntlast verdeelt zich via het beschot over meerdere balken. De concentratiefactor k<sub>r</sub> (NB) is het deel dat op één balk komt; stijver beschot geeft een kleinere k<sub>r</sub>.</i><span class="alleen-scherm"></span>
     k_r_0 = 0.37 + 0.8*hoh/a_ref - E_vl*t_ruw^3/12/EI_ref
-    '<i>Bij een dik of stijf beschot op een kleine h.o.h. komt k<sub>r,0</sub> laag uit en kan hij zelfs negatief worden; de puntlast zou dan omhoog werken. Het blad houdt daarom een ondergrens van 1/3 aan: één balk neemt dan nog een derde van de puntlast.</i><span class="alleen-scherm"></span>
-    k_r = min(1; max(k_r_0; 1/3))'<span class="alleen-scherm">, concentratiefactor (NB)</span><span class="kolom-2"></span>'
-    #if k_r_0 < 1/3
-        '<span style="color: #b45309">k<sub>r,0</sub> = 'k_r_0' < 1/3: buiten het geldigheidsgebied van de formule; k<sub>r</sub> = 1/3 aangehouden.</span>
+    '<i>(NB.5.1) geldt voor 0 &lt; k<sub>r</sub> ≤ 1. Bij een dik of stijf beschot op een kleine h.o.h. komt k<sub>r,0</sub> op of onder 0 uit; dan ligt de formule buiten dat gebied en geeft de NB geen reductie: k<sub>r</sub> = 1. Binnen het gebied houdt het blad een ondergrens van 1/3 aan (veilige kant): één balk neemt dan nog een derde van de puntlast.</i><span class="alleen-scherm"></span>
+    k_r = if(k_r_0 ≤ 0; 1; min(1; max(k_r_0; 1/3)))'<span class="alleen-scherm">, concentratiefactor (NB.5.1)</span><span class="kolom-2"></span>'
+    #if k_r_0 ≤ 0
+        '<span style="color: #b45309">k<sub>r,0</sub> = 'k_r_0' ≤ 0: buiten het geldigheidsgebied 0 &lt; k<sub>r</sub> ≤ 1 van (NB.5.1); geen reductie, k<sub>r</sub> = 1.</span>
+    #else if k_r_0 < 1/3
+        '<span style="color: #b45309">k<sub>r,0</sub> = 'k_r_0' &lt; 1/3: het blad houdt k<sub>r</sub> = 1/3 aan (veilige kant).</span>
     #end if
 #end if
 F_Q,k = F_k*k_r to kN'<span class="alleen-scherm">, puntlast op één balk</span><span class="kolom-2"></span>'

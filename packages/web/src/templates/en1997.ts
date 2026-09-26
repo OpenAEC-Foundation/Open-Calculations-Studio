@@ -14,9 +14,27 @@
  * NEN 9997-1 §6 — Draagvermogen funderingsstrook.
  *
  * Partiële factoren uit tabel A.4a, voor funderingen op staal onafhankelijk
- * van de gevolgklasse: γ_φ' op tan φ', γ_c' en γ_γ op het volumiek gewicht in
- * de q- en de γ-term (6.5.2.2). De inclinatiefactoren gebruiken dezelfde V_Ed
- * als de toets. Invoer met eenheden; de rekenkern rekent om. De slotzin
+ * van de gevolgklasse: γ_φ' op tan φ', γ_c' op c'. In de q- en de γ-term werkt
+ * γ_γ op het totale volumiek gewicht, onder de grondwaterstand het verzadigde,
+ * en gaat de waterdruk er ongefactoreerd af: σ'_v;z;d = Σ d·γ_k/γ_γ − u
+ * (6.5.2.2(g)) en γ'_d = γ_sat;k/γ_γ − γ_w;d met γ_w;d = 10 kN/m³ (6.5.2.2(o)).
+ * De grondwaterstand is de hoogste te verwachten (6.5.2.2(c)); droog alleen
+ * als die dieper ligt dan de invloedsdiepte.
+ *
+ * Bij |e_B| > B/6 meldt het blad de bijzondere maatregelen van 6.5.4(1)P en
+ * telt het de plaatsingsafwijking van 0,1 m mee (6.5.4(2)), tenzij de gebruiker
+ * speciale zorg bij de uitvoering kiest. De kier onder de zool (6.5.4(a):
+ * volgens de OPMERKING een glijvlak onder V_d met σ'_v;z;d = 0) en de
+ * randdetaillering rekent het blad niet; het oordeel is dan "niet aangetoond".
+ *
+ * De inclinatiefactoren volgen bijlage D (D.4) zonder de term A'·c'·cot φ',
+ * niet 6.5.2.2(j): volgens de OPMERKING bij (j) in het algemeen aan de veilige
+ * kant, zie docs/afwijkingen-referentie.md. Ze gebruiken dezelfde V_Ed als de
+ * toets. De i-factoren, B_eff en σ'_max;d zijn ten minste nul: bij H_d ≥ V_Ed,
+ * e_Bd ≥ B/2 of een negatief effectief gewicht (γ_sat;k < γ_γ·γ_w;d = 11 kN/m³,
+ * slap veen) wordt R_d nul en het oordeel "voldoet niet", niet een UC die door
+ * een even macht of een negatief teken weer gunstig uitvalt. Invoer met
+ * eenheden; de rekenkern rekent om. De slotzin
  * "Maatgevende UC = …" is wat de rapportkop leest. scripts/check-en1997.mjs
  * rekent het na.
  */
@@ -39,18 +57,18 @@ Effectieve cohesie (karakteristiek):
 
 c_k = 0 kPa
 
-Volumegewicht grond:
+Volumegewicht grond boven de grondwaterstand:
 
 gamma_grond = 18 kN/m^3
 
-Volumegewicht grond onder grondwaterniveau:
+Verzadigd volumegewicht grond onder de grondwaterstand:
 
-gamma_grond_eff = 10 kN/m^3
+gamma_sat = 20 kN/m^3
 
-@select grondwater "Grondwaterniveau t.o.v. funderingszool"
-Boven funderingszool (droog) = 1
-Op funderingszool = 2
-Ter hoogte bovenkant fundering = 3
+@select grondwater "Hoogste grondwaterstand (6.5.2.2(c)); ligt hij ertussen: kies de hogere"
+Dieper dan de invloedsdiepte onder de zool (droog) = 1
+Op de funderingszool = 2
+Op maaiveld = 3
 @end
 
 ## Funderingsgeometrie
@@ -67,15 +85,26 @@ Lengte funderingsstrook (per strekkende meter):
 
 L_f = 1000 mm
 
-## Effectieve afmetingen (art. 6.5.4)
+## Effectieve afmetingen (6.5.2.2(b) en 6.5.4)
 
 Excentriciteit belasting in breedte-richting:
 
 e_B = 0 mm
 
+#if abs(e_B) > B / 6
+'<b style="color:#b91c1c">e<sub>B</sub> > B/6: bijzondere maatregelen nodig (6.5.4(1)P); de kier onder de zool (6.5.4(a)) is niet in deze toets opgenomen.</b>
+@select afwijking "Plaatsingsafwijking (6.5.4(2))"
+0,1 m in rekening = 1
+Geen: bij de uitvoering is er speciale zorg aan besteed = 0
+@end
+e_Bd = abs(e_B) + afwijking * 100 mm to mm
+#else
+e_Bd = abs(e_B) to mm
+#end if
+
 Effectieve breedte:
 
-B_eff = B - 2 * e_B to mm
+B_eff = if(B - 2 * e_Bd > 0 mm; B - 2 * e_Bd; 0 mm) to mm
 
 Effectieve oppervlak per m':
 
@@ -91,7 +120,7 @@ Rekenwaarde cohesie:
 
 c_d = c_k / gamma_c to kPa
 
-## Draagkrachtfactoren (Bijlage D, formules D.1-D.3)
+## Draagkrachtfactoren (6.5.2.2(i))
 
 N_q = exp(pi * tan(phi_d_deg * pi / 180)) * (tan(45 * pi / 180 + phi_d_deg * pi / 360))^2
 
@@ -129,14 +158,14 @@ Horizontale kracht H_d:
 
 H_d = 5 kN/m
 
-Inclinatiefactor (Bijlage D, formule D.10), met dezelfde V_Ed als de toets:
+Inclinatiefactoren volgens D.4 zonder A′·c′·cot φ′ (volgens de OPMERKING bij 6.5.2.2(j) in het algemeen aan de veilige kant), met dezelfde V_Ed als de toets:
 
 m_exp = 2.0
-i_q = (1 - H_d / V_Ed)^m_exp
-i_gamma = (1 - H_d / V_Ed)^(m_exp + 1)
+i_q = max(1 - H_d / V_Ed; 0)^m_exp
+i_gamma = max(1 - H_d / V_Ed; 0)^(m_exp + 1)
 
 #if c_d > 0 kPa
-i_c = i_q - (1 - i_q) / (N_c * tan(phi_d_deg * pi / 180))
+i_c = max(i_q - (1 - i_q) / (N_c * tan(phi_d_deg * pi / 180)); 0)
 #else
 i_c = 1.0
 #end if
@@ -144,42 +173,48 @@ i_c = 1.0
 
 ## Grondspanning naast fundering
 
-Rekenwaarde effectieve grondspanning op funderingsniveau en volumiek gewicht onder de zool (6.5.2.2):
+Rekenwaarde effectieve grondspanning op funderingsniveau (6.5.2.2(g)) en effectief volumiek gewicht onder de zool (6.5.2.2(o)):
 
-#if grondwater == 1
-q_eff = gamma_grond * D / gamma_gamma to kPa
-gamma_eff = gamma_grond / gamma_gamma to kN/m^3
-#end if
-
-#if grondwater == 2
-q_eff = gamma_grond * D / gamma_gamma to kPa
-gamma_eff = gamma_grond_eff / gamma_gamma to kN/m^3
-#end if
+gamma_w = 10 kN/m^3', γ_w;d'
 
 #if grondwater == 3
-q_eff = gamma_grond_eff * D / gamma_gamma to kPa
-gamma_eff = gamma_grond_eff / gamma_gamma to kN/m^3
+u_w = gamma_w * D to kPa', waterdruk op aanlegniveau'
+q_eff = gamma_sat * D / gamma_gamma - u_w to kPa
+#else
+q_eff = gamma_grond * D / gamma_gamma to kPa
 #end if
 
-## Draagvermogen (Bijlage D, formule D.1)
+#if grondwater == 1
+gamma_eff = gamma_grond / gamma_gamma to kN/m^3
+#else
+gamma_eff = gamma_sat / gamma_gamma - gamma_w to kN/m^3
+#end if
+
+## Draagvermogen (6.5.2.2(i))
 
 R_over_A = c_d * N_c * s_c * i_c + q_eff * N_q * s_q * i_q + 0.5 * gamma_eff * B_eff * N_gamma * s_gamma * i_gamma to kPa
 
 Draagvermogen per m' strook:
 
-R_d = R_over_A * B_eff / gamma_Rv to kN/m
+R_d = max(R_over_A; 0 kPa) * B_eff / gamma_Rv to kN/m
 
 ## Toetsing (art. 6.5.2, formule 6.1)
 
 UC_max = V_Ed / R_d
 
-#if UC_max ≤ 1
+#if UC_max ≤ 1 and abs(e_B) > B / 6
+  '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> ≤ 1,0, maar e<sub>B</sub> > B/6: de kier onder de zool (6.5.4(a)) en de bijzondere maatregelen (6.5.4(1)P) zijn niet getoetst → <b>niet aangetoond</b></span>
+#else if UC_max ≤ 1
   '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>draagvermogen voldoet</b></span>
 #else
   '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>draagvermogen voldoet niet</b></span>
 #end if
 
 ## Overzicht
+
+#hide
+y_gw = if(grondwater == 1; 265; if(grondwater == 2; 180; 80))
+#show
 
 @svg
 <svg width="500" height="300" viewBox="0 0 500 300">
@@ -202,8 +237,8 @@ UC_max = V_Ed / R_d
   <line x1="20" y1="80" x2="480" y2="80" stroke="#6b7280" stroke-width="2"/>
   <text x="485" y="84" font-size="10" fill="#6b7280">MV</text>
   <!-- Grondwater -->
-  <line x1="20" y1="180" x2="480" y2="180" stroke="#3b82f6" stroke-width="1" stroke-dasharray="6"/>
-  <text x="485" y="184" font-size="10" fill="#3b82f6">GW</text>
+  <line x1="20" y1="{{y_gw}}" x2="480" y2="{{y_gw}}" stroke="#3b82f6" stroke-width="1" stroke-dasharray="6"/>
+  <text x="485" y="{{y_gw}}" dy="12" font-size="10" fill="#3b82f6">GW</text>
   <!-- Funderingsstrook -->
   <rect x="170" y="140" width="160" height="40" fill="url(#concrete)" stroke="#374151" stroke-width="2"/>
   <rect x="170" y="140" width="160" height="40" fill="#b0b0b0" fill-opacity="0.5" stroke="none"/>
@@ -252,8 +287,11 @@ export const en1997Paaldraagvermogen = `# Axiaal Draagvermogen Paalfundering —
 
 /**
  * NEN 9997-1 §6.6 — Indicatieve zakking met een 1:2-spreiding of een
- * invloedsfactor, geen berekening volgens 6.6 of bijlage F. Invoer met
- * eenheden; de rekenkern rekent om. scripts/check-en1997.mjs rekent het na.
+ * invloedsfactor, geen berekening volgens 6.6 of bijlage F. De grenswaarde is
+ * geen vaste keuze maar invoer: hij moet met de ontwerper van de bovenbouw
+ * zijn overeengekomen (2.4.8(5)P) en in het ontwerp vastgelegd (2.4.9(1)P).
+ * Invoer met eenheden; de rekenkern rekent om. scripts/check-en1997.mjs
+ * rekent het na.
  */
 export const en1997Zetting = `# Zetting, indicatief — NEN 9997-1 §6.6
 
@@ -276,12 +314,11 @@ D = 800 mm
 ## Grondopbouw en parameters
 
 @select grondtype "Type grond onder fundering"
-Zand, los (E_s = 10 MPa) = 10
+Zand, los, of klei, vast (E_s = 10 MPa) = 10
 Zand, matig dicht (E_s = 20 MPa) = 20
 Zand, vast (E_s = 40 MPa) = 40
 Klei, slap (E_s = 2 MPa) = 2
 Klei, matig vast (E_s = 5 MPa) = 5
-Klei, vast (E_s = 10 MPa) = 10
 @end
 
 Samendrukbaarheidsmodulus E_s (samendrukkingsmodulus):
@@ -326,12 +363,7 @@ Boussinesq (invloedsfactor) = 2
 #if zettingsmethode == 1
 ## Vereenvoudigde 1:2 methode
 
-De spanning neemt af met de diepte. Bij de 1:2 methode wordt
-de extra spanning op diepte z geschat als:
-
-  delta_sigma(z) = F_k / ((B + z) * (L_f + z))
-
-Gemiddelde spanning over de samendrukbare laag:
+Gemiddelde spanning over de samendrukbare laag (spreiding 1:2, op H_laag/2):
 
 sigma_gem = F_k / ((B + H_laag / 2) * (L_f + H_laag / 2)) to kPa
 
@@ -350,15 +382,11 @@ Zetting (Boussinesq):
 s = sigma_0 * B / E_s * I_s to mm
 #end if
 
-## Grenswaarde
+## Grenswaarde (2.4.8(5)P en 2.4.9(1)P)
 
-@select grenswaarde "Grenswaarde zetting"
-Fundering gebouw (25 mm) = 25
-Fundering machines (10 mm) = 10
-Fundering scheidingswand (15 mm) = 15
-@end
+Grenswaarde van de zakking, overeen te komen met de ontwerper van de bovenbouw:
 
-s_max = grenswaarde * 1 mm
+s_max = 25 mm
 
 UC_max = s / s_max
 

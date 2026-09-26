@@ -9,11 +9,24 @@
  * γ_f;nk = 1,0. Toets F_c;d + F_nk;d ≤ R_c;d (7.1).
  *
  * De negatieve kleef staat vóór de sonderingen: de onderkant van de kleeflagen
- * begrenst ΔL. Bij een avegaarpaal begint traject III met ten hoogste 2 MPa,
- * ook bij handmatige invoer. Boven 12 % variatiecoëfficiënt, en bij een open
- * stalen buis (paaltype 8, rond: de volle doorsnede veronderstelt een
- * grondprop), is het oordeel "niet aangetoond"; ook als de UC niet uit te
- * rekenen is (lege invoer), zodat het blad dan nooit "voldoet" zegt. De
+ * begrenst ΔL. De omtrek van de paalvoet geldt ook voor de schacht, tenzij de
+ * gebruiker een andere schacht kiest: dan vult hij O_s;ΔL;gem in voor de
+ * schachtwrijving (7.6.2.3(c)) en O_s;gem voor de negatieve kleef (7.3.2.2(d)),
+ * bij een tapse houten paal, een verbrede voet of een voetplaat.
+ *
+ * Bij een avegaarpaal begint traject III onderaan met ten hoogste 2 MPa en is
+ * elke waarde erboven niet hoger dan die eronder (7.6.2.3(e)); de invoer is
+ * het gemiddelde van die omhullende, en het beeld bepaalt hem zo uit een GEF.
+ * Een hoger ingevuld gemiddelde kapt het blad af op 2 MPa, maar dat is alleen
+ * een bovengrens: het gemiddelde van de omhullende kan lager zijn. De
+ * correcties op q_c van 7.6.2.3(i) t/m (l) (grof zand en grind,
+ * overconsolidatie, ontgraving) zitten in de invoer; het blad zegt dat erbij.
+ *
+ * Boven 12 % variatiecoëfficiënt, bij een open stalen buis (paaltype 8, rond:
+ * de volle doorsnede veronderstelt een grondprop), bij een andere schacht
+ * zonder ingevulde omtrek en bij een tapse houten paal met negatieve kleef en
+ * de omtrek van de punt is het oordeel "niet aangetoond"; ook als de UC niet
+ * uit te rekenen is (lege invoer), zodat het blad dan nooit "voldoet" zegt. De
  * zakking (7.6.4) is niet getoetst.
  *
  * De blokken per sondering (1–6) en per laag met negatieve kleef (1–5) zijn
@@ -67,7 +80,7 @@ insitu = hlookup(tab7c; paaltype; 1; 5)
 #if vorm ≡ 1
     D = ?*(mm)', middellijn'
     A_b = pi/4*D^2 to m^2', oppervlak van de paalpunt'
-    O_s = pi*D to m', omtrek van de schacht'
+    O_s = pi*D to m', omtrek van de paalvoet'
     D_eq = D to m', equivalente middellijn'
     #hide
     s_p = 1
@@ -75,7 +88,7 @@ insitu = hlookup(tab7c; paaltype; 1; 5)
 #else if vorm ≡ 2
     a_p = ?*(mm)', zijde'
     A_b = a_p^2 to m^2', oppervlak van de paalpunt'
-    O_s = 4*a_p to m', omtrek van de schacht'
+    O_s = 4*a_p to m', omtrek van de paalvoet'
     D_eq = sqrt(4*A_b/pi) to m', equivalente middellijn: gelijk oppervlak'
     #hide
     s_p = 1
@@ -84,12 +97,26 @@ insitu = hlookup(tab7c; paaltype; 1; 5)
     a_p = ?*(mm)', kleinste zijde'
     b_p = ?*(mm)', grootste zijde'
     A_b = a_p*b_p to m^2', oppervlak van de paalpunt'
-    O_s = 2*(a_p + b_p) to m', omtrek van de schacht'
+    O_s = 2*(a_p + b_p) to m', omtrek van de paalvoet'
     D_eq = if(b_p > 1.5*a_p; a_p; sqrt(4*A_b/pi)) to m', equivalente middellijn; a als b > 1,5a (7.6.2.3(e))'
     s_p = ?', factor s voor de rechthoekige paalvoet (7.6.2.3(h))'
 #end if
 #if paaltype ≡ 8 and vorm ≡ 1
     '<b style="color:#b91c1c">Open stalen buis: de volle doorsnede als paalpunt veronderstelt een volledige grondprop (7.6.2.3). Toon die aan; anders overschat dit blad het puntdraagvermogen.</b>
+#end if
+@select schacht "Omtrek van de schacht"
+  Gelijk aan die van de paalvoet = 0
+  Anders (tapse paal, verbrede voet of voetplaat): invullen = 1
+@end
+#if schacht ≡ 1
+    O_s,ΔL = ?*(m)', gemiddelde omtrek van de schacht in de laag van de paalvoet (7.6.2.3(c))'
+#else
+    #hide
+    O_s,ΔL = O_s
+    #show
+#end if
+#if paaltype ≡ 12 and schacht ≡ 0
+    '<b style="color:#b91c1c">Tapse houten paal: de omtrek van de punt is de kleinste van de schacht. Voor de negatieve kleef geldt de gemiddelde omtrek van de schacht (7.3.2.2(d)); kies bij negatieve kleef "Anders" en vul die in.</b>
 #end if
 β = ?', paalvoetvormfactor (7.6.2.3(g), figuur 7.i); 1 zonder verbrede voet'
 
@@ -113,6 +140,13 @@ L_paal = z_kop - z_punt to m', paallengte'
     d_gw = ?*(m)', grondwaterstand onder die bovenkant'
     q_mv = ?*(kPa)', gelijkmatige bovenbelasting op het maaiveld'
     n_l = ?', aantal lagen met negatieve kleef (1 tot en met 5)'
+    #if schacht ≡ 1
+        O_s,gem = ?*(m)', gemiddelde omtrek van de schacht in deze lagen (7.3.2.2(d)); in de grond gevormd: buitenonderrand van de buis of de avegaar'
+    #else
+        #hide
+        O_s,gem = O_s
+        #show
+    #end if
     #hide
     γ_w = 10 kN/m^3
     f_δ = if(insitu ≡ 1; 1; 0.75)
@@ -136,7 +170,7 @@ L_paal = z_kop - z_punt to m', paallengte'
         K_0,1 = 1 - sin(φ_1*pi/180)', (7.3.2.2(d)), OCR = 1'
         δ_1 = f_δ*φ_1', wrijvingshoek paal–grond in graden: φ′ bij in de grond gevormd, anders 0,75·φ′'
         c_nk,1 = max(K_0,1*tan(δ_1*pi/180); 0.25)', K_0·tan δ, ten minste 0,25'
-        F_nk,1 = O_s*c_nk,1*S_v,1 to kN', bijdrage van laag 1'
+        F_nk,1 = O_s,gem*c_nk,1*S_v,1 to kN', bijdrage van laag 1'
     #else
         #hide
         z_b,1 = 0 m
@@ -163,7 +197,7 @@ L_paal = z_kop - z_punt to m', paallengte'
         K_0,2 = 1 - sin(φ_2*pi/180)', (7.3.2.2(d)), OCR = 1'
         δ_2 = f_δ*φ_2', wrijvingshoek paal–grond in graden: φ′ bij in de grond gevormd, anders 0,75·φ′'
         c_nk,2 = max(K_0,2*tan(δ_2*pi/180); 0.25)', K_0·tan δ, ten minste 0,25'
-        F_nk,2 = O_s*c_nk,2*S_v,2 to kN', bijdrage van laag 2'
+        F_nk,2 = O_s,gem*c_nk,2*S_v,2 to kN', bijdrage van laag 2'
     #else
         #hide
         z_b,2 = z_b,1
@@ -190,7 +224,7 @@ L_paal = z_kop - z_punt to m', paallengte'
         K_0,3 = 1 - sin(φ_3*pi/180)', (7.3.2.2(d)), OCR = 1'
         δ_3 = f_δ*φ_3', wrijvingshoek paal–grond in graden: φ′ bij in de grond gevormd, anders 0,75·φ′'
         c_nk,3 = max(K_0,3*tan(δ_3*pi/180); 0.25)', K_0·tan δ, ten minste 0,25'
-        F_nk,3 = O_s*c_nk,3*S_v,3 to kN', bijdrage van laag 3'
+        F_nk,3 = O_s,gem*c_nk,3*S_v,3 to kN', bijdrage van laag 3'
     #else
         #hide
         z_b,3 = z_b,2
@@ -217,7 +251,7 @@ L_paal = z_kop - z_punt to m', paallengte'
         K_0,4 = 1 - sin(φ_4*pi/180)', (7.3.2.2(d)), OCR = 1'
         δ_4 = f_δ*φ_4', wrijvingshoek paal–grond in graden: φ′ bij in de grond gevormd, anders 0,75·φ′'
         c_nk,4 = max(K_0,4*tan(δ_4*pi/180); 0.25)', K_0·tan δ, ten minste 0,25'
-        F_nk,4 = O_s*c_nk,4*S_v,4 to kN', bijdrage van laag 4'
+        F_nk,4 = O_s,gem*c_nk,4*S_v,4 to kN', bijdrage van laag 4'
     #else
         #hide
         z_b,4 = z_b,3
@@ -244,7 +278,7 @@ L_paal = z_kop - z_punt to m', paallengte'
         K_0,5 = 1 - sin(φ_5*pi/180)', (7.3.2.2(d)), OCR = 1'
         δ_5 = f_δ*φ_5', wrijvingshoek paal–grond in graden: φ′ bij in de grond gevormd, anders 0,75·φ′'
         c_nk,5 = max(K_0,5*tan(δ_5*pi/180); 0.25)', K_0·tan δ, ten minste 0,25'
-        F_nk,5 = O_s*c_nk,5*S_v,5 to kN', bijdrage van laag 5'
+        F_nk,5 = O_s,gem*c_nk,5*S_v,5 to kN', bijdrage van laag 5'
     #else
         #hide
         z_b,5 = z_b,4
@@ -264,6 +298,7 @@ L_paal = z_kop - z_punt to m', paallengte'
 #else
     #hide
     F_nk,d = 0 kN
+    O_s,gem = O_s
     z_mv = z_kop
     z_draag = z_kop
     n_l = 0
@@ -276,25 +311,26 @@ L_paal = z_kop - z_punt to m', paallengte'
 
 # 3. Draagvermogen per sondering
 
+'<i>De conusweerstanden zijn ingevuld na de correcties van 7.6.2.3(j) t/m (l): overconsolidatie, ontgraving en in grind ten hoogste 20 MPa; q<sub>cs</sub> bovendien na de reductie in grof zand of grind (7.6.2.3(i)) en het afsnuiten.</i>
 n_s = ?', aantal sonderingen (1 tot en met 6)'
 #if n_s ≥ 1
     '<h6>Sondering 1</h6>
     q_cI,1 = ?*(MPa)', traject I'
     q_cII,1 = ?*(MPa)', traject II'
-    q_cIII,1 = ?*(MPa)', traject III; avegaarpaal: start ten hoogste 2 MPa'
+    q_cIII,1 = ?*(MPa)', traject III; avegaarpaal: gemiddelde van de omhullende vanaf ten hoogste 2 MPa'
     #if paaltype ≡ 5 and q_cIII,1 > 2 MPa
-        q_cIII,1 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e))</b>'
+        q_cIII,1 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e)); de omhullende kan lager uitkomen</b>'
     #end if
     q_bmax,1 = min(0.5*α_p*β*s_p*((q_cI,1 + q_cII,1)/2 + q_cIII,1); 15 MPa)', (7.6.2.3(e))'
     R_bcal,1 = A_b*q_bmax,1 to kN', puntdraagvermogen'
-    q_cs,1 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
+    q_cs,1 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_1 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
     #if ΔL_1 > ΔL_max and nk ≡ 1
         ΔL_1 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_1 > ΔL_max
         ΔL_1 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
-    R_scal,1 = O_s*α_s*min(q_cs,1; 15 MPa)*ΔL_1 to kN', schachtwrijving'
+    R_scal,1 = O_s,ΔL*α_s*min(q_cs,1; 15 MPa)*ΔL_1 to kN', schachtwrijving'
     R_ccal,1 = R_bcal,1 + R_scal,1 to kN', maximumdraagkracht bij sondering 1'
     #hide
     R_telt,1 = R_ccal,1
@@ -314,20 +350,20 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     '<h6>Sondering 2</h6>
     q_cI,2 = ?*(MPa)', traject I'
     q_cII,2 = ?*(MPa)', traject II'
-    q_cIII,2 = ?*(MPa)', traject III; avegaarpaal: start ten hoogste 2 MPa'
+    q_cIII,2 = ?*(MPa)', traject III; avegaarpaal: gemiddelde van de omhullende vanaf ten hoogste 2 MPa'
     #if paaltype ≡ 5 and q_cIII,2 > 2 MPa
-        q_cIII,2 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e))</b>'
+        q_cIII,2 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e)); de omhullende kan lager uitkomen</b>'
     #end if
     q_bmax,2 = min(0.5*α_p*β*s_p*((q_cI,2 + q_cII,2)/2 + q_cIII,2); 15 MPa)', (7.6.2.3(e))'
     R_bcal,2 = A_b*q_bmax,2 to kN', puntdraagvermogen'
-    q_cs,2 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
+    q_cs,2 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_2 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
     #if ΔL_2 > ΔL_max and nk ≡ 1
         ΔL_2 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_2 > ΔL_max
         ΔL_2 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
-    R_scal,2 = O_s*α_s*min(q_cs,2; 15 MPa)*ΔL_2 to kN', schachtwrijving'
+    R_scal,2 = O_s,ΔL*α_s*min(q_cs,2; 15 MPa)*ΔL_2 to kN', schachtwrijving'
     R_ccal,2 = R_bcal,2 + R_scal,2 to kN', maximumdraagkracht bij sondering 2'
     #hide
     R_telt,2 = R_ccal,2
@@ -347,20 +383,20 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     '<h6>Sondering 3</h6>
     q_cI,3 = ?*(MPa)', traject I'
     q_cII,3 = ?*(MPa)', traject II'
-    q_cIII,3 = ?*(MPa)', traject III; avegaarpaal: start ten hoogste 2 MPa'
+    q_cIII,3 = ?*(MPa)', traject III; avegaarpaal: gemiddelde van de omhullende vanaf ten hoogste 2 MPa'
     #if paaltype ≡ 5 and q_cIII,3 > 2 MPa
-        q_cIII,3 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e))</b>'
+        q_cIII,3 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e)); de omhullende kan lager uitkomen</b>'
     #end if
     q_bmax,3 = min(0.5*α_p*β*s_p*((q_cI,3 + q_cII,3)/2 + q_cIII,3); 15 MPa)', (7.6.2.3(e))'
     R_bcal,3 = A_b*q_bmax,3 to kN', puntdraagvermogen'
-    q_cs,3 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
+    q_cs,3 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_3 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
     #if ΔL_3 > ΔL_max and nk ≡ 1
         ΔL_3 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_3 > ΔL_max
         ΔL_3 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
-    R_scal,3 = O_s*α_s*min(q_cs,3; 15 MPa)*ΔL_3 to kN', schachtwrijving'
+    R_scal,3 = O_s,ΔL*α_s*min(q_cs,3; 15 MPa)*ΔL_3 to kN', schachtwrijving'
     R_ccal,3 = R_bcal,3 + R_scal,3 to kN', maximumdraagkracht bij sondering 3'
     #hide
     R_telt,3 = R_ccal,3
@@ -380,20 +416,20 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     '<h6>Sondering 4</h6>
     q_cI,4 = ?*(MPa)', traject I'
     q_cII,4 = ?*(MPa)', traject II'
-    q_cIII,4 = ?*(MPa)', traject III; avegaarpaal: start ten hoogste 2 MPa'
+    q_cIII,4 = ?*(MPa)', traject III; avegaarpaal: gemiddelde van de omhullende vanaf ten hoogste 2 MPa'
     #if paaltype ≡ 5 and q_cIII,4 > 2 MPa
-        q_cIII,4 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e))</b>'
+        q_cIII,4 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e)); de omhullende kan lager uitkomen</b>'
     #end if
     q_bmax,4 = min(0.5*α_p*β*s_p*((q_cI,4 + q_cII,4)/2 + q_cIII,4); 15 MPa)', (7.6.2.3(e))'
     R_bcal,4 = A_b*q_bmax,4 to kN', puntdraagvermogen'
-    q_cs,4 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
+    q_cs,4 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_4 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
     #if ΔL_4 > ΔL_max and nk ≡ 1
         ΔL_4 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_4 > ΔL_max
         ΔL_4 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
-    R_scal,4 = O_s*α_s*min(q_cs,4; 15 MPa)*ΔL_4 to kN', schachtwrijving'
+    R_scal,4 = O_s,ΔL*α_s*min(q_cs,4; 15 MPa)*ΔL_4 to kN', schachtwrijving'
     R_ccal,4 = R_bcal,4 + R_scal,4 to kN', maximumdraagkracht bij sondering 4'
     #hide
     R_telt,4 = R_ccal,4
@@ -413,20 +449,20 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     '<h6>Sondering 5</h6>
     q_cI,5 = ?*(MPa)', traject I'
     q_cII,5 = ?*(MPa)', traject II'
-    q_cIII,5 = ?*(MPa)', traject III; avegaarpaal: start ten hoogste 2 MPa'
+    q_cIII,5 = ?*(MPa)', traject III; avegaarpaal: gemiddelde van de omhullende vanaf ten hoogste 2 MPa'
     #if paaltype ≡ 5 and q_cIII,5 > 2 MPa
-        q_cIII,5 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e))</b>'
+        q_cIII,5 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e)); de omhullende kan lager uitkomen</b>'
     #end if
     q_bmax,5 = min(0.5*α_p*β*s_p*((q_cI,5 + q_cII,5)/2 + q_cIII,5); 15 MPa)', (7.6.2.3(e))'
     R_bcal,5 = A_b*q_bmax,5 to kN', puntdraagvermogen'
-    q_cs,5 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
+    q_cs,5 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_5 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
     #if ΔL_5 > ΔL_max and nk ≡ 1
         ΔL_5 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_5 > ΔL_max
         ΔL_5 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
-    R_scal,5 = O_s*α_s*min(q_cs,5; 15 MPa)*ΔL_5 to kN', schachtwrijving'
+    R_scal,5 = O_s,ΔL*α_s*min(q_cs,5; 15 MPa)*ΔL_5 to kN', schachtwrijving'
     R_ccal,5 = R_bcal,5 + R_scal,5 to kN', maximumdraagkracht bij sondering 5'
     #hide
     R_telt,5 = R_ccal,5
@@ -446,20 +482,20 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     '<h6>Sondering 6</h6>
     q_cI,6 = ?*(MPa)', traject I'
     q_cII,6 = ?*(MPa)', traject II'
-    q_cIII,6 = ?*(MPa)', traject III; avegaarpaal: start ten hoogste 2 MPa'
+    q_cIII,6 = ?*(MPa)', traject III; avegaarpaal: gemiddelde van de omhullende vanaf ten hoogste 2 MPa'
     #if paaltype ≡ 5 and q_cIII,6 > 2 MPa
-        q_cIII,6 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e))</b>'
+        q_cIII,6 = 2 MPa', <b style="color:#b91c1c">avegaarpaal: traject III ten hoogste 2 MPa (7.6.2.3(e)); de omhullende kan lager uitkomen</b>'
     #end if
     q_bmax,6 = min(0.5*α_p*β*s_p*((q_cI,6 + q_cII,6)/2 + q_cIII,6); 15 MPa)', (7.6.2.3(e))'
     R_bcal,6 = A_b*q_bmax,6 to kN', puntdraagvermogen'
-    q_cs,6 = ?*(MPa)', afgesnoten, over ΔL (7.6.2.3(i))'
+    q_cs,6 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))'
     ΔL_6 = ?*(m)', lengte met positieve schachtwrijving (7.6.2.3(c))'
     #if ΔL_6 > ΔL_max and nk ≡ 1
         ΔL_6 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_6 > ΔL_max
         ΔL_6 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
-    R_scal,6 = O_s*α_s*min(q_cs,6; 15 MPa)*ΔL_6 to kN', schachtwrijving'
+    R_scal,6 = O_s,ΔL*α_s*min(q_cs,6; 15 MPa)*ΔL_6 to kN', schachtwrijving'
     R_ccal,6 = R_bcal,6 + R_scal,6 to kN', maximumdraagkracht bij sondering 6'
     #hide
     R_telt,6 = R_ccal,6
@@ -584,6 +620,10 @@ pw = max(8; min(40; D_eq/(1 m)*sch*1.5))
     '<b>Maatgevende UC = 'UC'</b><span style="color: red"> ≤ 1,0, maar de variatiecoëfficiënt is groter dan 12 % → <b>niet aangetoond: deel het terrein op</b></span>
 #else if paaltype ≡ 8 and vorm ≡ 1
     '<b>Maatgevende UC = 'UC'</b><span style="color: red"> ≤ 1,0, maar de volle doorsnede van de open buis veronderstelt een grondprop → <b>niet aangetoond</b></span>
+#else if paaltype ≡ 12 and schacht ≡ 0 and nk ≡ 1
+    '<b>Maatgevende UC = 'UC'</b><span style="color: red"> ≤ 1,0, maar de negatieve kleef op een tapse paal rekent met de omtrek van de punt → <b>niet aangetoond</b></span>
+#else if schacht ≡ 1 and min(O_s,ΔL; O_s,gem) ≤ 0 m
+    '<b>Maatgevende UC = 'UC'</b><span style="color: red"> → <b>niet aangetoond: omtrek van de schacht niet ingevuld</b></span>
 #else if UC ≤ 1.0
     '<b>Maatgevende UC = 'UC'</b><span style="color: green"> ≤ 1,0 → <b>draagvermogen (7.1) voldoet</b></span>; zakking (7.6.4) niet getoetst
 #else
@@ -591,5 +631,5 @@ pw = max(8; min(40; D_eq/(1 m)*sch*1.5))
 #end if
 
 '<hr/>
-'<i>Niet getoetst: zakking (7.6.4) en rotatie (2.4.9), ponsen onder de punt (7.6.2.1(11)), sterkte van de paal. Niet opgenomen: schachtwrijving in klei en veen (tabel 7.d), negatieve kleef in een paalgroep (7.3.2.2(e)).</i>
+'<i>Niet getoetst: zakking (7.6.4) en rotatie (2.4.9), ponsen onder de punt (7.6.2.1(11)), sterkte van de paal. Niet opgenomen: schachtwrijving in klei en veen (tabel 7.d), negatieve kleef in een paalgroep (7.3.2.2(e)), de correcties op q<sub>c</sub> (7.6.2.3(i) t/m (l)): die zitten in de invoer.</i>
 `;
