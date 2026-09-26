@@ -24,6 +24,13 @@
  *      nagerekend, zodat een fout die in beide uitwerkingen zit niet
  *      onopgemerkt blijft.
  *
+ * Daarna hetzelfde voor de ambachtelijke verbindingen in hetzelfde blad
+ * (soort 2 tot en met 4): keep, pen-en-gat en zwaluwstaart met de algemene
+ * toetsen (6.1), (6.2), (6.3), (6.13), (6.16), de uitkeping (6.60)–(6.63) en
+ * splijten (8.4), elk met een eigen uitwerking, handberekeningen, de
+ * meldingen en het oordeel. Het blad zonder keuze voor de soort rekent als
+ * stiftvormige verbinding: de sets hierboven hebben die keuze niet.
+ *
  * Draaien:  node scripts/check-nagel-schroef.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
@@ -630,6 +637,241 @@ for (const [a, b, set] of [[150, 30, SETS[14].invoer], [180, 0, SETS[14].invoer]
   const ok = ["n_ef", "UC_v", "F_v_Rd"].every((k) => Number.isFinite(va[k]) && va[k] === vb[k]);
   if (!ok) fouten++;
   console.log(`\nHoek ${a}° tegen ${b}°\n  ${ok ? "OK    " : "FOUT  "} n_ef ${va.n_ef} / ${vb.n_ef}, UC_v ${va.UC_v} / ${vb.UC_v}`);
+}
+
+// ══ Ambachtelijke verbindingen: keep, pen-en-gat en zwaluwstaart ═══════════
+// Eenheden als hierboven: N, mm, N/mm²; krachten in kN.
+
+/** Per klasse C14..C30, GL24h..GL32h: [f_c,0,k, f_c,90,k, f_v,k, f_t,0,k, γ_M] (EN 338, EN 14080, tabel 2.3). */
+const HOUT = [null,
+  [16, 2.0, 3.0, 8, 1.3], [17, 2.2, 3.2, 10, 1.3], [18, 2.2, 3.4, 11, 1.3], [19, 2.3, 3.6, 12, 1.3],
+  [20, 2.4, 3.8, 13, 1.3], [21, 2.5, 4.0, 14, 1.3], [22, 2.5, 4.0, 16, 1.3], [23, 2.7, 4.0, 18, 1.3],
+  [24, 2.5, 3.5, 19.2, 1.25], [28, 2.5, 3.5, 22.3, 1.25], [32, 2.5, 3.5, 25.6, 1.25]];
+
+/** (6.16) met k_c,90 = 1,0; hoek in graden. */
+const fcAlfa = (f0, f90, a) => f0 / ((f0 / f90) * Math.sin(rad(a)) ** 2 + Math.cos(rad(a)) ** 2);
+
+function uitwerkingAmbacht(v) {
+  const kmod = KMOD_HOUT[v.klimaat][v.duur - 1];
+  const rek = (k) => ({ c0: (kmod * HOUT[k][0]) / HOUT[k][4], c90: (kmod * HOUT[k][1]) / HOUT[k][4], v: (kmod * HOUT[k][2]) / HOUT[k][4], t0: (kmod * HOUT[k][3]) / HOUT[k][4] });
+  const e1 = rek(v.klasse_1), e2 = rek(v.klasse_2);
+  // Splijtsterkte (8.4) naar analogie, naaldhout, w = 1, γ_M = 1,3 voor verbindingen; in N.
+  const splijt = (b, h, he) => (kmod * 14 * b * Math.sqrt(he / (1 - he / h))) / 1.3;
+  const deel = (eta) => (eta > 0 ? Math.min(Math.max(eta, 0.5), 1) : 1);
+  const uc = {};
+  let ok = true, geldig = true;
+
+  if (v.soort === 2) {
+    // Keepvlak met de normaal onder φ met element 1: β/2 op de middellijn, β haaks op de schoor.
+    const b = v.β_k, phi = v.keepvorm === 1 ? b / 2 : b;
+    geldig = b > 0 && b < 90 && v.t_v > 0 && v.t_v < v.h_k && v.b_k > 0 && v.h_s > 0 && v.l_vh > 0;
+    if (geldig) {
+      const sigma = (v.N_s_Ed * 1000 * Math.cos(rad(b - phi)) * Math.cos(rad(phi))) / (v.b_k * v.t_v);
+      uc.UC_c1 = sigma / fcAlfa(e1.c0, e1.c90, phi);
+      uc.UC_c2 = sigma / fcAlfa(e2.c0, e2.c90, b - phi);
+      uc.UC_v = (v.N_s_Ed * 1000 * Math.cos(rad(b))) / (v.b_k * Math.min(v.l_vh, 8 * v.t_v)) / e1.v;
+      // Het keepvlak, gemeten over de doorsnede van de schoor, past in de schoor.
+      ok = (v.t_v * Math.cos(rad(b - phi))) / Math.cos(rad(phi)) <= v.h_s;
+    }
+  } else if (v.soort === 3) {
+    // Toognagel loodrecht op beide vezels: door h_p bij een balk (stand 1), door b_p bij een stijl.
+    const tpt = v.stand === 1 ? v.h_p : v.b_p, tw = v.h_1 - tpt;
+    const peg = v.toognagel === 1;
+    geldig = v.b_p > 0 && v.h_p > 0 && v.l_p > 0 && v.b_p <= v.b_2 && v.a_o >= 0 && v.a_o + v.h_p <= v.h_2 && v.l_p <= v.l_1 && tw > 0
+      && (v.stand !== 1 || (v.e_g > 0 && v.e_g + v.h_p <= v.h_1))
+      && (!peg || (v.n_t >= 1 && v.d_t > 0 && v.e_t > v.d_t / 2 && v.e_t + v.d_t / 2 < v.l_p));
+    if (geldig) {
+      const eta = deel(v.η_in ?? 0);
+      // Afschuiving van de pen als uitkeping (6.60)–(6.63): h_ef = h_p, x = l_p/2, i = 0.
+      let kv = 1;
+      if (v.a_o > 0) {
+        const kn = v.klasse_2 >= 9 ? 6.5 : 5, a = v.h_p / v.h_2;
+        kv = Math.min(1, kn / (Math.sqrt(v.h_2) * (Math.sqrt(a * (1 - a)) + ((0.8 * v.l_p) / 2 / v.h_2) * Math.sqrt(1 / a - a * a))));
+      }
+      const V = v.V_Ed * 1000;
+      uc.UC_pv = (1.5 * V) / (v.b_p * v.h_p) / (kv * e2.v);
+      const sp = V / (v.b_p * v.l_p);
+      uc.UC_p2 = sp / e2.c90;
+      uc.UC_p1 = sp / (v.stand === 1 ? e1.c90 : e1.c0);
+      uc.UC_p90 = v.stand === 1 ? (eta * V) / splijt(v.l_1, v.h_1, v.e_g) : 0;
+      uc.UC_b = v.N_c_Ed > 0 ? (v.N_c_Ed * 1000) / (v.b_2 * v.h_2 - v.b_p * v.h_p) / e1.c90 : 0;
+      const N = v.N_t_Ed * 1000;
+      if (N > 0 && peg) {
+        const fvt = (kmod * v.f_v_k_t) / 1.3, fc90t = (kmod * v.f_c_90_k_t) / 1.3;
+        uc.UC_tv = N / (v.n_t * 2 * Math.PI * v.d_t ** 2 / 4) / fvt;
+        uc.UC_t2 = N / (v.n_t * v.d_t * tpt) / Math.min(e2.c0, fc90t);
+        uc.UC_t1 = N / (v.n_t * v.d_t * tw) / Math.min(e1.c90, fc90t);
+        uc.UC_ta = N / (2 * v.n_t * tpt * (v.l_p - v.e_t - v.d_t / 2)) / e2.v;
+        uc.UC_t90 = (eta * N) / splijt(tw, v.l_1, v.e_t);
+      }
+      // Trek zonder toognagel: geen weg voor de kracht.
+      ok = !(N > 0 && !peg);
+    }
+  } else {
+    geldig = v.b_zh > 0 && v.b_ze > v.b_zh && v.l_z > 0 && v.l_z < v.l_1 && v.t_z > 0 && v.a_k >= 0;
+    if (geldig) {
+      const N = v.N_t_Ed * 1000, eta = deel(v.η_in ?? 0);
+      const g = Math.atan((v.b_ze - v.b_zh) / (2 * v.l_z)) * 180 / Math.PI;
+      const sigma = N / (v.t_z * (v.b_ze - v.b_zh));
+      uc.UC_z1 = sigma / fcAlfa(e1.c0, e1.c90, g);
+      uc.UC_z2 = sigma / fcAlfa(e2.c0, e2.c90, 90 - g);
+      uc.UC_zt = N / (v.b_zh * v.t_z) / e2.t0;
+      uc.UC_zv = N / (2 * v.t_z * v.l_z) / e2.v;
+      uc.UC_z90 = (eta * N) / splijt(v.t_z, v.l_1, v.l_z);
+      uc.UC_zk = v.a_k > 0 ? N / (2 * Math.tan(rad(g))) / (v.t_z * v.a_k) / e1.v : 0;
+    }
+  }
+  return { geldig, ok, uc, UCmax: geldig ? Math.max(0, ...Object.values(uc)) : NaN };
+}
+
+const KEEP = {
+  soort: 2, klimaat: 1, duur: 3, klasse_1: 6, klasse_2: 6, keepvorm: 1, β_k: 40, b_k: 100, h_s: 140, h_k: 200, t_v: 40,
+  l_vh: 300, N_s_Ed: 30,
+};
+const PEN = {
+  soort: 3, klimaat: 1, duur: 3, klasse_1: 6, klasse_2: 6, stand: 2, b_p: 40, h_p: 120, l_p: 80, b_2: 100, h_2: 180,
+  a_o: 30, l_1: 140, h_1: 140, e_g: 0, V_Ed: 6, N_c_Ed: 0, N_t_Ed: 4, toognagel: 1, n_t: 1, d_t: 20, e_t: 40,
+  f_v_k_t: 3.0, f_c_90_k_t: 8.0, η_in: 0,
+};
+const ZWALUW = {
+  soort: 4, klimaat: 1, duur: 3, klasse_1: 6, klasse_2: 6, b_zh: 60, b_ze: 90, l_z: 60, t_z: 60, l_1: 150, a_k: 100,
+  N_t_Ed: 5, η_in: 0,
+};
+
+const AMBACHT = [
+  {
+    naam: "A1 — keep op de middellijn, C24, β = 40°, t_v = 40, N = 30 kN",
+    invoer: KEEP,
+    // Met de hand: σ = 30 000·cos²20°/(100·40) = 6,623; f_c,0,d = 0,8·21/1,3 = 12,92, f_c,90,d = 1,538;
+    // f_c,20°,d = 12,92/(8,4·sin²20° + cos²20°) = 6,927; UC = 0,9561 in beide elementen.
+    // Voorhout: H = 30·cos 40° = 22,98 kN over min(300; 8·40) = 300 mm: τ = 0,766, UC = 0,766/2,462 = 0,3112.
+    handwerk: { σ_c_α_d: "6.623", f_c_α_d_1: "6.927", UC_c1: "0.9561", UC_c2: "0.9561", H_Ed: "22.98", l_v_ef: "300", τ_d: "0.766", UC_v: "0.3112" },
+  },
+  {
+    naam: "A2 — keep haaks op de schoor, verder als A1: element 1 onder 40° maatgevend",
+    invoer: { ...KEEP, keepvorm: 2 },
+    // Met de hand: A = 100·40/cos 40° = 5222 mm²; σ = 30 000/5222 = 5,745; f_c,40°,d = 12,92/(8,4·0,4132 + 0,5868) = 3,185;
+    // UC_1 = 1,804; in de schoor evenwijdig aan de vezel 5,745/12,92 = 0,4446.
+    handwerk: { A_k: "5222", σ_c_α_d: "5.745", f_c_α_d_1: "3.185", UC_c1: "1.804", UC_c2: "0.4446" },
+  },
+  {
+    naam: "A3 — keep haaks op de schoor, β = 70°, t_v = 60, N = 10 kN: het keepvlak past niet in de schoor",
+    invoer: { ...KEEP, keepvorm: 2, β_k: 70, t_v: 60, N_s_Ed: 10 },
+    // Met de hand: het keepvlak is 60/cos 70° = 175,4 mm > h_s = 140: voldoet niet, ook al is UC ≤ 1.
+    // σ = 10 000·cos 70°/(100·60) = 0,5700; f_c,70°,d = 12,92/(8,4·0,8830 + 0,1170) = 1,715; UC = 0,3323.
+    handwerk: { σ_c_α_d: "0.5700", UC_c1: "0.3323" },
+  },
+  {
+    naam: "A4 — pen-en-gat in een stijl met toognagel 20 mm, V = 6 kN en N_t = 4 kN",
+    invoer: PEN,
+    // Met de hand: α = 120/180; k_v = 5/(√180·(√(0,6667·0,3333) + 0,8·40/180·√(1,5 − 0,4444))) = 0,5698;
+    // τ = 1,5·6000/(40·120) = 1,875; UC = 1,875/(0,5698·2,462) = 1,337. Stuik 6000/(40·80) = 1,875:
+    // pen 1,875/1,538 = 1,219, stijl evenwijdig 1,875/12,92 = 0,1451.
+    // Toognagel: τ = 4000/(2·π·20²/4) = 6,366, f_v,d = 0,8·3,0/1,3 = 1,846: UC = 3,448;
+    // stuik in de pen 4000/(20·40) = 5,0 tegen min(12,92; 0,8·8/1,3 = 4,923): 1,016; in de wangen
+    // 4000/(20·100) = 2,0 tegen 1,538: 1,300. Achter het gat 80 − 40 − 10 = 30 mm: τ = 4000/(2·40·30) = 1,667,
+    // UC = 0,6771. Splijten (8.4): 0,8·14·100·√(40/(1 − 40/140))/1,3 = 6447 N; UC = 4/6,447 = 0,6204.
+    handwerk: { k_v: "0.5698", UC_pv: "1.337", UC_p2: "1.219", UC_p1: "0.1451", t_w: "100", τ_t: "6.366", UC_tv: "3.448", UC_t2: "1.016", UC_t1: "1.300", l_a: "30", UC_ta: "0.6771", F_90_t_Rd: "6.447", UC_t90: "0.6204" },
+  },
+  {
+    naam: "A5 — pen-en-gat, balk C24 in een balk GL24h, V = 4 kN, borst 2 kN, de kracht over twee zijden",
+    invoer: { ...PEN, klasse_1: 9, stand: 1, b_p: 50, l_p: 90, a_o: 0, h_1: 300, e_g: 100, V_Ed: 4, N_c_Ed: 2, N_t_Ed: 0, toognagel: 0, η_in: 0.5 },
+    // Met de hand: stuik 4000/(50·90) = 0,8889: pen 0,8889/1,538 = 0,5778, balk GL24h 0,8889/(0,8·2,5/1,25) = 0,5556;
+    // pen gelijk met de onderkant, k_v = 1: τ = 1,5·4000/(50·120) = 1,0, UC = 0,4063.
+    // Splijten (8.4): 0,8·14·140·√(100/(1 − 100/300))/1,3 = 14 773 N; F = 0,5·4 = 2 kN: UC = 0,1354.
+    // Borst: 2000/(100·180 − 50·120) = 0,1667 tegen 1,6: UC = 0,1042. Maatgevend 0,5778: voldoet.
+    handwerk: { k_v: "1", UC_p2: "0.5778", UC_p1: "0.5556", UC_pv: "0.4063", F_90_Rd: "14.77", F_90_Ed: "2", UC_p90: "0.1354", A_b: "12000", UC_b: "0.1042" },
+  },
+  {
+    naam: "A6 — pen-en-gat op trek zonder toognagel: voldoet niet",
+    invoer: { ...PEN, toognagel: 0, V_Ed: 1 },
+  },
+  {
+    naam: "A7 — pen-en-gat met een pen langer dan element 1: niet getoetst",
+    invoer: { ...PEN, l_p: 160 },
+  },
+  {
+    naam: "A8 — zwaluwstaart 60/90 × 60, t = 60, N = 5 kN, 100 mm tot het kopse einde",
+    invoer: ZWALUW,
+    // Met de hand: tan γ = 15/60 = 0,25, γ = 14,04°; σ = 5000/(60·30) = 2,778.
+    // Element 1 onder 14,04°: 12,92/(8,4·0,05882 + 0,9412) = 9,004, UC = 0,3085;
+    // zwaluwstaart onder 75,96°: 12,92/(8,4·0,9412 + 0,05882) = 1,623, UC = 1,712.
+    // Hals: 5000/(60·60) = 1,389 tegen 0,8·14/1,3 = 8,615: 0,1612. Langs de hals 5000/(2·60·60) = 0,6944: 0,2821.
+    // Splijten (8.4): 0,8·14·60·√(60/0,6)/1,3 = 5169 N; UC = 0,9673. Kopse einde: Q = 5/(2·0,25) = 10 kN,
+    // τ = 10 000/(60·100) = 1,667, UC = 0,6771.
+    handwerk: { γ_z: "14.04", σ_z: "2.778", f_c_α_d_1: "9.004", UC_z1: "0.3085", f_c_α_d_2: "1.623", UC_z2: "1.712", UC_zt: "0.1612", UC_zv: "0.2821", F_90_Rd: "5.169", UC_z90: "0.9673", Q_z: "10", UC_zk: "0.6771" },
+  },
+  {
+    naam: "A9 — zwaluwstaart 60/100 × 80, t = 100, GL24h in C24, kort, doorgaand element 1, kracht over twee zijden: voldoet",
+    invoer: { ...ZWALUW, klasse_1: 9, duur: 4, b_ze: 100, l_z: 80, t_z: 100, l_1: 200, a_k: 0, η_in: 0.5 },
+    // Met de hand: γ = 14,04° (tan 0,25); σ = 5000/(100·40) = 1,25; zwaluwstaart C24 kort f_c,0,d = 14,54,
+    // f_c,90,d = 1,731: 14,54/7,965 = 1,825, UC = 0,6848. Splijten: 0,9·14·100·√(80/0,6)/1,3 = 11 192 N,
+    // F = 0,5·5 = 2,5 kN: UC = 0,2234.
+    handwerk: { UC_z2: "0.6848", F_90_Rd: "11.19", UC_z90: "0.2234" },
+  },
+  {
+    naam: "A10 — zwaluwstaart zonder uitwaaiering: niet getoetst",
+    invoer: { ...ZWALUW, b_ze: 60 },
+  },
+];
+
+// Willekeurige combinaties per soort, met een vaste startwaarde: de uitwerking moet het blad overal volgen.
+let zaad = 20260927;
+const kies = (lijst) => { zaad = (zaad * 1103515245 + 12345) % 2147483648; return lijst[zaad % lijst.length]; };
+for (let k = 0; k < 36; k++) {
+  const basis = [KEEP, PEN, ZWALUW][k % 3];
+  const v = { ...basis, klimaat: kies([1, 2, 3]), duur: kies([1, 2, 3, 4, 5]), klasse_1: kies([1, 3, 6, 8, 9, 11]), klasse_2: kies([2, 6, 7, 10]) };
+  if (v.soort === 2) Object.assign(v, { keepvorm: kies([1, 2]), β_k: kies([25, 35, 45, 55, 65]), t_v: kies([20, 30, 45]), l_vh: kies([150, 250, 400]), N_s_Ed: kies([8, 15, 25]) });
+  if (v.soort === 3) Object.assign(v, { stand: kies([1, 2]), a_o: kies([0, 20, 40]), h_1: kies([160, 240]), e_g: kies([40, 80]), V_Ed: kies([0, 3, 6]), N_c_Ed: kies([0, 5]), N_t_Ed: kies([0, 2]), toognagel: kies([1, 1, 0]), n_t: kies([1, 2]), d_t: kies([16, 22]), e_t: kies([30, 45]), η_in: kies([0, 0.5, 0.7]) });
+  if (v.soort === 4) Object.assign(v, { b_ze: kies([75, 90, 110]), l_z: kies([50, 70]), t_z: kies([45, 80]), a_k: kies([0, 60, 150]), N_t_Ed: kies([2, 4, 7]), η_in: kies([0, 0.6]) });
+  AMBACHT.push({ naam: `A${AMBACHT.length + 1} — willekeurig, soort ${v.soort}`, invoer: v });
+}
+
+for (const set of AMBACHT) {
+  const v = set.invoer;
+  const got = reken(tpl, Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)])));
+  const r = uitwerkingAmbacht(v);
+  // Een UC van 0 (geen last op dat deel) staat verborgen in het blad.
+  const wil = Object.fromEntries(Object.entries(r.uc).filter(([, x]) => x !== 0).map(([k, x]) => [k, ruim(x)]));
+  fouten += toets(`${set.naam} — narekening`, got, r.geldig ? wil : {});
+  if (set.handwerk) fouten += toets(`${set.naam} — handberekening`, got, set.handwerk);
+
+  const slot = got.text.lastIndexOf("Maatgevende UC");
+  const zin = slot >= 0 ? got.text.slice(slot, slot + 240) : "";
+  const m = zin.match(/Maatgevende UC = ([\d.]+)/);
+  const ucBlad = m ? parseFloat(m[1]) : NaN;
+  // Zonder geldige invoer noemt het blad geen UC maar "niet bepaald".
+  const ucOk = r.geldig
+    ? Number.isFinite(ucBlad) && Math.abs(ucBlad - r.UCmax) <= Math.max(0.002 * r.UCmax, 1e-4)
+    : !m && /niet bepaald → de verbinding is niet getoetst: invoer onvolledig/.test(zin);
+  const voldoet = !/voldoe[nt] niet|niet getoetst/.test(zin) && /voldoe[nt]/.test(zin);
+  const wilOordeel = r.geldig && r.ok && r.UCmax <= 1;
+  const oordeelOk = voldoet === wilOordeel;
+  // De grondslag staat op elk blad van deze soorten.
+  const grondslag = /geeft voor een keep, pen-en-gat of zwaluwstaart geen eigen rekenregel/.test(got.text);
+  const schoon = !/NaN|Error|Undefined symbol/.test(got.text);
+  for (const [ok, wat] of [[ucOk, "UC_max"], [oordeelOk, "oordeel"], [grondslag, "grondslag"], [schoon, "geen NaN of fout"]]) if (!ok) { fouten++; console.log(`  FOUT   ${wat}`); }
+  console.log(`  ${ucOk ? "OK    " : "FOUT  "} UC_max     ons ${String(ucBlad).padStart(10)}   narekening ${r.geldig ? s4(r.UCmax) : "niet bepaald"}`);
+  console.log(`  ${oordeelOk ? "OK    " : "FOUT  "} oordeel    ons ${voldoet ? "voldoet" : "voldoet niet"}   narekening ${wilOordeel ? "voldoet" : "voldoet niet"}${r.ok ? "" : " (detaillering)"}`);
+}
+
+// Meldingen bij de ambachtelijke verbindingen.
+const MELDINGEN_AMBACHT = [
+  [3, "keepvlak past niet in de schoor", /past niet in de schoor van 140 mm/],
+  [3, "keep dieper dan de vuistregel", /De keep is dieper dan de gebruikelijke 33\.33 mm .*geen eis van EN 1995-1-1/],
+  [3, "oordeel bij een keepvlak dat niet past", /voldoet niet: het keepvlak past niet in de schoor/],
+  [6, "trek zonder toognagel", /Zonder toognagel neemt pen-en-gat geen trek op/],
+  [6, "oordeel trek zonder toognagel", /voldoet niet: trek zonder toognagel/],
+  [7, "maten van pen-en-gat passen niet", /De maten passen niet/],
+  [10, "zwaluwstaart zonder uitwaaiering", /Vul een hals, een breedere einde/],
+  [2, "aanname voor het voorhout, geen normregel", /ten hoogste 8·t\s*v\s*: een gebruikelijke aanname, de norm geeft hiervoor geen regel/],
+];
+for (const [nr, naam, patroon] of MELDINGEN_AMBACHT) {
+  const v = AMBACHT[nr - 1].invoer;
+  const got = reken(tpl, Object.fromEntries(Object.entries(v).map(([k, x]) => [k, String(x)])));
+  const ok = patroon.test(got.text);
+  if (!ok) fouten++;
+  console.log(`\nMelding ${naam} (set A${nr})\n  ${ok ? "OK    " : "FOUT  "} ${patroon.source}`);
 }
 
 afronden(fouten, "Nagel- en schroefverbinding");

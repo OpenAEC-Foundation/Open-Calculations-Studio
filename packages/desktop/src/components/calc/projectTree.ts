@@ -138,7 +138,7 @@ export const moduleCatalogus: TreeNode[] = [
       { kind: "item", id: "sheet-houten-kap", label: "Houten kap (sporen, spanten, hoekkeper)", templateId: "houten-kap", status: "controleren" },
       { kind: "item", id: "sheet-schijfwerking", label: "Schijfwerking (wandschijf)", templateId: "schijfwerking", status: "controleren" },
       { kind: "item", id: "sheet-hsb-stabiliteit", label: "Stabiliteit HSB-wanden", templateId: "hsb-stabiliteit", status: "controleren" },
-      { kind: "item", id: "sheet-nagel-schroef", label: "Nagel- en schroefverbinding", templateId: "nagel-schroef", status: "controleren" },
+      { kind: "item", id: "sheet-nagel-schroef", label: "Nagel- en schroefverbinding, keep, pen-en-gat, zwaluwstaart", templateId: "nagel-schroef", status: "controleren" },
     ],
   },
   {
@@ -253,6 +253,7 @@ export const bibliotheek: TreeNode[] = [
           { kind: "item", id: "ec5-tapse-ligger", label: "§6.4.2 Tapse ligger", templateId: "ec5-tapse-ligger" },
           { kind: "item", id: "ec5-uitkeping", label: "§6.5.2 Uitkeping bij de oplegging", templateId: "ec5-uitkeping" },
           { kind: "item", id: "ec5-doorbuiging", label: "§7.2 Doorbuiging", templateId: "ec5-doorbuiging" },
+          { kind: "item", id: "ec5-beschot", label: "Vloer- en dakbeschot", templateId: "ec5-beschot" },
           { kind: "item", id: "ec5-houten-balk", label: "Volledige toetsing houten balk", templateId: "ec5-houten-balk" },
         ],
       },

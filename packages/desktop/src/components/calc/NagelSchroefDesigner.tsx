@@ -1,4 +1,5 @@
-import { useDesigner, Dim, Force, Ro, Defs, HDim, VDim, loadMark, fmt, clamp, JaNee } from "./designerKit";
+import type { ReactNode } from "react";
+import { useDesigner, Dim, Force, Ro, Defs, HDim, VDim, loadMark, fmt, clamp, JaNee, type DesignerCtx } from "./designerKit";
 import { useAlleenLezen } from "../../store/actiefBlad";
 import "./VoetplaatDesigner.css";
 
@@ -17,8 +18,20 @@ import "./VoetplaatDesigner.css";
  *
  * Het beeld rekent zelf niets; sterkte, groep en afstandseisen staan in het
  * rekenblad. Alleen de indringdiepte, een zuiver meetkundige maat, staat erbij.
+ *
+ * Bij de ambachtelijke verbindingen (soort 2 tot en met 4) één aanzicht in het
+ * vlak van de verbinding: de keep in zijaanzicht met het keepvlak en het
+ * voorhout, pen-en-gat in zijaanzicht met de pen in het gat en de toognagel,
+ * de zwaluwstaart in het vlak waarin hij uitwaaiert. Het drukvlak staat in rood.
  */
 const MARKER = "Nagel- en schroefverbinding";
+
+const SOORT = [
+  { v: 1, label: "Nagels en schroeven" },
+  { v: 2, label: "Keep" },
+  { v: 3, label: "Pen-en-gat" },
+  { v: 4, label: "Zwaluwstaart" },
+];
 
 const OPBOUW = [
   { v: 1, label: "Hout – hout" },
@@ -38,7 +51,12 @@ const MIDDEL = [
 // Twee planken C24 van 38 en 71 mm, verbonden met tien gladde nagels 3,4 × 90
 // in twee rijen. De schroef- en plaatvelden krijgen waarden die bij deze
 // diameter passen, zodat omschakelen geen onzin oplevert.
+// Voor de ambachtelijke verbindingen: een schoor 100 × 140 onder 40° in een
+// balk van 200 hoog; een regel 100 × 180 met een pen 40 × 120 in een stijl van
+// 140, met één toognagel van 20 mm (sterkten als voorbeeld, zie EN 338 voor de
+// klasse van de toognagel); een zwaluwstaart 60/90 × 60 in een balk van 140.
 const DEFAULTS: Record<string, number> = {
+  soort: 1,
   klimaat: 1, duur: 3, opbouw: 1, klasse_1: 6, klasse_2: 6, t_1: 38, t_2: 71,
   plaat: 1, "ρ_pl": 420, t_s: 5,
   middel: 1, d_v: 3.4, l_v: 90, d_h: 8, f_u: 600, d_1: 2.4, l_g: 60,
@@ -46,7 +64,285 @@ const DEFAULTS: Record<string, number> = {
   f_ax_nk: 4.5, f_head_nk: 10, voorboren: 0, M_y_in: 0, f_head_p: 10,
   n_1: 5, n_2: 2, versprongen: 0, a_1: 40, a_2: 25, a_3: 60, a_4: 25,
   eind: 1, rand: 0, "α": 0, F_v_Ed: 4, F_ax_Ed: 0, ax_lang: 0,
+  keepvorm: 1, "β_k": 40, b_k: 100, h_s: 140, h_k: 200, t_v: 40, l_vh: 300, N_s_Ed: 30,
+  stand: 2, b_p: 40, h_p: 120, l_p: 80, b_2: 100, h_2: 180, a_o: 30, l_1: 140, h_1: 140, e_g: 60,
+  V_Ed: 6, N_c_Ed: 0, N_t_Ed: 4, toognagel: 1, n_t: 1, d_t: 20, e_t: 40, f_v_k_t: 3, f_c_90_k_t: 8,
+  b_zh: 60, b_ze: 90, l_z: 60, t_z: 60, a_k: 100,
 };
+
+// Element 2 (schoor, pen, zwaluwstaart) iets donkerder dan element 1.
+const VULLING_2 = { fill: "#EBD3A6", stroke: "#8B6F47" };
+const RAD = Math.PI / 180;
+
+interface Ambacht { kop: ReactNode; bediening: ReactNode; tekening: ReactNode; voet: ReactNode }
+
+/**
+ * Het aanzicht van een keep, pen-en-gat of zwaluwstaart. Tekent in mm en
+ * schaalt het geheel in het vak van W × H; de klikbare maten schrijven in het
+ * blad, net als bij de stiftvormige verbindingen.
+ */
+function ambachtBeeld(ctx: DesignerCtx, soort: number, W: number, H: number, afdruk: boolean): Ambacht {
+  const { d, set } = ctx;
+  const capH = 24;
+  const CH = Math.max(260, H - capH);
+  const mL = 56, mR = 86, mT = 56, mB = 58;
+  // Schaal en verschuiving voor een kader [x0, x1] × [y0, y1] in mm.
+  const pas = (x0: number, x1: number, y0: number, y1: number) => {
+    const s = clamp(Math.min((W - mL - mR) / Math.max(1, x1 - x0), (CH - mT - mB) / Math.max(1, y1 - y0)), 0.05, 6);
+    const ox = mL + ((W - mL - mR) - (x1 - x0) * s) / 2 - x0 * s;
+    const oy = mT + ((CH - mT - mB) - (y1 - y0) * s) / 2 - y0 * s;
+    return { s, X: (x: number) => ox + x * s, Y: (y: number) => oy + y * s };
+  };
+  const pts = (p: { x: number; y: number }[], X: (x: number) => number, Y: (y: number) => number) =>
+    p.map((q) => `${X(q.x)},${Y(q.y)}`).join(" ");
+  const titel = SOORT.find((o) => o.v === soort)?.label ?? "";
+
+  let tekening: ReactNode = null, bediening: ReactNode = null, badge = "", live = "";
+
+  if (soort === 2) {
+    // ── Keep: zijaanzicht, element 1 liggend, de schoor van linksboven ──
+    const beta = clamp(d("β_k"), 5, 85);
+    const vorm = Math.round(d("keepvorm")) === 2 ? 2 : 1;
+    const phi = vorm === 1 ? beta / 2 : beta;
+    const tv = Math.max(1, d("t_v")), hk = Math.max(tv + 1, d("h_k")), hs = Math.max(1, d("h_s"));
+    const lvh = Math.max(1, d("l_vh")), bk = d("b_k"), N = d("N_s_Ed");
+    const T = { x: 0, y: 0 };
+    const B = { x: -tv * Math.tan(phi * RAD), y: tv };
+    const C = { x: B.x - tv / Math.tan(beta * RAD), y: 0 };
+    const u = { x: -Math.cos(beta * RAD), y: -Math.sin(beta * RAD) };
+    const n = { x: Math.sin(beta * RAD), y: -Math.cos(beta * RAD) };
+    const Ls = Math.max(2.2 * hs, 1.6 * hk);
+    const Eu = { x: B.x + hs * n.x, y: B.y + hs * n.y };
+    const S1 = { x: B.x + Ls * u.x, y: B.y + Ls * u.y }, S2 = { x: Eu.x + Ls * u.x, y: Eu.y + Ls * u.y };
+    const xL = Math.min(C.x, S1.x, S2.x) - 0.4 * hk, xE = lvh;
+    const { s, X, Y } = pas(xL, xE, Math.min(S1.y, S2.y, Eu.y), hk);
+    const M = { x: (S1.x + S2.x) / 2, y: (S1.y + S2.y) / 2 };
+    const pijl = 46 / s;
+    const A0 = { x: M.x + u.x * pijl, y: M.y + u.y * pijl };
+    tekening = (
+      <div className="vd-canvas">
+        <div className="vd-caption">Zijaanzicht: schoor (element 2) in de keep van element 1</div>
+        <div className="vd-stage" style={{ width: W, height: CH, background: "transparent", border: "none", borderRadius: 0 }}>
+          <svg width={W} height={CH} className="vd-svg">
+            <Defs k="nk" />
+            <polygon points={pts([{ x: xL, y: 0 }, C, B, T, { x: xE, y: 0 }, { x: xE, y: hk }, { x: xL, y: hk }], X, Y)}
+              fill={VULLING.hout.fill} stroke={VULLING.hout.stroke} strokeWidth={1.3} />
+            <line x1={X(xL)} y1={Y(0)} x2={X(xL)} y2={Y(hk)} stroke="#F5E6C8" strokeWidth={2} />
+            <line x1={X(xL)} y1={Y(0)} x2={X(xL)} y2={Y(hk)} stroke="#8B6F47" strokeWidth={0.9} strokeDasharray="6 3" />
+            {[0.35, 0.65, 0.88].map((f) => (
+              <line key={f} x1={X(xL) + 6} y1={Y(hk * f)} x2={X(xE) - 6} y2={Y(hk * f)} stroke="#8B6F47" strokeWidth={0.5} strokeDasharray="14 6" opacity={0.35} />
+            ))}
+            <polygon points={pts([B, T, Eu, S2, S1], X, Y)} fill={VULLING_2.fill} stroke={VULLING_2.stroke} strokeWidth={1.3} />
+            {[0.33, 0.66].map((f) => (
+              <line key={f} x1={X(B.x + n.x * hs * f + u.x * hs * 0.4)} y1={Y(B.y + n.y * hs * f + u.y * hs * 0.4)}
+                x2={X(B.x + n.x * hs * f + u.x * Ls * 0.95)} y2={Y(B.y + n.y * hs * f + u.y * Ls * 0.95)}
+                stroke="#8B6F47" strokeWidth={0.5} strokeDasharray="14 6" opacity={0.35} />
+            ))}
+            {/* keepvlak (druk) en afschuifvlak van het voorhout */}
+            <line x1={X(B.x)} y1={Y(B.y)} x2={X(T.x)} y2={Y(T.y)} stroke="#b91c1c" strokeWidth={3} />
+            <line x1={X(B.x)} y1={Y(tv)} x2={X(xE)} y2={Y(tv)} stroke="#b91c1c" strokeWidth={1} strokeDasharray="5 3" />
+            {/* maten */}
+            <HDim k="nk" x0={X(T.x)} x1={X(xE)} y={Y(0) - 16} ext={Y(0) - 3} />
+            <VDim k="nk" y0={Y(0)} y1={Y(tv)} x={X(xE) + 18} ext={X(xE) + 3} />
+            <VDim k="nk" y0={Y(0)} y1={Y(hk)} x={X(xE) + 52} ext={X(xE) + 3} />
+            <line x1={X(A0.x)} y1={Y(A0.y)} x2={X(M.x)} y2={Y(M.y)} className="vd-load" strokeWidth={2.8} markerEnd={loadMark("nk")} />
+            <text x={X(xL) + 4} y={Y(hk) + 44} fill="#6b7280" fontSize={10}>rood: keepvlak (druk) en afschuifvlak van het voorhout</text>
+          </svg>
+          <Dim ctx={ctx} name="l_vh" value={lvh} x={(X(T.x) + X(xE)) / 2} y={Y(0) - 16} step={10} label="lv" />
+          <Dim ctx={ctx} name="t_v" value={tv} x={X(xE) + 18} y={(Y(0) + Y(tv)) / 2} step={5} label="tv" />
+          <Dim ctx={ctx} name="h_k" value={hk} x={X(xE) + 52} y={(Y(0) + Y(hk)) / 2 + 10} step={10} label="h" />
+          <Dim ctx={ctx} name="β_k" value={beta} x={X(C.x) - 34} y={Y(0) - 22} step={5} label="β" />
+          <Dim ctx={ctx} name="h_s" value={hs} x={X(B.x + u.x * Ls * 0.55 + n.x * hs * 1.15)} y={Y(B.y + u.y * Ls * 0.55 + n.y * hs * 1.15)} step={10} label="hs" />
+          <Dim ctx={ctx} name="b_k" value={bk} x={X(xL) + 30} y={Y(hk) + 16} step={10} label="b" title="breedte van het keepvlak — klik om te wijzigen" />
+          <Force ctx={ctx} name="N_s_Ed" value={N} x={X(A0.x)} y={Y(A0.y) - 22} unit="kN" label="N" step={5} dec={1} />
+        </div>
+      </div>
+    );
+    bediening = (
+      <label>Keepvlak
+        <select value={vorm} onChange={(e) => set("keepvorm", parseInt(e.target.value))}>
+          <option value={1}>Op de middellijn</option>
+          <option value={2}>Haaks op de schoor</option>
+        </select>
+      </label>
+    );
+    badge = `β = ${fmt(beta)}° · tv = ${fmt(tv)} mm · N = ${fmt(N, 1)} kN`;
+    live = `keepvlak ${vorm === 1 ? "op de middellijn" : "haaks op de schoor"} · b = ${fmt(bk)} mm · voorhout ${fmt(lvh)} mm`;
+  } else if (soort === 3) {
+    // ── Pen-en-gat: zijaanzicht, element 2 komt van rechts ──
+    const stand = Math.round(d("stand")) === 1 ? 1 : 2;
+    const hp = Math.max(1, d("h_p")), lp = Math.max(1, d("l_p")), h2 = Math.max(hp, d("h_2"));
+    const ao = clamp(d("a_o"), 0, h2 - hp), l1 = Math.max(lp, d("l_1")), bp = d("b_p"), b2 = d("b_2");
+    const peg = Math.round(d("toognagel")) === 1, dt = Math.max(1, d("d_t")), et = clamp(d("e_t"), 0, l1);
+    const V = d("V_Ed"), Nc = d("N_c_Ed"), Nt = d("N_t_Ed");
+    const h1 = Math.max(hp + 1, d("h_1")), eg = clamp(d("e_g"), 0, h1 - hp);
+    // Bij een balk (stand 1) is element 1 een doorsnede van h1 hoog; bij een stijl loopt hij door.
+    const yMb = stand === 1 ? h1 - eg : h2 - ao, yMt = yMb - hp;
+    const y2b = yMb + ao, y2a = y2b - h2;
+    const y1a = stand === 1 ? 0 : y2a - 0.5 * h2, y1b = stand === 1 ? h1 : y2b + 0.5 * h2;
+    const L2 = Math.max(1.4 * h2, 1.1 * l1);
+    const { s, X, Y } = pas(0, l1 + L2, Math.min(y1a, y2a), Math.max(y1b, y2b));
+    const yTop = Math.min(Y(y1a), Y(y2a));
+    tekening = (
+      <div className="vd-canvas">
+        <div className="vd-caption">Zijaanzicht: element 2 met de pen in het gat van element 1{stand === 1 ? " (balk, in doorsnede)" : " (stijl)"}</div>
+        <div className="vd-stage" style={{ width: W, height: CH, background: "transparent", border: "none", borderRadius: 0 }}>
+          <svg width={W} height={CH} className="vd-svg">
+            <Defs k="np3" />
+            <rect x={X(0)} y={Y(y1a)} width={l1 * s} height={(y1b - y1a) * s} fill={VULLING.hout.fill} stroke={VULLING.hout.stroke} strokeWidth={1.3} />
+            {stand === 1 ? (
+              [0.18, 0.32].map((f) => (
+                <ellipse key={f} cx={X(l1 * 0.3)} cy={Y((y1a + y1b) / 2)} rx={l1 * s * f * 1.4} ry={(y1b - y1a) * s * f} fill="none" stroke="#8B6F47" strokeWidth={0.6} opacity={0.35} />
+              ))
+            ) : (
+              <>
+                {[0.25, 0.5, 0.75].map((f) => (
+                  <line key={f} x1={X(l1 * f)} y1={Y(y1a) + 4} x2={X(l1 * f)} y2={Y(y1b) - 4} stroke="#8B6F47" strokeWidth={0.5} strokeDasharray="14 6" opacity={0.35} />
+                ))}
+                <line x1={X(0)} y1={Y(y1a)} x2={X(l1)} y2={Y(y1a)} stroke="#F5E6C8" strokeWidth={2} />
+                <line x1={X(0)} y1={Y(y1a)} x2={X(l1)} y2={Y(y1a)} stroke="#8B6F47" strokeWidth={0.9} strokeDasharray="6 3" />
+                <line x1={X(0)} y1={Y(y1b)} x2={X(l1)} y2={Y(y1b)} stroke="#F5E6C8" strokeWidth={2} />
+                <line x1={X(0)} y1={Y(y1b)} x2={X(l1)} y2={Y(y1b)} stroke="#8B6F47" strokeWidth={0.9} strokeDasharray="6 3" />
+              </>
+            )}
+            <rect x={X(l1)} y={Y(y2a)} width={L2 * s} height={h2 * s} fill={VULLING_2.fill} stroke={VULLING_2.stroke} strokeWidth={1.3} />
+            {[0.3, 0.7].map((f) => (
+              <line key={f} x1={X(l1) + 6} y1={Y(y2a + h2 * f)} x2={X(l1 + L2) - 6} y2={Y(y2a + h2 * f)} stroke="#8B6F47" strokeWidth={0.5} strokeDasharray="14 6" opacity={0.35} />
+            ))}
+            {/* de pen in het gat, als verborgen lijn */}
+            <rect x={X(l1 - lp)} y={Y(yMt)} width={lp * s} height={hp * s} fill={VULLING_2.fill} stroke={VULLING_2.stroke} strokeWidth={1} strokeDasharray="4 3" />
+            <line x1={X(l1 - lp)} y1={Y(yMb)} x2={X(l1)} y2={Y(yMb)} stroke="#b91c1c" strokeWidth={3} />
+            {peg && (stand === 2 ? (
+              <circle cx={X(l1 - et)} cy={Y((yMt + yMb) / 2)} r={Math.max(2.5, (dt / 2) * s)} fill="#e5e7eb" stroke="#374151" strokeWidth={1.1} />
+            ) : (
+              <rect x={X(l1 - et - dt / 2)} y={Y(y1a)} width={Math.max(2, dt * s)} height={(y1b - y1a) * s} fill="#e5e7eb" stroke="#374151" strokeWidth={0.9} strokeDasharray="4 3" opacity={0.8} />
+            ))}
+            {/* maten */}
+            <HDim k="np3" x0={X(l1 - lp)} x1={X(l1)} y={yTop - 16} ext={Y(yMt)} />
+            <HDim k="np3" x0={X(0)} x1={X(l1)} y={Y(y1b) + 18} ext={Y(y1b) + 3} />
+            <VDim k="np3" y0={Y(y2a)} y1={Y(y2b)} x={X(l1 + L2) + 18} ext={X(l1 + L2) + 3} />
+            <VDim k="np3" y0={Y(yMt)} y1={Y(yMb)} x={X(l1) + 20} />
+            {ao > 0 && <VDim k="np3" y0={Y(yMb)} y1={Y(y2b)} x={X(l1) + 50} />}
+            {stand === 1 && <VDim k="np3" y0={Y(y1a)} y1={Y(y1b)} x={X(0) - 18} ext={X(0) - 3} />}
+            {stand === 1 && <VDim k="np3" y0={Y(yMb)} y1={Y(y1b)} x={X(0) - 44} ext={X(0) - 3} />}
+            {peg && <HDim k="np3" x0={X(l1 - et)} x1={X(l1)} y={Y(y1b) + 42} ext={Y(y1b) + 3} />}
+            {/* krachten op element 2 */}
+            {V > 0 && <line x1={X(l1 + L2 * 0.6)} y1={Y(y2a) - 40} x2={X(l1 + L2 * 0.6)} y2={Y(y2a) - 2} className="vd-load" strokeWidth={2.6} markerEnd={loadMark("np3")} />}
+            {Nt > 0 && <line x1={X(l1 + L2) + 4} y1={Y(y2a + h2 * 0.5)} x2={X(l1 + L2) + 42} y2={Y(y2a + h2 * 0.5)} className="vd-load" strokeWidth={2.6} markerEnd={loadMark("np3")} />}
+            {Nc > 0 && <line x1={X(l1 + L2) + 42} y1={Y(y2a + h2 * 0.25)} x2={X(l1 + L2) + 4} y2={Y(y2a + h2 * 0.25)} className="vd-load" strokeWidth={2.6} markerEnd={loadMark("np3")} />}
+            <text x={X(0)} y={Y(y1b) + 70} fill="#6b7280" fontSize={10}>rood: stuikvlak onder de pen{peg ? "; grijs: de toognagel" : ""}</text>
+          </svg>
+          <Dim ctx={ctx} name="l_p" value={lp} x={(X(l1 - lp) + X(l1)) / 2} y={yTop - 16} step={5} label="lp" />
+          <Dim ctx={ctx} name="l_1" value={l1} x={(X(0) + X(l1)) / 2} y={Y(y1b) + 18} step={10} label="l1" />
+          <Dim ctx={ctx} name="h_2" value={h2} x={X(l1 + L2) + 18} y={(Y(y2a) + Y(y2b)) / 2 + 12} step={10} label="h2" />
+          <Dim ctx={ctx} name="h_p" value={hp} x={X(l1) + 20} y={(Y(yMt) + Y(yMb)) / 2} step={5} label="hp" />
+          {ao > 0 && <Dim ctx={ctx} name="a_o" value={ao} x={X(l1) + 50} y={(Y(yMb) + Y(y2b)) / 2} step={5} label="ao" />}
+          {stand === 1 && <Dim ctx={ctx} name="h_1" value={h1} x={X(0) - 18} y={(Y(y1a) + Y(y1b)) / 2 - 12} step={10} label="h1" />}
+          {stand === 1 && <Dim ctx={ctx} name="e_g" value={eg} x={X(0) - 44} y={(Y(yMb) + Y(y1b)) / 2} step={5} label="eg" />}
+          {peg && <Dim ctx={ctx} name="e_t" value={et} x={(X(l1 - et) + X(l1)) / 2} y={Y(y1b) + 42} step={5} label="et" />}
+          {peg && <Dim ctx={ctx} name="d_t" value={dt} x={X(l1 - et)} y={Y((yMt + yMb) / 2) - 26} step={2} label="d" />}
+          <Dim ctx={ctx} name="b_p" value={bp} x={X(l1 + L2 * 0.35)} y={Y(y2b) + 16} step={5} label="bp" title="dikte van de pen — klik om te wijzigen" />
+          <Dim ctx={ctx} name="b_2" value={b2} x={X(l1 + L2 * 0.75)} y={Y(y2b) + 16} step={10} label="b2" title="breedte van element 2 — klik om te wijzigen" />
+          {stand === 2 && <Dim ctx={ctx} name="h_1" value={d("h_1")} x={X(l1 * 0.5)} y={Y(y1a) + 12} step={10} label="h1" title="dikte van de stijl — klik om te wijzigen" />}
+          <Force ctx={ctx} name="V_Ed" value={V} x={X(l1 + L2 * 0.6)} y={Y(y2a) - 62} unit="kN" label="V" step={1} dec={1} />
+          <Force ctx={ctx} name="N_t_Ed" value={Nt} x={X(l1 + L2) + 34} y={Y(y2a + h2 * 0.5) + 6} unit="kN" label="Nt" step={1} dec={1} />
+          <Force ctx={ctx} name="N_c_Ed" value={Nc} x={X(l1 + L2) + 34} y={Y(y2a + h2 * 0.25) - 26} unit="kN" label="Nc" step={1} dec={1} />
+        </div>
+      </div>
+    );
+    bediening = (
+      <>
+        <label>Element 1
+          <select value={stand} onChange={(e) => set("stand", parseInt(e.target.value))}>
+            <option value={1}>Balk: vezel loodrecht op V</option>
+            <option value={2}>Stijl: vezel evenwijdig aan V</option>
+          </select>
+        </label>
+        <JaNee label="Toognagel" waarde={peg} onChange={(v) => set("toognagel", v ? 1 : 0)} />
+      </>
+    );
+    badge = `pen ${fmt(bp)} × ${fmt(hp)} × ${fmt(lp)}${peg ? ` · toognagel ${fmt(dt)}` : ""}`;
+    live = `${stand === 1 ? "balk in balk" : "regel in stijl"} · V = ${fmt(V, 1)} kN${Nc > 0 ? ` · Nc = ${fmt(Nc, 1)} kN` : ""}${Nt > 0 ? ` · Nt = ${fmt(Nt, 1)} kN` : ""}`;
+  } else {
+    // ── Zwaluwstaart: in het vlak waarin hij uitwaaiert; element 2 komt van onder ──
+    const bzh = Math.max(1, d("b_zh")), bze = Math.max(bzh + 1, d("b_ze")), lz = Math.max(1, d("l_z"));
+    const l1 = Math.max(lz + 1, d("l_1")), ak = Math.max(0, d("a_k")), tz = d("t_z"), Nt = d("N_t_Ed");
+    const uit = Math.max(1.1 * l1, 100);
+    const xl = -bze / 2 - uit, xr = ak > 0 ? bze / 2 + ak : bze / 2 + uit;
+    const L2 = Math.max(1.3 * l1, 140);
+    const { X, Y } = pas(xl, xr, 0, l1 + L2);
+    const staart = [{ x: -bzh / 2, y: l1 }, { x: bzh / 2, y: l1 }, { x: bze / 2, y: l1 - lz }, { x: -bze / 2, y: l1 - lz }];
+    tekening = (
+      <div className="vd-canvas">
+        <div className="vd-caption">Aanzicht in het vlak van de zwaluwstaart: element 2 trekt naar onder</div>
+        <div className="vd-stage" style={{ width: W, height: CH, background: "transparent", border: "none", borderRadius: 0 }}>
+          <svg width={W} height={CH} className="vd-svg">
+            <Defs k="nz" />
+            <rect x={X(xl)} y={Y(0)} width={X(xr) - X(xl)} height={Y(l1) - Y(0)} fill={VULLING.hout.fill} stroke={VULLING.hout.stroke} strokeWidth={1.3} />
+            {[{ x: xl, breuk: true }, { x: xr, breuk: ak <= 0 }].filter((r) => r.breuk).map((r) => (
+              <g key={r.x}>
+                <line x1={X(r.x)} y1={Y(0)} x2={X(r.x)} y2={Y(l1)} stroke="#F5E6C8" strokeWidth={2} />
+                <line x1={X(r.x)} y1={Y(0)} x2={X(r.x)} y2={Y(l1)} stroke="#8B6F47" strokeWidth={0.9} strokeDasharray="6 3" />
+              </g>
+            ))}
+            {[0.3, 0.6].map((f) => (
+              <line key={f} x1={X(xl) + 6} y1={Y((l1 - lz) * f)} x2={X(xr) - 6} y2={Y((l1 - lz) * f)} stroke="#8B6F47" strokeWidth={0.5} strokeDasharray="14 6" opacity={0.35} />
+            ))}
+            <rect x={X(-bzh / 2)} y={Y(l1)} width={X(bzh / 2) - X(-bzh / 2)} height={Y(l1 + L2) - Y(l1)} fill={VULLING_2.fill} stroke={VULLING_2.stroke} strokeWidth={1.3} />
+            <polygon points={pts(staart, X, Y)} fill={VULLING_2.fill} stroke={VULLING_2.stroke} strokeWidth={1.3} />
+            {[0.33, 0.66].map((f) => (
+              <line key={f} x1={X(-bzh / 2 + bzh * f)} y1={Y(l1 - lz * 0.8)} x2={X(-bzh / 2 + bzh * f)} y2={Y(l1 + L2) - 6} stroke="#8B6F47" strokeWidth={0.5} strokeDasharray="14 6" opacity={0.35} />
+            ))}
+            <line x1={X(-bzh / 2)} y1={Y(l1)} x2={X(-bze / 2)} y2={Y(l1 - lz)} stroke="#b91c1c" strokeWidth={3} />
+            <line x1={X(bzh / 2)} y1={Y(l1)} x2={X(bze / 2)} y2={Y(l1 - lz)} stroke="#b91c1c" strokeWidth={3} />
+            {/* maten */}
+            <HDim k="nz" x0={X(-bze / 2)} x1={X(bze / 2)} y={Y(l1 - lz) - 16} ext={Y(l1 - lz) - 3} />
+            <HDim k="nz" x0={X(-bzh / 2)} x1={X(bzh / 2)} y={Y(l1) + 22} />
+            <VDim k="nz" y0={Y(l1 - lz)} y1={Y(l1)} x={X(bze / 2) + 22} ext={X(bze / 2) + 3} />
+            <VDim k="nz" y0={Y(0)} y1={Y(l1)} x={X(xl) + 22} />
+            {ak > 0 && <HDim k="nz" x0={X(bze / 2)} x1={X(xr)} y={Y(0) - 16} ext={Y(0) - 3} />}
+            <line x1={X(0)} y1={Y(l1 + L2) + 2} x2={X(0)} y2={Y(l1 + L2) + 40} className="vd-load" strokeWidth={2.6} markerEnd={loadMark("nz")} />
+            <text x={X(xl)} y={Y(l1) + 16} fill="#6b7280" fontSize={10}>rood: de schuine vlakken (druk)</text>
+          </svg>
+          <Dim ctx={ctx} name="b_ze" value={bze} x={X(0)} y={Y(l1 - lz) - 16} step={5} label="be" />
+          <Dim ctx={ctx} name="b_zh" value={bzh} x={X(0)} y={Y(l1) + 22} step={5} label="bh" />
+          <Dim ctx={ctx} name="l_z" value={lz} x={X(bze / 2) + 22} y={(Y(l1 - lz) + Y(l1)) / 2} step={5} label="lz" />
+          <Dim ctx={ctx} name="l_1" value={l1} x={X(xl) + 22} y={(Y(0) + Y(l1)) / 2} step={10} label="l1" />
+          {ak > 0 && <Dim ctx={ctx} name="a_k" value={ak} x={(X(bze / 2) + X(xr)) / 2} y={Y(0) - 16} step={10} label="ak" />}
+          <Dim ctx={ctx} name="t_z" value={tz} x={X(xr) - 40} y={Y(l1) + 24} step={5} label="t" title="dikte van de zwaluwstaart — klik om te wijzigen" />
+          <Force ctx={ctx} name="N_t_Ed" value={Nt} x={X(0) + 46} y={Y(l1 + L2) + 18} unit="kN" label="Nt" step={1} dec={1} />
+        </div>
+      </div>
+    );
+    bediening = (
+      <JaNee label="Kops einde bij element 1" waarde={ak > 0} onChange={(v) => set("a_k", v ? Math.max(ak, 100) : 0)} />
+    );
+    const gamma = (Math.atan((bze - bzh) / (2 * lz)) * 180) / Math.PI;
+    badge = `${fmt(bzh)}/${fmt(bze)} × ${fmt(lz)} · γ = ${fmt(gamma, 1)}°`;
+    live = `dikte t = ${fmt(tz)} mm · Nt = ${fmt(Nt, 1)} kN${ak > 0 ? ` · ${fmt(ak)} mm tot het kopse einde` : " · element 1 loopt door"}`;
+  }
+
+  return {
+    kop: (
+      <div className="vd-head">
+        <strong>Parametrisch beeld — {titel.toLowerCase()}</strong>
+        <span className="vd-uc info">{badge}</span>
+      </div>
+    ),
+    bediening,
+    tekening,
+    voet: (
+      <div className="vd-foot">
+        <span>
+          {afdruk ? "" : "Klik op een blauwe maat of een rode kracht om die te wijzigen — stroomt direct terug in de rekensheet."}
+          {!afdruk && <br />}
+          De toetsing, met de algemene toetsen uit §6 van EN 1995-1-1, staat in het rekenblad.
+        </span>
+        <span className="vd-live">{titel} · {live}</span>
+      </div>
+    ),
+  };
+}
 
 type Soort = "hout" | "plaat" | "staal";
 interface Laag { soort: Soort; t: number; naam: string | null; label: string }
@@ -63,6 +359,21 @@ export default function NagelSchroefDesigner() {
   const afdruk = useAlleenLezen();
   if (!ctx.actief) return null;
   const { d, set, box, wrapRef } = ctx;
+
+  // Keep, pen-en-gat en zwaluwstaart hebben een eigen aanzicht; de omlijsting
+  // (en het vak dat wrapRef meet) blijft hetzelfde.
+  const soort = clamp(Math.round(d("soort")), 1, 4);
+  const amb = soort >= 2 ? ambachtBeeld(ctx, soort, box.w, box.h, afdruk) : null;
+  const soortKeuze = (
+    <>
+      <span className="vd-ctrl-h">Verbinding</span>
+      <label>Soort
+        <select value={soort} onChange={(e) => set("soort", parseInt(e.target.value))}>
+          {SOORT.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
+        </select>
+      </label>
+    </>
+  );
 
   const opbouw = clamp(Math.round(d("opbouw")), 1, 5);
   const middel = clamp(Math.round(d("middel")), 1, 4);
@@ -165,14 +476,17 @@ export default function NagelSchroefDesigner() {
 
   return (
     <div className="vd-panel" data-afdrukhoogte="150">
+      {amb ? amb.kop : (
       <div className="vd-head">
         <strong>Parametrisch beeld — nagel- en schroefverbinding</strong>
         <span className="vd-uc info">{n1 * n2}× {middelKort} {fmt(dv, 1)} × {fmt(lv)} · {opbouwLabel.toLowerCase()}</span>
       </div>
+      )}
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
         <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
-          <span className="vd-ctrl-h">Verbinding</span>
+          {soortKeuze}
+          {amb ? amb.bediening : (<>
           <label>Opbouw
             <select value={opbouw} onChange={(e) => set("opbouw", parseInt(e.target.value))}>
               {OPBOUW.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
@@ -196,9 +510,11 @@ export default function NagelSchroefDesigner() {
           <JaNee label="Eind belast" waarde={eindBelast} onChange={(v) => set("eind", v ? 1 : 0)} />
           <JaNee label="Rand belast" waarde={randBelast} onChange={(v) => set("rand", v ? 1 : 0)} />
           <span className="gd-note">Totaal {n1 * n2} stuks; indringdiepte t<sub>pen</sub> = {fmt(tpen)} mm.</span>
+          </>)}
         </div>
 
         <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, gap, borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
+          {amb ? amb.tekening : (<>
           <div className="vd-canvas">
             <div className="vd-caption">Doorsnede langs het verbindingsmiddel</div>
             <div className="vd-stage" style={{ width: W, height: SH, background: "transparent", border: "none", borderRadius: 0 }}>
@@ -307,9 +623,11 @@ export default function NagelSchroefDesigner() {
               <Dim ctx={ctx} name="α" value={alfa} x={cxF + Math.cos(thMid) * (rBoog + 20) - (alfa > 0.5 ? 0 : sx * 20)} y={cyF + Math.sin(thMid) * (rBoog + 20) - 10 + (alfa > 0.5 ? 0 : -14)} step={15} label="α" />
             </div>
           </div>
+          </>)}
         </div>
       </div>
 
+      {amb ? amb.voet : (
       <div className="vd-foot">
         <span>
           {afdruk ? "" : "Klik op een blauwe maat of een rode kracht om die te wijzigen — stroomt direct terug in de rekensheet."}
@@ -323,6 +641,7 @@ export default function NagelSchroefDesigner() {
           {" "}α = {fmt(alfa)}° · F<sub>v,Ed</sub> = {fmt(Fv, 1)} kN{Fax > 0 ? ` · F_ax,Ed = ${fmt(Fax, 1)} kN` : ""}
         </span>
       </div>
+      )}
     </div>
   );
 }

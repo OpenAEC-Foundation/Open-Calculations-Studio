@@ -12,6 +12,7 @@ import {
   ec5Wringing,
   ec5TapseLigger,
   ec5Uitkeping,
+  ec5Beschot,
 } from './templates/eurocode5';
 import {
   vandepitteSchuifspanning,
@@ -443,6 +444,7 @@ const normbladen: Record<string, string> = {
   'ec5-wringing': ec5Wringing,
   'ec5-tapse-ligger': ec5TapseLigger,
   'ec5-uitkeping': ec5Uitkeping,
+  'ec5-beschot': ec5Beschot,
   'vdp-schuifspanning': vandepitteSchuifspanning,
   'vdp-doorbuiging': vandepitteDoorbuiging,
   'vdp-knikken': vandepitteKnikken,
