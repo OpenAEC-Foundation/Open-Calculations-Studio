@@ -1,4 +1,4 @@
-import { useProjectStore, PROJECT_ID } from "../store/projectStore";
+import { useProjectStore, PROJECT_ID, RAPPORT_ID } from "../store/projectStore";
 import "./DocumentBar.css";
 
 /**
@@ -16,7 +16,9 @@ export default function DocumentBar() {
   const bladNaam =
     activeId === PROJECT_ID
       ? "Projectgegevens"
-      : (exemplaren.find((e) => e.id === activeId)?.naam ?? null);
+      : activeId === RAPPORT_ID
+        ? "Rapport"
+        : (exemplaren.find((e) => e.id === activeId)?.naam ?? null);
 
   const title = `${projectNaam || "Naamloos"}.ifccalculation`;
 

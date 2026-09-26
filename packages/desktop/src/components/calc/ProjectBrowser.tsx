@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { modulesPerTemplate } from "./projectTree";
-import { useProjectStore, PROJECT_ID, type Exemplaar } from "../../store/projectStore";
+import { useProjectStore, PROJECT_ID, RAPPORT_ID, type Exemplaar } from "../../store/projectStore";
 import { useModuleKiezer } from "../../store/moduleKiezer";
 import "./ProjectBrowser.css";
 
@@ -127,6 +127,16 @@ export default function ProjectBrowser() {
                 title="Projectgegevens — gelden voor alle bladen in dit project"
               >
                 <span className="tree-item-label">Projectgegevens</span>
+              </button>
+
+              {/* Het rapport hoort, net als de projectgegevens, bij het hele
+                  project en niet bij één blad: daarom een vaste knoop erboven. */}
+              <button
+                className={`tree-item tree-item-emphasis${activeId === RAPPORT_ID ? " selected" : ""}`}
+                onClick={() => selecteer(RAPPORT_ID)}
+                title="Rapport — het constructierapport van dit project, met de rekenbladen als bijlage"
+              >
+                <span className="tree-item-label">Rapport</span>
               </button>
 
               {exemplaren.length === 0 && (
