@@ -112,7 +112,7 @@ export const moduleCatalogus: TreeNode[] = [
     count: 6,
     children: [
       { kind: "item", id: "sheet-betonkolom", label: "Betonkolom", templateId: "betonkolom", status: "controleren" },
-      { kind: "item", id: "sheet-tweepaals-poer", label: "Tweepaals poer", templateId: "tweepaals-poer", status: "controleren" },
+      { kind: "item", id: "sheet-tweepaals-poer", label: "Poer (op palen of op staal)", templateId: "tweepaals-poer", status: "controleren" },
       { kind: "item", id: "sheet-betondoorsnede", label: "Betondoorsnede", templateId: "betondoorsnede", status: "controleren" },
       { kind: "item", id: "sheet-ponsberekening", label: "Pons", templateId: "ponsberekening", status: "controleren" },
       { kind: "item", id: "sheet-verankeringslengte", label: "Verankeringslengte", templateId: "verankeringslengte", status: "gereed" },
