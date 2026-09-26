@@ -54,6 +54,21 @@
  * QUIRK — de referentie-uitwerking drukt bij B_p,Rd "3,14" af maar rekent met de volle π;
  * met 3,14 zou er 260,4 in plaats van 260,6 kN uitkomen.
  *
+ * BOUTGROEP — de keuze "Kracht op de bout" (boutgroep) staat standaard op de
+ * kracht op één bout invoeren: dan rekent het blad precies als voorheen. De
+ * andere twee keuzes verdelen een kracht V_x,Ed, V_z,Ed en een moment M_Ed in
+ * het vlak over een rechthoekig boutpatroon van n_x × n_z bouten met steek p_x
+ * en p_z, elastisch met een stijve plaat:
+ *   • draaipunt in het zwaartepunt: elke bout krijgt V/n en een kracht
+ *     loodrecht op zijn voerstraal r_i vanuit het zwaartepunt, M·r_i/Σr²;
+ *   • vast draaipunt (x_d, z_d) ten opzichte van het zwaartepunt, zoals een
+ *     oplegnok of pen: het draaipunt neemt de kracht op, de bouten alleen het
+ *     moment om het draaipunt, M_D·r_i,D/Σr_D² met M_D = M_Ed − x_d·V_z,Ed +
+ *     z_d·V_x,Ed.
+ * De grootste boutkracht wordt F_v,Ed van de bestaande toetsen van tabel 3.4.
+ * Eén bout kan geen moment opnemen: dan voldoet het blad niet. Voorbeelden
+ * met handberekening in scripts/check-boutberekening.mjs.
+ *
  * Invoernamen komen exact overeen met BoutDesigner.tsx; dat beeld leest de
  * weerstanden en het oordeel uit dit blad.
  */
@@ -114,8 +129,133 @@ p_2 = ?*(mm)', steek loodrecht op de kracht p_2 — 0 = geen tweede bout loodrec
 
 n_v = ?', aantal afschuifvlakken van deze bout'
 
-F_v,Ed = ?*(kN)', afschuifkracht op de bout — 0 = geen toetsing'
+@select boutgroep "Kracht op de bout"
+  Kracht op deze bout invoeren = 0
+  Uit een boutgroep onder V en M in het vlak, draaipunt in het zwaartepunt = 1
+  Uit een boutgroep onder V en M in het vlak, vast draaipunt = 2
+@end
+
+#if boutgroep ≡ 0
+    F_v,Ed = ?*(kN)', afschuifkracht op de bout — 0 = geen toetsing'
+#else
+    n_x = ?', aantal bouten naast elkaar (in x)'
+    n_z = ?', aantal bouten boven elkaar (in z)'
+    p_x = ?*(mm)', steek in x'
+    p_z = ?*(mm)', steek in z'
+    V_x,Ed = ?*(kN)', kracht in x op de boutgroep, door het zwaartepunt'
+    V_z,Ed = ?*(kN)', kracht in z op de boutgroep, door het zwaartepunt'
+    M_Ed = ?*(kN*m)', moment in het vlak om het zwaartepunt, linksom positief'
+    #if boutgroep ≡ 2
+        x_d = ?*(mm)', draaipunt: x ten opzichte van het zwaartepunt'
+        z_d = ?*(mm)', draaipunt: z ten opzichte van het zwaartepunt'
+    #else
+        #hide
+        x_d = 0 mm
+        z_d = 0 mm
+        #show
+    #end if
+#end if
 F_t,Ed = ?*(kN)', trekkracht op de bout — 0 = geen toetsing'
+
+#if boutgroep ≡ 0
+    #hide
+    groepfout = 0
+    #show
+#else
+    '<h6>Boutgroep — elastische krachtverdeling in het vlak</h6>
+    #if boutgroep ≡ 1
+        '<i>Stijve plaat, draaipunt in het zwaartepunt van de bouten: elke bout neemt V/n op en een kracht loodrecht op zijn voerstraal r<sub>i</sub>, evenredig met r<sub>i</sub>: M<sub>Ed</sub>·r<sub>i</sub>/Σr². De bout met de grootste resultante is maatgevend en gaat met die kracht als F<sub>v,Ed</sub> door de toetsen van tabel 3.4.</i><span class="alleen-scherm"></span>
+    #else
+        '<i>Stijve plaat die draait om een vast punt (een oplegnok, pen of drukpunt) dat de kracht opneemt; de bouten nemen alleen het moment om dat punt op, elk loodrecht op en evenredig met zijn afstand r<sub>i,D</sub> tot het draaipunt: M<sub>D</sub>·r<sub>i,D</sub>/Σr<sub>D</sub>², met M<sub>D</sub> = M<sub>Ed</sub> − x<sub>d</sub>·V<sub>z,Ed</sub> + z<sub>d</sub>·V<sub>x,Ed</sub>. De bout met de grootste kracht gaat als F<sub>v,Ed</sub> door de toetsen van tabel 3.4.</i><span class="alleen-scherm"></span>
+    #end if
+    #hide
+    'Kale getallen: afstanden in mm, krachten in kN, het moment in kNmm.
+    nx_ = max(round(n_x); 1)
+    nz_ = max(round(n_z); 1)
+    n_b = nx_*nz_
+    px_ = abs(p_x/(1 mm))
+    pz_ = abs(p_z/(1 mm))
+    Vx_ = V_x,Ed/(1 kN)
+    Vz_ = V_z,Ed/(1 kN)
+    M_ = M_Ed/(1 kN*mm)
+    xd_ = if(boutgroep ≡ 2; x_d/(1 mm); 0)
+    zd_ = if(boutgroep ≡ 2; z_d/(1 mm); 0)
+    'Bout (i, k) ligt op x = (i − (n_x + 1)/2)·p_x en z = (k − (n_z + 1)/2)·p_z van het zwaartepunt.
+    xb(i) = (i - (nx_ + 1)/2)*px_
+    zb(k) = (k - (nz_ + 1)/2)*pz_
+    'Σr² om het zwaartepunt: n_z·Σx² + n_x·Σz², met Σx² = p_x²·n_x·(n_x² − 1)/12; om het draaipunt n·(x_d² + z_d²) erbij.
+    r2_0 = nz_*px_^2*nx_*(nx_^2 - 1)/12 + nx_*pz_^2*nz_*(nz_^2 - 1)/12
+    r2_s = r2_0 + if(boutgroep ≡ 2; n_b*(xd_^2 + zd_^2); 0)
+    Md_ = if(boutgroep ≡ 2; M_ - xd_*Vz_ + zd_*Vx_; M_)
+    fV = if(boutgroep ≡ 1; 1; 0)
+    kM = if(r2_s > 0; Md_/r2_s; 0)
+    'Kracht van de plaat op bout (i, k): V/n (alleen bij het zwaartepunt) plus kM·(−(z − z_d), x − x_d).
+    Fx(i; k) = fV*Vx_/n_b - kM*(zb(k) - zd_)
+    Fz(i; k) = fV*Vz_/n_b + kM*(xb(i) - xd_)
+    Fb(i; k) = sqrt(Fx(i; k)^2 + Fz(i; k)^2)
+    F_gr = 0
+    i_m = 1
+    k_m = 1
+    #for i = 1 : nx_
+        #for k = 1 : nz_
+            i_m = if(Fb(i; k) > F_gr*(1 + 10^-12) + 10^-12; i; i_m)
+            k_m = if(Fb(i; k) > F_gr*(1 + 10^-12) + 10^-12; k; k_m)
+            F_gr = max(F_gr; Fb(i; k))
+        #loop
+    #loop
+    'Eén bout (of alle bouten in het draaipunt) kan geen moment opnemen.
+    groepfout = bool(r2_s ≤ 0)*bool(abs(Md_) > 10^-9)
+    'Kracht op het draaipunt: V minus de som van de boutkrachten.
+    RDx = Vx_ - (1 - fV)*(n_b*kM*zd_)
+    RDz = Vz_ - (1 - fV)*(-n_b*kM*xd_)
+    R_d = sqrt(RDx^2 + RDz^2)*kN
+    #show
+    '<table class="alleen-scherm" style="border-collapse:collapse; font-size:12px">
+    '<tr style="border-bottom:1.5px solid #374151;"><th style="text-align:left; padding:1px 8px 1px 0">Bout</th><th style="text-align:right; padding:1px 8px">x [mm]</th><th style="text-align:right; padding:1px 8px">z [mm]</th><th style="text-align:right; padding:1px 8px">F<sub>x</sub> [kN]</th><th style="text-align:right; padding:1px 8px">F<sub>z</sub> [kN]</th><th style="text-align:right; padding:1px 8px">F [kN]</th></tr>
+    #for i = 1 : nx_
+        #for k = 1 : nz_
+            '<tr style="border-bottom:1px solid #e5e7eb;'if(i ≡ i_m and k ≡ k_m; " font-weight:700; color:#b45309;"; "")'"><td style="padding:0 8px 0 0">('i'; 'k')</td><td style="text-align:right; padding:0 8px">'round(xb(i); 1)'</td><td style="text-align:right; padding:0 8px">'round(zb(k); 1)'</td><td style="text-align:right; padding:0 8px">'round(Fx(i; k); 2)'</td><td style="text-align:right; padding:0 8px">'round(Fz(i; k); 2)'</td><td style="text-align:right; padding:0 8px">'round(Fb(i; k); 2)'</td></tr>
+        #loop
+    #loop
+    '</table>
+    #hide
+    'Tekening: het patroon over ten hoogste 180 × 110 px, pijlen tot 34 px voor de grootste kracht.
+    bw = max((nx_ - 1)*px_; 2*abs(xd_); 1)
+    bh = max((nz_ - 1)*pz_; 2*abs(zd_); 1)
+    sc = min(180/bw; 110/bh)
+    gX(x) = 150 + sc*x
+    gY(z) = 90 - sc*z
+    sF = 34/max(F_gr; 10^-9)
+    #show
+    '<svg viewbox="0 0 300 180" xmlns="http://www.w3.org/2000/svg" style="font-size:10px; width:100%; max-width:420px; max-height:200px;">
+    '<line x1="'gX(0) - 7'" y1="'gY(0)'" x2="'gX(0) + 7'" y2="'gY(0)'" style="stroke:#6b7280; stroke-width:1"/><line x1="'gX(0)'" y1="'gY(0) - 7'" x2="'gX(0)'" y2="'gY(0) + 7'" style="stroke:#6b7280; stroke-width:1"/>
+    #if boutgroep ≡ 2
+        '<circle cx="'gX(xd_)'" cy="'gY(zd_)'" r="5" style="fill:#ffffff; stroke:#1e40af; stroke-width:1.6"/><text x="'gX(xd_) + 7'" y="'gY(zd_) + 12'" style="fill:#1e40af">D</text>
+    #end if
+    #for i = 1 : nx_
+        #for k = 1 : nz_
+            '<circle cx="'gX(xb(i))'" cy="'gY(zb(k))'" r="4.5" style="fill:'if(i ≡ i_m and k ≡ k_m; "#fbbf24"; "#e5e7eb")'; stroke:#374151; stroke-width:1"/>
+            '<line x1="'gX(xb(i))'" y1="'gY(zb(k))'" x2="'gX(xb(i)) + sF*Fx(i; k)'" y2="'gY(zb(k)) - sF*Fz(i; k)'" style="stroke:#dc2626; stroke-width:1.6"/>
+            '<circle cx="'gX(xb(i)) + sF*Fx(i; k)'" cy="'gY(zb(k)) - sF*Fz(i; k)'" r="1.8" style="fill:#dc2626"/>
+        #loop
+    #loop
+    '</svg>'
+    '<span class="alleen-scherm">Kruis: zwaartepunt van de bouten; rood: de kracht van de plaat op elke bout; geel: de maatgevende bout'if(boutgroep ≡ 2; "; D: het draaipunt"; "")'.</span>
+    #if groepfout ≡ 1
+        '<b style="color:#b91c1c">De bouten liggen alle in één punt'if(boutgroep ≡ 2; " (het draaipunt)"; "")': ze kunnen het moment niet opnemen.</b>
+    #end if
+    n_b', aantal bouten'
+    #hide
+    Σr_2 = r2_s*mm^2
+    #show
+    Σr_2'<span class="alleen-scherm">, om 'if(boutgroep ≡ 2; "het draaipunt"; "het zwaartepunt")'</span>'
+    #if boutgroep ≡ 2
+        M_D = Md_*kN*mm to kN*m', moment om het draaipunt'
+        R_d', kracht op het draaipunt'
+    #end if
+    F_v,Ed = F_gr*kN', maatgevende bout ('i_m'; 'k_m'), gaat als afschuifkracht door de toetsen'
+    '<i>Kies bij de positie in de krachtsrichting en loodrecht daarop die van de maatgevende bout, meestal een hoekbout (eindbout en randbout). Staat zijn kracht schuin op de randen, neem dan voor e<sub>1</sub> en e<sub>2</sub> de kleinste afstanden: aan de veilige kant.</i><span class="alleen-scherm"></span>
+#end if
 
 # 2. Materiaal- en boutgegevens
 
@@ -296,6 +436,8 @@ belast = (F_v,Ed + F_t,Ed)/(1*kN)
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar F<sub>b,Rd</sub> ≤ 0: k<sub>1</sub> of α<sub>d</sub> is niet positief (een rand- of steekafstand is te klein) → <b>voldoet niet</b></span>
     #else if maatfout ≡ 1
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar 'tekort' afstand(en) onder het minimum van tabel 3.3 → <b>voldoet niet</b></span>
+    #else if groepfout ≡ 1
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red">, maar de bouten liggen in één punt en kunnen het moment niet opnemen → <b>voldoet niet</b></span>
     #else if UC_max ≤ 1.0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
     #else

@@ -22,6 +22,13 @@
  * NEN-EN 1993-1-1) en een opgeslagen blad met boutklasse 4.8, die de NB bij
  * 3.1.1(3) niet toelaat. Tot slot: blad en beeld bieden 4.8 en 5.8 niet aan.
  *
+ * De boutgroep (keuze "Kracht op de bout"): standaard staat die op het invoeren
+ * van de kracht op één bout, en dan rekent het blad precies als zonder die
+ * keuze — alle uitkomsten van de basis en van elke referentieset worden
+ * daarop vergeleken. Daarna drie boutgroepen met een handberekening (draaipunt
+ * in het zwaartepunt, met en zonder horizontale kracht, en een vast
+ * draaipunt) en één bout onder een moment, die nooit voldoet.
+ *
  * Draaien:  node scripts/check-boutberekening.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
@@ -192,6 +199,47 @@ const HANDWERK = [
     verwacht: { F_v_Rd: 25.12, UC_v: 0.796 },
     oordeel: "voldoet niet",
   },
+  {
+    naam: "Boutgroep 2 × 3, p_x 80 · p_z 70, V_z,Ed −60 kN en M_Ed 6 kNm, draaipunt in het zwaartepunt",
+    standen: [1, 0],
+    invoer: { boutgroep: "1", n_x: "2", n_z: "3", p_x: "80", p_z: "70", V_x_Ed: "0", V_z_Ed: "-60", M_Ed: "6" },
+    // Bouten op x = ±40 en z = −70, 0, 70 mm. Σr² = 3·2·40² + 2·2·70² = 9600 + 19600 = 29200 mm².
+    // M/Σr² = 6000/29200 = 0,2055 kN/mm. Hoekbout (−40; ±70): F_x = ∓0,2055·70 = ∓14,38,
+    // F_z = −60/6 − 0,2055·40 = −18,22 → F = √(14,38² + 18,22²) = 23,21 kN.
+    // UC_v = 23,21/60,29 = 0,385; UC_b = 23,21/112,1 = 0,207.
+    verwacht: { "Σr_2": 29200, F_v_Ed: 23.21, UC_v: 0.385, UC_b: 0.2071 },
+    oordeel: "voldoet",
+  },
+  {
+    naam: "Boutgroep 3 × 2, p_x 60 · p_z 90, V_x,Ed 20, V_z,Ed −30 kN, M_Ed −4 kNm (rechtsom)",
+    standen: [1],
+    invoer: { boutgroep: "1", n_x: "3", n_z: "2", p_x: "60", p_z: "90", V_x_Ed: "20", V_z_Ed: "-30", M_Ed: "-4" },
+    // Bouten op x = −60, 0, 60 en z = ±45. Σr² = 2·2·60² + 3·2·45² = 14400 + 12150 = 26550 mm².
+    // M/Σr² = −4000/26550 = −0,15066. Bout (60; 45): F_x = 20/6 + 0,15066·45 = 10,113,
+    // F_z = −30/6 − 0,15066·60 = −14,040 → F = √(10,113² + 14,040²) = 17,30 kN.
+    // UC_v = 17,30/60,29 = 0,287.
+    verwacht: { "Σr_2": 26550, F_v_Ed: 17.30, UC_v: 0.2870 },
+    oordeel: "voldoet",
+  },
+  {
+    naam: "Boutgroep 2 × 3 om een vast draaipunt 120 mm onder het zwaartepunt, V_z,Ed −60 kN, M_Ed 6 kNm",
+    standen: [1, 0],
+    invoer: { boutgroep: "2", n_x: "2", n_z: "3", p_x: "80", p_z: "70", V_x_Ed: "0", V_z_Ed: "-60", M_Ed: "6", x_d: "0", z_d: "-120" },
+    // M_D = 6000 − 0·(−60) + (−120)·0 = 6000 kNmm. Σr_D² = 29200 + 6·120² = 115600 mm².
+    // Bovenste bouten: afstand tot D in z 190 en in x 40: F = 6000·√(190² + 40²)/115600 = 10,08 kN.
+    // Draaipunt: de bouten samen 6·6000·120/115600 = 37,37 kN in x, plus V_z = 60 kN:
+    // R_d = √(37,37² + 60²) = 70,69 kN.
+    verwacht: { "Σr_2": 115600, M_D: 6, F_v_Ed: 10.08, R_d: 70.69, UC_v: 0.1672 },
+    oordeel: "voldoet",
+  },
+  {
+    naam: "Eén bout onder V_z,Ed −60 kN en M_Ed 6 kNm",
+    standen: [1, 0],
+    invoer: { boutgroep: "1", n_x: "1", n_z: "1", p_x: "80", p_z: "70", V_x_Ed: "0", V_z_Ed: "-60", M_Ed: "6" },
+    // Eén bout kan geen moment opnemen: F_v,Ed = 60 kN (alleen V), maar het oordeel is voldoet niet.
+    verwacht: { F_v_Ed: 60 },
+    oordeel: "voldoet niet",
+  },
 ];
 
 /** de referentie-uitwerking print op vier cijfers; die marge houden we aan. */
@@ -241,6 +289,26 @@ for (const set of HANDWERK) {
       const ok = ons === set.oordeel;
       if (!ok) fouten++;
       console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel  ons ${ons}   hand ${set.oordeel}`);
+    }
+  }
+}
+
+// De boutgroep staat standaard op de kracht op één bout: zonder de keuze, en met
+// de keuze op 0, rekent het blad precies hetzelfde, in beide rekenwijzen.
+{
+  console.log("\nKracht op de bout: standaard het oude gedrag");
+  for (const [naam, invoer] of [["basis", {}], ...REFERENTIES.map((r) => [r.blad.split(" — ")[0], r.invoer]), ...HANDWERK.filter((h) => !("boutgroep" in h.invoer)).map((h) => [h.naam.slice(0, 40), h.invoer])]) {
+    for (const stand of [1, 0]) {
+      const zonder = doorreken(invoer, stand);
+      const met = doorreken({ ...invoer, boutgroep: "0" }, stand);
+      const namen = new Set([...Object.keys(zonder.values), ...Object.keys(met.values)]);
+      const anders = [...namen].filter((k) => zonder.values[k] !== met.values[k]);
+      const gelijkeTekst = zonder.text === met.text;
+      const ok = anders.length === 0 && gelijkeTekst;
+      if (!ok) fouten++;
+      if (!ok || stand === 1) {
+        console.log(`  ${ok ? "OK    " : "FOUT  "} ${naam.padEnd(42)} ${ok ? `${namen.size} uitkomsten gelijk` : anders.join(", ") || "tekst verschilt"}`);
+      }
     }
   }
 }
