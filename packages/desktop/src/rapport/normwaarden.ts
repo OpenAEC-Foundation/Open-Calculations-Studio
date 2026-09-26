@@ -202,7 +202,9 @@ export const CATEGORIEEN: readonly Categorie[] = [
   { id: "D-verkeer", label: "Categorie D: omsloten verkeersruimte", soort: "vloer", qk: 4.0, Qk: 7.0, psi: PSI_D },
   { id: "D1", label: "Categorie D1: detailhandel", soort: "vloer", qk: 4.0, Qk: 7.0, psi: PSI_D },
   { id: "D2", label: "Categorie D2: warenhuizen", soort: "vloer", qk: 4.0, Qk: 7.0, psi: PSI_D },
-  { id: "H-dak", label: "Categorie H: daken", soort: "dak", qk: 1.0, Qk: 1.5, psi: PSI_H },
+  // Q_k 2,0 kN: de NB-waarde voor gordingen, spanten en liggers direct onder het
+  // dakbeschot (NB.4–6.10), de elementen waarvoor deze tabel bedoeld is.
+  { id: "H-dak", label: "Categorie H: daken", soort: "dak", qk: 1.0, Qk: 2.0, psi: PSI_H },
 ];
 
 export function categorie(id: string): Categorie | undefined {

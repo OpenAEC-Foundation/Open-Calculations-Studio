@@ -109,7 +109,10 @@ function Berekening({ blad, w }: { blad: Blad; w: RapportWeergave }) {
   const inHoofdstuk = w.rapport.inHoofdstuk[blad.id] === true;
   return (
     <>
-      {b && <p className="rpa-tekst">{samenvatting(b.resultaat)}</p>}
+      {/* Zonder UC of oordeel zegt de samenvatting niets meer dan de kop. */}
+      {b && (b.resultaat.uc !== null || b.resultaat.voldoet !== null) && (
+        <p className="rpa-tekst">{samenvatting(b.resultaat)}</p>
+      )}
       {toelichting.trim() && <Tekst tekst={toelichting} invul={w.invul} />}
       {inHoofdstuk && b ? (
         // `print-blad` geeft de uitwerking dezelfde compacte opmaak als een

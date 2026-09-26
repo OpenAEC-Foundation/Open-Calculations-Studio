@@ -65,7 +65,7 @@ export const OPZET: readonly Knoop[] = [
         ],
       },
       {
-        id: "uitvoering", titel: "Aandachtspunten bij uitvoering", niveau: 2,
+        id: "uitvoering", titel: "Aandachtspunten bij uitvoering", niveau: 2, nieuwePagina: true,
         kinderen: [
           tekst("uitvoering-bestaand", "Bestaande situatie", 3),
           tekst("uitvoering-verbouw", "Verbouw, renovatie", 3),
