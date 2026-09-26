@@ -16,6 +16,8 @@ import PrintDocument from "./components/calc/PrintDocument";
 import { wachtOpVellen, zetDrukvellenKlaar } from "./components/rapport/afdruk/drukvellen";
 import AfdrukVoorbeeld from "./components/calc/AfdrukVoorbeeld";
 import ModuleKiezer from "./components/calc/ModuleKiezer";
+import BladBijwerken from "./components/calc/BladBijwerken";
+import { BladVersieKop, BladVersieMelding } from "./components/calc/BladVersieKop";
 import IfcViewerPanel from "./components/calc/IfcViewerPanel";
 import { getSetting } from "./store";
 import { useProjectStore, PROJECT_ID, RAPPORT_ID } from "./store/projectStore";
@@ -181,21 +183,27 @@ export default function App() {
 
   // De weergaven van een geopend blad, met het afdrukvoorbeeld als laatste tab.
   // Dat voorbeeld toont de bladen, ook als er eerder een rapport is afgedrukt.
+  // Rechts in de balk de modulestatus en rekenversie van het blad; eronder de
+  // melding als de module intussen een nieuwere rekenversie heeft.
   const kiesWeergave = (m: "cv" | "cu" | "vu") => {
     sluitVoorbeeld();
     setSplitMode(m);
   };
   const tabBalk = actief && !toontProjectGegevens ? (
-    <div className="split-tabs">
-      {hasDesigner && (
-        <button className={`split-tab${!printVoorbeeld && mode === "cv" ? " active" : ""}`} onClick={() => kiesWeergave("cv")}>Code + Visueel</button>
-      )}
-      <button className={`split-tab${!printVoorbeeld && mode === "cu" ? " active" : ""}`} onClick={() => kiesWeergave("cu")}>Code + Uitwerking</button>
-      {hasDesigner && (
-        <button className={`split-tab${!printVoorbeeld && mode === "vu" ? " active" : ""}`} onClick={() => kiesWeergave("vu")}>Visueel + Uitwerking</button>
-      )}
-      <button className={`split-tab${printVoorbeeld ? " active" : ""}`} onClick={() => toonVoorbeeld([actief.id], "bladen")}>Afdrukvoorbeeld</button>
-    </div>
+    <>
+      <div className="split-tabs">
+        {hasDesigner && (
+          <button className={`split-tab${!printVoorbeeld && mode === "cv" ? " active" : ""}`} onClick={() => kiesWeergave("cv")}>Code + Visueel</button>
+        )}
+        <button className={`split-tab${!printVoorbeeld && mode === "cu" ? " active" : ""}`} onClick={() => kiesWeergave("cu")}>Code + Uitwerking</button>
+        {hasDesigner && (
+          <button className={`split-tab${!printVoorbeeld && mode === "vu" ? " active" : ""}`} onClick={() => kiesWeergave("vu")}>Visueel + Uitwerking</button>
+        )}
+        <button className={`split-tab${printVoorbeeld ? " active" : ""}`} onClick={() => toonVoorbeeld([actief.id], "bladen")}>Afdrukvoorbeeld</button>
+        <BladVersieKop ex={actief} />
+      </div>
+      <BladVersieMelding ex={actief} />
+    </>
   ) : null;
 
   // De knoop Rapport: het invulpaneel, of het hele rapport zoals het op papier komt.
@@ -296,6 +304,7 @@ export default function App() {
         onThemeChange={handleThemeChange}
       />
       <ModuleKiezer />
+      <BladBijwerken />
     </>
   );
 }

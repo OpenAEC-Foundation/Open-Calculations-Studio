@@ -1,0 +1,253 @@
+/* Rekenversie en bijwerken van een blad. De melding, knoppen, oordeellabels en
+   hints komen van RapportPanel.css, de omlijsting en de dialoogknoppen van
+   Modal en SettingsDialog, de statusbolletjes van ProjectBrowser.css; hier
+   alleen de plaatsing en de vergelijkingstabel. */
+
+/* ─── Kop van het blad: status en rekenversie rechts in de tabbalk ── */
+
+/* In een smal venster geeft de kop de ruimte: de statustekst loopt af (hij
+   staat heel in de tooltip); pas in het smalste venster valt de rekenversie
+   rechts weg. De tabs blijven op één regel; zonder dit liepen ze bij een
+   venster onder ~1100 px over twee regels. */
+.split-tabs:has(.bv-kop) .split-tab {
+  flex-shrink: 0;
+}
+
+.bv-kop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  overflow: hidden;
+  margin-left: auto;
+  padding-left: 12px;
+  font-size: 11px;
+  color: var(--theme-text-secondary);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.bv-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  cursor: help;
+}
+
+.bv-status-tekst {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bv-versie {
+  flex-shrink: 0;
+  cursor: help;
+}
+
+.bv-kop code,
+.bv-tabel code,
+.bv-lijst code {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--theme-text);
+}
+
+/* ─── Melding onder de tabbalk ─────────────────────────────────── */
+
+.bv-melding {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 10px 0;
+  padding: 6px 8px 6px 12px;
+  color: var(--theme-text);
+}
+
+.bv-melding-tekst {
+  flex: 1;
+  min-width: 0;
+}
+
+.bv-melding .rapport-knop {
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+/* ─── Projectboom ──────────────────────────────────────────────── */
+
+/* Achter de naam van een blad met een nieuwere rekenversie. */
+.bv-rij-vlag {
+  flex-shrink: 0;
+  margin-left: 4px;
+  font-size: 10px;
+  color: var(--theme-accent);
+}
+
+/* ─── Het vergelijkingsscherm ──────────────────────────────────── */
+
+.blad-bijwerken .modal-footer {
+  justify-content: flex-end;
+}
+
+.bv-inhoud {
+  min-height: 0;
+  padding: 12px 14px;
+  font-size: 12px;
+  user-select: text;
+}
+
+.bv-intro {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--theme-dialog-content-secondary, var(--theme-text-secondary));
+}
+
+.bv-tabel {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bv-tabel th {
+  padding: 0 6px 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--theme-text-secondary);
+  border-bottom: 1px solid var(--theme-dialog-section-border);
+}
+
+.bv-tabel td {
+  padding: 6px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--theme-dialog-section-border);
+}
+
+.bv-tabel .bv-rij.open td {
+  border-bottom: none;
+}
+
+.bv-tabel th.bv-getal,
+.bv-tabel td.bv-getal {
+  text-align: right;
+}
+
+.bv-vink {
+  width: 18px;
+}
+
+.bv-vink input {
+  margin: 0;
+  accent-color: var(--theme-accent);
+}
+
+.bv-naam {
+  font-weight: 600;
+}
+
+.bv-versie,
+.bv-getal {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.bv-knopcel {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.bv-knopcel .rapport-knop {
+  margin-top: 0;
+}
+
+.bv-overgang {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.bv-pijl,
+.bv-geen {
+  color: var(--theme-text-secondary);
+}
+
+.bv-overgang .bv-oud {
+  color: var(--theme-text-secondary);
+}
+
+.bv-overgang.veranderd .bv-nieuw {
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+/* Uitgeklapte rij: UC-waarden en invoervelden naast elkaar. */
+.bv-detailrij > td {
+  padding: 2px 6px 12px 30px;
+}
+
+.bv-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 6px 24px;
+  padding: 8px 12px;
+  background: var(--theme-bg-lighter);
+  border-left: 2px solid var(--theme-border-subtle);
+  border-radius: 0 4px 4px 0;
+}
+
+.bv-details h4 {
+  margin: 0 0 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--theme-text-secondary);
+}
+
+.bv-details p.rapport-hint {
+  margin: 0 0 4px;
+}
+
+.bv-details .bv-regels {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+}
+
+.bv-lijst {
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.bv-lijst td {
+  padding: 1px 12px 1px 0;
+  vertical-align: baseline;
+}
+
+.bv-lijst td.bv-getal {
+  text-align: right;
+}
+
+.bv-lijst td.bv-waarde {
+  white-space: nowrap;
+}
+
+.bv-label {
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.bv-label.weg {
+  color: var(--theme-danger-color, #b91c1c);
+}
+
+.bv-label.bij {
+  color: var(--theme-accent);
+}
+
+.bv-letop {
+  margin: 12px 0 0;
+}

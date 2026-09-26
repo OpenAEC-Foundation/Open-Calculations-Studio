@@ -64,5 +64,53 @@
     "erpUrl": "ERPNext URL",
     "erpSearch": "Search Project",
     "erpSearchPlaceholder": "Search by project name or number..."
+  },
+  "bladVersie": {
+    "rekenversie": "calc version",
+    "rekenversieUitleg": "Calc version {{versie}}: a fingerprint of this sheet's calculation text. It is printed as well, so you can later trace which version was used.",
+    "status": {
+      "gereed": "calibrated",
+      "controleren": "to be checked",
+      "concept": "to be worked out"
+    },
+    "statusUitleg": {
+      "gereed": "Module calibrated — checks verified against reference sheets",
+      "controleren": "Module to be checked — checks worked out, not yet verified against reference sheets",
+      "concept": "Module to be worked out — input and parametric view only, no checks"
+    },
+    "melding": "Newer calc version available",
+    "meldingUitleg": "this sheet calculates with version {{oud}}, the module is now at {{nieuw}}. The sheet only changes when you update it yourself.",
+    "vergelijken": "Compare and update",
+    "rijVerouderd": "Newer calc version available ({{nieuw}})",
+    "alle": "Update sheets…",
+    "alleUitleg": "Compare and update the sheets that have a newer calc version",
+    "titelEen": "Compare and update — {{naam}}",
+    "titelAlle": "Update sheets",
+    "introEen": "The sheet has been calculated with its current input, using the old and the new calc version.",
+    "introAlle": "Each sheet has been calculated with its current input, using the old and the new calc version. Untick what you do not want to update.",
+    "geenVerouderd": "All sheets already use the latest calc version.",
+    "kolomBlad": "Sheet",
+    "kolomVersie": "Calc version",
+    "kolomUc": "Governing UC",
+    "kolomOordeel": "Verdict",
+    "bezig": "calculating…",
+    "mislukt": "does not calculate",
+    "voldoet": "satisfies",
+    "voldoetNiet": "does not satisfy",
+    "details": "Details",
+    "ucKop": "UC values that change",
+    "ucGelijk": "No other UC value changes.",
+    "veldenKop": "Input fields",
+    "veldenGelijk": "Same input fields; all input is kept.",
+    "vervalt": "removed",
+    "nieuwVeld": "new",
+    "beginwaarde": "initial value {{waarde}}",
+    "alIngevuld": "already filled in: {{waarde}}",
+    "beeldVult": "A new field without a value calculates here with its initial value; the parametric view may fill in its own default when the sheet is opened.",
+    "regels": "Calculation text: {{weg}} lines removed, {{bij}} lines added.",
+    "letOp": "Updating replaces the sheet's calculation text with the new version and keeps the input that still exists. Your own changes to the sheet's code are lost. Undo (Ctrl+Z) restores everything.",
+    "bijwerken": "Update",
+    "bijwerkenAantal_one": "Update {{count}} sheet",
+    "bijwerkenAantal_other": "Update {{count}} sheets"
   }
 }

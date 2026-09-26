@@ -91,6 +91,13 @@ interface ProjectState {
   zetWaarde: (id: string, naam: string, waarde: string) => void;
   /** Vult ontbrekende waarden aan; bestaande blijven staan. */
   seedWaarden: (id: string, defaults: Record<string, string>) => void;
+  /**
+   * Zet bladen over op een nieuwe rekentekst, elk met zijn bijgewerkte
+   * invoer: "Bijwerken" in het vergelijkingsscherm. Eén stap in de
+   * geschiedenis, ook voor meerdere bladen tegelijk. Zie
+   * components/calc/bladVersie.ts.
+   */
+  werkBladenBij: (wijzigingen: { id: string; source: string; waarden: Record<string, string> }[]) => void;
 
   /** Legt vast welke elementen uit een bronmodel dit blad toetst. */
   zetElementen: (id: string, elementen: ElementRef[]) => void;
@@ -322,6 +329,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       if (!veranderd) return s;
       return {
         exemplaren: s.exemplaren.map((e) => (e.id === id ? { ...e, waarden: samen } : e)),
+      };
+    }),
+
+  werkBladenBij: (wijzigingen) =>
+    set((s) => {
+      const per = new Map(wijzigingen.map((w) => [w.id, w]));
+      if (!s.exemplaren.some((e) => per.has(e.id))) return s;
+      return {
+        ...metGeschiedenis(s, null),
+        exemplaren: s.exemplaren.map((e) => {
+          const w = per.get(e.id);
+          return w ? { ...e, source: w.source, waarden: { ...w.waarden } } : e;
+        }),
+        dirty: true,
       };
     }),
 
