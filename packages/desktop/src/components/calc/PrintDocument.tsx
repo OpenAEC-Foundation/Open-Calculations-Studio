@@ -5,6 +5,7 @@ import { usePrintStore } from "../../store/printStore";
 import { ucTekst, type Resultaat } from "./bladResultaat";
 import { rekenBladDoor, zorgVoorKernstijlen } from "./bladDoorrekenen";
 import { Oordeel, PrintBlad } from "./PrintBlad";
+import RapportAfdruk from "../rapport/afdruk/RapportAfdruk";
 import "./PrintDocument.css";
 
 /** Wat er op het voorblad en in de uitdraai staat. */
@@ -34,15 +35,20 @@ export function useUitdraai(): Uitdraai {
   const gegevens = useProjectStore((s) => s.gegevens);
   const exemplaren = useProjectStore((s) => s.exemplaren);
   const selectie = usePrintStore((s) => s.selectie);
+  const soort = usePrintStore((s) => s.soort);
 
   zorgVoorKernstijlen();
 
   const bladen = useMemo(() => {
+    // Het rapport rekent zijn bladen zelf door: allemaal, los van de selectie
+    // (useRapportWeergave). Het afdrukvoorbeeld roept deze hook ook in die
+    // stand aan; alles hier nog eens doorrekenen zou dubbel werk zijn.
+    if (soort === "rapport") return [];
     const scope = projectScope(gegevens);
     // Een selectie met alleen verdwenen bladen valt terug op het hele project.
     const gekozen = selectie ? exemplaren.filter((e) => selectie.includes(e.id)) : exemplaren;
     return (gekozen.length ? gekozen : exemplaren).map((ex) => ({ ex, ...rekenBladDoor(ex, scope) }));
-  }, [exemplaren, gegevens, selectie]);
+  }, [exemplaren, gegevens, selectie, soort]);
 
   const kop: Array<[string, string | undefined]> = [
     ["Projectnummer", gegevens.project_nummer],
@@ -188,6 +194,29 @@ export function UitdraaiInhoud({ uitdraai }: { uitdraai: Uitdraai }) {
 export const loopkopLinks = (u: Uitdraai) => (u.projectNummer ? `${u.projectNummer} · ` : "") + u.projectNaam;
 
 /**
+ * De afdruk: het constructierapport of de gekozen bladen, naar de soort in de
+ * printstore. Twee losse componenten, zodat de stand die niet gedrukt wordt
+ * ook niets doorrekent.
+ */
+export default function PrintDocument() {
+  const soort = usePrintStore((s) => s.soort);
+  return soort === "rapport" ? <RapportDocument /> : <BladenDocument />;
+}
+
+/**
+ * Het constructierapport: eigen paginamaten (`@page rapport`), de voet van het
+ * bureau en het paginanummer rechtsonder, geen loopkop. Het rapport begint
+ * bij pagina 1.
+ */
+function RapportDocument() {
+  return (
+    <div className="print-root print-opmaak" aria-hidden="true">
+      <RapportAfdruk />
+    </div>
+  );
+}
+
+/**
  * De gekozen bladen als één afdrukbaar document.
  *
  * Waarom via de browser en niet via de rapportengine: die levert alleen
@@ -195,7 +224,7 @@ export const loopkopLinks = (u: Uitdraai) => (u.projectNummer ? `${u.projectNumm
  * tekeningen (zie docs/backlog.md, punt 4). Hier printen we exact wat de
  * uitwerking toont, plus het parametrische beeld dat de app zelf tekent.
  */
-export default function PrintDocument() {
+function BladenDocument() {
   const uitdraai = useUitdraai();
   const { datum, onderdeel } = uitdraai;
 
