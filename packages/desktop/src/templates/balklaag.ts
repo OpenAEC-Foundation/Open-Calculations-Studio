@@ -50,7 +50,14 @@ export const balklaag = `"Balklaag — houten vloerbalken volgens EN 1995-1-1
   SLS dubbel 76×184 = 25
   SLS dubbel 76×235 = 26
   SLS dubbel 76×285 = 27
+  Zelf invullen = 28
 @end
+
+'<i>Staat de maat niet in de lijst, kies dan "Zelf invullen" en geef de breedte
+'en de hoogte op. Zo zijn ook maten als 60×205, 63×211, 90×230 en 200×200 te
+'rekenen.</i>
+b_zelf = ?*(mm)', breedte — alleen bij profiel "Zelf invullen"'
+h_zelf = ?*(mm)', hoogte — alleen bij profiel "Zelf invullen"'
 
 @select sterkteklasse "Sterkteklasse"
   C18 = 1
@@ -82,8 +89,9 @@ profielen = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16; 17; 18; 19; 
 'Materiaalmatrix: [id | f_m,k | f_v,k | E_mean | ρ_mean | γ_M]
 materialen = [1; 2; 3; 4; 5 |18; 24; 30; 24; 28 |3.4; 4.0; 4.0; 3.5; 3.5 |9000; 11000; 12000; 11500; 12600 |380; 420; 460; 420; 460 |1.30; 1.30; 1.30; 1.25; 1.25]
 
-b_balk = hlookup(profielen; profiel; 1; 2)*mm
-h_balk = hlookup(profielen; profiel; 1; 3)*mm
+'Keuze 28 is "Zelf invullen": dan komen b en h uit de invoer.
+b_balk = if(profiel ≡ 28; b_zelf; hlookup(profielen; profiel; 1; 2)*mm)
+h_balk = if(profiel ≡ 28; h_zelf; hlookup(profielen; profiel; 1; 3)*mm)
 f_m,k = hlookup(materialen; sterkteklasse; 1; 2)*N/mm^2
 f_v,k = hlookup(materialen; sterkteklasse; 1; 3)*N/mm^2
 E_mean = hlookup(materialen; sterkteklasse; 1; 4)*N/mm^2
@@ -96,7 +104,7 @@ k_mod = if(klimaat ≡ 3; k_mod_3; k_mod_12)
 k_def = if(klimaat ≡ 1; 0.60; if(klimaat ≡ 2; 0.80; 2.00))', kruipfactor (Tabel 3.2)'
 'Hoogtefactor k_h op f_m,k — massief §3.2(3) bij h < 150 mm, gelijmd gelamineerd
 '§3.3(3) bij h < 600 mm. Op 71×221 is k_h = 1 voor massief en 1,10 voor GL.
-h_ruw = hlookup(profielen; profiel; 1; 3)', balkhoogte als kaal getal in mm'
+h_ruw = h_balk/(1 mm)', balkhoogte als kaal getal in mm'
 gelijmd = if(sterkteklasse ≡ 4; 1; if(sterkteklasse ≡ 5; 1; 0))
 k_h_massief = if(h_ruw < 150; min(1.3; (150/h_ruw)^0.2); 1)
 k_h_gelijmd = if(h_ruw < 600; min(1.1; (600/h_ruw)^0.1); 1)
@@ -111,6 +119,7 @@ f_m,k
 f_v,k
 E_mean
 k_mod
+k_def
 k_h
 f_m,k_eff
 
@@ -128,7 +137,12 @@ f_v,d
   Raveelbalk langs een sparing = 4
 @end
 
-L_d = ?*(mm)', dagmaat (vrije overspanning)'
+@select ligger "Soort ligger"
+  Balk in een balklaag = 1
+  Onderslag (belaste breedte) = 2
+@end
+
+L_d = ?*(mm)', dagmaat (vrije overspanning) — bij twee velden die van het eerste veld'
 a_opl = ?*(mm)', opleglengte per zijde'
 hoh = ?*(mm)', hart-op-hart afstand van de balken'
 t_vloer = ?*(mm)', dikte beschot'
@@ -141,6 +155,13 @@ a_over = ?*(mm)', lengte van het overstek — alleen bij schema 2'
 L_veld2 = ?*(mm)', tweede overspanning — alleen bij schema 3'
 b_sparing = ?*(mm)', breedte van de sparing = overspanning raveelbalk — schema 4'
 l_staart = ?*(mm)', staartlengte van de onderbroken balken — schema 4'
+
+'<i>Een onderslag draagt een strook vloer in plaats van één balk. Bij balken
+'die over twee gelijke velden doorlopen is die belaste breedte 1,25 × L, bij
+'losse balken aan weerszijden de som van de halve overspanningen. De
+'concentratiefactor k<sub>r</sub> is dan 1,0, en de trillingstoets (§9b) hoort
+'bij de balklaag zelf: zet die voor een onderslag uit.</i>
+b_ond = ?*(m)', belaste breedte — alleen bij soort ligger "Onderslag"'
 
 #hide
 'De theoretische overspanning van het maatgevende veld. Bij een raveelbalk is
@@ -158,7 +179,7 @@ L_th = if(schema ≡ 4; L_th_rav; L_th_0)', theoretische overspanning'
 'blijvende lasten tellen op in G<sub>k</sub>. Verplaatsbare scheidingswanden
 'horen volgens EN 1991-1-1 §6.3.1.2 juist bij de veranderlijke last Q<sub>k</sub>.
 'Het eigen gewicht van de balk zelf komt hier niet bij — dat rekent de sheet
-'in §5 zelf uit de doorsnede en de dichtheid.</i>
+'in §4 zelf uit de doorsnede en de dichtheid.</i>
 
 G_k = ?*(kN/m^2)', permanente vloerbelasting'
 Q_k = ?*(kN/m^2)', veranderlijke vloerbelasting'
@@ -299,11 +320,12 @@ d_o2 = d_L/d_tot
 
 # 5. Belastingsgeval 1 — Permanent
 
-'<i>Bij een raveelbalk is de belaste breedte niet de hart-op-hart afstand maar
-'de halve staartlengte: elke onderbroken balk zet zijn oplegreactie op de
-'raveelbalk af, wat per strekkende meter neerkomt op een vloerstrook van
-'l<sub>staart</sub>/2.</i>
-b_belast = if(schema ≡ 4; l_staart/2; hoh)', belaste breedte per meter balk'
+'<i>De belaste breedte hangt af van de soort ligger: bij een balk in een
+'balklaag is dat de hart-op-hart afstand, bij een onderslag de ingevoerde
+'strook vloer. Bij een raveelbalk is het de halve staartlengte: elke
+'onderbroken balk zet zijn oplegreactie op de raveelbalk af, wat per
+'strekkende meter neerkomt op een vloerstrook van l<sub>staart</sub>/2.</i>
+b_belast = if(schema ≡ 4; l_staart/2; if(ligger ≡ 2; b_ond; hoh)) to mm', belaste breedte per meter balk'
 
 P_g,k = b_belast*G_k + g_balk to kN/m', lijnlast permanent op de balk'
 M_g,veld = c_M*P_g,k to kN*m', veldmoment'
@@ -339,9 +361,9 @@ t_ruw = t_vloer/(1 mm)
 E_vl = E_beschot/(1 N/mm^2)', E-modulus beschot, dimensieloos voor de deling'
 #show
 k_r_0 = 0.37 + 0.8*hoh/a_ref - E_vl*t_ruw^3/12/EI_ref
-'Bij een raveelbalk staat de puntlast rechtstreeks op de balk; er is dan geen
-'balklaag waarover hij zich verdeelt, dus k<sub>r</sub> = 1.
-k_r = if(schema ≡ 4; 1; min(1; k_r_0))', concentratiefactor, afgetopt op 1,0 (NEN-EN 1995-1-1 NB)'
+'Bij een raveelbalk en bij een onderslag staat de puntlast rechtstreeks op de
+'ligger; er is dan geen balklaag waarover hij zich verdeelt, dus k<sub>r</sub> = 1.
+k_r = if(schema ≡ 4; 1; if(ligger ≡ 2; 1; min(1; k_r_0)))', concentratiefactor, afgetopt op 1,0 (NEN-EN 1995-1-1 NB)'
 F_Q,k = F_k*k_r to kN', effectieve puntlast op één balk'
 F_Q,k
 '<i>De puntlast wordt op twee plaatsen beschouwd: midden in het veld, en — bij
@@ -357,6 +379,7 @@ u_Q,k = max(u_Q_veld; u_Q_eind) to mm
 
 # 8. Doorsnede van de balklaag
 
+#if ligger ≡ 1
 '<i>Vloerhout (dikte t<sub>vloer</sub>) op de balken, hart-op-hart afstand hoh.</i>
 
 #hide
@@ -398,6 +421,23 @@ svgH = by + bh + 46
 '  <text x="26" y="'vy - 5'" style="fill:#8B6F47">beschot t = 't_vloer'</text>
 '  <text x="456" y="'by + bh + 13'" text-anchor="end" style="fill:#8B6F47">balk 'b_balk' × 'h_balk'</text>
 '</svg>'
+#else
+'<i>Een onderslag: één ligger die de balken draagt, met een strook vloer van
+'b<sub>ond</sub> = 'b_ond' per strekkende meter. De doorsnede staat op schaal.</i>
+#hide
+'Hoogte begrenzen op 110 px, breedte op 200 px.
+o_sc = min(110/max(h_balk/(1 mm); 1); 200/max(b_balk/(1 mm); 1))
+o_b = o_sc*b_balk/(1 mm)
+o_h = o_sc*h_balk/(1 mm)
+o_x = 240 - o_b/2
+#show
+'<svg viewbox="0 0 480 'o_h + 60'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'o_h + 60'px;">
+'  <line x1="60" y1="24" x2="420" y2="24" style="stroke:#8B6F47; stroke-width:8; stroke-dasharray:12 30"/>
+'  <text x="60" y="12" style="fill:#8B6F47">balken op de onderslag, belaste breedte 'b_ond' m</text>
+'  <rect x="'o_x'" y="28" width="'o_b'" height="'o_h'" style="fill:#E3C08A; stroke:#8B6F47; stroke-width:1"/>
+'  <text x="'o_x + o_b + 10'" y="'28 + o_h/2'" style="fill:#8B6F47; font-weight:700">onderslag 'b_balk' × 'h_balk'</text>
+'</svg>'
+#end if
 
 # 8b. Statisch schema
 
