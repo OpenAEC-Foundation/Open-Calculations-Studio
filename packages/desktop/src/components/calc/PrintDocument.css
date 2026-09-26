@@ -406,6 +406,14 @@ html.afdrukmodus .print-loopvoet {
   height: auto;
 }
 
+/* Het wortelteken van de formulezetter is een svg met een zeer brede viewBox
+   en een hoogte van zijn ouder; met height:auto wordt hij 0 hoog en valt het
+   teken weg. */
+.print-opmaak .print-blad .katex svg {
+  max-width: none;
+  height: inherit;
+}
+
 /* De titelkop van de uitwerking ("Balklaag — houten vloerbalken volgens …")
    herhaalt wat de bladkop al zegt. Waar de kop de grondslag toont (PrintBlad,
    `titelInKop`) vervalt hij, maar alleen als hij bovenaan staat: een blad dat
