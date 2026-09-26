@@ -82,8 +82,10 @@ het project.
 - `belastingen` — de invoer van H5 (zie hieronder).
 - `toelichting` — per rekenblad (exemplaar-id) een eigen tekst voor H6.
 - `bijlagen[]` — titels van eigen bijlagen (B, C, …).
-- `bureau` — vastgelegde kopie van het bureauprofiel bij het aanmaken of
-  bijwerken; zo verandert een oud rapport niet als het profiel verandert.
+- `bureau` — vastgelegde kopie van het bureauprofiel, gemaakt met
+  **Bijwerken uit bureauprofiel**; tot dan gebruiken afdruk en paneel het live
+  profiel uit de instellingen. Zo verandert een oud rapport niet als het
+  profiel verandert.
 
 Afgeleide normwaarden worden niet opgeslagen maar bij het opmaken berekend.
 Wat al in de projectgegevens staat (CC, RC, ontwerplevensduur, windgebied,
@@ -194,7 +196,7 @@ Huisstijl uit het bureauprofiel, met neutrale standaardwaarden in de repo:
   vet-cursief;
 - labels vet in de accentkleur; tabeltekst in de tabeltekstkleur; invoer in de
   invoerkleur; normverwijzingen 8 pt cursief;
-- tekst 10 pt; regelafstand 6,6 mm (42 regels per pagina); A4 staand met de
+- tekst 10 pt; regelafstand 6,6 mm (41 regels per pagina); A4 staand met de
   marges van de referentie;
 - tabellen: label/waarde-rijen met een lijn van 0,75 pt eronder; kopregels met
   vulling in hoofd- of accentkleur; sommatieregels met "+" en een lijn;
@@ -206,11 +208,14 @@ Bewust anders dan de referentie, omdat de referentie daar niet klopt:
 - 4.1 en 4.5: K_FI, β en de belastingfactoren volgens de norm (de referentie
   toont K_FI = 3,30 bij CC1, een lege β en γ_G;sup = 4,46);
 - 4.1: inspectieniveau IL1 in plaats van DSL1;
+- 4.1: levensduurklasse volgens NB-tabel NB.1–2.1: 50 jaar → klasse 3 (de
+  referentie toont 4, volgens tabel 2.1 zonder NB);
 - 5.2: q_p en P_rep berekend (in de referentie leeg);
 - koppen "4 Uitgangspunten" en "5 Belastingen" zonder punt, gelijk aan de
   andere hoofdstukken; typfouten in labels gecorrigeerd;
 - 5.4: Q_k voor een plat dak volgens de NB; wijkt de referentie daarvan af, dan
-  staat dat in de verificatielijst.
+  staat dat in de verificatielijst;
+- het rapport nummert zijn pagina's vanaf 1 (de referentie begint bij 3).
 
 ## Architectuur
 
