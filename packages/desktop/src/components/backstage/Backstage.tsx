@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useRecentFiles, type RecentFile } from "../../hooks/useRecentFiles";
+import { useBestandActies } from "../../hooks/useBestandActies";
+import { useAfdrukken } from "../../store/printStore";
 import "./Backstage.css";
 
 const ICONS = {
@@ -64,6 +66,8 @@ export default function Backstage({ open, onClose, onOpenSettings, onOpenFile, o
   const { t } = useTranslation("backstage");
   const [activePanel, setActivePanel] = useState<string>("none");
   const { recentFiles, removeRecentFile, clearRecentFiles } = useRecentFiles();
+  const { nieuw, opslaan, opslaanAls } = useBestandActies();
+  const afdrukken = useAfdrukken();
 
   const actionAndClose = useCallback(
     (fn?: () => void) => {
@@ -115,7 +119,7 @@ export default function Backstage({ open, onClose, onOpenSettings, onOpenFile, o
             icon={ICONS.new}
             label={t("new")}
             shortcut="Ctrl+N"
-            onClick={() => actionAndClose()}
+            onClick={() => actionAndClose(nieuw)}
           />
           <MenuItem
             icon={ICONS.open}
@@ -128,19 +132,19 @@ export default function Backstage({ open, onClose, onOpenSettings, onOpenFile, o
             icon={ICONS.save}
             label={t("save")}
             shortcut="Ctrl+S"
-            onClick={() => actionAndClose()}
+            onClick={() => actionAndClose(opslaan)}
           />
           <MenuItem
             icon={ICONS.saveAs}
             label={t("saveAs")}
             shortcut="Ctrl+Shift+S"
-            onClick={() => actionAndClose()}
+            onClick={() => actionAndClose(opslaanAls)}
           />
           <MenuItem
             icon={ICONS.print}
             label={t("print")}
             shortcut="Ctrl+P"
-            onClick={() => actionAndClose()}
+            onClick={() => actionAndClose(afdrukken)}
           />
           <Divider />
           <MenuItem

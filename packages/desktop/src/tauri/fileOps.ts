@@ -115,23 +115,43 @@ function sanitizeFileName(name: string): string {
 }
 
 /**
+ * Kan "Opslaan" zonder dialoog over dit bestand heen schrijven? Alleen in de
+ * app (de browser kent geen pad) en alleen over een bestand in het eigen
+ * formaat: een geopend `.cpd` of een oud `.ifc-calculation` overschrijf je
+ * niet ongemerkt, daarvoor komt eerst de dialoog.
+ */
+export function kanDirectOpslaan(path: string | null): path is string {
+  return !!path && isTauri() && /\.ifccalculation$/i.test(path);
+}
+
+/** Schrijf een payload over een bestaand bestand heen, zonder dialoog. */
+export async function schrijfCalculationFile(path: string, payload: string): Promise<void> {
+  const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+  await writeTextFile(path, payload);
+}
+
+/**
  * Schrijf een kant-en-klare payload weg als `.ifc-calculation` via een Save
  * As-dialoog. De payload wordt gebouwd door `store/projectBestand.ts` — dat
  * bepaalt de vorm, dit bestand doet alleen de schijf.
+ * Staat het project al in een bestand, dan opent de dialoog in die map.
  * Het absolute pad komt terug, of `null` als de gebruiker annuleert.
  */
 export async function saveCalculationFile(
   payload: string,
   defaultName: string,
+  huidigPad?: string | null,
 ): Promise<string | null> {
   const defaultFile = `${sanitizeFileName(defaultName)}.ifccalculation`;
 
   if (isTauri()) {
     const { save } = await import("@tauri-apps/plugin-dialog");
     const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+    const scheiding = huidigPad?.match(/[\\/]/)?.[0];
+    const map = huidigPad && scheiding ? huidigPad.slice(0, huidigPad.lastIndexOf(scheiding)) : null;
     const path = await save({
       title: "Bestand opslaan als",
-      defaultPath: defaultFile,
+      defaultPath: map ? `${map}${scheiding}${defaultFile}` : defaultFile,
       filters: [
         { name: "OpenAEC Calculation (IFCX)", extensions: ["ifccalculation"] },
         { name: "Alle bestanden", extensions: ["*"] },

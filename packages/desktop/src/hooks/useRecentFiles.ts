@@ -11,6 +11,9 @@ export interface RecentFile {
 
 const STORE_KEY = "recentFiles";
 const MAX_RECENT = 10;
+/** Het lint, het Bestand-menu en de sneltoetsen hebben elk een eigen
+ *  exemplaar van deze hook; zo zien ze elkaars wijzigingen. */
+const GEWIJZIGD = "recent-files-changed";
 
 function inferType(path: string): RecentFile["type"] {
   const ext = path.split(".").pop()?.toLowerCase() ?? "";
@@ -25,10 +28,20 @@ export function useRecentFiles() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    getSetting<RecentFile[]>(STORE_KEY, []).then((files) => {
-      setRecentFiles(files);
-      setLoaded(true);
-    });
+    const lees = () =>
+      getSetting<RecentFile[]>(STORE_KEY, []).then((files) => {
+        setRecentFiles(files);
+        setLoaded(true);
+      });
+    lees();
+    window.addEventListener(GEWIJZIGD, lees);
+    return () => window.removeEventListener(GEWIJZIGD, lees);
+  }, []);
+
+  const bewaar = useCallback(async (files: RecentFile[]) => {
+    setRecentFiles(files);
+    await setSetting(STORE_KEY, files);
+    window.dispatchEvent(new Event(GEWIJZIGD));
   }, []);
 
   const addRecentFile = useCallback(
@@ -43,30 +56,23 @@ export function useRecentFiles() {
             }
           : { ...pathOrFile, timestamp: Date.now() };
 
-      const updated = [
-        file,
-        ...recentFiles.filter((f) => f.path !== file.path),
-      ].slice(0, MAX_RECENT);
-
-      setRecentFiles(updated);
-      await setSetting(STORE_KEY, updated);
+      // Van de opgeslagen lijst uitgaan, niet van de eigen kopie: die kan
+      // achterlopen op een ander exemplaar.
+      const huidig = await getSetting<RecentFile[]>(STORE_KEY, []);
+      await bewaar([file, ...huidig.filter((f) => f.path !== file.path)].slice(0, MAX_RECENT));
     },
-    [recentFiles]
+    [bewaar]
   );
 
   const removeRecentFile = useCallback(
     async (path: string) => {
-      const updated = recentFiles.filter((f) => f.path !== path);
-      setRecentFiles(updated);
-      await setSetting(STORE_KEY, updated);
+      const huidig = await getSetting<RecentFile[]>(STORE_KEY, []);
+      await bewaar(huidig.filter((f) => f.path !== path));
     },
-    [recentFiles]
+    [bewaar]
   );
 
-  const clearRecentFiles = useCallback(async () => {
-    setRecentFiles([]);
-    await setSetting(STORE_KEY, []);
-  }, []);
+  const clearRecentFiles = useCallback(() => bewaar([]), [bewaar]);
 
   return { recentFiles, loaded, addRecentFile, removeRecentFile, clearRecentFiles };
 }
