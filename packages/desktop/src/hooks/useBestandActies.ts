@@ -50,12 +50,12 @@ function evalueerAlles(): IfcCalcSheet[] {
  * van de keten de andere bladen onthouden.
  */
 function projectInhoud(): string {
-  const { projectNaam, gegevens, exemplaren } = useProjectStore.getState();
+  const { projectNaam, gegevens, exemplaren, rapport } = useProjectStore.getState();
   const ifcBladen = evalueerAlles();
   const ifcx =
     ifcBladen.length > 0 ? generateProjectIfcx(ifcBladen, { projectName: projectNaam }) : null;
   return bouwProjectBestand(
-    { versie: PROJECT_FORMAAT_VERSIE, naam: projectNaam, gegevens, exemplaren },
+    { versie: PROJECT_FORMAAT_VERSIE, naam: projectNaam, gegevens, exemplaren, rapport },
     ifcx,
   );
 }

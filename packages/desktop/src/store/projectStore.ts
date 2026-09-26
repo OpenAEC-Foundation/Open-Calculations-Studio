@@ -2,11 +2,22 @@ import { create } from "zustand";
 import type { ElementRef } from "@ifc-calc/core";
 import { getSetting, setSetting } from "../store";
 import { legeGegevens, type ProjectGegevens } from "./projectGegevens";
+import { normaliseerRapport, standaardRapport, type Rapport } from "../rapport/model";
+import { leesPad, zetOpPad } from "../rapport/pad";
+import { datumTekst } from "../rapport/revisies";
+import { standaardTeksten } from "../rapport/standaardteksten";
 
 const STORE_KEY = "projectState";
 
 /** Vaste id van het projectgegevens-formulier; geen exemplaar, wel selecteerbaar. */
 export const PROJECT_ID = "__projectgegevens__";
+
+/**
+ * Vaste id van het rapport in de projectboom; net als PROJECT_ID geen
+ * exemplaar, wel selecteerbaar. Exemplaar-ids beginnen met "ex-", dus een
+ * `__x__`-id kan nooit met een blad botsen.
+ */
+export const RAPPORT_ID = "__rapport__";
 
 /**
  * Eén rekenblad in het project.
@@ -51,6 +62,8 @@ interface Persisted {
   gegevens: ProjectGegevens;
   exemplaren: Exemplaar[];
   activeId: string;
+  /** Ontbreekt in opslag en bestanden van vóór het constructierapport. */
+  rapport?: Rapport;
 }
 
 interface ProjectState {
@@ -58,7 +71,9 @@ interface ProjectState {
   bestandspad: string | null;
   gegevens: ProjectGegevens;
   exemplaren: Exemplaar[];
-  /** Wat er in de werkruimte staat: een exemplaar-id of PROJECT_ID. */
+  /** Het constructierapport van dit project; zie rapport/model.ts. */
+  rapport: Rapport;
+  /** Wat er in de werkruimte staat: een exemplaar-id, PROJECT_ID of RAPPORT_ID. */
   activeId: string;
   dirty: boolean;
   /** Stapels voor ongedaan maken; niet opgeslagen, alleen voor deze sessie. */
@@ -83,6 +98,20 @@ interface ProjectState {
   zetGegeven: (naam: string, waarde: string) => void;
   zetProjectNaam: (naam: string) => void;
 
+  /**
+   * Zet één veld van het rapport, aangewezen met een pad zoals
+   * "belastingen.wind.gebouwhoogte" of "revisies.0.omschrijving" (cijfers zijn
+   * indexen). Doortypen in hetzelfde veld is één stap in de geschiedenis.
+   */
+  zetRapportVeld: (pad: string, waarde: string | boolean) => void;
+  /**
+   * Structurele wijziging van het rapport: een revisie, tabelregel, opbouw of
+   * bijlage erbij of eraf, of "Bijwerken uit bureauprofiel". Altijd een eigen
+   * stap in de geschiedenis. `fn` krijgt het huidige rapport en geeft een
+   * nieuw object terug; het oude blijft ongemoeid.
+   */
+  werkRapportBij: (fn: (r: Rapport) => Rapport) => void;
+
   ongedaan: () => void;
   opnieuw: () => void;
 
@@ -101,6 +130,7 @@ interface ProjectState {
 interface Momentopname {
   exemplaren: Exemplaar[];
   gegevens: ProjectGegevens;
+  rapport: Rapport;
   activeId: string;
 }
 
@@ -129,6 +159,7 @@ function metGeschiedenis(s: ProjectState, sleutel: string | null) {
   const punt: Momentopname = {
     exemplaren: s.exemplaren,
     gegevens: s.gegevens,
+    rapport: s.rapport,
     activeId: s.activeId,
   };
   return {
@@ -159,11 +190,26 @@ function vrijeNaam(exemplaren: Exemplaar[], basisNaam: string, altijdNummeren = 
   }
 }
 
+/** Een nieuw rapport: revisie A van vandaag en de meegeleverde standaardteksten. */
+function nieuwRapport(): Rapport {
+  return standaardRapport(datumTekst(new Date()), standaardTeksten());
+}
+
+/**
+ * Een rapport van buiten de store — uit de opslag of een ingelezen bestand —
+ * aangevuld tot een volledig rapport. Ontbreekt het (opslag of bestand van
+ * vóór het constructierapport), dan komt er een nieuw rapport.
+ */
+function rapportUit(x: unknown): Rapport {
+  return x ? normaliseerRapport(x, datumTekst(new Date()), standaardTeksten()) : nieuwRapport();
+}
+
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projectNaam: "Nieuw project",
   bestandspad: null,
   gegevens: legeGegevens(),
   exemplaren: [],
+  rapport: nieuwRapport(),
   activeId: PROJECT_ID,
   dirty: false,
   verleden: [],
@@ -295,6 +341,22 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   zetProjectNaam: (naam) => set({ projectNaam: naam, dirty: true }),
 
+  zetRapportVeld: (pad, waarde) =>
+    set((s) => ({
+      ...metGeschiedenis(s, `rapport:${pad}`),
+      rapport: zetOpPad(s.rapport, leesPad(pad), waarde),
+      dirty: true,
+    })),
+
+  werkRapportBij: (fn) =>
+    set((s) => {
+      const rapport = fn(s.rapport);
+      // Hetzelfde object terug betekent: niets veranderd. Dan ook geen lege
+      // stap in de geschiedenis en geen "niet opgeslagen".
+      if (rapport === s.rapport) return s;
+      return { ...metGeschiedenis(s, null), rapport, dirty: true };
+    }),
+
   ongedaan: () =>
     set((s) => {
       const vorige = s.verleden[s.verleden.length - 1];
@@ -304,10 +366,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         verleden: s.verleden.slice(0, -1),
         toekomst: [
           ...s.toekomst,
-          { exemplaren: s.exemplaren, gegevens: s.gegevens, activeId: s.activeId },
+          {
+            exemplaren: s.exemplaren,
+            gegevens: s.gegevens,
+            rapport: s.rapport,
+            activeId: s.activeId,
+          },
         ],
         exemplaren: vorige.exemplaren,
         gegevens: vorige.gegevens,
+        rapport: vorige.rapport,
         activeId: vorige.activeId,
         dirty: true,
       };
@@ -322,10 +390,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         toekomst: s.toekomst.slice(0, -1),
         verleden: [
           ...s.verleden,
-          { exemplaren: s.exemplaren, gegevens: s.gegevens, activeId: s.activeId },
+          {
+            exemplaren: s.exemplaren,
+            gegevens: s.gegevens,
+            rapport: s.rapport,
+            activeId: s.activeId,
+          },
         ].slice(-MAX_GESCHIEDENIS),
         exemplaren: volgende.exemplaren,
         gegevens: volgende.gegevens,
+        rapport: volgende.rapport,
         activeId: volgende.activeId,
         dirty: true,
       };
@@ -337,6 +411,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       bestandspad: null,
       gegevens: legeGegevens(),
       exemplaren: [],
+      rapport: nieuwRapport(),
       activeId: PROJECT_ID,
       dirty: false,
       verleden: [],
@@ -349,6 +424,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       bestandspad: p.bestandspad ?? null,
       gegevens: { ...legeGegevens(), ...(p.gegevens ?? {}) },
       exemplaren: p.exemplaren ?? [],
+      rapport: rapportUit(p.rapport),
       activeId: p.exemplaren?.[0]?.id ?? PROJECT_ID,
       dirty: false,
       verleden: [],
@@ -384,16 +460,20 @@ void getSetting<Persisted | null>(STORE_KEY, null).then((saved) => {
       bestandspad: saved.bestandspad ?? null,
       gegevens: { ...legeGegevens(), ...(saved.gegevens ?? {}) },
       exemplaren: saved.exemplaren,
+      rapport: rapportUit(saved.rapport),
       activeId: saved.activeId ?? PROJECT_ID,
       dirty: false,
     });
   }
+  // Een expliciete lijst: een nieuw veld moet hier én hierboven bij het
+  // hydrateren worden toegevoegd, anders overleeft het geen herstart.
   useProjectStore.subscribe((s) =>
     schedulePersist({
       projectNaam: s.projectNaam,
       bestandspad: s.bestandspad,
       gegevens: s.gegevens,
       exemplaren: s.exemplaren,
+      rapport: s.rapport,
       activeId: s.activeId,
     }),
   );
