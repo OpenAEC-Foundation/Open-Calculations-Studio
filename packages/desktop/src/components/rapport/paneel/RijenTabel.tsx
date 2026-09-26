@@ -48,6 +48,8 @@ export interface RijenTabelProps<T> {
   extra?: readonly Extrakolom<T>[];
   /** Onder de tabel, bijvoorbeeld een som. */
   voet?: ReactNode;
+  /** Naast de toevoegknop, bijvoorbeeld een keuzemenu met lagen uit de bibliotheek. */
+  knoppen?: ReactNode;
   /** Tekst in een lege tabel. */
   leeg?: string;
   /** Knoppen om rijen te verplaatsen; uit voor een lijst met een vaste volgorde. */
@@ -64,6 +66,7 @@ export default function RijenTabel<T extends object>({
   toevoegen = "Rij toevoegen",
   extra = [],
   voet,
+  knoppen,
   leeg = "Nog geen regels.",
   verplaatsbaar = true,
   minimaal = 0,
@@ -77,6 +80,12 @@ export default function RijenTabel<T extends object>({
       const huidig = opPad(r, stappen);
       return zetOpPad(r, stappen, fn(Array.isArray(huidig) ? (huidig as T[]) : []));
     });
+
+  const toevoegKnop = (
+    <button type="button" className="rapport-knop" onClick={() => wijzig((l) => [...l, nieuweRij(l)])}>
+      + {toevoegen}
+    </button>
+  );
 
   return (
     <div className="rapport-rijen">
@@ -182,9 +191,14 @@ export default function RijenTabel<T extends object>({
         </tbody>
       </table>
       {voet}
-      <button type="button" className="rapport-knop" onClick={() => wijzig((l) => [...l, nieuweRij(l)])}>
-        + {toevoegen}
-      </button>
+      {knoppen ? (
+        <div className="rapport-knoppen">
+          {toevoegKnop}
+          {knoppen}
+        </div>
+      ) : (
+        toevoegKnop
+      )}
     </div>
   );
 }

@@ -674,6 +674,17 @@ p.rapport-hint {
   background: var(--theme-border-subtle, rgba(217, 119, 6, 0.2));
 }
 
+/* Hetzelfde menu onder een knop in een rij knoppen, zoals "uit bibliotheek"
+   bij de opbouwen: het klapt vanaf de knop naar rechts uit. */
+.rapport-menu-anker {
+  position: relative;
+}
+
+.rapport-menu-anker > .rapport-menu {
+  right: auto;
+  left: 0;
+}
+
 .rapport-bewaar {
   display: flex;
   align-items: center;

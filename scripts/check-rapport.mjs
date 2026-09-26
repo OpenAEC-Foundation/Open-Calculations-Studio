@@ -12,6 +12,8 @@
  *                   norm uit het bouwjaar, belastingcategorieën, sneeuw 0,56 en
  *                   q_p tegen de referentiewaarden van scripts/check-gording.mjs
  *   opbouw.ts       sommen van vlak- en gevelopbouwen, afgerond zoals de referentie
+ *   gewichten.ts    bibliotheek met gewichten: eenheden en orde van grootte, sommen
+ *                   van de opbouwen, invoegen als laag, opbouw of gevellaag
  *   standaardteksten.ts, opzet.ts
  *                   standaardteksten per tekst-id, nummering met weglaten van lege
  *                   onderdelen, inhoudsopgave en bijlagen
@@ -32,6 +34,9 @@ import {
   windLabel, windQp,
 } from "../packages/desktop/src/rapport/normwaarden.ts";
 import { gevelOpbouw, leesVulling, vlakOpbouw, vullingTekst } from "../packages/desktop/src/rapport/opbouw.ts";
+import {
+  alsGevellaag, alsLaag, alsOpbouw, LAAGGROEPEN, laaggroepenVoor, OPBOUWEN, opbouwenVoor, omschrijving, somVan, voegToe,
+} from "../packages/desktop/src/rapport/gewichten.ts";
 import { STANDAARD_IN_NIEUW_RAPPORT, STANDAARD_TEKSTEN, standaardTeksten } from "../packages/desktop/src/rapport/standaardteksten.ts";
 import { bijlagen, bouwOpzet, inhoudsopgave, OPZET, TEKST_IDS } from "../packages/desktop/src/rapport/opzet.ts";
 
@@ -404,6 +409,93 @@ kop("opbouw.ts");
   gelijk("vulling lezen", ["90%", "90", "0,9", "", "12,5 %"].map(leesVulling), [0.9, 0.9, 0.9, 1, 0.125]);
   gelijk("vulling tonen", [vullingTekst(0.9), vullingTekst(0.125), vullingTekst(1)], ["90%", "12,5%", "100%"]);
   gelijk("gevel: onvolledige laag telt als 0", gevelOpbouw([{ naam: "x", p: "2", h: "", vulling: "" }]).som, 0);
+}
+
+// ── gewichten.ts ────────────────────────────────────────────────────────────
+kop("gewichten.ts — bibliotheek: eenheden en orde van grootte");
+{
+  const lagen = LAAGGROEPEN.flatMap((g) => g.lagen);
+  const alle = [...lagen, ...OPBOUWEN.flatMap((o) => o.lagen)];
+  const namen = (lijst) => lijst.map((l) => l.naam);
+  // Een verwisselde eenheid (kg/m³ in plaats van kN/m³, mm in plaats van m)
+  // valt hier meteen buiten.
+  gelijk("p tussen 0 en 8 kN/m²", namen(alle.filter((l) => l.p !== undefined && !(l.p > 0 && l.p <= 8))), []);
+  gelijk("ρ tussen 0,3 en 80 kN/m³", namen(alle.filter((l) => l.rho !== undefined && !(l.rho >= 0.3 && l.rho <= 80))), []);
+  gelijk("d tussen 0 en 0,5 m", namen(alle.filter((l) => l.d !== undefined && !(l.d > 0 && l.d <= 0.5))), []);
+  gelijk("elke laag heeft p of ρ", namen(alle.filter((l) => l.p === undefined && l.rho === undefined)), []);
+  gelijk("p naast d en ρ: hooguit d × ρ (een vullingsgraad, geen toeslag)",
+    namen(alle.filter((l) => l.p !== undefined && l.d !== undefined && l.rho !== undefined && l.p > l.d * l.rho + 1e-9)), []);
+
+  // Door de kanalen weegt een kanaalplaatvloer duidelijk minder dan massief
+  // beton van dezelfde dikte, maar niet minder dan 40% ervan; per reeks is hij
+  // zwaarder naarmate hij dikker is. Een tikfout in een gewicht valt zo op.
+  const reeksen = new Map();
+  for (const l of LAAGGROEPEN.find((g) => g.naam === "Vloerelementen").lagen) {
+    const m = /^(kanaalplaatvloer.*?) (\d+) mm$/.exec(l.naam);
+    if (!m) continue;
+    const h = Number(m[2]) / 1000;
+    toets(`${l.naam}: ${fmt(l.p / (h * 25) * 100, 0)}% van massief beton (40–85%)`,
+      l.p >= 0.4 * h * 25 && l.p <= 0.85 * h * 25);
+    reeksen.set(m[1], [...(reeksen.get(m[1]) ?? []), { h, p: l.p }]);
+  }
+  for (const [reeks, lijst] of reeksen) {
+    toets(`${reeks}: zwaarder naarmate dikker`, lijst.every((x, i) => i === 0 || (x.h > lijst[i - 1].h && x.p > lijst[i - 1].p)));
+  }
+
+  const dubbel = (lijst) => lijst.filter((n, i) => lijst.indexOf(n) !== i);
+  gelijk("namen van lagen uniek", dubbel(namen(lagen)), []);
+  gelijk("namen van opbouwen uniek", dubbel(OPBOUWEN.map((o) => o.naam)), []);
+  gelijk("elke laag uit een opbouw ook los te kiezen", namen(OPBOUWEN.flatMap((o) => o.lagen).filter((l) => !lagen.includes(l))), []);
+  gelijk("elke groep heeft lagen en bouwdelen",
+    LAAGGROEPEN.filter((g) => g.lagen.length === 0 || g.bouwdelen.length === 0).map((g) => g.naam), []);
+  gelijk("opbouwen per bouwdeel", ["vloer", "dak", "wand"].map((b) => opbouwenVoor([b]).length > 0), [true, true, true]);
+  gelijk("vloeren en daken zonder wanden", opbouwenVoor(["vloer", "dak"]).filter((o) => o.bouwdeel === "wand").length, 0);
+  gelijk("laaggroepen bij wanden", laaggroepenVoor(["wand"]).map((g) => g.naam),
+    ["Houtskeletbouw", "Glazen puien en daken", "Steenachtige materialen", "Metalen", "Afwerking"]);
+}
+
+kop("gewichten.ts — sommen en invoegen");
+{
+  const opbouw = (naam) => OPBOUWEN.find((o) => o.naam === naam);
+  const laag = (naam) => LAAGGROEPEN.flatMap((g) => g.lagen).find((l) => l.naam === naam);
+
+  // De opbouwen met meer lagen tegen de sommen in het gewichtenoverzicht.
+  bijna("HSB-binnenwand met gipsplaat: 0,431", somVan(opbouw("HSB-binnenwand met gipsplaat")), 0.431, 1e-9);
+  bijna("HSB-binnenwand natte ruimte: 0,375", somVan(opbouw("HSB-binnenwand natte ruimte")), 0.375, 1e-9);
+  bijna("glazen pui: 0,754 (overzicht 0,75364)", somVan(opbouw("Glazen pui")), 0.75364, 0.001);
+  gelijk("kanaalplaatvloer 200 mm: één laag van 3,03", alsOpbouw(opbouw("Kanaalplaatvloer 200 mm")),
+    { soort: "vlak", naam: "Kanaalplaatvloer 200 mm", lagen: [{ naam: "kanaalplaatvloer 200 mm", d: "", rho: "", p: "3,03" }] });
+
+  gelijk("als laag: d en ρ", alsLaag(laag("OSB/3")), { naam: "OSB/3", d: "0,010", rho: "6,0", p: "" });
+  gelijk("als laag: p met vulling gaat voor d × ρ", alsLaag(laag("HSB-stijlwerk, vulling 9%")),
+    { naam: "HSB-stijlwerk, vulling 9%", d: "0,100", rho: "5,0", p: "0,045" });
+  gelijk("als laag: alleen ρ, dikte leeg", alsLaag(laag("staal")), { naam: "staal", d: "", rho: "78,5", p: "" });
+  const wand = alsOpbouw(opbouw("HSB-binnenwand met gipsplaat"));
+  gelijk("als opbouw: zes lagen", wand.lagen.map((l) => l.naam),
+    ["gipsplaat", "OSB/3", "HSB-stijlwerk, vulling 9%", "isolatie", "OSB/3", "gipsplaat"]);
+  gelijk("als opbouw: totaal in het rapport 0,43", fmt(vlakOpbouw(wand.lagen).som, 2), "0,43");
+  wand.lagen[0].p = "9";
+  gelijk("als opbouw: eigen kopie, de bibliotheek blijft", alsLaag(laag("gipsplaat")).p, "");
+
+  const gevellaag = alsGevellaag(opbouw("Glazen pui"));
+  gelijk("als gevellaag: totaal als p, h en vulling leeg", gevellaag, { naam: "Glazen pui", p: "0,75", h: "", vulling: "" });
+  bijna("als gevellaag: q = 0,75 × 3,00", gevelOpbouw([{ ...gevellaag, h: "3,00" }]).som, 2.25, 1e-9);
+
+  gelijk("omschrijving", [laag("kanaalplaatvloer 200 mm"), laag("OSB/3"), laag("metselwerk"), laag("substraat")].map(omschrijving), [
+    "3,03 kN/m²",
+    "0,010 m × 6,0 kN/m³ = 0,06 kN/m²",
+    "ρ = 20,0 kN/m³, dikte invullen",
+    "ρ = 14,0 kN/m³, dikte invullen (voor beplanting)",
+  ]);
+
+  const leeg = { naam: "", d: "", rho: "", p: "" };
+  const a = { naam: "a", d: "", rho: "", p: "1" };
+  const x = { naam: "x", d: "", rho: "", p: "2" };
+  gelijk("voegToe: vervangt de lege laag van een nieuwe opbouw", voegToe([leeg], x), [x]);
+  gelijk("voegToe: lege lagen aan het eind vervallen", voegToe([a, leeg, { ...leeg, naam: "  " }], x), [a, x]);
+  gelijk("voegToe: een lege laag middenin blijft", voegToe([leeg, a], x), [leeg, a, x]);
+  const lijst = [a];
+  toets("voegToe: nieuwe lijst, origineel ongemoeid", voegToe(lijst, x) !== lijst && lijst.length === 1);
 }
 
 // ── standaardteksten.ts en opzet.ts ─────────────────────────────────────────
