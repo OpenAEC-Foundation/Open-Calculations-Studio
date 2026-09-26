@@ -8,6 +8,10 @@
  *   pad.ts          onveranderlijk zetten op een pad
  *   revisies.ts     volgende revisiecode, rapportstatus, datums
  *   invullen.ts     invulvelden ({adviseur}, …) en tekstregels
+ *   normwaarden.ts  K_FI, β, DSL/IL, levensduurklasse, belastingfactoren per CC,
+ *                   norm uit het bouwjaar, belastingcategorieën, sneeuw 0,56 en
+ *                   q_p tegen de referentiewaarden van scripts/check-gording.mjs
+ *   opbouw.ts       sommen van vlak- en gevelopbouwen, afgerond zoals de referentie
  *
  * Node 24 laadt de .ts-bestanden rechtstreeks (typen worden weggestreept), dus
  * er is geen build nodig. Daarom importeert src/rapport/ waarden alleen binnen
@@ -19,6 +23,12 @@ import { leegBureau, normaliseerRapport, standaardRapport, STANDAARD_HUISSTIJL }
 import { leesPad, zetOpPad } from "../packages/desktop/src/rapport/pad.ts";
 import { datumTekst, eersteDatum, laatsteRevisie, rapportStatus, volgendeCode } from "../packages/desktop/src/rapport/revisies.ts";
 import { INVULVELDEN, tekstRegels, vulIn } from "../packages/desktop/src/rapport/invullen.ts";
+import {
+  belastingfactorTabel, beta, categorie, CATEGORIEEN, dakQk, fmt, getal, inspectieniveau, kFiVoor,
+  klasse, levensduurklasse, normVoorBouwjaar, ontwerpSupervisie, PSI_WIND, rond, sneeuwPlatDak,
+  windLabel, windQp,
+} from "../packages/desktop/src/rapport/normwaarden.ts";
+import { gevelOpbouw, leesVulling, vlakOpbouw, vullingTekst } from "../packages/desktop/src/rapport/opbouw.ts";
 
 let fouten = 0;
 let aantal = 0;
@@ -235,6 +245,160 @@ kop("invullen.ts");
   ]);
   gelijk("tekstRegels: twee lege regels blijven twee rijen",
     tekstRegels("a\n\n\nb").map((r) => r.leeg), [false, true, true, false]);
+}
+
+// ── normwaarden.ts ──────────────────────────────────────────────────────────
+kop("normwaarden.ts — getallen");
+{
+  gelijk("getal: komma", getal("0,56"), 0.56);
+  gelijk("getal: spaties", getal(" 3 "), 3);
+  gelijk("getal: leeg → NaN", getal(""), NaN);
+  gelijk("getal: undefined → NaN", getal(undefined), NaN);
+  gelijk("getal: ongeldig → NaN", getal("0,004l_rep"), NaN);
+  gelijk("rond(11.025, 2)", rond(11.025, 2), 11.03);
+  gelijk("rond(0.595, 2)", rond(0.595, 2), 0.6);
+  gelijk("rond(1.005, 2)", rond(1.005, 2), 1.01);
+  gelijk("rond(0.1 + 0.2, 2)", rond(0.1 + 0.2, 2), 0.3);
+  gelijk("rond(-11.025, 2)", rond(-11.025, 2), -11.03);
+  gelijk("rond(2.5, 0)", rond(2.5, 0), 3);
+  gelijk("fmt(0.56, 2)", fmt(0.56, 2), "0,56");
+  gelijk("fmt(11.025, 2)", fmt(11.025, 2), "11,03");
+  gelijk("fmt(1.5, 2, trim)", fmt(1.5, 2, true), "1,5");
+  gelijk("fmt(1, 2, trim)", fmt(1, 2, true), "1");
+  gelijk("fmt(-0.001, 2) zonder minteken", fmt(-0.001, 2), "0,00");
+  gelijk("fmt(NaN) → leeg", fmt(NaN, 2), "");
+  gelijk("klasse(\"1\")", klasse("1", 2), 1);
+  gelijk("klasse(\"\") → standaard", klasse("", 2), 2);
+  gelijk("klasse(\"4\") → standaard", klasse("4", 3), 3);
+}
+
+kop("normwaarden.ts — 4.1 constructieve uitgangspunten");
+{
+  gelijk("K_FI per CC (tabel B3)", [1, 2, 3].map(kFiVoor), [0.9, 1.0, 1.1]);
+  gelijk("β per RC, 50 jaar (tabel B2)", [1, 2, 3].map(beta), [3.3, 3.8, 4.3]);
+  gelijk("ontwerpsupervisie (tabel B4)", [1, 2, 3].map(ontwerpSupervisie), ["DSL1", "DSL2", "DSL3"]);
+  gelijk("inspectieniveau (tabel B5)", [1, 2, 3].map(inspectieniveau), ["IL1", "IL2", "IL3"]);
+  gelijk("levensduurklasse (tabel NB.1–2.1)", [5, 10, 15, 25, 50, 100, 120].map(levensduurklasse), [1, 2, 2, 3, 3, 4, 4]);
+  gelijk("levensduurklasse: geen invoer", levensduurklasse(NaN), NaN);
+}
+
+kop("normwaarden.ts — 4.5 belastingfactoren");
+{
+  const rij = (cc, naam) => belastingfactorTabel(cc).find((r) => r.naam === naam);
+  gelijk("tabel: rijen", belastingfactorTabel(2).map((r) => `${r.groep} ${r.naam}`), [
+    "A EQU(6.10)", "B STR(6.10a)", "B STR(6.10b)", "C GEO(6.10)", "D FAT", "F HYD",
+    " Buitengewoon(6.11a/b)", " Karakteristiek(6.14b)", " Frequent(6.15b)", " Quasi-Blijvend(6.16b)",
+  ]);
+  for (const cc of [1, 2, 3]) {
+    gelijk(`CC${cc}: EQU hangt niet van CC af`, rij(cc, "EQU(6.10)").cellen, ["0,90", "1,10", "1,5", "1,5ψ0"]);
+  }
+  gelijk("CC1: 6.10a (NB.5)", rij(1, "STR(6.10a)").cellen, ["0,90", "1,20", "1,35ψ0", "1,35ψ0"]);
+  gelijk("CC1: 6.10b (NB.5)", rij(1, "STR(6.10b)").cellen, ["0,90", "1,10", "1,35", "1,35ψ0"]);
+  gelijk("CC2: 6.10a (NB.4)", rij(2, "STR(6.10a)").cellen, ["0,90", "1,35", "1,5ψ0", "1,5ψ0"]);
+  gelijk("CC2: 6.10b (NB.4)", rij(2, "STR(6.10b)").cellen, ["0,90", "1,20", "1,5", "1,5ψ0"]);
+  gelijk("CC3: 6.10a (NB.5)", rij(3, "STR(6.10a)").cellen, ["0,90", "1,50", "1,65ψ0", "1,65ψ0"]);
+  gelijk("CC3: 6.10b (NB.5)", rij(3, "STR(6.10b)").cellen, ["0,90", "1,30", "1,65", "1,65ψ0"]);
+  gelijk("GEO, FAT, HYD niet van toepassing",
+    ["GEO(6.10)", "FAT", "HYD"].map((n) => rij(2, n).cellen), [null, null, null]);
+  gelijk("buitengewoon", [rij(2, "Buitengewoon(6.11a/b)").cellen, rij(2, "Buitengewoon(6.11a/b)").opmerking],
+    [["1,00", "1,00", "1,0ψ1", "1,0ψ2"], "niet gebruikt"]);
+  gelijk("karakteristiek", rij(2, "Karakteristiek(6.14b)").cellen, ["1,00", "1,00", "1,00", "1,0ψ0"]);
+  gelijk("frequent", rij(2, "Frequent(6.15b)").cellen, ["1,00", "1,00", "1,0ψ1", "1,0ψ2"]);
+  gelijk("quasi-blijvend", rij(2, "Quasi-Blijvend(6.16b)").cellen, ["1,00", "1,00", "1,0ψ2", "1,0ψ2"]);
+}
+
+kop("normwaarden.ts — 4.6 norm uit het bouwjaar");
+{
+  gelijk("1955 → GBV 1950", normVoorBouwjaar(1955), "GBV 1950");
+  gelijk("1912 → GBV 1912 (grens telt mee)", normVoorBouwjaar(1912), "GBV 1912");
+  gelijk("1911 → -", normVoorBouwjaar(1911), "-");
+  gelijk("1700 → -", normVoorBouwjaar(1700), "-");
+  gelijk("1995 → TGB 1990", normVoorBouwjaar(1995), "TGB 1990");
+  gelijk("2020 → Eurocodes", normVoorBouwjaar(2020), "Eurocodes");
+  gelijk("geen bouwjaar → leeg", normVoorBouwjaar(getal("")), "");
+}
+
+kop("normwaarden.ts — 5.1 sneeuw en 5.4 veranderlijke belastingen");
+{
+  bijna("sneeuw plat dak", sneeuwPlatDak(), 0.56, 1e-9);
+  gelijk("sneeuw plat dak opgemaakt", fmt(sneeuwPlatDak(), 2), "0,56");
+  const a = categorie("A-vloer");
+  gelijk("A-vloer: q_k, Q_k, ψ", [a?.soort, a?.qk, a?.Qk, a?.psi], ["vloer", 1.75, 3.0, [0.4, 0.5, 0.3]]);
+  gelijk("A-trap", [categorie("A-trap")?.qk, categorie("A-trap")?.Qk], [2.0, 3.0]);
+  gelijk("A-balkon", [categorie("A-balkon")?.qk, categorie("A-balkon")?.Qk], [2.5, 3.0]);
+  gelijk("A-gemeenschappelijk", [categorie("A-gemeenschappelijk")?.qk, categorie("A-gemeenschappelijk")?.Qk], [3.0, 3.0]);
+  gelijk("B: ψ", categorie("B")?.psi, [0.5, 0.5, 0.3]);
+  gelijk("C1: q_k, Q_k", [categorie("C1")?.qk, categorie("C1")?.Qk], [4.0, 3.0]);
+  gelijk("C3: q_k, Q_k, ψ", [categorie("C3")?.qk, categorie("C3")?.Qk, categorie("C3")?.psi], [5.0, 7.0, [0.4, 0.7, 0.6]]);
+  gelijk("D2: q_k, Q_k", [categorie("D2")?.qk, categorie("D2")?.Qk], [4.0, 7.0]);
+  const h = categorie("H-dak");
+  gelijk("H-dak", [h?.soort, h?.qk, h?.Qk, h?.psi], ["dak", 1.0, 1.5, [0, 0, 0]]);
+  gelijk("categorie: onbekend", categorie("X"), undefined);
+  toets("categorie-ids uniek", new Set(CATEGORIEEN.map((c) => c.id)).size === CATEGORIEEN.length);
+  for (const id of ["A-vloer", "A-trap", "A-balkon", "A-gemeenschappelijk", "B", "C1", "C2", "C3", "C4", "C5", "D1", "D2", "H-dak"]) {
+    toets(`categorie ${id} bestaat`, categorie(id) !== undefined);
+  }
+  gelijk("dakQk: 0°, 14,9°", [dakQk(0), dakQk(14.9)], [1.0, 1.0]);
+  bijna("dakQk: 17,5° → 0,5", dakQk(17.5), 0.5, 1e-12);
+  gelijk("dakQk: 20°, 45°", [dakQk(20), dakQk(45)], [0, 0]);
+  gelijk("dakQk: geen helling", dakQk(NaN), NaN);
+}
+
+kop("normwaarden.ts — 5.2 wind (referentie: scripts/check-gording.mjs)");
+{
+  // [windgebied, terreincategorie-code, z, q_p]; terreincode 1 = 0 (kust), 2 = II, 3 = III.
+  const REFERENTIE = [
+    [2, 2, 9, 0.822, "II / II / 9 m"],
+    [1, 2, 9, 0.981, "I / II / 9 m"],
+    [3, 2, 9, 0.676, "III / II / 9 m"],
+    [2, 1, 9, 1.295, "II / 0 / 9 m"],
+    [2, 3, 9, 0.649, "II / III / 9 m"],
+    [2, 3, 5, 0.578, "II / III / 5 m (z_e = z_min = 7 m)"],
+    [2, 2, 20, 1.067, "II / II / 20 m"],
+  ];
+  for (const [wg, tc, z, qp, naam] of REFERENTIE) bijna(`q_p ${naam}`, windQp(wg, tc, z).qp, qp, 0.001);
+  const w = windQp(2, 3, 5);
+  gelijk("II / III / 5 m: v_b,0, z₀, z_min, z_e", [w.vb0, w.z0, w.zmin, w.ze], [27.0, 0.5, 7, 7]);
+  toets("geen gebouwhoogte → q_p NaN", Number.isNaN(windQp(2, 2, getal("")).qp));
+  gelijk("windLabel", [windLabel(1, 1), windLabel(2, 2), windLabel(3, 3)], ["1 kust", "2 onbebouwd", "3 bebouwd"]);
+  gelijk("ψ wind (NB.2–A1.1)", PSI_WIND, [0, 0.2, 0]);
+}
+
+// ── opbouw.ts ───────────────────────────────────────────────────────────────
+kop("opbouw.ts");
+{
+  const laag = (naam, d, rho, p) => ({ naam, d, rho, p });
+  const dak = vlakOpbouw([laag("dakpannen", "", "", "0,48"), laag("dakplaten", "", "", "0,07"), laag("gordingen", "", "", "0,15")]);
+  bijna("vlak: 0,48 + 0,07 + 0,15", dak.som, 0.7, 1e-9);
+  gelijk("vlak: som opgemaakt", fmt(dak.som, 2), "0,70");
+
+  const vloer = vlakOpbouw([
+    laag("vloerplaat", "", "", "0,30"),
+    laag("beschot", "0,02", "4,0", ""),
+    laag("balklaag", "", "", "0,08"),
+    laag("plafond", "0,015", "9,0", ""),
+  ]);
+  gelijk("vlak: d × ρ", fmt(vloer.regels[1].p, 2), "0,08");
+  gelijk("vlak: 0,015 × 9,0 = 0,135 → 0,14", fmt(vloer.regels[3].p, 2), "0,14");
+  gelijk("vlak: d en ρ als getal, leeg als null", [vloer.regels[1].d, vloer.regels[1].rho, vloer.regels[0].d], [0.02, 4, null]);
+  bijna("vlak: som 0,595", vloer.som, 0.595, 1e-9);
+  gelijk("vlak: rond(0,595) → 0,6", rond(vloer.som, 2), 0.6);
+  gelijk("vlak: som opgemaakt 0,60", fmt(vloer.som, 2), "0,60");
+  gelijk("vlak: ingevulde p gaat voor d × ρ", vlakOpbouw([laag("x", "0,1", "10", "0,5")]).som, 0.5);
+  gelijk("vlak: onvolledige laag telt als 0", vlakOpbouw([laag("x", "0,1", "", "")]).som, 0);
+
+  const gevel = gevelOpbouw([
+    { naam: "metselwerk", p: "2,00", h: "3,00", vulling: "90%" },
+    { naam: "metselwerk", p: "2,00", h: "3,00", vulling: "90%" },
+    { naam: "kozijn", p: "0,75", h: "3,00", vulling: "10%" },
+  ]);
+  gelijk("gevel: q per laag", gevel.regels.map((r) => fmt(r.q, 2)), ["5,40", "5,40", "0,23"]);
+  bijna("gevel: som 11,025", gevel.som, 11.025, 1e-9);
+  gelijk("gevel: rond(11,025) → 11,03", rond(gevel.som, 2), 11.03);
+  gelijk("gevel: som opgemaakt", fmt(gevel.som, 2), "11,03");
+  gelijk("vulling lezen", ["90%", "90", "0,9", "", "12,5 %"].map(leesVulling), [0.9, 0.9, 0.9, 1, 0.125]);
+  gelijk("vulling tonen", [vullingTekst(0.9), vullingTekst(0.125), vullingTekst(1)], ["90%", "12,5%", "100%"]);
+  gelijk("gevel: onvolledige laag telt als 0", gevelOpbouw([{ naam: "x", p: "2", h: "", vulling: "" }]).som, 0);
 }
 
 // ── Uitslag ─────────────────────────────────────────────────────────────────
