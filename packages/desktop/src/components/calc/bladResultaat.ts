@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { parse, evaluate } from "@ifc-calc/core";
-import type { EvaluatedNode } from "@ifc-calc/core";
+import type { AstNode, EvaluatedNode } from "@ifc-calc/core";
 import { calcpadIncludes, calcpadImageUrls } from "../../templates/calcpad-includes";
 import { useActiefExemplaar, useProjectScope } from "../../store/actiefBlad";
 
@@ -103,6 +103,32 @@ export interface BladUitkomst {
   getallen: Record<string, number>;
 }
 
+/** Leest een bladtekst in, met dezelfde includes en afbeeldingen als de uitwerking. */
+export function leesBlad(source: string): AstNode[] {
+  return parse(source, { includes: calcpadIncludes, imageUrls: calcpadImageUrls });
+}
+
+/**
+ * Rekent een blad door met de gegeven invoer en projectgegevens. Los van de
+ * hook, zodat een beeld het blad ook met een ándere invoer kan doorrekenen —
+ * de ontwerpknop van de balklaag probeert zo de profielen uit de lijst. Een
+ * al ingelezen blad scheelt dan het inlezen per poging.
+ */
+export function rekenBladDoor(
+  blad: string | AstNode[],
+  waarden: Record<string, string>,
+  scope: Record<string, unknown>,
+  naam: string,
+): BladUitkomst | null {
+  try {
+    const ast = typeof blad === "string" ? leesBlad(blad) : blad;
+    const nodes = evaluate(ast, waarden, scope);
+    return { resultaat: leesResultaat(nodes, naam), getallen: leesGetallen(nodes) };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Rekent het blad dat het beeld tekent door: normaal het actieve blad, in de
  * afdruk het blad van de afdrukcontext. Met dezelfde invoer en
@@ -114,14 +140,8 @@ export function useBladUitkomst(): BladUitkomst | null {
   const source = exemplaar?.source;
   const waarden = exemplaar?.waarden;
   const naam = exemplaar?.naam ?? "";
-  return useMemo(() => {
-    if (!source) return null;
-    try {
-      const opties = { includes: calcpadIncludes, imageUrls: calcpadImageUrls };
-      const nodes = evaluate(parse(source, opties), waarden ?? {}, scope);
-      return { resultaat: leesResultaat(nodes, naam), getallen: leesGetallen(nodes) };
-    } catch {
-      return null;
-    }
-  }, [source, waarden, scope, naam]);
+  return useMemo(
+    () => (source ? rekenBladDoor(source, waarden ?? {}, scope, naam) : null),
+    [source, waarden, scope, naam],
+  );
 }
