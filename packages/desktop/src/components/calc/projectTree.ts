@@ -81,6 +81,7 @@ export const moduleCatalogus: TreeNode[] = [
       { kind: "item", id: "sheet-opdrijven", label: "Opdrijven en drijvend lichaam", templateId: "opdrijven", status: "controleren" },
       { kind: "item", id: "sheet-ligger", label: "Ligger (hout of staal)", templateId: "ligger", status: "controleren" },
       { kind: "item", id: "sheet-portaal-spant", label: "Portaal en spant (hout of staal)", templateId: "portaal-spant", status: "controleren" },
+      { kind: "item", id: "sheet-hekwerk", label: "Hekwerk en balustrade (hout of staal)", templateId: "hekwerk", status: "controleren" },
     ],
   },
   {
@@ -234,6 +235,7 @@ export const bibliotheek: TreeNode[] = [
           { kind: "item", id: "ec3-knik", label: "§6.3.1 Knik", templateId: "ec3-knik" },
           { kind: "item", id: "ec3-doorbuiging", label: "§7.2 Doorbuiging (SLS)", templateId: "ec3-doorbuiging" },
           { kind: "item", id: "ec3-stalen-ligger", label: "Volledige toetsing stalen ligger", templateId: "ec3-stalen-ligger" },
+          { kind: "item", id: "ec3-onderflens", label: "Onderflensbuiging (wiel- of hanglast)", templateId: "ec3-onderflens" },
         ],
       },
       {
