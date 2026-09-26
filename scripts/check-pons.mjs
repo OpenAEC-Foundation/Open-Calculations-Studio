@@ -9,9 +9,11 @@
  *      randkolom met β volgens (6.44) en ponswapening met de detaillering van
  *      §9.4.3.
  *   2. Grensgevallen: u_1* met 1,5d in plaats van 0,5c, β uit (6.39), (6.42)
- *      en (6.43), een ronde randkolom als vierkant met dezelfde omtrek, een
+ *      en (6.43), k in (6.44) bij een randkolom die langs de rand breder is,
+ *      een ronde randkolom als vierkant met dezelfde omtrek, een
  *      excentriciteit naar de rand (niet getoetst), een nuttige hoogte ≤ 0,
- *      ontbrekende of onvolledige ponswapening en ρ_l begrensd op 0,02.
+ *      ontbrekende of onvolledige ponswapening, α onder 45°, ponswapening in
+ *      een plaat dunner dan 200 mm, een negatieve V_Ed en ρ_l begrensd op 0,02.
  *   3. Dezelfde invoer als het normblad ec2Pons (en1992.ts) met β volgens
  *      figuur 6.21N moet dezelfde omtrekken, spanningen en UC's geven.
  *   4. Een onafhankelijke uitwerking in JavaScript over een raster van keuzes
@@ -169,12 +171,13 @@ function uitwerking(w) {
       : u1 - (c1 - Math.min(c1 / 2, 1.5 * d)) - (c2 - Math.min(c2 / 2, 1.5 * d));
     r.u_1_red = u1r;
     beta = u1 / u1r;
-    if (plaats === 2 && ez !== 0) beta += (kTabel(c1 / (2 * c2)) * Math.abs(ez) * u1) / W1(omtrekRand(c1, c2, d));
+    // (6.44): tabel 6.1 met c_1/(2c_2) in de maten van figuur 6.20 of van tabel 6.1; de grootste telt.
+    if (plaats === 2 && ez !== 0) beta += (kTabel(Math.max(c1 / (2 * c2), c2 / (2 * c1))) * Math.abs(ez) * u1) / W1(omtrekRand(c1, c2, d));
   }
   if (ongeldig) return { r, oordeel: "niet getoetst", geenUC: true };
   r.β = beta;
 
-  const fck = n("betonklasse"), V = n("V_Ed") * 1e3;
+  const fck = n("betonklasse"), V = Math.abs(n("V_Ed")) * 1e3;
   const k = Math.min(1 + Math.sqrt(200 / d), 2);
   const vmin = 0.035 * k ** 1.5 * Math.sqrt(fck);
   const vRdc = Math.max(0.12 * k * (100 * r.ρ_l * fck) ** (1 / 3), vmin);
@@ -190,7 +193,7 @@ function uitwerking(w) {
       r.A_sw_nodig = ((vEd - 0.75 * vRdc) * u1 * 0.75 * d) / (1.5 * fywdef);
     } else {
       const nsw = n("n_sw"), nom = n("n_om"), sr = n("s_r"), dsw = n("d_sw"), a1 = n("a_sw"), alfa = n("hoek_pons");
-      if (nsw < 1 || nom < 1 || sr <= 0 || dsw <= 0 || a1 <= 0 || alfa < 30 || alfa > 90) {
+      if (nsw < 1 || nom < 1 || sr <= 0 || dsw <= 0 || a1 <= 0 || alfa < 45 || alfa > 90) {
         return { r, oordeel: "niet getoetst", geenUC: true };
       }
       const sa = Math.sin((alfa * Math.PI) / 180), ca = Math.cos((alfa * Math.PI) / 180);
@@ -203,7 +206,7 @@ function uitwerking(w) {
       const aOut = lo, an = a1 + (nom - 1) * sr, st = u1 / nsw;
       Object.assign(r, {
         A_sw: Asw, v_Rd_s: vRdcs - 0.75 * vRdc, v_Rd_cs: vRdcs, UC_cs: vEd / vRdcs, u_out_ef: uout, a_out: aOut, a_n: an,
-        UC_uit: (aOut - 1.5 * d) / an, UC_n: 2 / nom, UC_sr: sr / (0.75 * d), UC_a: a1 / (0.5 * d),
+        UC_uit: (aOut - 1.5 * d) / an, UC_n: 2 / nom, UC_sr: sr / (0.75 * d), UC_a: a1 / (0.5 * d), UC_h: 200 / h,
         s_t: st, UC_st: st / (1.5 * d),
       });
       r.UC_st_uit = 0;
@@ -212,7 +215,7 @@ function uitwerking(w) {
       // binnen 2d ten hoogste die op u_1, daarbuiten die op de buitenste omtrek.
       r.A_sw_min = ((0.08 * Math.sqrt(fck)) / 500) * sr * Math.max(st, r.s_t_uit ?? 0) / (1.5 * sa + ca);
       r.UC_min = r.A_sw_min / ((Math.PI * dsw ** 2) / 4);
-      UCw = Math.max(r.UC_cs, r.UC_uit, r.UC_n, r.UC_sr, r.UC_a, r.UC_st, r.UC_st_uit, r.UC_min);
+      UCw = Math.max(r.UC_cs, r.UC_uit, r.UC_n, r.UC_sr, r.UC_a, r.UC_h, r.UC_st, r.UC_st_uit, r.UC_min);
     }
   }
   r.UC_max = Math.max(UCw, r.UC_vRd_max);
@@ -306,6 +309,7 @@ const HAND = [
     // u_out,ef = 364 515/(0,6453·204) = 2769 · a_out = (2769 − 600 − 300)/π = 594,9
     // a_n = 100 + 2·150 = 400 ≥ 594,9 − 1,5·204 = 288,9 → UC = 0,722
     // s_r = 150 ≤ 0,75·204 = 153 → 0,9804 · a = 100 ≤ 0,5·204 = 102 → 0,9804 · 2 omtrekken → 2/3
+    // h = 250 ≥ 200 mm (9.3.2(1)) → 0,8
     // s_t = 2181,8/8 = 272,7 ≤ 1,5·204 = 306 → 0,8912 · a_n = 400 < 2d = 408: geen toets op 2d
     // (9.11): A_sw,min = 0,08·√30/500·150·272,7/1,5 = 23,90 mm² ≤ 50,27 → 0,4755
     // UC_max = 0,9804 (de detaillering is maatgevend)
@@ -315,7 +319,7 @@ const HAND = [
       k: "1.990", v_min: "0.5382", v_Rd_c: "0.6453", UC_pons: "1.269",
       u_0: "900", v_Ed_0: "1.985", v_Rd_max: "4.224", UC_vRd_max: "0.4700",
       f_ywd_ef: "301", A_sw: "402.1", v_Rd_s: "0.5548", v_Rd_cs: "1.039", UC_cs: "0.7884", u_out_ef: "2769", a_out: "594.9",
-      a_n: "400", UC_uit: "0.722", UC_n: "0.6667", UC_sr: "0.9804", UC_a: "0.9804", s_t: "272.7", UC_st: "0.8912",
+      a_n: "400", UC_uit: "0.722", UC_n: "0.6667", UC_sr: "0.9804", UC_a: "0.9804", UC_h: "0.8", s_t: "272.7", UC_st: "0.8912",
       A_sw_min: "23.90", UC_min: "0.4755", UC_max: "0.9804",
     },
     oordeel: "voldoet",
@@ -392,6 +396,37 @@ const HAND = [
     oordeel: "voldoet niet",
   },
   {
+    naam: "Grensgeval — randkolom 300×600 (c_2 langs de rand) met alleen e_z = 80: k in (6.44) uit de grootste lezing van c_1/(2c_2)",
+    invoer: { plaats: 2, c_1: 300, c_2: 600, beta_keuze: 0, e_y: 0, e_z: 80 },
+    // d = 165 · u_1 = 2·300 + 600 + 2π·165 = 2236,7 · u_1* = 600 + 2·min(150; 247,5) + 2π·165 = 1936,7
+    // tabel 6.1: c_1/(2c_2) = 0,25 → 0,45; c_2/(2c_1) = 1,0 → 0,60; de grootste: k = 0,60
+    // W_1 (6.45) = 600²/4 + 300·600 + 4·300·165 + 8·165² + π·165·600 = 996 818 mm²
+    // β = 2236,7/1936,7 + 0,60·80·2236,7/996 818 = 1,1549 + 0,1077 = 1,263
+    // v_Ed = 1,2626·250 000/(2236,7·165) = 0,8553 → UC = 0,8553/0,6641 = 1,288: ponswapening nodig
+    // u_0 = min(600 + 495; 600 + 600) = 1095 · v_Ed,0 = 315 652/(1095·165) = 1,747 → 0,2959
+    // A_sw,nodig = (0,8553 − 0,75·0,6641)·2236,7·0,75·165/(1,5·291,25) = 226,3 mm²
+    verwacht: {
+      u_1: "2237", u_1_red: "1937", k_β: "0.6", W_1: "996800", β: "1.263", v_Ed: "0.8553", UC_pons: "1.288",
+      u_0: "1095", v_Ed_0: "1.747", UC_vRd_max: "0.2959", A_sw_nodig: "226.3", UC_max: "1.288",
+    },
+    oordeel: "voldoet niet",
+    melding: /ponswapening nodig/,
+  },
+  {
+    naam: "Grensgeval — ponswapening in een plaat van 180 mm: dunner dan 200 mm (9.3.2(1))",
+    invoer: { h_plaat: 180, V_Ed: 330, ponswap: 1, d_sw: 10, n_sw: 16, n_om: 3, s_r: 100, a_sw: 70, hoek_pons: 90 },
+    // d_y = 150 · d_z = 140 · d = 145; UC_pons > 1, dus de ponswapening telt
+    // 9.3.2(1): 200/180 = 1,111 > 1,0; de overige toetsen blijven eronder, dus maatgevend
+    verwacht: { d_eff: "145", UC_h: "1.111", UC_max: "1.111" },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "Grensgeval — V_Ed = −250 kN: het teken telt niet, dezelfde uitkomst als voorbeeld 1",
+    invoer: { V_Ed: -250 },
+    verwacht: { V_Ed: "250", v_Ed: "0.5323", UC_pons: "0.8015", v_Ed_0: "1.452", UC_max: "0.8015" },
+    oordeel: "voldoet",
+  },
+  {
     naam: "Grensgeval — zware wapening: ρ_l begrensd op 0,02",
     invoer: { h_plaat: 300, d_wapy: 25, s_wapy: 75, d_wapz: 25, s_wapz: 75 },
     // d_y = 262,5 · d_z = 237,5 · ρ_ly = 490,9/(75·262,5) = 0,02493 · ρ_lz = 0,02756 → √ = 0,0262 → 0,02
@@ -435,8 +470,13 @@ const LEEG = [
     oordeel: "niet getoetst", melding: /niet volledig ingevuld/,
   },
   {
-    naam: "Grensgeval — ponswapening onder 20°: buiten 30°–90°",
+    naam: "Grensgeval — ponswapening onder 20°: buiten 45°–90°",
     invoer: { V_Ed: 400, ponswap: 1, hoek_pons: 20 },
+    oordeel: "niet getoetst", melding: /niet volledig ingevuld/,
+  },
+  {
+    naam: "Grensgeval — ponswapening onder 40°: 30° mag alleen bij één rij opgebogen staven (9.4.3(4))",
+    invoer: { V_Ed: 400, ponswap: 1, hoek_pons: 40 },
     oordeel: "niet getoetst", melding: /niet volledig ingevuld/,
   },
 ];

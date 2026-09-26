@@ -94,6 +94,9 @@ export default function SchoorDesigner() {
   const l0min = Math.max(e2 / Math.tan(rad), (prof.h - e2) * Math.tan(rad));
   const botst = l0 + 0.001 < l0min;
   const buiten = sn >= sUit;
+  // Het gat moet binnen het vlakke deel van het been liggen, net als in het blad: e₂ + d₀/2 ≤ h − t.
+  const e2max = prof.h - prof.t - d0 / 2;
+  const gatBuiten = d("e_2") > e2max + 0.001;
 
   // ── layout ────────────────────────────────────────────────────────────────
   const capH = 24;
@@ -222,6 +225,9 @@ export default function SchoorDesigner() {
             {uitv === 2 ? " dubbel, twee afschuifvlakken" : " enkelzijdig aangesloten (excentriciteit)"}</span>
           {botst && (
             <span className="gd-note" style={{ color: "#b91c1c" }}>Het eind van het hoekstaal steekt voorbij een gelaste rand: l<sub>0</sub> ≥ {fmt(l0min)} mm nodig.</span>
+          )}
+          {gatBuiten && (
+            <span className="gd-note" style={{ color: "#b91c1c" }}>Het gat raakt het uitstaande been: e<sub>2</sub> ≤ {fmt(e2max)} mm nodig bij {prof.naam} en M{M}.</span>
           )}
           {buiten && (
             <span className="gd-note" style={{ color: "#b91c1c" }}>De buitenste bout valt buiten de schetsplaat: vergroot de plaat of verklein l<sub>0</sub>, e<sub>1</sub> of p<sub>1</sub>.</span>

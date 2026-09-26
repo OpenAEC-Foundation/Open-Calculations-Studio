@@ -8,7 +8,8 @@
  *   1. Een onafhankelijke uitwerking in JavaScript (N en mm): tabel 3.3,
  *      tabel 3.4 met de stuik in de kopplaat én in de kolomflens, de groep
  *      volgens §3.7(1) (per bout nagelopen, niet via het maximum per rijtype
- *      zoals het blad), §3.8, de kopplaat bruto en netto en op blokschuif
+ *      zoals het blad), §3.8, (3.2) bij één boutrij, de kopplaat bruto en
+ *      netto en op blokschuif
  *      (3.9) en (3.10), het liggerlijf, de las (§4.5.3.3 met §4.5.1(2) en
  *      §4.5.2(2)), (6.32) en de rotatie van het liggereinde. Daarbij het
  *      eindoordeel zoals de rapportkop het leest (bladResultaat.ts): voldoet
@@ -41,7 +42,7 @@ const STANDAARD = {
   verbindingsvorm: 1, kolomprofiel: 7, liggerprofiel: 22,
   staalsoort: 235, boutkwaliteit: 88, boutmaat: 16, hartlijn: 1,
   n_boutrijen: 3, t_kp: 10, b_kp: 120, e_kp: 25, p_kp: 50, w_kp: 70,
-  a_las: 5, V_Ed: 80, L_b: 6,
+  a_las: 5, V_Ed: 80, L_b: 4,
 };
 
 // ── Onafhankelijke uitwerking; eenheden N en mm ─────────────────────────────
@@ -76,7 +77,8 @@ function uitwerking(v) {
   const abE = Math.min(e1 / (3 * d0), fub / fu, 1);
   const abI = Math.min(p1 / (3 * d0) - 0.25, fub / fu, 1);
   const abC = Math.min(fub / fu, 1);
-  const Fb = (k, ab, t) => (k * ab * fu * d * t) / gM2;
+  // Eén boutrij in een enkelsnedige verbinding: §3.6.1(10), k_1·α_b hoogstens 1,5 (3.2).
+  const Fb = (k, ab, t) => ((n === 1 ? Math.min(k * ab, 1.5) : k * ab) * fu * d * t) / gM2;
   const kpE = Fb(k1, abE, tp), kpI = Fb(k1, abI, tp), cI = Fb(k1c, abI, c.tf), cE = Fb(k1c, abC, c.tf);
   // Stuikweerstand per bout, rij voor rij van boven naar beneden: het minimum van beide platen.
   const perBout = [];
@@ -161,7 +163,7 @@ function verwachtingen(r) {
 
 const SETS = [
   {
-    naam: "1 — standaard: HEA 220 / IPE 240, S235, 3 × 2 M16 8.8, kopplaat 120 × 150 × 10, V = 80 kN, L = 6 m",
+    naam: "1 — standaard: HEA 220 / IPE 240, S235, 3 × 2 M16 8.8, kopplaat 120 × 150 × 10, V = 80 kN, L = 4 m",
     invoer: {},
     // Met de hand. h_p = 2·25 + 2·50 = 150 mm; d_w = 240 − 2·9,8 − 2·15 = 190,4 mm → l_w = 150 mm.
     // e_2 = (120 − 70)/2 = 25, e_2,c = (220 − 70)/2 = 75 mm; tabel 3.3: 1,2d_0 = 21,6, 2,2d_0 = 39,6,
@@ -182,14 +184,14 @@ const SETS = [
     // 2·5·140·207,8 = 291,0 kN → UC 0,2749.
     // (6.32): t_max = 0,36·16·√(800/235) = 10,63 mm ≥ min(10; 11) = 10 mm.
     // Rotatie: h_e = (240 − 150)/2 = 45 mm, φ_Rd = 10/45 = 0,2222;
-    // φ_Ed = 80 000·6000²/(8·210 000·3892·10⁴) = 0,04405 → UC 0,1982.
+    // φ_Ed = 80 000·4000²/(8·210 000·3892·10⁴) = 0,01958 → UC 0,08809.
     handwerk: {
       h_p: "150", d_w: "190.4", l_w: "150", e_2: "25", e_2_c: "75", F_v_Rd: "60.29", k_1: "2.189", k_1_c: "2.5",
       α_b_e: "0.4630", α_b_i: "0.6759", α_b_c: "1", F_b_kp_e: "46.70", F_b_kp_i: "68.18", F_b_c_i: "85.65", F_b_c_e: "126.7",
       V_b_Rd: "280.2", UC_b: "0.2855", V_g_Rd: "320.5", V_n_Rd: "319.3", A_nt: "160", A_nt_i: "520", A_nv: "800",
       V_eff_2_Rd: "263.2", V_eff_1_Rd: "366.8", V_kp_Rd: "263.2", UC_kp: "0.3040", V_wb_Rd: "126.2", UC_wb: "0.6340",
       f_vw_d: "207.8", l_eff: "140", V_w_Rd: "291.0", UC_w: "0.2749", t_min: "10", t_max: "10.63",
-      h_e: "45", φ_Rd: "0.2222", φ_Ed: "0.04405", UC_φ: "0.1982",
+      h_e: "45", φ_Rd: "0.2222", φ_Ed: "0.01958", UC_φ: "0.08809",
     },
     maatgevend: "liggerlijf",
   },
@@ -241,17 +243,18 @@ const SETS = [
     // Met de hand: L_j = 5·60 = 300 > 15·16 = 240 → β_Lf = 1 − 60/3200 = 0,98125, F_v,Rd = 0,98125·60,29 = 59,16 kN.
     // h_p = 50 + 300 = 350 mm, d_w = 400 − 27 − 42 = 331 mm → l_w = 331 mm (h − 2t_f = 373 ≥ 350).
     // Liggerlijf 8,6·331·235/√3 = 386,2 kN; las 2·5·321·207,8 = 667,2 kN; h_e = 25 mm, φ_Rd = 0,4;
-    // φ_Ed = 80 000·6000²/(8·210 000·23 130·10⁴) = 0,007412.
+    // φ_Ed = 80 000·4000²/(8·210 000·23 130·10⁴) = 0,003294.
     // Bouten: per bout min 46,70 kN (bovenste rij, kopplaat) → 12·46,70 = 560,4 kN.
-    handwerk: { β_Lf: { waarde: "0.98125", tol: 0.0001, waarom: "afgedrukt op vier cijfers" }, F_v_Rd: "59.16", h_p: "350", d_w: "331", l_w: "331", V_wb_Rd: "386.2", V_w_Rd: "667.2", h_e: "25", φ_Rd: "0.4000", φ_Ed: "0.007412", V_b_Rd: "560.4" },
+    handwerk: { β_Lf: { waarde: "0.98125", tol: 0.0001, waarom: "afgedrukt op vier cijfers" }, F_v_Rd: "59.16", h_p: "350", d_w: "331", l_w: "331", V_wb_Rd: "386.2", V_w_Rd: "667.2", h_e: "25", φ_Rd: "0.4000", φ_Ed: "0.003294", V_b_Rd: "560.4" },
     maatgevend: "liggerlijf",
   },
   {
     naam: "9 — één boutrij met e = 40: kleine laslengte, het liggerlijf bezwijkt",
     invoer: { n_boutrijen: 1, e_kp: 40 },
-    // Met de hand: h_p = 80 mm; α_b,e = 40/54 = 0,7407 → F_b,kp,e = 2,189·0,7407·46 080 = 74,71 kN > F_v,Rd,
-    // dus V_b,Rd = 2·60,29 = 120,6 kN. Liggerlijf 6,2·80·235/√3 = 67,30 kN → UC 1,189 → voldoet niet.
-    handwerk: { h_p: "80", F_b_kp_e: "74.71", V_b_Rd: "120.6", V_wb_Rd: "67.30", UC_wb: "1.189" },
+    // Met de hand: h_p = 80 mm; α_b,e = 40/54 = 0,7407, k_1·α_b,e = 2,189·0,7407 = 1,621 > 1,5, dus
+    // (3.2): F_b,kp,e = 1,5·46 080 = 69,12 kN > F_v,Rd, en V_b,Rd = 2·60,29 = 120,6 kN.
+    // Liggerlijf 6,2·80·235/√3 = 67,30 kN → UC 1,189 → voldoet niet.
+    handwerk: { h_p: "80", F_b_kp_e: "69.12", V_b_Rd: "120.6", V_wb_Rd: "67.30", UC_wb: "1.189" },
     melding: /> 1,0 → de verbinding voldoet niet/,
   },
   {
@@ -291,6 +294,45 @@ const SETS = [
     naam: "16 — dubbel hoekstaal, drie rijen: past, maar de toetsing is niet uitgewerkt",
     invoer: { verbindingsvorm: 3 },
     melding: /niet getoetst\s*: alleen de kopplaat is uitgewerkt/,
+  },
+  {
+    naam: "17 — één boutrij M24 8.8, e = 80, w = 80, b = 150, t = 8: (3.2) van §3.6.1(10) begrenst de stuik",
+    invoer: { n_boutrijen: 1, boutmaat: 24, e_kp: 80, w_kp: 80, b_kp: 150, t_kp: 8 },
+    // Met de hand: d_0 = 26; e_2 = 35, e_2,c = 70 mm. F_v,Rd = 0,6·800·353/1,25 = 135,6 kN.
+    // k_1 = 2,8·35/26 − 1,7 = 2,069; α_b,e = min(80/78; 800/360; 1) = 1 → k_1·α_b = 2,069 > 1,5:
+    // F_b,kp,e = 1,5·360·24·8/1,25 = 82,94 kN (zonder (3.2) 114,4). Kolomflens k_1,c·α_b,c = 2,5 > 1,5:
+    // F_b,c,e = 1,5·360·24·11/1,25 = 114,0 kN. F_v,Rd ≥ beide, dus de som: V_b,Rd = 2·82,94 = 165,9 kN
+    // → UC 0,4823. Kopplaat: A_nv = (160 − 80 − 13)·8 = 536 mm², (3.10) 2·(0,5·360·176/1,25 + 235·536/√3)
+    // = 196,1 kN. Liggerlijf 6,2·160·235/√3 = 134,6 kN → UC 0,5944 (maatgevend). φ_Rd = 8/40 = 0,2.
+    handwerk: { F_v_Rd: "135.6", k_1: "2.069", α_b_e: "1", F_b_kp_e: "82.94", F_b_c_e: "114.0", V_b_Rd: "165.9", UC_b: "0.4823", A_nv: "536", V_eff_2_Rd: "196.1", V_wb_Rd: "134.6", UC_wb: "0.5944", φ_Rd: "0.2000" },
+    maatgevend: "liggerlijf",
+  },
+  {
+    naam: "18 — HEB 200 / IPE 300, S355, 4 × 2 M20 10.9, e/p/w = 35/60/90, plaat 150 × 250 × 10, a = 4, V = 200 kN, L = 7 m",
+    invoer: { kolomprofiel: 16, liggerprofiel: 24, staalsoort: 355, boutkwaliteit: 109, boutmaat: 20, n_boutrijen: 4, e_kp: 35, p_kp: 60, w_kp: 90, t_kp: 10, b_kp: 150, a_las: 4, V_Ed: 200, L_b: 7 },
+    // Met de hand: h_p = 70 + 180 = 250 ≤ h − 2t_f = 278,6 mm; d_w = 300 − 21,4 − 30 = 248,6 → l_w = 248,6 mm.
+    // F_v,Rd = 0,5·1000·245/1,25 = 98,0 kN (L_j = 180 ≤ 300). k_1 = 2,8·30/22 − 1,7 = 2,118, k_1,c = 2,5;
+    // α_b,e = 35/66 = 0,5303, α_b,i = 60/66 − 0,25 = 0,6591. F_b,kp,e = 2,118·0,5303·490·20·10/1,25 = 88,07,
+    // F_b,kp,i = 109,5, F_b,c,i = 2,5·0,6591·117 600 = 193,8, F_b,c,e = 294,0 kN. 109,5 > 98,0, dus
+    // V_b,Rd = 8·min(98,0; 88,07) = 704,5 kN → UC 0,2839. Kopplaat: A_nv = (250 − 35 − 3,5·22)·10 = 1380 mm²,
+    // (3.10) 2·(0,5·490·190/1,25 + 355·1380/√3) = 640,2 kN. Liggerlijf 7,1·248,6·355/√3 = 361,8 kN → UC 0,5528.
+    // Las: f_vw,d = 490/(√3·0,9·1,25) = 251,5; 2·4·240,6·251,5 = 484,0 kN. (6.32): 0,36·20·√(1000/355) = 12,08 mm.
+    // Rotatie: φ_Ed = 200 000·7000²/(8·210 000·8356·10⁴) = 0,06981, φ_Rd = 10/25 = 0,4 → UC 0,1745.
+    handwerk: {
+      h_p: "250", l_w: "248.6", F_v_Rd: "98.00", k_1: "2.118", α_b_e: "0.5303", α_b_i: "0.6591", F_b_kp_e: "88.07", F_b_kp_i: "109.5",
+      F_b_c_i: "193.8", F_b_c_e: "294.0", V_b_Rd: "704.5", UC_b: "0.2839", A_nv: "1380", V_eff_2_Rd: "640.2", V_kp_Rd: "640.2",
+      V_wb_Rd: "361.8", UC_wb: "0.5528", f_vw_d: "251.5", V_w_Rd: "484.0", t_max: "12.08", φ_Ed: "0.06981", UC_φ: "0.1745",
+    },
+    maatgevend: "liggerlijf",
+  },
+  {
+    naam: "19 — HEA 160 / IPE 200, S355, 2 × 2 M24 4.6: α_b in de kolomflens is f_ub/f_u",
+    invoer: { kolomprofiel: 4, liggerprofiel: 21, staalsoort: 355, boutkwaliteit: 46, boutmaat: 24, n_boutrijen: 2, e_kp: 35, p_kp: 60, w_kp: 80, t_kp: 8, b_kp: 150, a_las: 3, V_Ed: 60, L_b: 5 },
+    // Met de hand: α_b,c = 400/490 = 0,8163 → F_b,c,e = 2,5·0,8163·490·24·9/1,25 = 172,8 kN.
+    // F_v,Rd = 0,6·400·353/1,25 = 67,78 kN < F_b,kp,e = 69,88 kN, dus V_b,Rd = 4·67,78 = 271,1 kN.
+    // (6.32): 0,36·24·√(400/355) = 9,171 mm ≥ 8 mm. Liggerlijf 5,6·130·355/√3 = 149,2 kN → UC 0,4021.
+    handwerk: { α_b_c: "0.8163", F_b_c_e: "172.8", F_v_Rd: "67.78", F_b_kp_e: "69.88", V_b_Rd: "271.1", t_max: "9.171", V_wb_Rd: "149.2", UC_wb: "0.4021" },
+    maatgevend: "liggerlijf",
   },
 ];
 

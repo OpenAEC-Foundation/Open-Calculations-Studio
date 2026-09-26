@@ -133,7 +133,7 @@ f_y = staalsoort*N/mm^2', tabel 3.1 van EN 1993-1-1, t ≤ 40 mm<span class="kol
 #if bron_fi ≡ 1
     '<i>E<sub>fi,d</sub> = η<sub>fi</sub>·E<sub>d</sub> (§2.4.2(2)). Vereenvoudigd is η<sub>fi</sub> = 0,65, bij categorie E 0,7 (§2.4.2(3)). Bij een overwegend blijvende belasting komt η<sub>fi</sub> hoger uit, tot 1/γ<sub>G</sub> uit (6.10a), in CC2 1/1,35 = 0,74: reken hem dan uit, of vul de rekenwaarde uit (6.11b) van NEN-EN 1990 in.</i><span class="alleen-scherm"></span>
 #else
-    '<i>De rekenwaarde uit de buitengewone combinatie (6.11b) van NEN-EN 1990, met ψ<sub>1,1</sub> bij de overheersende veranderlijke belasting en alle γ = 1,0.</i><span class="alleen-scherm"></span>
+    '<i>De rekenwaarde uit de buitengewone combinatie (6.11b) van NEN-EN 1990, met alle γ = 1,0 en ψ<sub>2,1</sub> bij de overheersende veranderlijke belasting (tabel NB.10 – A1.3 van de NB; ψ<sub>1,1</sub> alleen voor wind bij brand in de beoordeling van disproportionele schade).</i><span class="alleen-scherm"></span>
 #end if
 #if werking ≤ 2
     #if bron_fi ≡ 1
@@ -157,7 +157,7 @@ f_y = staalsoort*N/mm^2', tabel 3.1 van EN 1993-1-1, t ≤ 40 mm<span class="kol
 #if werking ≡ 2
     L_kip = ?*(m)', kiplengte tussen de gaffels<span class="kolom-3"></span>'
     C_1 = ?', tabel NB.NB.1<span class="kolom-3"></span>'
-    C_2 = ?', tabel NB.NB.1<span class="alleen-scherm">, negatief bij een last op de gedrukte flens; een gelijkmatige last op de bovenflens, naar het buitenvlak geëxtrapoleerd: −0,45·h/(h − t<sub>f</sub>)</span><span class="kolom-3"></span>'
+    C_2 = ?', tabel NB.NB.1<span class="alleen-scherm">, negatief bij een last op de bovenflens;een gelijkmatige last op de bovenflens, naar het buitenvlak geëxtrapoleerd: −0,45·h/(h − t<sub>f</sub>)</span><span class="kolom-3"></span>'
 #else if werking ≡ 3
     L_fi = ?*(m)', kniklengte bij brand<span class="alleen-scherm">; in een geschoord gebouw met een brandcompartiment per verdieping 0,5·L, op de bovenste verdieping 0,7·L (§4.2.3.2)</span>'
 #end if
@@ -244,7 +244,7 @@ instab = if(klasse < 4 and (werking ≡ 2 or werking ≡ 3); 1; 0)
         θ_a,cr = 20', °C: μ<sub>0</sub> > 1, het element bezwijkt al bij normale temperatuur'
     #end if
 #else
-    α_fi = 0.65*sqrt(235/staalsoort)', §4.2.3.2 en §4.2.3.3<span class="kolom-2"></span>'
+    α_fi = 0.65*sqrt(235 N/mm^2/f_y)', §4.2.3.2 en §4.2.3.3<span class="kolom-2"></span>'
     #if werking ≡ 2
         W_y', W<sub>pl,y</sub> in klasse 1 en 2, W<sub>el,y</sub> in klasse 3 (§4.2.3.4)<span class="kolom-2"></span>'
         #hide

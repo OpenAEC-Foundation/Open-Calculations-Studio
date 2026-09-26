@@ -32,7 +32,7 @@ const DEFAULTS: Record<string, number> = {
   kolomvorm: 1, paalvorm: 1, d_kolom: 500, b_kolom: 500, b_paal: 450, l_paal: 450,
   b_poer: 600, h_poer: 1250, l_hoh: 1600, oversteek: 400, e_paal: 100,
   betonklasse: 35, betonstaal: 2, betonoppervlak: 1, c_dek: 55,
-  n_langs: 6, d_langs: 32, n_sneden: 3, d_beugel: 12, s_beugel: 100,
+  n_langs: 6, d_langs: 32, n_sneden: 4, d_beugel: 12, s_beugel: 75,
   F_Ed: 3600, M_Ed: 0, F_fr: 2500, R_cd: 2400,
 };
 
@@ -63,7 +63,7 @@ export default function TweepaalsPoerDesigner() {
   const staal = Math.round(d("betonstaal"));
   const opp = Math.round(d("betonoppervlak"));
   const cDek = Math.max(20, d("c_dek"));
-  const nL = clamp(Math.round(d("n_langs")), 2, 16), dL = Math.max(10, d("d_langs"));
+  const nL = clamp(Math.round(d("n_langs")), 1, 16), dL = Math.max(10, d("d_langs"));
   const nSn = clamp(Math.round(d("n_sneden")), 2, 6);
   const dBg = Math.max(6, d("d_beugel")), sBg = Math.max(50, d("s_beugel"));
   const FEd = d("F_Ed"), MEd = d("M_Ed"), Ffr = d("F_fr"), Rcd = d("R_cd");
@@ -197,7 +197,7 @@ export default function TweepaalsPoerDesigner() {
           </label>
           <label>Trekband
             <span style={{ display: "flex", gap: 4 }}>
-              <input type="number" step={1} min={2} max={16} value={nL} style={{ width: 46 }}
+              <input type="number" step={1} min={1} max={16} value={nL} style={{ width: 46 }}
                 onChange={(e) => set("n_langs", parseFloat(e.target.value))} />
               <select value={dL} onChange={(e) => set("d_langs", parseFloat(e.target.value))}>
                 {DIAM.map((x) => <option key={x} value={x}>Ø{x}</option>)}

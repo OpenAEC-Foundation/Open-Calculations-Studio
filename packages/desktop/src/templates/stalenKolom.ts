@@ -19,11 +19,12 @@
  * Aan de veilige kant, en op het blad vermeld: C_1 = 1,0 als eindmomenten en
  * q_z samengaan of L_cr ≠ L, met de C_2 van q_z alleen voor een last op de
  * gedrukte flens (een stabiliserende C_2 telt dan niet mee); C_mLT = 1,0 als
- * L_cr ≠ L; C_my = 0,9 en
- * L_cr,y ≥ L bij verplaatsbare knopen (voetnoot tabel B.3); bij
- * V_Ed > 0,5·V_pl,Rd (1 − ρ)·f_y over de hele doorsnede; is het lijf bij
- * zuivere druk slank (c/t > 42ε), dan telt A_eff (NEN-EN 1993-1-5 §4.4) voor
- * N in §6.2 én §6.3. De factor f uit 6.3.2.3(2) is weggelaten.
+ * L_cr ≠ L; C_my = 0,9 (voetnoot tabel B.3) en L_cr,y ≥ L bij verplaatsbare
+ * knopen; bij V_Ed > 0,5·V_pl,Rd (1 − ρ)·f_y over de hele doorsnede; is het
+ * lijf bij zuivere druk slank (c/t > 42ε), dan telt A_eff (NEN-EN 1993-1-5
+ * §4.4) voor N in §6.2 én §6.3. De factor f uit 6.3.2.3(2) is weggelaten.
+ * Bij L_cr/h < 5 meldt het blad dat bijlage NB.NB niet geldt (NB.NB.1(2)),
+ * net als de gevelkolom.
  *
  * Profielen HEA 100–300, HEB 100–300 en IPE 200–400 (id's 1–27, gelijk aan
  * components/calc/profielen.ts). De matrix hieronder is daar uit geplakt met
@@ -301,6 +302,9 @@ m_aan = if(abs(M_yA) + abs(M_yB) > 0 kN*m; 1; 0)
 kipgeval = if(L_cr ≠ L_kolom; 3; if(q_aan ≡ 1; if(m_aan ≡ 1; 3; 2); 1))
 C_2,q = if(lasthoogte ≡ 1; -0.45*h/(h - t_f); if(lasthoogte ≡ 2; 0; 0.45))
 #show
+#if L_cr < 5*h
+    '<b style="color:#b45309">L<sub>cr</sub>/h &lt; 5: de rekenregels van bijlage NB.NB gelden hier niet (NB.NB.1(2)); toets de gedrukte rand volgens NB.NB.4.2(3).</b>
+#end if
 #if kipgeval ≡ 1
     'M<sub>cr</sub> volgens bijlage NB.NB, tabel NB.NB.1 geval 1 (eindmomenten, β = ψ = 'ψ')<span class="alleen-scherm">: L<sub>kip</sub> = (1,4 − 0,8β)·L<sub>cr</sub> tussen 1,0 en 1,4·L<sub>cr</sub>, C<sub>1</sub> = 1,75 − 1,05β + 0,3β² ≤ 2,3 en C<sub>2</sub> = 0</span>.
     L_kip = min(max(1.4 - 0.8*(ψ); 1); 1.4)*L_cr to mm'<span class="alleen-scherm"></span>'

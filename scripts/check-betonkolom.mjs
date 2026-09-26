@@ -11,7 +11,7 @@
  *      uit een eigen bisectie op log x. Daarna dezelfde normketen: imperfectie
  *      (5.1)/(5.2), λ_lim (5.13N), de nominale kromming (5.31)–(5.37), de
  *      scheiding (5.38) en (5.39) in twee gevallen, en de detaillering van
- *      §9.5 en §9.8.5. Het blad moet op vier significante cijfers overeenkomen.
+ *      §9.5 en §9.8.5. Het blad moet op 0,2 % overeenkomen.
  *   2. Voor het standaardgeval een handberekening, en twee grensgevallen: net
  *      onder en net boven λ_lim, en net onder en net boven N_Rd,max.
  *

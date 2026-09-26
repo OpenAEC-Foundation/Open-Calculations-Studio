@@ -68,7 +68,8 @@ function uitwerking(v) {
   if (v.typelas === 2) {
     if (v.t_plaat <= 0 || v.t_plaat > 80 || v.L_las < v.t_plaat) return { ...uit, fout: 3 };
     const L = v.L_las, t = v.t_plaat;
-    const fyd = v.t_plaat > 40 ? v.staalsoort - 20 : v.staalsoort;
+    // §4.7.1: het zwakste verbonden deel; bij één staalsoort het dikste (tabel 3.1).
+    const fyd = tk === 80 ? v.staalsoort - 20 : v.staalsoort;
     const A = L * t, Wy = (t * L * L) / 6, Wz = (L * t * t) / 6, Wt = ((L * t * t) / 3) * (1 - (0.63 * t) / L);
     const sEd = Fx / A + My / Wy + Mz / Wz;
     const tEd = (1.5 * Math.hypot(Fy, Fz)) / A + Mx / Wt;
@@ -414,6 +415,23 @@ const SETS = [
     handwerk: { W_t: { waarde: "31650", tol: 5, waarom: "blad toont 4 cijfers" }, σ_Ed: "197.6", τ_Ed: "61.69", UC_s: "0.817" },
     geenMelding: /Toets van de hoeklas|Lange verbinding/,
     oordeel: "voldoet",
+  },
+  {
+    naam: "32 — stompe las: plaat 20 mm op een deel van 40 tot 80 mm, f_y van het dikste deel (§4.7.1)",
+    invoer: { typelas: 2, staalsoort: 355, dikte: 80, L_las: 250, t_plaat: 20,
+      F_xEd: 400, F_yEd: 30, F_zEd: 150, M_xEd: 0.5, M_yEd: 12, M_zEd: 1 },
+    // Zelfde spanningen als set 31: √(197,6² + 3·61,69²) = 224,6 N/mm².
+    // S355, dikste deel 40–80 mm: f_y = 335 → UC = 224,6/335 = 0,671 (met f_y = 355 was het 0,633).
+    handwerk: { σ_Ed: "197.6", τ_Ed: "61.69", UC_s: "0.671" },
+    melding: /t ≤ 80 mm/,
+    oordeel: "voldoet",
+  },
+  {
+    naam: "33 — keeldikte 0 met een overlapverbinding: alleen de melding over a, geen β_Lw = −∞",
+    invoer: { a_las: 0, langeverb: 1 },
+    melding: /te kleine keeldikte/,
+    geenMelding: /te lang voor \(4\.9\)|∞/,
+    oordeel: "voldoet niet",
   },
 ];
 

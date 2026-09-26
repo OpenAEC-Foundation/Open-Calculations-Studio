@@ -34,13 +34,15 @@ const LIGGERS = [21, 22, 23, 24, 25, 26, 27];
 
 /**
  * Beginwaarden van een nieuw blad. Een kopplaat van 10 mm haalt met M16 8.8
- * in S235 de ductiliteitseis (6.32) van 10,6 mm; 12 mm niet.
+ * in S235 de ductiliteitseis (6.32) van 10,6 mm; 12 mm niet. De overspanning
+ * past bij de dwarskracht: bij een gelijkmatige belasting is M_Ed = V·L/4 =
+ * 80 kNm, binnen de 86 kNm van de IPE 240.
  */
 const DEFAULTS: Record<string, number> = {
   verbindingsvorm: 1, kolomprofiel: 7, liggerprofiel: 22,
   staalsoort: 235, boutkwaliteit: 88, boutmaat: 16, hartlijn: 1,
   n_boutrijen: 3, t_kp: 10, b_kp: 120, e_kp: 25, p_kp: 50, w_kp: 70,
-  a_las: 5, V_Ed: 80, L_b: 6,
+  a_las: 5, V_Ed: 80, L_b: 4,
 };
 
 /** UC's per toets zoals het blad ze noemt; een toets die niet doorging, staat er niet. */

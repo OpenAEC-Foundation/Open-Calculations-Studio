@@ -15,19 +15,24 @@
  *     als het vierkant met dezelfde oppervlakte. Past de knoop niet
  *     (d² ≤ a_k·a), dan voldoet de poer niet.
  *   • Trekband F_td = R_Ed·a/z met de zwaarst belaste paal voor beide helften.
- *   • Knopen: onder de kolom (6.60) met k_1 = 1,0, boven de paal (6.61) met
- *     k_2 = 0,85; daar zowel de oplegspanning als de diagonaal aan de knoop
- *     (figuur 6.27, u = 2·y_s). De verhoging van 6.5.4(5) is niet benut.
+ *   • Knopen: onder de kolom (6.60) met k_1 = 1,0, met een plastisch drukblok
+ *     waarvan de resultante op e_k = M_Ed/F_Ed ligt (een ronde kolom als het
+ *     vierkant a_k); valt de resultante buiten a_k/2, dan krijgt de
+ *     kolomwapening trek en is de knoop niet getoetst. Boven de paal (6.61)
+ *     met k_2 = 0,85; daar zowel de oplegspanning als de diagonaal aan de
+ *     knoop (figuur 6.27, u = 2·y_s). De verhoging van 6.5.4(5) is niet benut.
  *   • Verankering vanaf de binnenkant van de paal (6.5.4(7)), langs de
  *     staafas (8.4.3(3)): recht deel, ombuiging en opgebogen deel tot onder de
  *     dekking. α_5 uit de druk van de paal, gespreid onder 45° tot de trekband
  *     (9.8.1(5)); α_2 = α_3 = α_4 = 1. De doorndiameter volgt tabel 8.1Na en
  *     (8.1) met de volle staafkracht; de ombuiging moet voorbij het paalhart
  *     liggen, zodat de trekband boven de paal recht doorloopt. Beide met de
- *     paal e_paal naar de kop van de poer verschoven (9.8.1(1)).
+ *     paal e_paal naar de kop van de poer verschoven (9.8.1(1)). Het
+ *     opgebogen einde is ten minste 5φ (figuur 8.1) en moet in de poer passen.
  *   • Dwarskracht met a_v tussen kolomrand en paalrand: V_Rd,c (6.2a/b) met
- *     β = a_v/2d (6.2.2(6)) of de beugels in 0,75·a_v (6.19), en de
- *     bovengrens (6.5)/(6.9) zonder β.
+ *     β = a_v/2d en a_v ≥ 0,5·d (6.2.2(6)), of de beugels in het middendeel
+ *     0,75·a_v van de werkelijke a_v (6.19): alleen die kruisen de scheur
+ *     tussen kolom en paal. De bovengrens (6.5)/(6.9) zonder β.
  *   • Scheurwijdte (7.3.4) met de staalspanning uit de trekband (7.3.1(8))
  *     onder de frequente combinatie (tabel 7.1N van de NB). k_x = 1. Een
  *     betonoppervlak dat niet te inspecteren is krijgt w_max = 0,2 mm: een
@@ -37,7 +42,8 @@
  *     boven de paal en de beugelafstanden (9.2.2(6) en (8), NB).
  *
  * Niet getoetst: de dwarsrichting (koppelbalken of ingeklemde palen), een
- * trekpaal (dan zegt de slotregel "niet volledig getoetst"), de verankering
+ * trekpaal of trek in de kolomvoet (dan zegt de slotregel "niet volledig
+ * getoetst"), de dwarstrek in de drukdiagonalen (6.5.3(3)), de verankering
  * van de paalwapening, huidwapening (7.3.3(3)) en bovenwapening.
  *
  * Geen referentieberekening beschikbaar; scripts/check-poer.mjs rekent de
@@ -206,15 +212,25 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
 
     # 6. Knopen (§6.5.4)
 
-    R_k = F_Ed/2 + abs(M_Ed)/l_hoh to kN', kolomlast op de zwaarst belaste diagonaal<span class="kolom-2"></span>'
     #if kolomvorm ≡ 1
-        A_k = pi/4*d_kolom^2 to mm^2'<span class="kolom-2"></span>'
+        A_k = pi/4*d_kolom^2 to mm^2'<span class="kolom-3"></span>'
     #else
-        A_k = d_kolom*b_kolom to mm^2'<span class="kolom-2"></span>'
+        A_k = d_kolom*b_kolom to mm^2'<span class="kolom-3"></span>'
     #end if
-    σ_Ed,1 = 2*R_k/A_k to N/mm^2', gelijk aan de oplegspanning onder de kolom<span class="kolom-2"></span>'
-    σ_Rd,1 = ν_k*f_cd', k<sub>1</sub> = 1,0 (6.60)<span class="kolom-2"></span>'
-    UC_kn,1 = σ_Ed,1/σ_Rd,1', knoop onder de kolom'
+    e_k = abs(M_Ed)/max(F_Ed; 1 kN) to mm', excentriciteit van de kolomlast<span class="kolom-3"></span>'
+    σ_Rd,1 = ν_k*f_cd', k<sub>1</sub> = 1,0 (6.60)<span class="kolom-3"></span>'
+    #hide
+    UC_kn,1 = 0
+    #show
+    #if 2*e_k < a_k
+        σ_Ed,1 = F_Ed/(A_k*(1 - 2*e_k/a_k)) to N/mm^2', drukblok onder de kolom met de resultante op e<sub>k</sub><span class="kolom-2"></span>'
+        UC_kn,1 = σ_Ed,1/σ_Rd,1', knoop onder de kolom'
+    #else
+        #hide
+        ok_druk = 0
+        #show
+        '<b style="color:#b45309">De kolomlast valt buiten de halve kolommaat (2·e<sub>k</sub> ≥ a<sub>k</sub>): de kolomwapening krijgt trek en de knoop onder de kolom is niet getoetst.</b>
+    #end if
     #if paalvorm ≡ 1
         A_p = b_paal*l_paal to mm^2'<span class="kolom-3"></span>'
         a_p = b_paal'<span class="kolom-3"></span>'
@@ -255,18 +271,18 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
     l_1 = o_min + a_p/2 - c_dek - φ_m/2 - d_langs', recht, vanaf de binnenkant van de paal (6.5.4(7))<span class="kolom-3"></span>'
     l_v = h_poer - c_dek - y_s - r_b', opgebogen, tot onder de dekking<span class="kolom-3"></span>'
     l_b,besch = l_1 + pi*r_b/2 + l_v', beschikbaar langs de staafas (8.4.3(3))<span class="kolom-2"></span>'
-    l_v,nodig = max(l_bd - l_1 - pi*r_b/2; 0 mm)', opgebogen deel dat ten minste nodig is<span class="kolom-2"></span>'
+    l_v,nodig = max(l_bd - l_1 - pi*r_b/2; 5*d_langs)', opgebogen deel dat ten minste nodig is, ≥ 5φ (figuur 8.1)<span class="kolom-2"></span>'
     UC_ank = l_bd/l_b,besch', verankering van de trekband'
 
     # 8. Dwarskracht (§6.2.2(6), §6.2.3(8))
 
-    a_v = max(l_hoh/2 - d_kolom/2 - b_paal/2; 0.5*d)', kolomrand tot paalrand, ten minste 0,5·d<span class="kolom-2"></span>'
-    β = min(1; a_v/(2*d))'<span class="kolom-2"></span>'
+    a_v = max(l_hoh/2 - d_kolom/2 - b_paal/2; 0 mm)', van de kolomrand tot de paalrand<span class="kolom-2"></span>'
+    β = min(1; max(a_v; 0.5*d)/(2*d))', met a<sub>v</sub> ten minste 0,5·d<span class="kolom-2"></span>'
     k = min(2; 1 + sqrt(200 mm/d))'<span class="kolom-3"></span>'
     ρ_l = min(0.02; A_s/(b_poer*d))'<span class="kolom-3"></span>'
     v_Rd,c = max(0.12*k*(100*ρ_l*betonklasse)^(1/3); 0.035*k^1.5*sqrt(betonklasse))*N/mm^2', (6.2a), (6.2b)<span class="kolom-3"></span>'
     V_Rd,c = v_Rd,c*b_poer*d to kN'<span class="kolom-3"></span>'
-    n_bg = floor(0.75*a_v/s_beugel)', beugels in 0,75·a<sub>v</sub><span class="kolom-3"></span>'
+    n_bg = floor(0.75*a_v/s_beugel)', beugels in het middendeel 0,75·a<sub>v</sub><span class="kolom-3"></span>'
     V_Rd,s = n_bg*n_sneden*pi/4*d_beugel^2*f_yd to kN', (6.19)<span class="kolom-3"></span>'
     UC_V = β*R_Ed/max(V_Rd,c; V_Rd,s)', V<sub>Ed</sub> = R<sub>Ed</sub>, met β'
     V_Rd,max = 0.5*0.6*ν_k*f_cd*b_poer*0.9*d to kN', (6.5) en (6.9) met θ = 45° en z = 0,9·d<span class="kolom-2"></span>'
@@ -324,6 +340,12 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
         #show
         '<b style="color:#b91c1c">De trekband is kleiner dan de minimumwapening (9.2.1.1, 9.8.1(3)).</b>
     #end if
+    #if l_v < 5*d_langs
+        #hide
+        ok_det = 0
+        #show
+        '<b style="color:#b91c1c">Het opgebogen einde past niet in de hoogte van de poer: l<sub>v</sub> < 5φ (figuur 8.1).</b>
+    #end if
     #if b_band > b_zone
         #hide
         ok_det = 0
@@ -353,7 +375,11 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Draagvermogen paal</td><td style="padding:3px 8px;">NEN 9997-1 (7.1)</td><td style="padding:3px 8px; text-align:right; color:#9ca3af;">—</td><td style="padding:3px 8px; color:#9ca3af;">niet getoetst</td></tr>
     #end if
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Trekband</td><td style="padding:3px 8px;">§6.5.3</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_trek)'">'UC_trek'</td><td style="padding:3px 8px; color:'kleur(UC_trek)'">'oordeel(UC_trek)'</td></tr>
-    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Knoop onder de kolom</td><td style="padding:3px 8px;">(6.60)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_kn,1)'">'UC_kn,1'</td><td style="padding:3px 8px; color:'kleur(UC_kn,1)'">'oordeel(UC_kn,1)'</td></tr>
+    #if 2*e_k < a_k
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Knoop onder de kolom</td><td style="padding:3px 8px;">(6.60)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_kn,1)'">'UC_kn,1'</td><td style="padding:3px 8px; color:'kleur(UC_kn,1)'">'oordeel(UC_kn,1)'</td></tr>
+    #else
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Knoop onder de kolom</td><td style="padding:3px 8px;">(6.60)</td><td style="padding:3px 8px; text-align:right; color:#9ca3af;">—</td><td style="padding:3px 8px; color:#9ca3af;">niet getoetst</td></tr>
+    #end if
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Knoop boven de paal</td><td style="padding:3px 8px;">(6.61)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_kn,2)'">'UC_kn,2'</td><td style="padding:3px 8px; color:'kleur(UC_kn,2)'">'oordeel(UC_kn,2)'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Verankering trekband</td><td style="padding:3px 8px;">§8.4, §9.8.1(5)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_ank)'">'UC_ank'</td><td style="padding:3px 8px; color:'kleur(UC_ank)'">'oordeel(UC_ank)'</td></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Ombuiging voorbij het paalhart</td><td style="padding:3px 8px;">§8.3</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_rol)'">'UC_rol'</td><td style="padding:3px 8px; color:'kleur(UC_rol)'">'oordeel(UC_rol)'</td></tr>
@@ -374,7 +400,7 @@ ok_inv = if(h_poer > c_dek + d_beugel + d_langs/2 and l_hoh > 2*x_k0 and e_paal 
     #else if UC_max > 1.0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> ('maatg') > 1,0 → <b>de poer voldoet niet</b></span>
     #else if ok_druk ≡ 0
-        '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ('maatg') ≤ 1,0, maar een paal krijgt trek → <b>de poer is niet volledig getoetst</b></span>
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ('maatg') ≤ 1,0, maar een paal of de kolomvoet krijgt trek → <b>de poer is niet volledig getoetst</b></span>
     #else
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ('maatg') ≤ 1,0 → <b>de poer voldoet</b></span>
     #end if

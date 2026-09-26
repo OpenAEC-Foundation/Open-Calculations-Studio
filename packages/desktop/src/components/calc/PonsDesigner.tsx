@@ -80,7 +80,7 @@ export default function PonsDesigner() {
   const dSw = Math.max(4, d("d_sw")), nSw = Math.max(1, Math.round(d("n_sw")));
   const nOm = Math.max(1, Math.round(d("n_om")));
   const sR = Math.max(10, d("s_r")), aSw = Math.max(0, d("a_sw"));
-  const hoekPons = clamp(d("hoek_pons"), 30, 90);
+  const hoekPons = clamp(d("hoek_pons"), 45, 90);
 
   // Nuttige hoogte: de buitenste laag aan de trekzijde ligt op dekking.
   const dBuiten = eerst === 1 ? dy : dz;
@@ -276,7 +276,7 @@ export default function PonsDesigner() {
                 <input type="number" step={10} value={d("a_sw")} onChange={(e) => set("a_sw", parseFloat(e.target.value))} />
               </label>
               <label>Hoek α (°)
-                <input type="number" step={5} min={30} max={90} value={d("hoek_pons")} onChange={(e) => set("hoek_pons", parseFloat(e.target.value))} />
+                <input type="number" step={5} min={45} max={90} value={d("hoek_pons")} onChange={(e) => set("hoek_pons", parseFloat(e.target.value))} />
               </label>
             </>
           )}
@@ -413,7 +413,7 @@ export default function PonsDesigner() {
             : <UcChip naam="pons" uc={g.UC_pons} />}
           <UcChip naam="langs de kolom" uc={g.UC_vRd_max} />
           {g.UC_cs !== undefined && (
-            <UcChip naam="detaillering" uc={Math.max(g.UC_uit ?? 0, g.UC_n ?? 0, g.UC_sr ?? 0, g.UC_a ?? 0, g.UC_st ?? 0, g.UC_st_uit ?? 0, g.UC_min ?? 0)} />
+            <UcChip naam="detaillering" uc={Math.max(g.UC_uit ?? 0, g.UC_n ?? 0, g.UC_sr ?? 0, g.UC_a ?? 0, g.UC_h ?? 0, g.UC_st ?? 0, g.UC_st_uit ?? 0, g.UC_min ?? 0)} />
           )}
         </span>
       </div>
