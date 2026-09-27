@@ -256,11 +256,18 @@ function momenten(st: Strook, a: number, b: number): [number, number, number] {
   return [f * (p0 - q0), f * (p1 - q1), f * (p2 - q2)];
 }
 
-/** Breedte van een strook in s (0 buiten het bereik). */
-function breedte(st: Strook, s: number): number {
-  if (st.soort === 'blok') return s > st.lo && s < st.hi ? st.w : 0;
-  if (!(s > st.lo && s < st.hi)) return 0;
-  const t = s - st.c;
+/**
+ * Breedte van een strook op de lijn s, aan de kant van p: 0 als p buiten het
+ * bereik ligt, anders de breedte in s zelf (binnen het bereik geklemd). Met p
+ * net onder of boven s is dat de limiet van die kant; de breedte van een
+ * schijf wordt in s uitgerekend en niet in p, want bij de rand van een boog
+ * (de aansluiting van een afronding) loopt √(R² − t²) steil en zou een kleine
+ * verschuiving al zichtbaar schelen.
+ */
+function breedte(st: Strook, p: number, s: number = p): number {
+  if (!(p > st.lo && p < st.hi)) return 0;
+  if (st.soort === 'blok') return st.w;
+  const t = Math.min(Math.max(s, st.lo), st.hi) - st.c;
   return st.f * 2 * Math.sqrt(Math.max(st.R * st.R - t * t, 0));
 }
 
@@ -394,7 +401,7 @@ export function doorsnedeStatisch(D: unknown, as: number, s: number): number[] {
   const δ = 1e-9 * schaal;
   const b = (p: number) => {
     let w = 0;
-    for (const d of delen) for (const st of r === 'z' ? d.inZ : d.inY) w += Math.sign(d.n) * breedte(st, p);
+    for (const d of delen) for (const st of r === 'z' ? d.inZ : d.inY) w += Math.sign(d.n) * breedte(st, p, s);
     return w;
   };
   const S = S1 - c * A1;

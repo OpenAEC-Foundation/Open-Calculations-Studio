@@ -7,8 +7,10 @@
  *
  *   1. De rekenkern: alle 27 I- en H-profielen uit profielen.ts nagerekend uit
  *      h, b, t_w, t_f en r (A, I_y, I_z, W_pl,y, W_pl,z op de afronding van de
- *      tabel), een rechthoek, een cirkel, een buis, een liggend profiel, het
- *      statisch moment en de omtrek voor de tekening.
+ *      tabel), een IPE 300 volledig met de hand (afrondingen als vierkant min
+ *      kwart cirkel, de breedte in de aansluiting van lijf en flens), een
+ *      rechthoek, een cirkel, een buis, een liggend profiel, het statisch
+ *      moment en de omtrek voor de tekening.
  *   2. Doorsnede in het blad:
  *      a. T-doorsnede (flens 200 × 20, lijf 10 × 300): zwaartepunt, Steiner,
  *         W_el boven en onder, S op de zwaartelijn en in de aansluiting,
@@ -18,6 +20,9 @@
  *      c. Koker 200 × 200 als rechthoek met een gat 100 × 100 (n = −1).
  *      d. L-vorm uit twee rechthoeken: I_yz, de hoofdassen (α = 45°).
  *      e. Een enkel profiel uit de tabel: de tabelwaarden, staand en liggend.
+ *      f. Asymmetrisch hout met een stalen strip rechtsonder (n = 20): I_y,
+ *         I_z, I_yz, de hoofdassen, W per vezel en per deel, S; de
+ *         kanttekening over scheve buiging.
  *   3. Vakwerk in het blad:
  *      a. Driehoek met een pendel, vrij ingevoerd: de knopenmethode (reacties
  *         en alle staafkrachten), statisch bepaald.
@@ -29,8 +34,13 @@
  *      d. Twee staven: de verplaatsing met virtuele arbeid, Σ N·n·L/(EA).
  *      e. Houten Warrenvakwerk met een horizontale last: evenwicht en k_c.
  *      f. Beweeglijk (een staaf te weinig) en onvolledig.
+ *      g. Statisch bepaald vakwerk met de snedemethode, twee verplaatsingen met
+ *         virtuele arbeid, en de staaftoets in hoekstaal (knik om v) en hout.
  *   4. Vergeetmenietjes: alle veertien gevallen, de waarden van de oplosser
- *      tegen de formule hieronder in het script, en in het blad een vinkje.
+ *      tegen de formule hieronder in het script, en in het blad een vinkje;
+ *      een tweede set met de hand (twee steunpunten met q, uitkraging met
+ *      driehoekslast), tweezijdig ingeklemd met de puntlast buiten het midden
+ *      in de liggeroplosser, en een last naar boven.
  *   5. Een leeg blad per keuze, de slotzin zoals de rapportkop hem leest
  *      (geen UC bij doorsnede en vergeetmenietjes), en de registratie.
  *
@@ -201,6 +211,27 @@ console.log("\n1. Rekenkern: doorsnedegrootheden (doorsnede.ts)");
   gelijk("deel op zich (n = 0): A", d[0], 20000);
   gelijk("deel op zich: z_max", d[6], 120);
   gelijk("een deel met n = 0 telt niet mee in het geheel", doorsnedeGrootheden([[1, 100, 200, 0, 0, 0, 10, 20, 0, 0]])[0], 0);
+  // IPE 300 met de hand uit h = 300, b = 150, t_w = 7,1, t_f = 10,7, r = 15 (mm).
+  // Een afronding is een vierkant r × r min een kwart cirkel: A_f = (1 − π/4)·r² = 48,285 mm², zwaartepunt op
+  // e = r·(10 − 3π)/(12 − 3π) = 3,3505 mm van de flens (en van het lijf), I om de flensrand (1 − 5π/16)·r⁴ = 924,0 mm⁴.
+  // A = 2·150·10,7 + 278,6·7,1 + 4·48,285 = 3210 + 1978,06 + 193,14 = 5381,2 mm² (tabel 53,81 cm²).
+  // I_y = 2·(150·10,7³/12 + 1605·144,65²) + 7,1·278,6³/12 + 4·(A_f·139,3² − 2·139,3·A_f·e + 924,0)
+  //     = 67 195 454 + 12 794 415 + 3 571 222 = 83 561 092 mm⁴ (tabel 8356 cm⁴).
+  // W_pl,y = 2·(1605·144,65 + 7,1·139,3²/2 + 2·A_f·(139,3 − e)) = 2·(232 163 + 68 886 + 13 129) = 628 356 mm³ (tabel 628,4 cm³).
+  {
+    const [h, b, tw, tf, r] = [300, 150, 7.1, 10.7, 15];
+    const Af = (1 - Math.PI / 4) * r * r, e = (r * (10 - 3 * Math.PI)) / (12 - 3 * Math.PI), If = (1 - (5 * Math.PI) / 16) * r ** 4, d = h / 2 - tf;
+    const IPE = [[3, h, b, tw, tf, r, 0, 0, 1, 0]];
+    const g3 = doorsnedeGrootheden(IPE);
+    gelijk("IPE 300 met de hand: A", g3[0], 2 * b * tf + (h - 2 * tf) * tw + 4 * Af);
+    gelijk("IPE 300 met de hand: I_y", g3[3], 2 * ((b * tf ** 3) / 12 + b * tf * (h / 2 - tf / 2) ** 2) + (tw * (h - 2 * tf) ** 3) / 12 + 4 * (Af * d * d - 2 * d * Af * e + If));
+    gelijk("IPE 300 met de hand: W_pl,y", doorsnedePlastisch(IPE, 1)[0], 2 * (b * tf * (h / 2 - tf / 2) + (tw * d * d) / 2 + 2 * Af * (d - e)));
+    // Breedte in de aansluiting van lijf en flens (z = 139,3): onder de flens het lijf met de twee afrondingen,
+    // t_w + 2r = 37,1 mm (niet 37,09: de boog loopt daar steil, de breedte hoort in de snede zelf); onderaan de afrondingen t_w.
+    gelijk("IPE 300: breedte in de aansluiting = t_w + 2r", doorsnedeStatisch(IPE, 1, 139.3)[1], tw + 2 * r, 1e-9, 1e-9);
+    gelijk("IPE 300: S in de aansluiting = alleen de flens", doorsnedeStatisch(IPE, 1, 139.3)[0], b * tf * (h / 2 - tf / 2), 1e-9, 1e-6);
+    gelijk("IPE 300: breedte onderaan de afronding = t_w", doorsnedeStatisch(IPE, 1, 124.3)[1], tw, 1e-9, 1e-9);
+  }
   // De omtrek: een rechthoek met vier hoeken, een profiel met 4 + 4·7 + 4 punten.
   const pt = doorsnedeSvgPunten(R, 1, 0, 0, 1).split(" ");
   waar("omtrek van een rechthoek: vier punten, y = −40 … 60, z = −80 … 120", pt.length === 4 && pt[0] === "-40,80" && pt[2] === "60,-120", pt.join(" "));
@@ -288,6 +319,43 @@ console.log("\n2e. Eén profiel uit de tabel: HEB 200 staand en liggend");
     // Tabelwaarden (afronding op vier cijfers): A = 78,08 cm², I_y = 5696 cm⁴, I_z = 2003 cm⁴, W_pl,y = 642,5, W_pl,z = 305,8 cm³.
     toets(r, { A: p.A / 100, I_y: Iy / 1e4, I_z: Iz / 1e4, W_pl_y: Wy / 1000, W_pl_z: Wz / 1000 }, 1e-3);
   }
+}
+
+console.log("\n2f. Asymmetrisch samengesteld: hout 100 × 200 (hart 0; 100) met een stalen strip 60 × 8 rechtsonder (hart 20; −4), n = E_s/E_h = 20");
+{
+  const r = doorreken({
+    taak: "1", samengesteld: "1",
+    ...DEEL(1, 1, { b: 100, h: 200, y: 0, z: 100, n: 1 }), ...DEEL(2, 1, { b: 60, h: 8, y: 20, z: -4, n: 20 }),
+  }, ["homogeen", "ask"]);
+  geenFouten(r, "hout met strip");
+  // Hout: A = 20 000 mm², I_y = 100·200³/12 = 66 666 667, I_z = 200·100³/12 = 16 666 667 mm⁴.
+  // Staal: n·A = 20·480 = 9 600 mm², n·I_y = 20·60·8³/12 = 51 200, n·I_z = 20·8·60³/12 = 2 880 000 mm⁴.
+  // A* = 29 600 mm² = 296 cm²; y_c = 9 600·20/29 600 = 6,486 mm; z_c = (20 000·100 − 9 600·4)/29 600 = 66,270 mm.
+  // Steiner voor twee delen: Σ n·A·a² = μ·d² met μ = 20 000·9 600/29 600 = 6 486,5 mm² en d de afstand tussen de harten:
+  //   I_y = 66 666 667 + 51 200 + μ·104² = 136 875 705 mm⁴ = 13 688 cm⁴
+  //   I_z = 16 666 667 + 2 880 000 + μ·20² = 22 141 261 mm⁴ = 2 214,1 cm⁴
+  //   I_yz = μ·(20 − 0)·(−4 − 100) = −13 491 892 mm⁴ = −1 349,2 cm⁴ (strip rechtsonder: y > y_c en z < z_c).
+  // Hoofdassen: I_1,2 = 7 950,9 ± √(5 736,7² + 1 349,2²) = 7 950,9 ± 5 893,2 → 13 844,1 en 2 057,6 cm⁴;
+  //   α_1 = ½·atan(2·1 349,2/11 473,4) = 6,617° (linksom: de strip rechtsonder draait as 1 omhoog naar rechts).
+  // Vezels: e_b = 200 − 66,27 = 133,73; e_o = 66,27 + 8 = 74,27; e_r = 50 − 6,486 = 43,51; e_l = 56,49 mm.
+  //   W_el,y,b = 1 023,5; W_el,y,o = 1 842,9; W_el,z,r = 508,8; W_el,z,l = 392,0 cm³ (referentiemateriaal hout).
+  //   Per deel: hout I*/(1·133,73) = 1 023,5 cm³ (bovenrand), staal I*/(20·74,27) = 92,15 cm³ (onderrand strip).
+  // S op de zwaartelijn: hout boven z_c, 100·133,73²/2 = 894 182 mm³, b = 100 mm. Rechts van y_c liggen hout en strip
+  //   allebei tot y = 50: per mm breedte ideëel 200 + 20·8 = 360 mm², S_z = 360·43,51²/2 = 340 817 mm³; h_0 = 200 + 8 = 208 mm.
+  // Ter informatie, een vrije ligger (scheve buiging): σ = M_y·(I_z·z − I_yz·y)/(I_y·I_z − I_yz²) geeft in de hoek
+  //   rechtsboven W = 803 cm³ in plaats van 1 023 cm³; daarom de kanttekening in het blad zodra I_yz ≠ 0.
+  const μ = (20000 * 9600) / 29600, zc = 1961600 / 29600, yc = 192000 / 29600;
+  const Iy = 66666666.6667 + 51200 + μ * 104 ** 2, Iz = 16666666.6667 + 2880000 + μ * 20 ** 2, Iyz = μ * 20 * -104;
+  const m = (Iy + Iz) / 2, R = Math.hypot((Iy - Iz) / 2, Iyz);
+  toets(r, {
+    A: 296, y_c: yc, z_c: zc, I_y: Iy / 1e4, I_z: Iz / 1e4, I_yz: Iyz / 1e4, I_1: (m + R) / 1e4, I_2: (m - R) / 1e4,
+    α_1: (0.5 * Math.atan2(-2 * Iyz, Iy - Iz) * 180) / Math.PI, e_b: 200 - zc, e_o: zc + 8, e_r: 50 - yc, e_l: 50 + yc,
+    W_el_y_b: Iy / (200 - zc) / 1000, W_el_y_o: Iy / (zc + 8) / 1000, W_el_z_r: Iz / (50 - yc) / 1000, W_el_z_l: Iz / (50 + yc) / 1000,
+    S_y_max: (100 * (200 - zc) ** 2) / 2 / 1000, b_0: 100, S_z_max: (360 * (50 - yc) ** 2) / 2 / 1000, h_0: 208, homogeen: 0, ask: 1,
+  });
+  const Ws = (Iy / (20 * (zc + 8)) / 1000).toPrecision(4);
+  waar(`W per deel: staal ${Ws} cm³ in de tabel`, r.tekst.includes(` ${Number(Ws)} `));
+  waar("I_yz ≠ 0: kanttekening over scheve buiging bij de weerstandsmomenten", /buigt scheef/.test(r.tekst));
 }
 
 // ── 3. Vakwerk ──────────────────────────────────────────────────────────────
@@ -428,6 +496,59 @@ console.log("\n3f. Beweeglijk en onvolledig");
   waar("onvolledig: vraagt om bestaande knopen, geen slotzin", /nog niet compleet/.test(o.tekst) && !/Maatgevende UC/.test(o.tekst));
 }
 
+console.log("\n3g. Vakwerk met de snedemethode en virtuele arbeid: onderrand 1 (0,0) – 2 (4,0) – 3 (8,0) – 4 (12,0), boven 5 (4,3) en 6 (8,3)");
+{
+  // Staven: 1: 1–2, 2: 2–3, 3: 3–4, 4: 1–5, 5: 5–6, 6: 6–4, 7: 2–5, 8: 3–6, 9: 5–3. Knoop 1 vast, knoop 4 een rol.
+  // Lasten: 20 kN omlaag in 5, 10 kN omlaag in 3, 6 kN naar rechts in 6. s + r = 9 + 3 = 12 = 2k: statisch bepaald.
+  // Reacties: momenten om 1 (linksom +): 12·R_4 − 20·4 − 10·8 − 6·3 = 0 → R_4 = 178/12 = 14,833; R_1y = 30 − 14,833 = 15,167; R_1x = −6.
+  // Snede door veld 2 (staven 5, 9 en 2), linkerdeel met knopen 1, 2 en 5, trek positief:
+  //   momenten om knoop 3 (8,0): −8·15,167 + 4·20 − 3·N_5 = 0 → N_5 = −13,778 kN (druk);
+  //   momenten om knoop 5 (4,3): −4·15,167 − 3·6 + 3·N_2 = 0 → N_2 = 26,222 kN (trek);
+  //   verticaal: 15,167 − 20 − 0,6·N_9 = 0 → N_9 = −8,056 kN (druk); controle horizontaal: −6 − 13,778 + 26,222 − 0,8·8,056 = 0.
+  // Knoop 1: 15,167 + 0,6·N_4 = 0 → N_4 = −25,278; −6 + N_1 + 0,8·N_4 = 0 → N_1 = 26,222. Knoop 2: N_7 = 0 (nulstaaf).
+  // Knoop 4: 14,833 + 0,6·N_6 = 0 → N_6 = −24,722; N_3 = −0,8·N_6 = 19,778. Knoop 6: N_8 = −0,6·N_6 = 14,833.
+  // Verplaatsing van knoop 3 omlaag met virtuele arbeid: eenheidslast 1 omlaag in 3 → R_4 = 2/3, R_1 = 1/3 en
+  //   n = 4/9, 4/9, 8/9, −5/9, −8/9, −10/9, 0, 2/3, 5/9 voor staaf 1 … 9. Σ N·n·L = 427,40 kNm.
+  //   L 100x100x10: EA = 210 000·1 920 N = 403 200 kN → δ = 427,40/403 200 = 1,060 mm; hout 150 × 150 C24:
+  //   EA = 11 000·22 500 N = 247 500 kN → δ = 1,727 mm.
+  // Horizontale verplaatsing van de rol (knoop 4): eenheidslast naar rechts in 4 → n = 1 in de onderrand, 0 elders:
+  //   Σ N·L = (26,222 + 26,222 + 19,778)·4 = 288,89 kNm → 0,7165 mm (staal).
+  const kn = [[0, 0], [4, 0], [8, 0], [12, 0], [4, 3], [8, 3]];
+  const staven = [[1, 2], [2, 3], [3, 4], [1, 5], [5, 6], [6, 4], [2, 5], [3, 6], [5, 3]];
+  const N = [236 / 9, 236 / 9, 178 / 9, -455 / 18, -124 / 9, -445 / 18, 0, 89 / 6, -145 / 18];
+  const n = [4 / 9, 4 / 9, 8 / 9, -5 / 9, -8 / 9, -10 / 9, 0, 2 / 3, 5 / 9];
+  const L = staven.map(([i, j]) => Math.hypot(kn[j - 1][0] - kn[i - 1][0], kn[j - 1][1] - kn[i - 1][1]));
+  const ΣNnL = N.reduce((s, v, k) => s + v * n[k] * L[k], 0);
+  const ΣNL1 = (N[0] + N[1] + N[2]) * 4;
+  const model = { knopen: kn, staven, opl: [[1, 3], [4, 2]], lasten: [[5, 0, 20], [3, 0, 10], [6, 6, 0]] };
+  const namen = [...Nnamen(9), "RR.(1; 2)", "RR.(1; 3)", "RR.(2; 3)", "UU.(3; 3)", "UU.(4; 2)", "graad", "mUC"];
+  const verwacht = Object.fromEntries([...N.map((v, k) => [`Ns(${k + 1})`, v]), ["RR.(1; 2)", -6], ["RR.(1; 3)", 91 / 6], ["RR.(2; 3)", 89 / 6], ["graad", 0], ["mUC", 4]]);
+
+  // Staal: L 100x100x10 S235, knik om de zwakke as v met i_v = 19,5 mm; maatgevend staaf 4 (1–5), 25,28 kN druk over 5 m.
+  // λ̄ = 5000/19,5/(π·√(210 000/235)) = 2,730; Φ = 0,5·(1 + 0,34·2,530 + 2,730²) = 4,657; χ = 1/(4,657 + √(4,657² − 2,730²)) = 0,1186;
+  // N_b,Rd = 0,1186·1920·235 = 53,52 kN; UC = 25,28/53,52 = 0,472. Trek: N_t,Rd = 1920·235 = 451,2 kN.
+  const s = doorreken(vrij(model, { staaf_s: "1", hoek_s: "8", staalsoort: "235" }), namen);
+  geenFouten(s, "snedemethode, staal");
+  const λ = 5000 / 19.5 / (Math.PI * Math.sqrt(210000 / 235)), Φ = 0.5 * (1 + 0.34 * (λ - 0.2) + λ * λ), χ = 1 / (Φ + Math.sqrt(Φ * Φ - λ * λ));
+  toets(s, { ...verwacht, "UU.(3; 3)": -ΣNnL / 403200, "UU.(4; 2)": ΣNL1 / 403200, λ_k: λ, χ, N_b_Rd: (χ * 1920 * 235) / 1000, UC_max: (-N[3] * 1000) / (χ * 1920 * 235) }, 1e-3);
+  waar("snedemethode, staal: staaf 4 op druk, staaf 2 op trek, staaf 7 nulstaaf in de tabel", /4 1–5 5 -25\.28 druk/.test(s.tekst) && /2 2–3 4 26\.22 trek/.test(s.tekst) && /7 2–5 3 0 nulstaaf/.test(s.tekst));
+
+  // Hout: C24 150 × 150, klimaatklasse 1, kort: k_mod = 0,9, γ_M = 1,3; i = 150/√12 = 43,30 mm.
+  // λ_rel = 5000/(43,30·π)·√(21/7400) = 1,958; k = 0,5·(1 + 0,2·1,658 + 1,958²) = 2,583; k_c = 1/(2,583 + √(2,583² − 1,958²)) = 0,2344;
+  // f_c,0,d = 0,9·21/1,3 = 14,54 N/mm²; N_c,Rd = 0,2344·22 500·14,54 = 76,66 kN; UC = 25,28/76,66 = 0,330.
+  // Trek: f_t,0,d = 0,9·14/1,3 = 9,692 N/mm², N_t,Rd = 22 500·9,692 = 218,1 kN.
+  const h = doorreken(vrij(model, { staaf_s: "4", houtklasse: "2", klimaat: "1", duur: "4", b_s: "150", h_s: "150" }), namen);
+  geenFouten(h, "snedemethode, hout");
+  const λr = (5000 / (150 / Math.sqrt(12)) / Math.PI) * Math.sqrt(21 / 7400), kk = 0.5 * (1 + 0.2 * (λr - 0.3) + λr * λr), kc = 1 / (kk + Math.sqrt(kk * kk - λr * λr));
+  toets(h, {
+    ...verwacht, "UU.(3; 3)": -ΣNnL / 247500, λ_rel: λr, k_knik: kk, k_c: kc, f_t_0_d: (0.9 * 14) / 1.3, f_c_0_d: (0.9 * 21) / 1.3,
+    N_c_Rd: (kc * 22500 * ((0.9 * 21) / 1.3)) / 1000, UC_max: (-N[3] * 1000) / (kc * 22500 * ((0.9 * 21) / 1.3)),
+  }, 1e-3);
+  // Op papier staan de karakteristieke waarden in de formule, niet de hulpfunctie van de materiaaltabel.
+  const plat = h.tekst.replace(/\s+/g, "");
+  waar("hout: f_t,0,d en λ_rel tonen f_t,0,k, f_c,0,k en E_0,05, geen hulpfunctie", !/mh\(|ft0dn|fc0dn|ft0d_n|fc0d_n/.test(plat),plat.match(/.{40}(mh\(|ft0d|fc0d).{40}/)?.[0]);
+}
+
 // ── 4. Vergeetmenietjes ─────────────────────────────────────────────────────
 console.log("\n4. Vergeetmenietjes: L = 6 m, q = 10 kN/m, F = 20 kN, a = 2 m, E = 210 000 N/mm², I = 8356 cm⁴");
 {
@@ -479,6 +600,42 @@ console.log("\n4. Vergeetmenietjes: L = 6 m, q = 10 kN/m, F = 20 kN, a = 2 m, E 
   toets(z, { Mv_1: 45, alles_ok: 1 });
 }
 
+console.log("\n4b. Vergeetmenietjes met de hand: L = 5 m, q = 12 kN/m, F = 30 kN, a = 1,5 m, E = 210 000 N/mm², I = 5790 cm⁴");
+{
+  // EI = 210·10⁶ kN/m² · 5790·10⁻⁸ m⁴ = 12 159 kNm².
+  // Geval 1, twee steunpunten met q: M = qL²/8 = 12·25/8 = 37,5 kNm; V = qL/2 = 30 kN; w = 5qL⁴/(384EI) = 37 500/4 669 056 m = 8,032 mm.
+  // Geval 13, uitkraging met driehoekslast, q bij de inklemming: resultante qL/2 = 30 kN op L/3 van de inklemming,
+  //   M = 30·5/3 = qL²/6 = 50 kNm; w = qL⁴/(30EI) = 7 500/364 770 m = 20,56 mm.
+  // Geval 14, driehoekslast met q aan het vrije eind: resultante 30 kN op 2L/3, M = qL²/3 = 100 kNm;
+  //   w = 11qL⁴/(120EI) = 82 500/1 459 080 m = 56,54 mm.
+  const EI = 210e6 * 5790e-8;
+  const r = doorreken({ taak: "3", L_c: "5", q_c: "12", F_c: "30", a_c: "1.5", E_c: "210000", I_c: "5790" }, [
+    "Mv_1", "Vm_1", "Wm_1", "Ms_13", "Vm_13", "Wm_13", "Ms_14", "Vm_14", "Wm_14", "alles_ok",
+    // Tweezijdig ingeklemd met de puntlast buiten het midden staat niet als geval in het blad; de liggeroplosser wel
+    // (x_10 is de uitkomst [x, V, M, w] van de regel ervoor):
+    "ligger(gC(2; 2); lC(2; 1.5; 0; Fc; 0; 0; 0; 0); EIc)",
+    "ligger_int(x_10; 3; 0)", "ligger_int(x_10; 3; 5)", "ligger_int(x_10; 3; 1.5)", "ligger_int(x_10; 2; 0)", "ligger_ext(x_10; 4)[1]", "ligger_ext(x_10; 4)[2]",
+  ]);
+  geenFouten(r, "vergeetmenietjes, tweede set");
+  toets(r, {
+    EI, Mv_1: 37.5, Vm_1: 30, Wm_1: (1000 * 5 * 12 * 5 ** 4) / (384 * EI),
+    Ms_13: 50, Vm_13: 30, Wm_13: (1000 * 12 * 5 ** 4) / (30 * EI), Ms_14: 100, Vm_14: 30, Wm_14: (1000 * 11 * 12 * 5 ** 4) / (120 * EI), alles_ok: 1,
+  }, 1e-3);
+  // Tweezijdig ingeklemd, F = 30 kN op a = 1,5 m, b = 3,5 m: M_A = F·a·b²/L² = 30·1,5·12,25/25 = 22,05 kNm;
+  // M_B = F·a²·b/L² = 9,45 kNm; M_F = 2F·a²·b²/L³ = 13,23 kNm; R_A = F·b²·(3a + b)/L³ = 30·12,25·8/125 = 23,52 kN;
+  // w_max = 2F·b³·a²/(3EI·(3b + a)²) = 2·30·42,875·2,25/(3·12 159·144) = 1,102 mm, op x = L − 2bL/(3b + a) = 2,083 m.
+  const a = 1.5, b = 3.5, F = 30, L = 5;
+  toets(r, {
+    "ligger_int(x_10; 3; 0)": (-F * a * b * b) / L ** 2, "ligger_int(x_10; 3; 5)": (-F * a * a * b) / L ** 2,
+    "ligger_int(x_10; 3; 1.5)": (2 * F * a * a * b * b) / L ** 3, "ligger_int(x_10; 2; 0)": (F * b * b * (3 * a + b)) / L ** 3,
+    "ligger_ext(x_10; 4)[1]": (2 * F * b ** 3 * a * a) / (3 * EI * (3 * b + a) ** 2), "ligger_ext(x_10; 4)[2]": L - (2 * b * L) / (3 * b + a),
+  }, 1e-3);
+  // Een last naar boven: het blad vraagt om lasten naar beneden in plaats van een veldmoment 0 met een kruis.
+  const neg = doorreken({ taak: "3", L_c: "6", q_c: "-10", F_c: "20", E_c: "210000", I_c: "8356" });
+  geenFouten(neg, "last naar boven");
+  waar("last naar boven: melding, geen tabel en geen kruis", /Vul q en F naar beneden in/.test(neg.tekst) && !neg.tekst.includes("✗") && !neg.tekst.includes("✓"));
+}
+
 // ── 5. Leeg blad, alle keuzes, registratie ──────────────────────────────────
 console.log("\n5. Leeg blad per keuze, de andere vormen en de registratie");
 {
@@ -509,6 +666,8 @@ console.log("\n5. Leeg blad per keuze, de andere vormen en de registratie");
     const lr = leesResultaat(r.nodes);
     waar(`staaf: ${naam}: slotzin leesbaar`, lr.uc !== null && lr.voldoet !== null, JSON.stringify(lr));
     if (naam.includes("klasse 4")) waar("hoekstaal S355: klasse 4 → voldoet niet", /klasse 4/.test(r.tekst) && lr.voldoet === false);
+    // Kromme a geldt voor een warmgevormde buis (tabel 6.2); een koudgevormde valt onder c. Die aanname staat in het blad.
+    if (naam === "buis") waar("buis: kromme a met de aanname 'warmgevormd' zichtbaar", /knikkromme a \(tabel 6\.2, warmgevormde buis/.test(r.tekst));
   }
   const index = readFileSync(join(hier, "../packages/desktop/src/templates/index.ts"), "utf8");
   const boom = readFileSync(join(hier, "../packages/desktop/src/components/calc/projectTree.ts"), "utf8");
