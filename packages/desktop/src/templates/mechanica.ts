@@ -708,6 +708,9 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
         W_el,y,o = I_y/max(e_o; 10^-6 mm) to cm^3'<span class="kolom-2"></span>'
         W_el,z,r = I_z/max(e_r; 10^-6 mm) to cm^3'<span class="kolom-2"></span>'
         W_el,z,l = I_z/max(e_l; 10^-6 mm) to cm^3'<span class="kolom-2"></span>'
+        #if ask ≡ 1
+            '<i>I<sub>yz</sub> ≠ 0: σ = M/W<sub>el</sub> geldt alleen als de ligger om de y-as (of de z-as) zelf buigt, dus als hij loodrecht op het vlak van de belasting is gesteund. Een vrije ligger met alleen een moment M<sub>y</sub> om de y-as buigt scheef: σ = M<sub>y</sub>·(I<sub>z</sub>·z − I<sub>yz</sub>·y)/(I<sub>y</sub>·I<sub>z</sub> − I<sub>yz</sub>²), met y en z vanaf het zwaartepunt.</i><span class="alleen-scherm"></span>
+        #end if
         i_y = sqrt(I_y/A) to mm'<span class="kolom-2"></span>'
         i_z = sqrt(I_z/A) to mm'<span class="kolom-2"></span>'
         #if ask ≡ 1
@@ -1310,6 +1313,11 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
     k_mod = if(klimaat ≡ 3; if(duur ≡ 1; 0.5; if(duur ≡ 2; 0.55; if(duur ≡ 3; 0.65; if(duur ≡ 4; 0.7; 0.9)))); if(duur ≡ 1; 0.6; if(duur ≡ 2; 0.7; if(duur ≡ 3; 0.8; if(duur ≡ 4; 0.9; 1.1)))))
     ft0d_n = k_mod*mh(3)*1000/mh(10)
     fc0d_n = k_mod*mh(4)*1000/mh(10)
+    'Dezelfde waarden met hun naam, voor de weergave van f_t,0,d, f_c,0,d en λ_rel.
+    f_t,0,k = mh(3)*N/mm^2
+    f_c,0,k = mh(4)*N/mm^2
+    E_0,05 = mh(8)*N/mm^2
+    γ_M = mh(10)
     β_c = if(mh(11) ≡ 1; 0.1; 0.2)
     bn = max(b_s/(1 m); 0)
     hn = max(h_s/(1 m); 0)
@@ -1347,13 +1355,13 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
                     i_min'<span class="kolom-4"></span>'
                 #end if
                 f_y = staalsoort*1 N/mm^2'<span class="alleen-scherm">, tabel 3.1 (t ≤ 40 mm)</span><span class="kolom-4"></span>'
-                'Doorsnedeklasse bij druk: 'if(kl_st ≤ 3; "1 tot en met 3 (tabel 5.2)"; "4 — valt buiten deze snelle toets")'; knikkromme 'if(α_k ≡ 0.21; "a"; if(α_k ≡ 0.34; "b"; "c"))' (tabel 6.2), α = 'α_k'; γ<sub>M0</sub> = γ<sub>M1</sub> = 1,0.
+                'Doorsnedeklasse bij druk: 'if(kl_st ≤ 3; "1 tot en met 3 (tabel 5.2)"; "4 — valt buiten deze snelle toets")'; knikkromme 'if(α_k ≡ 0.21; "a"; if(α_k ≡ 0.34; "b"; "c"))' (tabel 6.2'if(staaf_s ≡ 3; if(dn > 0; ", warmgevormde buis; koudgevormd is kromme c"; ", massief rond staal"); "")'), α = 'α_k'; γ<sub>M0</sub> = γ<sub>M1</sub> = 1,0.
             #else
                 A_s'<span class="kolom-4"></span>'
                 i_min'<span class="alleen-scherm">, om de zwakste as</span><span class="kolom-4"></span>'
                 k_mod'<span class="alleen-scherm">, tabel 3.1</span><span class="kolom-4"></span>'
-                f_t,0,d = ft0d_n/1000*N/mm^2'<span class="alleen-scherm">, k<sub>mod</sub>·f<sub>t,0,k</sub>/γ<sub>M</sub></span><span class="kolom-4"></span>'
-                f_c,0,d = fc0d_n/1000*N/mm^2'<span class="alleen-scherm">, k<sub>mod</sub>·f<sub>c,0,k</sub>/γ<sub>M</sub></span><span class="kolom-4"></span>'
+                f_t,0,d = k_mod*f_t,0,k/γ_M'<span class="kolom-4"></span>'
+                f_c,0,d = k_mod*f_c,0,k/γ_M'<span class="kolom-4"></span>'
                 'f<sub>t,0,k</sub> = 'mh(3)', f<sub>c,0,k</sub> = 'mh(4)', E<sub>0,mean</sub> = 'mh(7)', E<sub>0,05</sub> = 'mh(8)' N/mm², γ<sub>M</sub> = 'mh(10)', β<sub>c</sub> = 'β_c'.
             #end if
         #end if
@@ -1633,7 +1641,7 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
                         N_b,Rd = χ*A_s*f_y/1.0 to kN'<span class="alleen-scherm">, (6.47), γ<sub>M1</sub> = 1,0</span><span class="kolom-3"></span>'
                         UC_max = N_Ed/N_b,Rd'<span class="kolom-3"></span>'
                     #else
-                        λ_rel = L_m/(i_min*π)*sqrt(mh(4)/mh(8))'<span class="alleen-scherm">, (6.21)</span><span class="kolom-3"></span>'
+                        λ_rel = L_m/(i_min*π)*sqrt(f_c,0,k/E_0,05)'<span class="alleen-scherm">, (6.21)</span><span class="kolom-3"></span>'
                         k_knik = 0.5*(1 + β_c*(λ_rel - 0.3) + λ_rel^2)'<span class="alleen-scherm">, (6.27), β<sub>c</sub> = 'β_c'</span><span class="kolom-3"></span>'
                         k_c = min(1; 1/(k_knik + sqrt(k_knik^2 - λ_rel^2)))'<span class="alleen-scherm">, (6.25)</span><span class="kolom-3"></span>'
                         N_c,Rd = k_c*A_s*f_c,0,d to kN'<span class="alleen-scherm">, (6.23)</span><span class="kolom-3"></span>'
@@ -1679,9 +1687,13 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
     met_w = bool(EI_n > 0)
     EIc = if(met_w ≡ 1; EI_n; 1)
     ok_c = bool(Lc > 0)
+    'De gevallen en hun formules gaan uit van een last naar beneden; met een last naar boven zou het veldmoment als 0 in de tabel staan.
+    neg_c = bool(qc < 0 or Fc < 0)
     #show
     #if ok_c ≡ 0
         '<span style="color:#b45309">Vul de overspanning in; zonder lengte valt er niets te rekenen.</span>
+    #else if neg_c ≡ 1
+        '<span style="color:#b45309">Vul q en F naar beneden in (q ≥ 0 en F ≥ 0): de standaardgevallen en hun formules gaan uit van een last naar beneden. Bij een last naar boven keren alle tekens om.</span>
     #else
         #if met_w ≡ 1
             EI = E_c*I_c to kN*m^2'<span class="kolom-3"></span>'
