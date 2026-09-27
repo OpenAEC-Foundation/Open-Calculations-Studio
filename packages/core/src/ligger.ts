@@ -17,7 +17,11 @@
  * moment en doorbuiging in elk punt uit het evenwicht van het element vanaf
  * zijn linkereind en uit tweemaal integreren van de kromming. Er zit dus geen
  * discretisatiefout in: de uitkomsten zijn exact binnen de balktheorie
- * (buigvervorming, geen afschuifvervorming, kleine verplaatsingen).
+ * (kleine verplaatsingen). Met een afschuifstijfheid GA (EI als [EI, GA])
+ * telt de afschuifvervorming mee (Timoshenko): het element krijgt de
+ * stijfheid met Φ = 12EI/(GA·l²), de knooplasten komen uit de bijbehorende
+ * exacte vormfuncties en bij de doorbuiging telt ∫V/GA op. Zonder GA geldt de
+ * balktheorie zonder afschuifvervorming.
  *
  * Eenheden: kale getallen in één samenhangend stelsel. Het rekenblad gebruikt
  * m, kN, kN/m, kNm en kNm²; de doorbuiging komt dan in m.
@@ -77,7 +81,9 @@ interface Element {
   x0: number;
   x1: number;
   l: number;
-  /** Vrijheidsgraden [w links, θ links, w rechts, θ rechts]. */
+  /** Φ = 12EI/(GA·l²): de afschuifvervorming ten opzichte van de buiging (0 zonder afschuifvervorming). */
+  phi: number;
+  /** Vrijheidsgraden [w links, θ links, w rechts, θ rechts]; θ is de draaiing van de doorsnede. */
   dof: [number, number, number, number];
 }
 
@@ -93,6 +99,8 @@ interface Model {
   /** Inverse van de gereduceerde stijfheidsmatrix. */
   Kinv: number[][];
   EI: number;
+  /** Afschuifstijfheid κ·G·A; Infinity zonder afschuifvervorming. */
+  GA: number;
   xBegin: number;
   xEind: number;
   tol: number;
@@ -127,6 +135,18 @@ const getal = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/**
+ * Stijfheid van de ligger: EI, of [EI, GA] met GA de afschuifstijfheid κ·G·A
+ * (bij een rechthoek κ = 5/6). Zonder GA, of GA niet positief: geen
+ * afschuifvervorming.
+ */
+export type Stijfheid = number | number[];
+function stijf(EI: Stijfheid): [number, number] {
+  const v = Array.isArray(EI) ? EI.map(getal) : [getal(EI)];
+  const ga = v[1] ?? 0;
+  return [v[0] ?? 0, ga > 0 && Number.isFinite(ga) ? ga : Infinity];
+}
+
 /** Rijen van een matrix als getallen; een vector telt als één rij. */
 function rijen(m: unknown): number[][] {
   if (!Array.isArray(m)) return [];
@@ -136,10 +156,10 @@ function rijen(m: unknown): number[][] {
 
 // ── Model: knopen, elementen, stijfheid ──────────────────────────────────────
 
-function bouwModel(geoIn: number[][], EI: number): Model {
+function bouwModel(geoIn: number[][], EI: number, GA: number): Model {
   const leeg: Model = {
     status: LIGGER_STATUS.ONGELDIG, knopen: [], elementen: [], nDof: 0, vrij: [], plek: new Int32Array(0),
-    Kinv: [], EI, xBegin: 0, xEind: 0, tol: 0, steunen: [], delen: [], velden: [],
+    Kinv: [], EI, GA, xBegin: 0, xEind: 0, tol: 0, steunen: [], delen: [], velden: [],
   };
   const punten = geoIn
     .filter((r) => r.length >= 2 && Number.isFinite(r[0]) && Math.round(r[1]) >= 0 && Math.round(r[1]) <= 3)
@@ -193,12 +213,13 @@ function bouwModel(geoIn: number[][], EI: number): Model {
   for (let i = 0; i + 1 < knopen.length; i++) {
     const x0 = knopen[i].x;
     const x1 = knopen[i + 1].x;
-    elementen.push({ x0, x1, l: x1 - x0, dof: [wDof[i], tR[i], wDof[i + 1], tL[i + 1]] });
+    const l = x1 - x0;
+    elementen.push({ x0, x1, l, phi: Number.isFinite(GA) ? (12 * EI) / (GA * l * l) : 0, dof: [wDof[i], tR[i], wDof[i + 1], tL[i + 1]] });
   }
 
   const K: number[][] = Array.from({ length: n }, () => new Array<number>(n).fill(0));
   for (const e of elementen) {
-    const ke = elementStijfheid(EI, e.l);
+    const ke = elementStijfheid(EI, e.l, e.phi);
     for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) K[e.dof[a]][e.dof[b]] += ke[a][b];
   }
   const vrij: number[] = [];
@@ -229,19 +250,51 @@ function bouwModel(geoIn: number[][], EI: number): Model {
 
   return {
     status: Kinv ? LIGGER_STATUS.STABIEL : LIGGER_STATUS.BEWEEGLIJK,
-    knopen, elementen, nDof: n, vrij, plek, Kinv: Kinv ?? [], EI, xBegin, xEind, tol, steunen, delen, velden,
+    knopen, elementen, nDof: n, vrij, plek, Kinv: Kinv ?? [], EI, GA, xBegin, xEind, tol, steunen, delen, velden,
   };
 }
 
-function elementStijfheid(EI: number, l: number): number[][] {
-  const c = EI / (l * l * l);
+/**
+ * Stijfheidsmatrix van een prismatisch element met buiging en afschuiving
+ * (Timoshenko), Φ = 12EI/(GA·l²); bij Φ = 0 die van de balktheorie zonder
+ * afschuifvervorming.
+ */
+function elementStijfheid(EI: number, l: number, phi = 0): number[][] {
+  const c = EI / (l * l * l * (1 + phi));
   const l2 = l * l;
   return [
     [12 * c, 6 * l * c, -12 * c, 6 * l * c],
-    [6 * l * c, 4 * l2 * c, -6 * l * c, 2 * l2 * c],
+    [6 * l * c, (4 + phi) * l2 * c, -6 * l * c, (2 - phi) * l2 * c],
     [-12 * c, -6 * l * c, 12 * c, -6 * l * c],
-    [6 * l * c, 2 * l2 * c, -6 * l * c, 4 * l2 * c],
+    [6 * l * c, (2 - phi) * l2 * c, -6 * l * c, (4 + phi) * l2 * c],
   ];
+}
+
+/**
+ * Vormfuncties van het element met afschuiving (Φ): de verplaatsing w en de
+ * draaiing θ van de doorsnede in een punt, per vrijheidsgraad. Het zijn de
+ * exacte homogene oplossingen; de arbeidsequivalente knooplasten ermee zijn
+ * daardoor exact (bij Φ = 0 de functies van Hermite en hun afgeleide).
+ */
+function vorm(e: Element, s: number) {
+  const k = (s - e.x0) / e.l;
+  const l = e.l;
+  const f = e.phi;
+  const m = 1 / (1 + f);
+  return {
+    w: [
+      m * (1 - 3 * k * k + 2 * k ** 3 + f * (1 - k)),
+      m * l * (k - 2 * k * k + k ** 3 + (f / 2) * (k - k * k)),
+      m * (3 * k * k - 2 * k ** 3 + f * k),
+      m * l * (-k * k + k ** 3 - (f / 2) * (k - k * k)),
+    ],
+    t: [
+      (m * 6 * (-k + k * k)) / l,
+      m * (1 - 4 * k + 3 * k * k + f * (1 - k)),
+      (m * 6 * (k - k * k)) / l,
+      m * (-2 * k + 3 * k * k + f * k),
+    ],
+  };
 }
 
 /**
@@ -342,15 +395,8 @@ const GAUSS = [
 /** Arbeidsequivalente knooplasten van één last op één element. */
 function knooplasten(e: Element, p: Last, eigen: boolean): number[] {
   const f = [0, 0, 0, 0];
-  const l = e.l;
-  const N = (s: number) => {
-    const k = (s - e.x0) / l;
-    return [1 - 3 * k * k + 2 * k ** 3, l * (k - 2 * k * k + k ** 3), 3 * k * k - 2 * k ** 3, l * (-k * k + k ** 3)];
-  };
-  const dN = (s: number) => {
-    const k = (s - e.x0) / l;
-    return [(-6 * k + 6 * k * k) / l, 1 - 4 * k + 3 * k * k, (6 * k - 6 * k * k) / l, -2 * k + 3 * k * k];
-  };
+  const N = (s: number) => vorm(e, s).w;
+  const dN = (s: number) => vorm(e, s).t;
   if (p.soort === LIGGER_LAST.VERDEELD) {
     const s0 = Math.max(p.lo, e.x0);
     const s1 = Math.min(p.hi, e.x1);
@@ -452,7 +498,7 @@ function losOp(model: Model, lasten: Last[]): Toestand {
     u[model.vrij[a]] = s;
   }
   const eind = model.elementen.map((e, ei) => {
-    const ke = elementStijfheid(model.EI, e.l);
+    const ke = elementStijfheid(model.EI, e.l, e.phi);
     const ue = e.dof.map((d) => u[d]);
     return [0, 1, 2, 3].map((a) => ke[a][0] * ue[0] + ke[a][1] * ue[1] + ke[a][2] * ue[2] + ke[a][3] * ue[3] - fe[ei][a]);
   });
@@ -474,8 +520,13 @@ function waarde(t: Toestand, x: number, kant: number) {
   const EI = model.EI;
   const V = V0 - I[0];
   const M = M0 + V0 * d - I[1] + J[0];
-  const theta = t0 - (M0 * d + (V0 * d * d) / 2 - I[2] + J[1]) / EI;
-  const w = w0 + t0 * d - ((M0 * d * d) / 2 + (V0 * d ** 3) / 6 - I[3] + J[2]) / EI;
+  // Draaiing van de doorsnede: dθ/dx = −M/EI. Met afschuiving is de helling
+  // dw/dx = θ + V/GA, en telt bij w de afschuifvervorming ∫V/GA = (V0·d − I1)/GA op.
+  const psi = t0 - (M0 * d + (V0 * d * d) / 2 - I[2] + J[1]) / EI;
+  const schuif = Number.isFinite(model.GA) ? 1 / model.GA : 0;
+  const w = w0 + t0 * d - ((M0 * d * d) / 2 + (V0 * d ** 3) / 6 - I[3] + J[2]) / EI + (V0 * d - I[1]) * schuif;
+  // theta is de helling van de doorbuigingslijn: haar nulpunten zijn de toppen van w.
+  const theta = psi + V * schuif;
   return { V, M, w, theta };
 }
 
@@ -581,7 +632,7 @@ interface Voorraad {
 const CACHE = new Map<string, Voorraad>();
 const CACHE_MAX = 24;
 
-function voorraad(geo: number[][], last: number[][], EI: number): Voorraad {
+function voorraad(geo: number[][], last: number[][], EI: Stijfheid): Voorraad {
   const sleutel = JSON.stringify([geo, last, EI]);
   const oud = CACHE.get(sleutel);
   if (oud) {
@@ -589,7 +640,7 @@ function voorraad(geo: number[][], last: number[][], EI: number): Voorraad {
     CACHE.set(sleutel, oud);
     return oud;
   }
-  const model = bouwModel(geo, EI);
+  const model = bouwModel(geo, ...stijf(EI));
   const punten = model.status === LIGGER_STATUS.STABIEL ? raster(model, last) : [];
   const v: Voorraad = { model, punten, eenheid: new Map() };
   CACHE.set(sleutel, v);
@@ -643,8 +694,8 @@ function schoon(m: number[][]): number[][] {
  * of een scharnier te veel), 0 als de geometrie ongeldig is (minder dan twee
  * punten, lengte nul) of EI niet positief.
  */
-export function liggerStatus(geo: unknown, EI = 1): number {
-  return bouwModel(rijen(geo), EI).status;
+export function liggerStatus(geo: unknown, EI: Stijfheid = 1): number {
+  return bouwModel(rijen(geo), ...stijf(EI)).status;
 }
 
 /**
@@ -658,7 +709,7 @@ export function liggerStatus(geo: unknown, EI = 1): number {
  * beweeglijke of ongeldige ligger geeft een lege uitkomst (één rij nullen).
  */
 export function liggerOplossing(
-  geo: unknown, last: unknown, EI: number, f?: number[], deel = 0, extra: number[] = [],
+  geo: unknown, last: unknown, EI: Stijfheid, f?: number[], deel = 0, extra: number[] = [],
 ): number[][] {
   const G = rijen(geo);
   const P = rijen(last);
@@ -684,7 +735,7 @@ export function liggerOplossing(
  * een inklemming het inklemmingsmoment, bij een tussensteunpunt het
  * steunmoment).
  */
-export function liggerReacties(geo: unknown, last: unknown, EI: number, f?: number[], deel = 0): number[][] {
+export function liggerReacties(geo: unknown, last: unknown, EI: Stijfheid, f?: number[], deel = 0): number[][] {
   const G = rijen(geo);
   const P = rijen(last);
   const v = voorraad(G, P, EI);
@@ -710,7 +761,7 @@ export function liggerReacties(geo: unknown, last: unknown, EI: number, f?: numb
  * een matrix [x, V, M, w] op het vaste raster.
  */
 export function liggerOmhullende(
-  geo: unknown, last: unknown, EI: number, groep: number[], f1: number[], f2: number[], teken = 1, lead = 0,
+  geo: unknown, last: unknown, EI: Stijfheid, groep: number[], f1: number[], f2: number[], teken = 1, lead = 0,
 ): number[][] {
   const r = omhul(geo, last, EI, groep, f1, f2, teken, lead, false);
   return r;
@@ -718,7 +769,7 @@ export function liggerOmhullende(
 
 /** Als liggerOmhullende(), voor de oplegreacties: rijen [x, R, M] per steunpunt. */
 export function liggerOmhullendeReacties(
-  geo: unknown, last: unknown, EI: number, groep: number[], f1: number[], f2: number[], teken = 1, lead = 0,
+  geo: unknown, last: unknown, EI: Stijfheid, groep: number[], f1: number[], f2: number[], teken = 1, lead = 0,
 ): number[][] {
   return omhul(geo, last, EI, groep, f1, f2, teken, lead, true);
 }
@@ -731,7 +782,7 @@ const OMHUL = new Map<string, number[][]>();
 const OMHUL_MAX = 96;
 
 function omhul(
-  geo: unknown, last: unknown, EI: number, groepIn: number[], f1In: number[], f2In: number[],
+  geo: unknown, last: unknown, EI: Stijfheid, groepIn: number[], f1In: number[], f2In: number[],
   teken: number, lead: number, alsReactie: boolean,
 ): number[][] {
   const sleutel = JSON.stringify([rijen(geo), rijen(last), EI, groepIn, f1In, f2In, teken, lead, alsReactie]);
@@ -744,7 +795,7 @@ function omhul(
 }
 
 function omhulReken(
-  geo: unknown, last: unknown, EI: number, groepIn: number[], f1In: number[], f2In: number[],
+  geo: unknown, last: unknown, EI: Stijfheid, groepIn: number[], f1In: number[], f2In: number[],
   teken: number, lead: number, alsReactie: boolean,
 ): number[][] {
   const G = rijen(geo);
@@ -952,7 +1003,7 @@ export function liggerSamen(teken: number, ...ms: unknown[]): number[][] {
 
 /** De delen voor de schaakbordbelasting: rijen [x_begin, x_eind]. */
 export function liggerDelen(geo: unknown): number[][] {
-  const m = bouwModel(rijen(geo), 1);
+  const m = bouwModel(rijen(geo), 1, Infinity);
   return m.delen.length ? m.delen.map((d) => [...d]) : [[m.xBegin, m.xEind]];
 }
 
@@ -962,7 +1013,7 @@ export function liggerDelen(geo: unknown): number[][] {
  * representatieve lengte is dan tweemaal de lengte).
  */
 export function liggerVelden(geo: unknown): number[][] {
-  const m = bouwModel(rijen(geo), 1);
+  const m = bouwModel(rijen(geo), 1, Infinity);
   return m.velden.length ? m.velden.map((d) => [...d]) : [[m.xBegin, m.xEind, 0]];
 }
 

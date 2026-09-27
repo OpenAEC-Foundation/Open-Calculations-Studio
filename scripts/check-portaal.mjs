@@ -23,11 +23,12 @@
  *   4. Ingeklemd stalen portaal met sneeuw en wind (c_pe per vlak, c_pi +0,2
  *      en −0,3): hoekveranderingsvergelijkingen met zijverplaatsing voor de
  *      reacties met de scheefstand, δ en α_cr uit (5.2), de kolom op
- *      doorsnede, kip en druk met buiging, de BGT, en α_cr uit de
- *      knikberekening tegen de knikvergelijking x·cot x = −6/G_B.
+ *      doorsnede, kip en druk met buiging, de BGT, α_cr uit de
+ *      knikberekening tegen de knikvergelijking x·cot x = −6/G_B, en de kip
+ *      van de regel per gedrukte flens (gordingen alleen voor de bovenflens).
  *   5. Houten A-spant met nokscharnier en trekband onder wind en ongelijke
  *      sneeuw: statica per combinatie, de toetsen van de sporen, de trekband
- *      en de doorbuiging loodrecht op de spoor.
+ *      en de doorbuiging loodrecht op de spoor, met de afschuifvervorming.
  *   6. A-spant met de knikberekening (methode 2): blijft eerste orde, zonder
  *      vergroting; α_cr alleen ter informatie.
  *
@@ -223,11 +224,12 @@ const VOORBEELD_2 = {
     UC_tb: T / ((Math.PI * 0.016 ** 2) / 4 * 235e3),
     mth: 0, "vK.(3)": 1,
   });
-  // Doorbuiging van de spoor loodrecht op de koorde: 5pL⁴/(384EI) met p de last loodrecht op de spoor,
-  // G: g·cos α per m spoor, S: s·cos²α per m spoor. Bijkomend k_def·w_G + w_S, eindstand (1 + k_def)·w_G + w_S.
-  const EI = 11000e3 * I;
-  const wG = (5 * g * Math.cos(α) * Lr ** 4) / (384 * EI);
-  const wS = (5 * s * Math.cos(α) ** 2 * Lr ** 4) / (384 * EI);
+  // Doorbuiging van de spoor loodrecht op de koorde: 5pL⁴/(384EI) + pL²/(8κGA) met p de last loodrecht op de
+  // spoor, G: g·cos α per m spoor, S: s·cos²α per m spoor; κ·G·A = 5/6·690·75·225 mm² = 9703 kN (afschuiving + 3,6 %).
+  // Bijkomend k_def·w_G + w_S, eindstand (1 + k_def)·w_G + w_S.
+  const EI = 11000e3 * I, GA = (5 / 6) * 690e3 * A;
+  const wG = (5 * g * Math.cos(α) * Lr ** 4) / (384 * EI) + (g * Math.cos(α) * Lr * Lr) / (8 * GA);
+  const wS = (5 * s * Math.cos(α) ** 2 * Lr ** 4) / (384 * EI) + (s * Math.cos(α) ** 2 * Lr * Lr) / (8 * GA);
   toets(r, { w_bij: 0.6 * wG + wS, w_mx: 1.6 * wG + wS }, 3e-3);
   waar("voorbeeld 2: slotregel met voldoet", /Maatgevende UC = [\d.]+ ≤ 1\.0 → het spant voldoet/.test(r.tekst));
 }
@@ -297,7 +299,9 @@ const VOORBEELD_4 = {
     const MDC = kk * (tC - 3 * Δ / h) + FDC, MCD = kk * (2 * tC - 3 * Δ / h) + FCD;
     const MBC = kr * (2 * tB + tC) + FBC, MCB = kr * (2 * tC + tB) + FCB;
     const RB = (int((x, w) => w * (L - x)) - MBC - MCB) / L;
-    return { Δ, MAB, MBA, MDC, MCD, MBC, HA: (MAB + MBA - w1 * h * h / 2) / h, HD: (MDC + MCD - w4 * h * h / 2) / h, RyA: RB + gkol * h, RyD: int((x, w) => w) - RB + gkol * h };
+    // Moment in de regel op x vanaf de linkerknie (trek aan de onderzijde positief).
+    const Mx = (x) => MBC + RB * x - (x <= L / 2 ? (qL * x * x) / 2 : qL * (L / 2) * (x - L / 4) + (qR * (x - L / 2) ** 2) / 2);
+    return { Δ, Mx, MAB, MBA, MDC, MCD, MBC, HA: (MAB + MBA - w1 * h * h / 2) / h, HD: (MDC + MCD - w4 * h * h / 2) / h, RyA: RB + gkol * h, RyD: int((x, w) => w) - RB + gkol * h };
   };
   const som = (...ds) => { const o = {}; for (const [f, d] of ds) for (const k in d) o[k] = (o[k] ?? 0) + f * d[k]; return o; };
   const G = { qL: gr, qR: gr, gkol: gk }, S = { qL: 0.56 * a, qR: 0.56 * a };
@@ -353,6 +357,31 @@ const VOORBEELD_4 = {
   const Ncr = (Math.PI ** 2 * EIk) / ((Math.PI / lo) * h) ** 2;
   const rk = doorreken({ ...VOORBEELD_4, methode: "2" }, ["vA.(3)", "mth"]);
   toets(rk, { "vA.(3)": (2 * Ncr) / V3, mth: 2 }, 2e-3);
+  // Kip van de regel (IPE 360, kromme c want h/b > 2) per gedrukte flens. Gordingen op a_zr = 2 m steunen de bovenflens:
+  // een positief moment (druk boven) met L_kip = 2 m, C_1 = 1, C_2 = 0. De onderflens heeft geen steunen (a_zr,o leeg):
+  // een negatief moment (druk onder, bij de knie en bij opwaartse wind) over de hele staaf van 6 m, C_1 uit de
+  // kwartpunten en C_2 = −0,45. Maatgevend combinatie 3 (1,2·G + 1,5·S), rechterhelft: knie M = −71,3 kNm, C_1 = 1,67,
+  // M_cr = 216,8 kNm, M_b,Rd = 145,7 kNm → UC_kip = 0,489 (voorheen telde de gordingafstand ook voor de onderflens:
+  // max|M| = 81,9 kNm over 2 m, UC = 0,359).
+  const Sn = Math.sqrt((E * 313600e-12) / (81e6 * 37.32e-8)), MplR = 1019e-6 * 235e3;
+  const McrR = (C1, C2, Lk) => ((C1 * Math.PI) / Lk) * (Math.sqrt(1 + (Math.PI ** 2 * Sn * Sn * (C2 * C2 + 1)) / Lk ** 2) + (Math.PI * C2 * Sn) / Lk) * Math.sqrt(E * 1043e-8 * 81e6 * 37.32e-8);
+  const MbR = (mcr) => χLT(Math.sqrt(MplR / mcr), 0.49) * MplR;
+  const combis = [[som([1.35, G]), 1], [c3, 1]];
+  for (const [dir, cD, cE, c1, c2] of [[1, 0.8, -0.5, -1.0, -0.6], [-1, -0.5, 0.8, -0.6, -1.0]]) for (const cpi of [0.2, -0.3]) for (const gG of [1.2, 0.9]) combis.push([som([gG, G], [1.5, wind(cD, cE, c1, c2, cpi)]), dir]);
+  let Ul2 = 0;
+  for (const [d, dir] of combis) {
+    const V = los(d).RyA + los(d).RyD;
+    const rc = los(som([1, d], [1, { H: φ * Math.max(V, 0) * dir }]));
+    for (const x0 of [0, L / 2]) {
+      const M = (t) => rc.Mx(x0 + t);
+      let Mp = 0, Mn = 0;
+      for (let i = 0; i <= 600; i++) { const m = M((6 * i) / 600); Mp = Math.max(Mp, m); Mn = Math.max(Mn, -m); }
+      const Mm = Math.max(Mp, Mn), q1 = Math.abs(M(1.5)), sm = M(3), q3 = Math.abs(M(4.5));
+      const C1 = Math.min(2.3, Math.max(1, Math.sqrt((35 * Mm * Mm) / (Mm * Mm + 9 * q1 * q1 + 16 * sm * sm + 9 * q3 * q3))));
+      Ul2 = Math.max(Ul2, Mp / MbR(McrR(1, 0, 2)), Mn / MbR(McrR(C1, -0.45, 6)));
+    }
+  }
+  toets(doorreken(VOORBEELD_4, ["Ul_2"]), { Ul_2: Ul2 }, 1e-2);
 }
 
 // ── 5. Houten A-spant met wind en ongelijke sneeuw ──────────────────────────
@@ -418,9 +447,10 @@ console.log("\n5. Houten A-spant C24 75×200, nokscharnier, trekband Ø16, B = 8
     }
   }
   // Maatgevend: 1,2·G + 1,5·S (k_mod 0,9): T = 6,668 kN, N = 9,63 kN, M = 3,850 kNm → knik (6.23) 0,562.
-  // BGT loodrecht op de spoor: 5pL⁴/384EI, p = g·cos α (G), s·cos²α (S), (c_pe − c_pi)·q_p (W); k_def = 0,6:
-  // w_G = 6,175 mm, w_S = 5,430 mm; bijkomend 0,6·w_G + w_S = 9,14 mm, eindstand 1,6·w_G + w_S = 15,31 mm ≤ L/250 = 18,48.
-  const EI = 11000e3 * I, wv = (p) => (5 * p * Lr ** 4) / (384 * EI);
+  // BGT loodrecht op de spoor: 5pL⁴/384EI + pL²/(8κGA), κ·G·A = 5/6·690·75·200 mm² = 8625 kN,
+  // p = g·cos α (G), s·cos²α (S), (c_pe − c_pi)·q_p (W); k_def = 0,6: w_G = 6,175 + 0,177 = 6,352 mm,
+  // w_S = 5,430 + 0,156 = 5,586 mm; bijkomend 0,6·w_G + w_S = 9,40 mm, eindstand 1,6·w_G + w_S = 15,75 mm ≤ L/250 = 18,48.
+  const EI = 11000e3 * I, GAs = (5 / 6) * 690e3 * A, wv = (p) => (5 * p * Lr ** 4) / (384 * EI) + (p * Lr * Lr) / (8 * GAs);
   const wG = wv(g * c);
   let wb = 0, wm = 1.6 * wG;
   for (const p of [s * c * c, 0.5 * s * c * c, ...[0.2, -0.3].flatMap((cpi) => [(0.4 - cpi) * qp, (-0.5 - cpi) * qp])]) {

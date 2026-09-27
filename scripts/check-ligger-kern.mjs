@@ -19,6 +19,8 @@
  *   4. De hulpfuncties (uitersten, interpolatie, nulpunt, velden, delen,
  *      SVG-punten) en het gebruik vanuit een rekenblad, met CalcPAD-matrices en
  *      grootheden met eenheid.
+ *   5. De afschuifvervorming (EI als [EI, GA]): gesloten formules met de term
+ *      ∫V/GA, ook voor een statisch onbepaalde ligger (krachtenmethode).
  *
  * Draaien:  node scripts/check-ligger-kern.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -707,6 +709,34 @@ kop("4. Hulpfuncties en gebruik vanuit een rekenblad");
   waar("blad: één veld", uit.n === "1", uit.n);
   waar("blad: SVG-punten zijn tekst met getallen", /^[\d., -]+$/.test(String(uit.p)), String(uit.p).slice(0, 40));
   waar("blad: geen foutmelding", !Object.values(uit).some((v) => /Error/.test(String(v))), JSON.stringify(uit).slice(0, 200));
+}
+
+// ── 5. Afschuifvervorming (Timoshenko) ──────────────────────────────────────
+kop("5. Afschuifvervorming: EI als [EI, GA], gesloten formules met de term ∫V/GA");
+{
+  const EI = 1000, GA = 5000, L = 4, q = 3, P = 7;
+  const w = (R) => liggerExtremen(R, 4)[0];
+  // Vrij opgelegd, gelijkmatig: w = 5qL⁴/(384EI) + qL²/(8GA) = 0,0100 + 0,0012 = 0,0112 m.
+  gelijk("vrij opgelegd q: w_midden", w(liggerOplossing([[0, 1], [L, 1]], [[1, 0, L, q, q]], [EI, GA])), (5 * q * L ** 4) / (384 * EI) + (q * L * L) / (8 * GA));
+  // Uitkraging, puntlast op het eind: w = PL³/(3EI) + PL/GA = 0,14933 + 0,00560 m.
+  gelijk("uitkraging P: w_eind", w(liggerOplossing([[0, 2], [L, 0]], [[2, L, 0, P, 0]], [EI, GA])), (P * L ** 3) / (3 * EI) + (P * L) / GA);
+  // Ingeklemd–vrij opgelegd, q: krachtenmethode op de uitkraging, R_B = δ0/δ1 met
+  // δ0 = qL⁴/(8EI) + qL²/(2GA) en δ1 = L³/(3EI) + L/GA → R_B = 4,5542 kN (zonder GA 3qL/8 = 4,5).
+  const d0 = (q * L ** 4) / (8 * EI) + (q * L * L) / (2 * GA), d1 = L ** 3 / (3 * EI) + L / GA;
+  gelijk("ingeklemd–scharnierend q: R_B", liggerReacties([[0, 2], [L, 1]], [[1, 0, L, q, q]], [EI, GA])[1][1], d0 / d1);
+  // Tweezijdig ingeklemd, q: inklemmingsmoment qL²/12 (symmetrisch, onafhankelijk van GA), w = qL⁴/(384EI) + qL²/(8GA).
+  const R4 = liggerOplossing([[0, 2], [L, 2]], [[1, 0, L, q, q]], [EI, GA]);
+  gelijk("tweezijdig ingeklemd: M_eind", liggerExtremen(R4, 3)[2], (-q * L * L) / 12);
+  gelijk("tweezijdig ingeklemd: w_midden", w(R4), (q * L ** 4) / (384 * EI) + (q * L * L) / (8 * GA));
+  // Puntlast op a = 1 m, vrij opgelegd: w(a) = Pa²b²/(3EIL) + P·a·b/(L·GA) = 0,0063 m.
+  const a = 1, b = L - a;
+  gelijk("vrij opgelegd P: w(a)", liggerInterpoleer(liggerOplossing([[0, 1], [L, 1]], [[2, a, 0, P, 0]], [EI, GA], undefined, 0, [a]), 4, a), (P * a * a * b * b) / (3 * EI * L) + (P * a * b) / (L * GA));
+  // GA = 0: de balktheorie zonder afschuifvervorming.
+  gelijk("GA = 0: 5qL⁴/(384EI)", w(liggerOplossing([[0, 1], [L, 1]], [[1, 0, L, q, q]], [EI, 0])), (5 * q * L ** 4) / (384 * EI));
+  // Vanuit een rekenblad: [EI; GA] als vector.
+  const nodes = evaluate(parse("geo = [0; 4 | 1; 1]\nlast = [1 | 0 | 4 | 3 | 3]\nR = ligger(geo; last; [1000; 5000])\ne = ligger_ext(R; 4)\nw = e.1"), {});
+  const wb = nodes.find((n) => n.name === "w");
+  gelijk("blad: [EI; GA]", parseFloat(String(wb?.result)), 0.0112, 1e-3);
 }
 
 console.log(

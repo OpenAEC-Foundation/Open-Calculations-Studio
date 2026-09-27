@@ -17,7 +17,9 @@
  * oplossen volgen N, V en M langs de staaf uit het evenwicht vanaf het
  * begin van de staaf en de verplaatsingen uit het integreren van de rek en de
  * kromming. Er zit dus geen discretisatiefout in: de uitkomsten zijn exact
- * binnen de staaftheorie (geen afschuifvervorming, kleine verplaatsingen).
+ * binnen de staaftheorie (kleine verplaatsingen). Met een afschuifstijfheid GA
+ * in de zevende kolom telt de afschuifvervorming mee (Timoshenko, zoals in de
+ * ligger); zonder GA geldt de staaftheorie zonder afschuifvervorming.
  * De scharnieren zijn eigen vrijheidsgraden (de rotatie van het staafeinde);
  * een knoop waar alle staven scharnierend aansluiten en die niet is ingeklemd,
  * draait vrij en telt niet mee (een knoopmoment daar gaat verloren).
@@ -44,8 +46,9 @@
  *
  * Invoer:
  *   knopen      rijen [x, y]; het knoopnummer is het rijnummer (vanaf 1).
- *   staven      rijen [i, j, EI, EA, scharnier_i, scharnier_j]; scharnier 1 is
- *               een momentvrij staafeinde. Een rij met knoop 0 telt niet mee
+ *   staven      rijen [i, j, EI, EA, scharnier_i, scharnier_j, GA]; scharnier 1 is
+ *               een momentvrij staafeinde; GA = κ·G·A (kN) is facultatief, 0 of
+ *               leeg is zonder afschuifvervorming. Een rij met knoop 0 telt niet mee
  *               (ongebruikte staaf); het staafnummer is het rijnummer.
  *   opleggingen rijen [knoop, x, y, rotatie]: 1 = vast, 0 = vrij. Een rij met
  *               knoop 0 telt niet mee.
@@ -103,6 +106,8 @@ interface Staaf {
   j: number;
   EI: number;
   EA: number;
+  /** Afschuifstijfheid κ·G·A; Infinity zonder afschuifvervorming. */
+  GA: number;
   L: number;
   /** cos en sin van de staafrichting i → j. */
   c: number;
@@ -208,13 +213,15 @@ function bouwModel(knIn: number[][], stIn: number[][], opIn: number[][]): Model 
     const B = knopen[j - 1];
     const L = Math.hypot(B.x - A.x, B.y - A.y);
     if (!(L > tol)) return leegModel(RAAMWERK_STATUS.ONGELDIG);
+    const ga = getal(rij[6]);
+    const GA = ga > 0 && Number.isFinite(ga) ? ga : Infinity;
     const hi = getal(rij[4]) >= 0.5;
     const hj = getal(rij[5]) >= 0.5;
     const ti = hi ? n++ : 3 * (i - 1) + 2;
     const tj = hj ? n++ : 3 * (j - 1) + 2;
     perNr.set(r + 1, staven.length);
     staven.push({
-      nr: r + 1, i: i - 1, j: j - 1, EI, EA, L, c: (B.x - A.x) / L, s: (B.y - A.y) / L,
+      nr: r + 1, i: i - 1, j: j - 1, EI, EA, GA, L, c: (B.x - A.x) / L, s: (B.y - A.y) / L,
       dof: [3 * (i - 1), 3 * (i - 1) + 1, ti, 3 * (j - 1), 3 * (j - 1) + 1, tj],
     });
   }
@@ -252,13 +259,20 @@ function bouwModel(knIn: number[][], stIn: number[][], opIn: number[][]): Model 
   };
 }
 
-/** Stijfheidsmatrix in de staafassen: [u_i, v_i, θ_i, u_j, v_j, θ_j], v loodrecht, naar links. */
-function lokaleStijfheid(EI: number, EA: number, l: number): number[][] {
+/** Φ = 12EI/(GA·l²) voor een (deel van een) staaf; 0 zonder afschuifvervorming. */
+const phiVan = (EI: number, GA: number, l: number) => (Number.isFinite(GA) ? (12 * EI) / (GA * l * l) : 0);
+
+/**
+ * Stijfheidsmatrix in de staafassen: [u_i, v_i, θ_i, u_j, v_j, θ_j], v loodrecht, naar links;
+ * met afschuiving (Timoshenko) via Φ, θ is dan de draaiing van de doorsnede.
+ */
+function lokaleStijfheid(EI: number, EA: number, l: number, phi = 0): number[][] {
+  const m = 1 / (1 + phi);
   const a = EA / l;
-  const b = (12 * EI) / (l * l * l);
-  const c = (6 * EI) / (l * l);
-  const d = (4 * EI) / l;
-  const e = (2 * EI) / l;
+  const b = (12 * EI * m) / (l * l * l);
+  const c = (6 * EI * m) / (l * l);
+  const d = ((4 + phi) * EI * m) / l;
+  const e = ((2 - phi) * EI * m) / l;
   return [
     [a, 0, 0, -a, 0, 0],
     [0, b, c, 0, -b, c],
@@ -293,7 +307,7 @@ function transformeer(k: number[][], c: number, s: number): number[][] {
 }
 
 function globaleStijfheid(st: Staaf): number[][] {
-  return transformeer(lokaleStijfheid(st.EI, st.EA, st.L), st.c, st.s);
+  return transformeer(lokaleStijfheid(st.EI, st.EA, st.L, phiVan(st.EI, st.GA, st.L)), st.c, st.s);
 }
 
 /**
@@ -409,12 +423,20 @@ const GAUSS = [
 function knooplasten(st: Staaf, p: Last): number[] {
   const f = [0, 0, 0, 0, 0, 0];
   const l = st.L;
+  // Exacte vormfuncties met afschuiving (Φ); bij Φ = 0 die van Hermite en hun afgeleide.
+  const fi = phiVan(st.EI, st.GA, l);
+  const m = 1 / (1 + fi);
   const vorm = (t: number) => {
     const k = t / l;
     return {
       Na: [1 - k, k],
-      H: [1 - 3 * k * k + 2 * k ** 3, l * (k - 2 * k * k + k ** 3), 3 * k * k - 2 * k ** 3, l * (-k * k + k ** 3)],
-      dH: [(-6 * k + 6 * k * k) / l, 1 - 4 * k + 3 * k * k, (6 * k - 6 * k * k) / l, -2 * k + 3 * k * k],
+      H: [
+        m * (1 - 3 * k * k + 2 * k ** 3 + fi * (1 - k)),
+        m * l * (k - 2 * k * k + k ** 3 + (fi / 2) * (k - k * k)),
+        m * (3 * k * k - 2 * k ** 3 + fi * k),
+        m * l * (-k * k + k ** 3 - (fi / 2) * (k - k * k)),
+      ],
+      dH: [(m * 6 * (-k + k * k)) / l, m * (1 - 4 * k + 3 * k * k + fi * (1 - k)), (m * 6 * (k - k * k)) / l, m * (-2 * k + 3 * k * k + fi * k)],
     };
   };
   const tel = (t: number, px: number, py: number) => {
@@ -537,7 +559,7 @@ function losOp(model: Model, lasten: Last[]): Toestand {
     const ug = st.dof.map((d) => u[d]);
     const loc = naarLokaal(st.c, st.s, ug);
     ul.push(loc);
-    const ke = lokaleStijfheid(st.EI, st.EA, st.L);
+    const ke = lokaleStijfheid(st.EI, st.EA, st.L, phiVan(st.EI, st.GA, st.L));
     return [0, 1, 2, 3, 4, 5].map((a) => ke[a].reduce((t, v, b) => t + v * loc[b], 0) - fe[k][a]);
   });
   return { model, lasten, u, F, eind, ul };
@@ -552,7 +574,9 @@ function waarde(t: Toestand, si: number, s: number, kant: number) {
   const N = -P[0] - Ix[0];
   const V = P[1] + Iy[0];
   const M = -P[2] + s * P[1] + Iy[1] - J[0];
-  const v = vi + ti * s + ((-P[2] * s * s) / 2 + (P[1] * s ** 3) / 6 + Iy[3] - J[2]) / st.EI;
+  // Met afschuiving: dv/ds = θ − V/GA, dus telt −∫V/GA = −(s·P1 + Iy1)/GA op.
+  const v = vi + ti * s + ((-P[2] * s * s) / 2 + (P[1] * s ** 3) / 6 + Iy[3] - J[2]) / st.EI
+    - (Number.isFinite(st.GA) ? (s * P[1] + Iy[1]) / st.GA : 0);
   const ua = ui + (-P[0] * s - Ix[1]) / st.EA;
   const ux = st.c * ua - st.s * v;
   const uy = st.s * ua + st.c * v;
@@ -931,7 +955,7 @@ function knikModel(model: Model, sleutel: string): KnikModel {
   const KE: number[][] = Array.from({ length: n }, () => new Array<number>(n).fill(0));
   for (const el of elementen) {
     const st = model.staven[el.staaf];
-    const ke = transformeer(lokaleStijfheid(st.EI, st.EA, el.s1 - el.s0), st.c, st.s);
+    const ke = transformeer(lokaleStijfheid(st.EI, st.EA, el.s1 - el.s0, phiVan(st.EI, st.GA, el.s1 - el.s0)), st.c, st.s);
     for (let a = 0; a < 6; a++) for (let b = 0; b < 6; b++) KE[el.dof[a]][el.dof[b]] += ke[a][b];
   }
   const vrij: number[] = [];

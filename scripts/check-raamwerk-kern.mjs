@@ -27,6 +27,8 @@
  *   3. Het evenwicht van het hele raamwerk en de hulpfuncties (uitersten,
  *      interpolatie, SVG-punten, verplaatste vorm) en het gebruik vanuit een
  *      rekenblad, met CalcPAD-matrices en grootheden met eenheid.
+ *   4. De afschuifvervorming (GA in de zevende kolom van de staven): gesloten
+ *      formules met de term ∫V/GA en de knik van een pendelstaaf tegen Engesser.
  *
  * Draaien:  node scripts/check-raamwerk-kern.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -631,6 +633,28 @@ kop("3. Evenwicht, hulpfuncties en gebruik vanuit een rekenblad");
   waar("blad: SVG-punten zijn tekst met getallen", /^[\d., -]+$/.test(String(uit.p)), String(uit.p).slice(0, 40));
   waar("blad: vorm is tekst met getallen", /^[\d., -]+$/.test(String(uit.v)), String(uit.v).slice(0, 40));
   waar("blad: geen foutmelding", !Object.values(uit).some((v) => /Error|NaN/.test(String(v))), JSON.stringify(uit).slice(0, 200));
+}
+
+// ── 4. Afschuifvervorming (Timoshenko) ──────────────────────────────────────
+console.log("\n4. Afschuifvervorming: GA in de zevende kolom van de staven");
+{
+  const EI = 1000, GA = 5000, L = 4, q = 3, P = 7;
+  // Ingeklemde kolom, horizontale puntlast in de top: u = PL³/(3EI) + PL/GA = 0,15493 m.
+  const U = raamwerkVerplaatsingen([[0, 0], [0, L]], [[1, 2, EI, 1e9, 0, 0, GA]], [[1, 1, 1, 1]], [[2, 3, 0, 0, P, 0, 1]]);
+  gelijk("kolom: u_top", U[1][1], (P * L ** 3) / (3 * EI) + (P * L) / GA);
+  // Vrij opgelegde staaf, verticaal q: w_midden = 5qL⁴/(384EI) + qL²/(8GA) = 0,0112 m.
+  const R = raamwerkOplossing([[0, 0], [L, 0]], [[1, 2, EI, 1e9, 0, 0, GA]], [[1, 1, 1, 0], [2, 0, 1, 0]], [[1, 1, 0, L, q, q, 2]]);
+  gelijk("ligger: w_midden", Math.max(...R.map((r) => Math.abs(r[9]))), (5 * q * L ** 4) / (384 * EI) + (q * L * L) / (8 * GA));
+  // Schuine staaf van (0, 0) naar (3, 4), last loodrecht, L = 5 m: t.o.v. de koorde 5qL⁴/(384EI) + qL²/(8GA).
+  const R3 = raamwerkOplossing([[0, 0], [3, 4]], [[1, 2, EI, 1e12, 0, 0, GA]], [[1, 1, 1, 0], [2, 0, 1, 0]], [[1, 1, 0, 5, q, q, 4]]);
+  gelijk("schuine staaf: w t.o.v. de koorde", Math.max(...R3.map((r) => Math.abs(r[9]))), (5 * q * 5 ** 4) / (384 * EI) + (q * 25) / (8 * GA));
+  // Knik van een pendelstaaf met afschuiving: onder Euler P_E = π²EI/L² = 616,85 kN en net onder Engesser
+  // P_E/(1 + P_E/GA) = 549,11 kN (elementen met afschuiving, geometrische stijfheid zonder: aan de veilige kant).
+  const PE = (Math.PI ** 2 * EI) / L ** 2, Eng = PE / (1 + PE / GA);
+  const a = raamwerkKnik([[0, 0], [0, L]], [[1, 2, EI, 1e9, 0, 0, GA]], [[1, 1, 1, 0], [2, 1, 0, 0]], [[2, 3, 0, 0, 1, 0, 2]]);
+  waar("knik met afschuiving: tussen 0,99·Engesser en Engesser", a <= Eng * 1.0001 && a >= 0.99 * Eng, `${a} tegen ${Eng}`);
+  // Zonder GA: Euler.
+  gelijk("knik zonder GA: Euler", raamwerkKnik([[0, 0], [0, L]], [[1, 2, EI, 1e9, 0, 0, 0]], [[1, 1, 1, 0], [2, 1, 0, 0]], [[2, 3, 0, 0, 1, 0, 2]]), PE, 1e-3);
 }
 
 console.log(
