@@ -41,7 +41,9 @@
  * en h₁/d₁, met z_e = h. Lijnlast: per zone q = (c_s·c_d·c_pe − c_pi)·q_p·b
  * (bij c_p,net zonder c_pi), en op een element de som over de zones die zijn
  * belaste strook [x; x + b] vanaf de rand raakt, met e = min(b; 2h) uit
- * figuur 7.5 t/m 7.8 (bij een luifel e = min(d₁/4; b₁/2)).
+ * figuur 7.5 t/m 7.8 (bij een luifel e = min(d₁/4; b₁/2)). Bij de luifel
+ * (zone A) en de overkapping (zones B en C) ligt de randzone aan beide
+ * kanten; een strook die tot de overkant reikt, krijgt die rand ook.
  *
  * Ontwerplevensduur boven 50 jaar (A1.1(2) van de NB bij NEN-EN 1990): wind
  * met c_prob volgens opmerking 4 bij 4.2, K uit tabel NB.2 en n = 0,5, p = 1/t;
@@ -593,8 +595,10 @@ cd_8 = 0
     c_pe,z = kies(k_z; cz_1; cz_2; cz_3; cz_4; cz_5)
     c_pe,d = kies(k_z; cd_1; cd_2; cd_3; cd_4; cd_5)
     #show
-    #if α_zd < 5 deg
-        '<b style="color:#b45309">α &lt; 5°: dit is een plat dak (7.2.3); hier gerekend met de waarden bij 5°.</b>
+    #if α_zd ≤ -5 deg
+        '<b style="color:#b45309">α ≤ −5°: een V-vormig dak; tabel NB.10 – 7.4a en NB.11 – 7.4b geven daarvoor eigen waarden die dit blad niet bevat. Hier gerekend met de waarden bij 5°; die liggen niet aan de veilige kant.</b>
+    #else if α_zd < 5 deg
+        '<b style="color:#b45309">α &lt; 5°: dit is een plat dak (7.2.3); kies bij Onderdeel de gevel of het platte dak. Hier gerekend met de waarden bij 5°; die zijn voor zone F lager dan in tabel NB.7 – 7.2.</b>
     #else if α_zd > 75 deg
         '<b style="color:#b45309">α &gt; 75°: gerekend met de waarden bij 75°.</b>
     #end if
@@ -652,7 +656,7 @@ cd_8 = 0
     c_pe,d = kies8(k_z; cd_1; cd_2; cd_3; cd_4; cd_5; cd_6; cd_7; cd_8)
     #show
     #if α_sd < 5 deg
-        '<b style="color:#b45309">α &lt; 5°: dit is een plat dak (7.2.3); hier gerekend met de waarden bij 5°.</b>
+        '<b style="color:#b45309">α &lt; 5°: dit is een plat dak (7.2.3); kies bij Onderdeel de gevel of het platte dak. Hier gerekend met de waarden bij 5°; die zijn voor zone F lager dan in tabel NB.7 – 7.2.</b>
     #else if α_sd > 75 deg
         '<b style="color:#b45309">α &gt; 75°: gerekend met de waarden bij 75°.</b>
     #end if
@@ -870,21 +874,24 @@ b_bel = ?*(m)', belastingbreedte van het element<span class="kolom-3"></span>'
         r_2 = r_1
         i_3 = i_2
     #else if bouwdeel_wind ≡ 3
+        'B ligt langs beide randen evenwijdig aan de wind, C langs de rand aan loef- en aan lijzijde (tabel 7.6).
         #if zone_ov ≡ 2
             r_1 = b_ov/10
+            r_2 = b_ov - r_1
         #else
             r_1 = d_ov/10
+            r_2 = d_ov - r_1
         #end if
-        r_2 = r_1
         i_1 = zone_ov
         i_2 = 1
-        i_3 = 1
+        i_3 = zone_ov
     #else
+        'Zone A ligt langs beide zijranden (figuur NB.4 – 6); e ≤ b_1/2, dus b_1 − e ≥ e.
         r_1 = e_A
-        r_2 = r_1
+        r_2 = b_1 - e_A
         i_1 = 1
         i_2 = 2
-        i_3 = 2
+        i_3 = 1
     #end if
     #show
     #if bouwdeel_wind ≡ 1
@@ -918,9 +925,9 @@ b_bel = ?*(m)', belastingbreedte van het element<span class="kolom-3"></span>'
             '<i>Langsvlak, x in de windrichting vanaf de loefzijde van het gebouw: M tot e/2, daarna N (figuur 7.9). De strook L langs de hoekkeper valt hierbuiten; kies daarvoor zone L.</i><span class="alleen-scherm"></span>
         #end if
     #else if bouwdeel_wind ≡ 3
-        '<i>x vanaf de rand evenwijdig aan de wind (zone B, tot b/10) of vanaf de rand aan loef- of lijzijde (zone C, tot d/10, gemeten in het dakvlak, 7.2.1(4)); daarna A.</i><span class="alleen-scherm"></span>
+        '<i>x vanaf de rand evenwijdig aan de wind (zone B, tot b/10) of vanaf de rand aan loef- of lijzijde (zone C, tot d/10, gemeten in het dakvlak, 7.2.1(4)); daarna A, en de laatste b/10 of d/10 weer B of C langs de rand aan de overkant.</i><span class="alleen-scherm"></span>
     #else
-        '<i>x vanaf de zijrand van de luifel: A tot e, daarna B; de strook loopt over de volle uitkraging.</i><span class="alleen-scherm"></span>
+        '<i>x vanaf de zijrand van de luifel: A tot e, daarna B, en vanaf b<sub>1</sub> − e weer A langs de andere zijrand; de strook loopt over de volle uitkraging.</i><span class="alleen-scherm"></span>
     #end if
 #end if
 #hide

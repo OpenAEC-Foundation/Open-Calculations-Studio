@@ -84,6 +84,59 @@
  *   μ_2 = 2,789, s_2 = 1,952; b_2 < l_s: μ = 2,789 − 1,989·4,8/7 = 1,425 → 0,9975 kN/m²
  *   Element tegen de wand, strook [0; 1]: s in het midden = 0,7·(2,789 − 1,989·0,5/7) = 1,853 kN/m.
  *
+ * Tweede, onafhankelijke nareken (andere invoer, andere terreincategorie):
+ *
+ * (1) Zadeldak θ = 0°, α = 30°, zone G, A = 4 m², terreincategorie III, z = 8 m, b = 15 m,
+ *   strook [0,9; 2,1]. q_p(8): k_r = 0,19·10^0,07 = 0,2232; ln(8/0,5) = 2,7726; c_r = 0,6189;
+ *   v_m = 16,71 m/s; I_v = 0,3607; q_p = 3,5247·0,625·16,71² = 615,2 N/m² → 0,6152 kN/m².
+ *   G: −1,5 + 1,0·log10(4) = −0,8979; H: −1,0 + 0,8·0,6021 = −0,5184; druk +0,7 en +0,4.
+ *   e = min(15; 16) = 15, e/10 = 1,5 m: G 0,6 m, H 0,6 m.
+ *     q_zuiging = 0,6152·(−0,8979·0,6 − 0,5184·0,6 − 0,2·1,2) = 0,6152·(−1,0898) = −0,6704 kN/m
+ *     q_druk    = 0,6152·(0,7·0,6 + 0,4·0,6 + 0,3·1,2)         = 0,6152·1,02      =  0,6275 kN/m
+ *   α = 22°, zone H, strook [3; 4] geheel in H: zuiging −0,3 + 0,1·7/15 = −0,2533, druk
+ *   0,2 + 0,2·7/15 = 0,2933 → q = 0,6152·(−0,4533) = −0,2789 en 0,6152·0,5933 = 0,3650 kN/m.
+ * (2) Schilddak θ = 90°, zone L, α_90 = 40°, A = 3 m², terreincategorie III, z = 6 < z_min = 7 m,
+ *   b = 9 m, strook [0,5; 1,5] haaks op de hoekkeper. q_p(7): ln 14 = 2,6391; c_r = 0,5891;
+ *   v_m = 15,91; I_v = 0,3789; q_p = 3,6525·0,625·15,91² = 577,6 N/m² → 0,5776 kN/m².
+ *   L: c_pe,10 = −1,4 + 0,1·10/15 = −1,3333, c_pe,1 = −2,0 → −2,0 + 0,6667·log10(3) = −1,6819.
+ *   M: −1,2 + 0,4·0,4771 = −1,0092. e = 9, e/10 = 0,9: L 0,4 m, M 0,6 m.
+ *     q_zuiging = 0,5776·(−1,6819·0,4 − 1,0092·0,6 − 0,2) = 0,5776·(−1,4783) = −0,8538 kN/m
+ *     q_druk    = 0,5776·(−1,2783 + 0,3)                  = 0,5776·(−0,9783) = −0,5650 kN/m
+ *   Zone H van het schild aan loefzijde: druk 0,4 + 0,2·10/15 = 0,5333; zuiging c_pe,10 = −0,0667,
+ *   c_pe,1 = −0,3333 → −0,3333 + 0,2667·0,4771 = −0,2061.
+ * (3) Luifel, h = z = 12 m (terreincategorie II), h_1 = 3, d_1 = 1,5, b_1 = 4.
+ *   q_p(12): c_r = 0,2094·ln 60 = 0,8572; v_m = 23,14; I_v = 0,2442; q_p = 907,2 N/m² → 0,9072.
+ *   h_1/h = 0,25; h_1/d_1 = 2 → t = 0,4. A: neer 0,75, op −0,9 + 0,4·(−0,5) = −1,1;
+ *   B: neer 0,45, op −0,2 + 0,4·(−0,3) = −0,32. e = min(0,375; 2) = 0,375 m.
+ *   Zone B, strook [0,2; 1,2]: A 0,175, B 0,825 m.
+ *     q_op = 0,9072·(−1,1·0,175 − 0,32·0,825) = −0,4141;  q_neer = 0,9072·(0,13125 + 0,37125) = 0,4559 kN/m
+ *   Eén steun die de hele luifel draagt, strook [0; 4]: A aan beide zijranden 2·0,375, B 3,25 m.
+ *     q_op = 0,9072·(−0,825 − 1,04) = −1,692;  q_neer = 0,9072·(0,5625 + 1,4625) = 1,837 kN/m
+ *     (het blad gaf −1,427 en 1,735: zone A alleen langs de eerste zijrand).
+ * (4) Open overkapping α = 17°, φ = 0,3, z = 5 m (terreincategorie II).
+ *   q_p(5): ln 25 = 3,2189; c_r = 0,6739; v_m = 18,20; I_v = 0,3107; q_p = 656,9 N/m² → 0,6569.
+ *   C: neer 1,8 + 0,4·0,3 = 1,92; op −2,66 (φ = 0) en −3,0 (φ = 1) → −2,66 − 0,3·0,34 = −2,762.
+ *   A: neer 1,52; op −1,96 en −1,6 → −1,852.  B: neer 2,78; op −2,56 en −2,9 → −2,662.
+ *   Zone C, d = 12, strook [0,6; 1,8]: C 0,6, A 0,6 m.
+ *     q_op = 0,6569·(−2,762 − 1,852)·0,6 = −1,819;  q_neer = 0,6569·(1,92 + 1,52)·0,6 = 1,356 kN/m
+ *   Zone C, d = 6, strook [5; 6] tot de rand aan lijzijde: A 0,4 m, C 0,6 m (vanaf 5,4).
+ *     q_op = 0,6569·(−0,7408 − 1,6572) = −1,575;  q_neer = 0,6569·(0,608 + 1,152) = 1,156 kN/m
+ *     (het blad gaf alles A: −1,217 en 0,9985).
+ *   Zone B, b = 10, strook [8,5; 10]: A 0,5, B 1,0 m.
+ *     q_op = 0,6569·(−0,926 − 2,662) = −2,357;  q_neer = 0,6569·(0,76 + 2,78) = 2,325 kN/m
+ * (5) Sneeuw tegen een hoger bouwdeel, h = 1,5 → l_s = max(3; 5) = 5 m; b_1 = 6, b_2 = 3, hoog dak 35°.
+ *   μ_w = 9/3 = 3,0 (≤ 2·1,5/0,7 = 4,29; ≤ 4); μ_1(35°) = 0,8·25/30 = 0,6667; μ_s = 0,6667·6/5 = 0,8;
+ *   μ_2 = 3,8, s_2 = 2,66; b_2 < l_s: μ_eind = 3,8 − 3,0·3/5 = 2,0 → 1,4 kN/m².
+ *   Strook [0,5; 1,5]: μ(1,0) = 3,2 → 0,7·3,2 = 2,24 kN/m. Strook [2,5; 3,5], afgekapt op 3:
+ *   μ(2,75) = 2,15 → 0,7·2,15·0,5 = 0,7525 kN/m. Hoog dak 70°: μ_1 = 0, dus μ_s = 0 en μ_2 = 3.
+ * (6) Windmoment, h = z = 32, b = 12, h/d = 2, c_s c_d = 1,05, f = 0,85 (terreincategorie II).
+ *   h > 2b: stroken [0; 12], [12; 20] en [20; 32] met z_e = 12, 20 en 32.
+ *   c_E = −0,5 − 0,2·1/4 = −0,55; 0,85·1,05·(0,8 + 0,55) = 1,2049.
+ *   q_p(12) = 0,9072; q_p(20): c_r = 0,9641, v_m = 26,03, I_v = 0,2171 → 1,0673;
+ *   q_p(32): c_r = 1,0625, v_m = 28,69, I_v = 0,1970 → 1,2239.
+ *   F = 1,2049·12·(0,9072·12 + 1,0673·8 + 1,2239·12) = 157,40 + 123,46 + 212,35 = 493,2 kN
+ *   M = 157,40·6 + 123,46·16 + 212,35·26 = 8441 kNm;  z_F = 17,11 m
+ *
  * Draaien:  node scripts/check-en1991-belastingen.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
@@ -280,6 +333,41 @@ fouten += toets("windmoment, b < h ≤ 2b, b en h/d uit het blad", W(2, 10, { z:
 fouten += toets("windmoment met het hoge bouwwerk (x = 80)", W(4, 10, { ...HOOG, x_hoog: "80", b_bel: "1", hd: "1", windmoment: "1", b_mw: "12" }),
   { q_p: "1.118", F_wind: "148.2", M_wind: "741.0" });
 
+// ── Wind: tweede, onafhankelijke nareken (zie de kop, (1) t/m (4) en (6)) ────
+const P3 = { ...PROJECT, terreincategorie: 3 };
+fouten += toets("(1) zadeldak θ = 0°, α = 30°, zone G, A = 4 m², terreincategorie III, over G en H",
+  reken(wind, { bouwdeel_wind: "2", zone_zd: "2", α_zd: "30", z: "8", A_bel: "4", b_bel: "1.2", x_el: "0.9", b_geb: "15" }, P3),
+  { q_p: "0.6152", c_pe_z: "-0.8979", c_pe_d: "0.7", e_w: "15", w_z: "-0.6754", q_el_z: "-0.6704", q_el_d: "0.6275" });
+fouten += toets("(1) zadeldak θ = 0°, α = 22°, zone H",
+  reken(wind, { bouwdeel_wind: "2", zone_zd: "3", α_zd: "22", z: "8", A_bel: "10", b_bel: "1", x_el: "3", b_geb: "15" }, P3),
+  { c_pe_z: "-0.2533", c_pe_d: "0.2933", q_el_z: "-0.2789", q_el_d: "0.3650" });
+fouten += toets("(2) schilddak θ = 90°, zone L, α = 40°, A = 3 m², z onder z_min, over L en M",
+  reken(wind, { bouwdeel_wind: "5", zone_sd: "14", α_sd: "40", z: "6", A_bel: "3", b_bel: "1", x_el: "0.5", b_geb: "9" }, P3),
+  { z_e: "7", q_p: "0.5776", c_pe_z: "-1.682", e_w: "9", q_el_z: "-0.8538", q_el_d: "-0.5650" });
+fouten += toets("(2) schilddak θ = 90°, zone H, α = 40°, A = 3 m²",
+  reken(wind, { bouwdeel_wind: "5", zone_sd: "11", α_sd: "40", z: "6", A_bel: "3" }, P3),
+  { c_pe_z: "-0.2061", c_pe_d: "0.5333" });
+const LF = { bouwdeel_wind: "4", h_1: "3", d_1: "1.5", b_1: "4", z: "12" };
+fouten += toets("(3) luifel, zone B, strook over A en B",
+  reken(wind, { ...LF, zone_lf: "2", A_bel: "1.5", b_bel: "1", x_el: "0.2" }, PROJECT),
+  { q_p: "0.9072", r_h: "0.25", r_d: "2", c_p_net_neer: "0.45", c_p_net_op: "-0.32", e_A: "0.375", q_el_z: "-0.4141", q_el_d: "0.4559" });
+fouten += toets("(3) luifel, één steun voor de volle breedte: zone A langs beide zijranden",
+  reken(wind, { ...LF, zone_lf: "1", A_bel: "6", b_bel: "4", x_el: "0" }, PROJECT),
+  { c_p_net_neer: "0.75", c_p_net_op: "-1.1", q_el_z: "-1.692", q_el_d: "1.837" });
+const OV2 = { bouwdeel_wind: "3", α_ov: "17", φ_ov: "0.3", z: "5", A_bel: "7" };
+fouten += toets("(4) overkapping α = 17°, φ = 0,3, zone C, over C en A",
+  reken(wind, { ...OV2, zone_ov: "3", b_bel: "1.2", x_el: "0.6", d_ov: "12" }, PROJECT),
+  { q_p: "0.6569", c_p_net_neer: "1.92", c_p_net_op: "-2.762", F_w_neer: "8.829", F_w_op: "-12.70", q_el_z: "-1.819", q_el_d: "1.356" });
+fouten += toets("(4) overkapping, zone C, strook tot de rand aan lijzijde",
+  reken(wind, { ...OV2, zone_ov: "3", b_bel: "1", x_el: "5", d_ov: "6" }, PROJECT),
+  { q_el_z: "-1.575", q_el_d: "1.156" });
+fouten += toets("(4) overkapping, zone B, strook tot de rand aan de overkant",
+  reken(wind, { ...OV2, zone_ov: "2", b_bel: "1.5", x_el: "8.5", b_ov: "10" }, PROJECT),
+  { c_p_net_neer: "2.78", c_p_net_op: "-2.662", q_el_z: "-2.357", q_el_d: "2.325" });
+fouten += toets("(6) windmoment h = 32 > 2b, c_s c_d = 1,05, met 0,85",
+  W(4, 10, { z: "32", hd: "2", b_bel: "1", bouwwerkfactor: "2", windmoment: "1", b_mw: "12" }),
+  { c_E: "-0.55", F_wind: "493.2", M_wind: "8441", z_F: "17.11" });
+
 // ── Sneeuw ───────────────────────────────────────────────────────────────────
 const sneeuw = blad("en1991Sneeuwbelasting");
 const S = (v) => reken(sneeuw, v, PROJECT);
@@ -323,6 +411,12 @@ fouten += toets("sneeuw kiel, α_1 = 32°, α_2 = 26°", S({ α: "32", ophoping:
   { μ_1_α1: "0.7467", μ_1_α2: "0.8", α_gem: "29", μ_2: "1.573", s_2: "1.101", q_sn: "1.043" });
 // Dakrand h = 1 (μ_2 = 2, l_s = 5): strook [2; 3], s in het midden 0,56 + 0,84·(1 − 2,5/5) = 0,98.
 fouten += toets("sneeuw dakrand, element op 2 m", S({ α: "0", ophoping: "3", h_ob: "1", b_sn: "1", x_sn: "2" }), { q_sn: "0.98" });
+// (5) uit de kop: korte l_s (2h = 3 → 5 m) met b_2 < l_s.
+const HB5 = { α: "0", ophoping: "2", h_sp: "1.5", b_1: "6", b_2: "3", α_b: "35", b_sn: "1" };
+fouten += toets("(5) sneeuw hoger bouwdeel, korte l_s, element op 0,5 m van de wand", S({ ...HB5, x_sn: "0.5" }),
+  { l_s: "5", μ_w: "3", μ_s: "0.8", μ_2: "3.8", s_2: "2.66", μ_eind: "2", s_eind: "1.4", q_sn: "2.24" });
+fouten += toets("(5) sneeuw hoger bouwdeel, strook over het einde van het lagere dak", S({ ...HB5, x_sn: "2.5" }), { q_sn: "0.7525" });
+fouten += toets("(5) sneeuw hoger bouwdeel, hoog dak 70°", S({ ...HB5, α_b: "70", x_sn: "0" }), { μ_s: "0", μ_2: "3" });
 // Zonder ophoping: 0,56·1,2 = 0,672.
 fouten += toets("sneeuw zonder ophoping, lijnlast", S({ α: "0", b_sn: "1.2" }), { q_sn: "0.672" });
 
