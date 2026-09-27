@@ -136,6 +136,16 @@
  *   q_p(32): c_r = 1,0625, v_m = 28,69, I_v = 0,1970 → 1,2239.
  *   F = 1,2049·12·(0,9072·12 + 1,0673·8 + 1,2239·12) = 157,40 + 123,46 + 212,35 = 493,2 kN
  *   M = 157,40·6 + 123,46·16 + 212,35·26 = 8441 kNm;  z_F = 17,11 m
+ *   Idem met een hoog bouwwerk (A.4): h_high = 80 > 2·h_ave = 30, h_low = 32 ≤ 80/2,
+ *   d_large = 12 → r = min(80; 24) = 24. Gekozen lezing: bij x < 2r rekent elke strook met
+ *   max(z_e; z_n), bij x ≥ 2r met zijn eigen z_e.
+ *   x = 36 (r < x < 2r): z_n = ½·(24 − (1 − 2·32/24)·(36 − 24)) = ½·(24 + 20) = 22 m.
+ *     Stroken z_e = 12 en 20 → 22; de bovenste houdt 32. q_p(22): ln 110 = 4,7005,
+ *     c_r = 0,9841, v_m = 26,57, I_v = 0,2127 → (1 + 1,4892)·0,625·26,57² = 1098,4 N/m² → 1,0984.
+ *     F = 1,2049·12·(1,0984·12 + 1,0984·8 + 1,2239·12) = 190,57 + 127,05 + 212,35 = 530,0 kN
+ *     M = 190,57·6 + 127,05·16 + 212,35·26 = 1143,4 + 2032,8 + 5521,1 = 8697 kNm;  z_F = 16,41 m
+ *     (eerder 493,2 kN en 8441 kNm: z_n = 22 < h = 32 liet alle stroken ongemoeid).
+ *   x = 50 ≥ 2r = 48: geen invloed, weer 493,2 kN en 8441 kNm.
  *
  * Draaien:  node scripts/check-en1991-belastingen.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
@@ -367,6 +377,14 @@ fouten += toets("(4) overkapping, zone B, strook tot de rand aan de overkant",
 fouten += toets("(6) windmoment h = 32 > 2b, c_s c_d = 1,05, met 0,85",
   W(4, 10, { z: "32", hd: "2", b_bel: "1", bouwwerkfactor: "2", windmoment: "1", b_mw: "12" }),
   { c_E: "-0.55", F_wind: "493.2", M_wind: "8441", z_F: "17.11" });
+// Idem met A.4, zie de kop: x = 36 < 2r → onderste twee stroken op z_n = 22 m; x = 50 ≥ 2r → geen invloed.
+const HOOG6 = { hoger_bw: "1", h_hoog: "80", h_gem: "15", d_groot: "12" };
+fouten += toets("(6) windmoment met A.4, z_n = 22 m tussen de strookhoogtes",
+  W(4, 10, { z: "32", hd: "2", b_bel: "1", bouwwerkfactor: "2", windmoment: "1", b_mw: "12", ...HOOG6, x_hoog: "36" }),
+  { r_A4: "24", z_n: "22", q_p: "1.224", F_wind: "530.0", M_wind: "8697", z_F: "16.41" });
+fouten += toets("(6) windmoment met A.4, x ≥ 2r: elke strook zijn eigen z_e",
+  W(4, 10, { z: "32", hd: "2", b_bel: "1", bouwwerkfactor: "2", windmoment: "1", b_mw: "12", ...HOOG6, x_hoog: "50" }),
+  { z_n: "32", F_wind: "493.2", M_wind: "8441" });
 
 // ── Sneeuw ───────────────────────────────────────────────────────────────────
 const sneeuw = blad("en1991Sneeuwbelasting");
