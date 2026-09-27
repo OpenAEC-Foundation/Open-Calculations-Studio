@@ -727,7 +727,7 @@ f_ctm = 0.3*betonklasse^(2/3)*N/mm^2', tabel 3.1<span class="kolom-3"></span>'
                 α_4', tabel 8.2: 0,7 met een gelaste dwarsstaaf<span class="kolom-3"></span>'
                 l_bd = max(α_1*α_4*l_b,rqd; l_b,min)', (8.4), α<sub>2</sub>, α<sub>3</sub> en α<sub>5</sub> = 1,0<span class="kolom-3"></span>'
                 l_b,con', in de console, vanaf de binnenkant van de oplegplaat (J.3(4))<span class="kolom-3"></span>'
-                UC_vk = uc(l_bd; l_bkol)', in de kolom<span class="kolom-2"></span>'
+                UC_vk = uc(l_bd; max(l_bkol; 0 mm))', in de kolom; geen lengte (≤ 0) geeft ∞<span class="kolom-2"></span>'
                 UC_vc = uc(l_bd; l_b,con)', in de console<span class="kolom-2"></span>'
                 '<i>Bij bijzondere eisen aan de scheurbeperking helpen schuine beugels bij de aansluiting van de bovenkant op de kolom (J.3(5)).</i><span class="alleen-scherm"></span>
 

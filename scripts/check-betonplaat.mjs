@@ -657,6 +657,9 @@ const SETS = [
   { naam: "17 — console met a_c ≥ z_0: geen korte console", invoer: { constructiedeel: 3, a_con: 380, l_con: 600 } },
   { naam: "18 — console, goede aanhechting en lussen met c > 3Ø (α_1 = 0,7)", invoer: { constructiedeel: 3, aanhechting: 1, staafvorm: 2, c_con: 50 } },
   { naam: "19 — console zonder beugels", invoer: { constructiedeel: 3, n_bgl: 0 } },
+  // Set 20: een negatieve beschikbare lengte in de kolom (een tikfout) gaf UC_vk = l_bd/l_bkol < 0 en daarmee
+  // "voldoet". Met de hand: er is geen verankeringslengte, dus l_bd/0 = ∞ → voldoet niet, zoals de narekening.
+  { naam: "20 — console met een negatieve verankeringslengte in de kolom: ∞, voldoet niet", invoer: { constructiedeel: 3, l_bkol: -100 } },
 ];
 
 const naarInvoer = (o) => Object.fromEntries(Object.entries(o).map(([k, x]) => [k, String(x)]));
