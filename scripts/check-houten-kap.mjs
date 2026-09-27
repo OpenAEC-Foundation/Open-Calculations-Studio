@@ -219,7 +219,8 @@ function model(inv, scope = SCOPE) {
   const SCk = inv.l_ks / cb, zt = inv.z_hb, SCt = zt / sb;
   const sQ = sys === 2 ? (SCk >= Lm - SCk ? SCk / 2 : (SCk + Lm) / 2)
     : sys === 3 && zt > 0 ? (SCt >= Lm - SCt ? SCt / 2 : (SCt + Lm) / 2) : Lm / 2;
-  const sP = inv.puntlast === 2 ? inv.x_F / cb : sQ;
+  const sP0 = inv.puntlast === 2 ? inv.x_F / cb : sQ;
+  let sP = sP0; // de vrije Q_k wordt hieronder op de ongunstigste plaats gezet
   const fsn = (v, r) => (v === 3 ? 1 : v === 4 ? (r === 1 ? 0.5 : 1) : v === 5 ? (r === 1 ? 1 : 0.5) : 0);
   const wsg = (v, r) => (v < 6 ? 0 : sys === 3 ? (r === 1 ? [1, 2, 3, 3, 4] : [3, 3, 1, 2, 4])[v - 6] : v - 5);
   function last(fg, fq, v, r) {
@@ -250,12 +251,15 @@ function model(inv, scope = SCOPE) {
   }
   const som = (f) => f.reduce((o, k) => ({ fx: o.fx + k.fx, fz: o.fz + k.fz, m: o.m + (k.s * tx * k.fz - k.s * tz * k.fx) }), { fx: 0, fz: 0, m: 0 });
   /** M, V, N in de knopen, uit alle krachten (lasten, reacties, trekband) op de staaf. */
-  function snede(f) {
+  /** Knopen: de gelijke verdeling, desgewenst met extra punten net voor en na een knoop of puntlast. */
+  function snede(f, extra = []) {
     const fs = [...f].sort((p, q2) => p.s - q2.s);
     const uit = [];
     let Sx = 0, Sz = 0, Mo = 0, j = 0;
-    for (let i = 0; i <= n; i++) {
-      const s = i === 0 ? 1e-9 : i === n ? Lm - 1e-9 : i * ds;
+    const plekken = Array.from({ length: n + 1 }, (_, i) => (i === 0 ? 1e-9 : i === n ? Lm - 1e-9 : i * ds));
+    for (const e of extra) for (const d of [-1e-7, 1e-7]) if (e + d > 1e-9 && e + d < Lm - 1e-9) plekken.push(e + d);
+    plekken.sort((a, b2) => a - b2);
+    for (const s of plekken) {
       while (j < fs.length && fs[j].s <= s) { Sx += fs[j].fx; Sz += fs[j].fz; Mo += fs[j].s * tx * fs[j].fz - fs[j].s * tz * fs[j].fx; j++; }
       const Px = s * tx, Pz = s * tz;
       uit.push({ s, M: -(Mo - (Px * Sz - Pz * Sx)), V: tx * Sz - tz * Sx, N: -(Sx * tx + Sz * tz) });
@@ -294,10 +298,11 @@ function model(inv, scope = SCOPE) {
       Object.assign(R, { Ax, Az, Bz, Bn: Bz, T });
       const SC = SCt;
       staven = [
-        snede([...fL, kracht(0, Ax, Az), kracht(SC, T, 0)]),
-        snede([...fRm, kracht(0, 0, Bz), kracht(SC, T, 0)]),
+        snede([...fL, kracht(0, Ax, Az), kracht(SC, T, 0)], [SC, sP]),
+        snede([...fRm, kracht(0, 0, Bz), kracht(SC, T, 0)], [SC]),
       ];
       staven.velden = [[[0, Lm]], [[0, Lm]]];
+      staven.krachten = [[...fL, kracht(0, Ax, Az), kracht(SC, T, 0)], [...fRm, kracht(0, 0, Bz), kracht(SC, T, 0)]];
     } else {
       const t = som(fL);
       const dB = rol === 1 ? [0, 1] : [-sb, cb];
@@ -319,8 +324,9 @@ function model(inv, scope = SCOPE) {
         f = [...fL, kracht(0, rr.Ax, rr.Az), kracht(Lm, rr.bm * dB[0], rr.bm * dB[1]), kracht(SCk, 0, Cz)];
       }
       Object.assign(R, { Ax: rr.Ax, Az: rr.Az, Cz, Bz: rr.bm * dB[1], Bn: rr.bm, Bx: rol === 1 ? 0 : rr.bm * sb });
-      staven = [snede(f)];
+      staven = [snede(f, sys === 2 ? [SCk, sP] : [sP])];
       staven.velden = [sys === 2 ? [[0, SCk], [SCk, Lm]] : [[0, Lm]]];
+      staven.krachten = [f];
     }
     return { staven, R };
   }
@@ -377,9 +383,50 @@ function model(inv, scope = SCOPE) {
   const hef = inv.h_sp - inv.t_keep, av = hef / inv.h_sp, kn = mat.gl ? 6.5 : 5;
   const kv = inv.t_keep > 0 ? Math.min(1, kn / (Math.sqrt(inv.h_sp) * (Math.sqrt(av * (1 - av)) + ((0.8 * inv.a_opl) / 2 / inv.h_sp) * Math.sqrt(1 / av - av * av)))) : 1;
 
+  // ── De vrije Q_k op de ongunstigste plaats ──────────────────────────────────
+  // Eigen zoekwijze (anders dan het blad): per deel van de staaf 120 gelijke stappen, dan
+  // gulden-snede rond de beste. Doelen: het moment onder de last (veldmoment) en |M| bij het
+  // knieschot of de hanenbalk (steunmoment), in γ_G·G + γ_Q·Q_k; voor de doorbuiging w_bij.
+  /** M in de staaf op s, uit alle krachten vóór s (lasten, reacties, knoopkrachten). */
+  const momentAt = (f, s) => {
+    let Sx = 0, Sz = 0, Mo = 0;
+    for (const k of f) if (k.s <= s + 1e-12) { Sx += k.fx; Sz += k.fz; Mo += k.s * tx * k.fz - k.s * tz * k.fx; }
+    return -(Mo - (s * tx * Sz - s * tz * Sx));
+  };
+  const knoop = sys === 2 ? SCk : sys === 3 && zt > 0 ? SCt : null;
+  const delen = knoop === null ? [[0, Lm]] : [[0, knoop], [knoop, Lm]];
+  function zoek(doel) {
+    let best = -Infinity, xb = sQ, stap = 0;
+    for (const [a0, a1] of delen) {
+      const n0 = 120, d = (a1 - a0) / n0;
+      for (let i = 1; i < n0; i++) { const x = a0 + i * d, w = doel(x); if (best === -Infinity || w > best + 1e-6 * Math.abs(best)) { best = w; xb = x; stap = d; } }
+    }
+    let lo = Math.max(xb - stap, 1e-6), hi = Math.min(xb + stap, Lm - 1e-6);
+    const g = (Math.sqrt(5) - 1) / 2;
+    let x1 = hi - g * (hi - lo), x2 = lo + g * (hi - lo), f1 = doel(x1), f2 = doel(x2);
+    for (let it = 0; it < 30; it++) {
+      if (f1 >= f2) { hi = x2; x2 = x1; f2 = f1; x1 = hi - g * (hi - lo); f1 = doel(x1); }
+      else { lo = x1; x1 = x2; f1 = f2; x2 = lo + g * (hi - lo); f2 = doel(x2); }
+    }
+    const xm = (lo + hi) / 2;
+    return doel(xm) >= best ? xm : xb;
+  }
+  const opP = (s, fg, fq) => { sP = s; return oplossing(fg, fq, 2); };
+  let qF = sQ, qS = sQ, qW = sQ;
+  if (inv.puntlast === 1) {
+    qF = zoek((s) => momentAt(opP(s, gG, gQ).staven.krachten[0], s));
+    if (knoop !== null) qS = zoek((s) => Math.abs(momentAt(opP(s, gG, gQ).staven.krachten[0], knoop)));
+  }
+  sP = sP0;
+
+  // ── Combinaties ─────────────────────────────────────────────────────────────
   const combos = {};
   const uit = { UC_NM: 0, UC_kip: 0, UC_V: 0, UC_keep: 0, UC_opl: 0 };
   const ext = { Azmax: 0, Azmin: 0, Axmax: 0, Axmin: 0, Tmax: 0 };
+  // Zadelvlak aan de voet: een keep t loodrecht op de staaf, met een horizontale zadelsnede en
+  // een loodrechte snede, laat een driehoek weg met hoogte t op de schuine zijde; de horizontale
+  // rechthoekszijde is t/sin β. Langer dan de muurplaat kan het contact niet zijn.
+  const lzv = inv.t_keep > 0 ? Math.min(inv.a_opl, inv.t_keep / sb) : inv.a_opl;
   for (let k = 1; k <= 13; k++) {
     if (!act(k)) continue;
     const [fc, v, dk] = KC[k - 1];
@@ -388,53 +435,71 @@ function model(inv, scope = SCOPE) {
     const km = kmods[dk];
     const fmd = (km * mat.fm * kh) / mat.gM, ftd = (km * mat.ft * kh) / mat.gM, fcd = (km * mat.fc) / mat.gM;
     const fvd = (km * mat.fv) / mat.gM, fc90d = (km * mat.fc90) / mat.gM, fcad = fcd / ((fcd / fc90d) * cb * cb + sb * sb);
-    const opl = oplossing(fg, fq, v);
     const dPQ = v === 2 && inv.puntlast === 1 ? (fq * 2) / 2 : 0;
-    let M = 0, Nmin = 0, V = 0, unm = 0, ukp = 0, Vv = 0;
-    for (const st of opl.staven) {
-      Vv = Math.max(Vv, Math.abs(st[0].V));
-      for (const p of st) {
-        const sm = Math.abs(p.M) / W / 1000, sn2 = p.N / A / 1000;
-        M = Math.max(M, Math.abs(p.M)); Nmin = Math.min(Nmin, p.N); V = Math.max(V, Math.abs(p.V));
-        const uS = sn2 >= 0 ? sn2 / ftd + sm / fmd : (sn2 / fcd) ** 2 + sm / fmd;
-        const uB = sn2 >= 0 ? 0 : Math.max(-sn2 / (kcy * fcd) + sm / fmd, -sn2 / (kcz * fcd) + (0.7 * sm) / fmd);
-        const kcr = p.M >= 0 ? kcrt : kcrb;
-        const uK = sn2 < 0 ? (sm / (kcr * fmd)) ** 2 - sn2 / (kcz * fcd) : sm / (kcr * fmd);
-        unm = Math.max(unm, uS, uB); ukp = Math.max(ukp, uK);
+    // (6.17)/(6.19) met (6.23)/(6.24) voor een moment m en een normaalkracht n (+ trek).
+    const uSec = (m, n) => {
+      const sm = Math.abs(m) / W / 1000, sn2 = n / A / 1000;
+      const uS = sn2 >= 0 ? sn2 / ftd + sm / fmd : (sn2 / fcd) ** 2 + sm / fmd;
+      const uB = sn2 >= 0 ? 0 : Math.max(-sn2 / (kcy * fcd) + sm / fmd, -sn2 / (kcz * fcd) + (0.7 * sm) / fmd);
+      return Math.max(uS, uB);
+    };
+    const kipRatio = (m) => Math.abs(m) / W / 1000 / ((m >= 0 ? kcrt : kcrb) * fmd);
+    // Vrije Q_k: de gevonden plaatsen, en bij een knoop ook direct eronder en erboven (0,001·L).
+    const plaatsen = v === 2 && inv.puntlast === 1 ? (knoop === null ? [qF] : [qF, qS, knoop - 0.001 * Lm, knoop + 0.001 * Lm]) : [sP0];
+    let M = 0, Nmin = 0, V = 0, unm = 0, ukp = 0, Vv = 0, sA = 0, sB = 0, sC = 0;
+    for (const plek of plaatsen) {
+      sP = plek;
+      const opl = oplossing(fg, fq, v);
+      for (const st of opl.staven) {
+        Vv = Math.max(Vv, Math.abs(st[0].V));
+        let Mst = 0, Nst = 0, rho = 0;
+        for (const p of st) {
+          const sn2 = p.N / A / 1000;
+          M = Math.max(M, Math.abs(p.M)); Nmin = Math.min(Nmin, p.N); V = Math.max(V, Math.abs(p.V));
+          const uK = sn2 < 0 ? kipRatio(p.M) ** 2 - sn2 / (kcz * fcd) : kipRatio(p.M);
+          unm = Math.max(unm, uSec(p.M, p.N)); ukp = Math.max(ukp, uK);
+          Mst = Math.max(Mst, Math.abs(p.M)); Nst = Math.min(Nst, p.N); rho = Math.max(rho, kipRatio(p.M));
+        }
+        // De staaf als geheel: grootste |M| met de grootste druk; kip met de grootste σ_m/(k_crit·f_m,d).
+        unm = Math.max(unm, uSec(Mst, Nst));
+        if (Nst < 0) ukp = Math.max(ukp, rho ** 2 - Nst / A / 1000 / (kcz * fcd));
       }
+      const R = opl.R;
+      sA = Math.max(sA, Math.max(R.Az + dPQ, 0) / (b * lzv / 1000) / 1000);
+      sB = Math.max(sB, Math.max(R.Bn + dPQ * (rol === 1 ? 1 : cb), 0) / (b * (sys === 3 ? lzv : inv.a_nok) / 1000) / 1000);
+      sC = Math.max(sC, Math.max(R.Cz + dPQ, 0) / (b * inv.a_opl / 1000) / 1000);
+      ext.Azmax = Math.max(ext.Azmax, R.Az + dPQ); ext.Azmin = Math.min(ext.Azmin, R.Az);
+      ext.Axmax = Math.max(ext.Axmax, R.Ax); ext.Axmin = Math.min(ext.Axmin, R.Ax); ext.Tmax = Math.max(ext.Tmax, R.T);
     }
+    sP = sP0;
     V += dPQ * cb; Vv += dPQ * cb;
     const uV = (1.5 * V) / (b * h) / 1000 / fvd;
     const ukeep = inv.t_keep > 0 ? (1.5 * Vv) / (b * (hef / 1000)) / 1000 / (kv * fvd) : 0;
-    const R = opl.R;
-    // Zadelvlak aan de voet: een keep t loodrecht op de staaf, met een horizontale zadelsnede en
-    // een loodrechte snede, laat een driehoek weg met hoogte t op de schuine zijde; de horizontale
-    // rechthoekszijde is t/sin β. Langer dan de muurplaat kan het contact niet zijn.
-    const lz = inv.t_keep > 0 ? Math.min(inv.a_opl, inv.t_keep / sb) : inv.a_opl;
-    const sA = Math.max(R.Az + dPQ, 0) / (b * lz / 1000) / 1000;
-    const sB = Math.max(R.Bn + dPQ * (rol === 1 ? 1 : cb), 0) / (b * (sys === 3 ? lz : inv.a_nok) / 1000) / 1000;
-    const sC = Math.max(R.Cz + dPQ, 0) / (b * inv.a_opl / 1000) / 1000;
     const uo = Math.max(sA / fcad, sB / (rol === 2 && sys !== 3 ? fc90d : fcad), sC / fcad);
     combos[k] = { km, M, N: Nmin, V, unm, ukp, uV, uo, ukeep };
     uit.UC_NM = Math.max(uit.UC_NM, unm); uit.UC_kip = Math.max(uit.UC_kip, ukp); uit.UC_V = Math.max(uit.UC_V, uV);
     uit.UC_keep = Math.max(uit.UC_keep, ukeep); uit.UC_opl = Math.max(uit.UC_opl, uo);
-    ext.Azmax = Math.max(ext.Azmax, R.Az + dPQ); ext.Azmin = Math.min(ext.Azmin, R.Az);
-    ext.Axmax = Math.max(ext.Axmax, R.Ax); ext.Axmin = Math.min(ext.Axmin, R.Ax); ext.Tmax = Math.max(ext.Tmax, R.T);
   }
   // karakteristieke reacties en doorbuiging
   const reacties = {}, bgt = {};
   let UC_wbij = 0, UC_wmax = 0;
+  if (inv.puntlast === 1) qW = zoek((s) => zakking(opP(s, kdef, 1)).uc);
+  sP = sP0;
   for (let v = 0; v <= 10; v++) {
     if (!vdoe(v)) continue;
+    const vrij = v === 2 && inv.puntlast === 1;
+    sP = vrij ? qF : sP0;
     reacties[v] = oplossing(v === 0 ? 1 : 0, v > 0 ? 1 : 0, v).R;
     if (v === 0) continue;
+    sP = vrij ? qW : sP0;
     const zb = zakking(oplossing(kdef, 1, v)), zm = zakking(oplossing(1 + kdef, 1, v));
+    sP = sP0;
     bgt[v] = { wb: zb.w, ub: zb.uc, wm: zm.w, um: zm.uc, l: zb.l };
     UC_wbij = Math.max(UC_wbij, zb.uc); UC_wmax = Math.max(UC_wmax, zm.uc);
   }
   uit.UC_wbij = UC_wbij; uit.UC_wmax = inv.wmax_eis === 1 ? UC_wmax : 0;
   uit.UC_max = Math.max(...Object.values(uit));
-  return { ...uit, combos, reacties, bgt, wind, ext, q_p: q, μ_1: mu1, kv, kcy, kcz, kcrt, kcrb };
+  return { ...uit, combos, reacties, bgt, wind, ext, q_p: q, μ_1: mu1, kv, kcy, kcz, kcrt, kcrb, qF, qS, qW };
 }
 
 // ── Hulpjes ──────────────────────────────────────────────────────────────────
@@ -560,7 +625,11 @@ function vergelijk(naam, inv, scope = SCOPE) {
 //   = 3,3408 kNm; links van de last N = −1,5·2·0,5/2 = −0,75 kN.
 //   σ_m = 3,3408e6/454 589 = 7,349 N/mm²; f_m,d = 0,9·24/1,3 = 16,615 → 0,4423;
 //   λ_rel,y = 4000/56,58/π·√(21/7400) = 1,1988; k_y = 1,3084; k_c,y = 0,5456;
-//   σ_c = 750/13 916 = 0,0539; f_c,0,d = 14,538 → (6.23) = 0,0068 + 0,4423 = 0,4491.
+//   σ_c = 750/13 916 = 0,0539; f_c,0,d = 14,538 → (6.23) = 0,0068 + 0,4423 = 0,4491 in die doorsnede.
+//   Knik is een staaftoets: de grootste druk zit aan de voet. Bovenin R = (1,2·1,42936 + 3)/2
+//   = 2,35762 kN verticaal, langs de spoor 1,17881 (trek); de langslast is 1,2·1,42936·0,5 + 1,5·2·0,5
+//   = 2,35762, dus N_voet = −1,17881 kN. Met het grootste moment: σ_c = 1178,8/13 916 = 0,08471;
+//   (6.23) = 0,08471/(0,5456·14,538) + 0,4423 = 0,01068 + 0,4423 = 0,4530 (maatgevend, staaf als geheel).
 //   V = 1,2·0,30947·2 + 1,5·2·cos 30° (last op het steunpunt) = 0,7427 + 2,5981 = 3,3408 kN;
 //   τ = 1,5·3340,8/13 916 = 0,3601; f_v,d = 2,7692 → UC_V = 0,1300.
 //   Keep 25 mm: h_ef = 171, α = 0,8724, x = 35 mm: k_v = 5/(14·(0,3337 + 0,0887))
@@ -582,7 +651,7 @@ const V1 = { ...STANDAARD, α_dak: 30, l_h: 3.4641, g_opb: 0.5 };
   const { got } = vergelijk("Handberekening 1 — sporen, horizontale rol", V1);
   fouten += toets("Handberekening 1 — gedrukte waarden", got, {
     g_eig: "0.05734", g_d: "0.3573", μ_1: "0.8", s_dak: "0.56", q_k: "0", q_p: "0.8216", A_ref: "2.4",
-    "k_c_y": "0.5456", "λ_rel_y": "1.199", M_d: "3.341", N_d: "-0.75", UC_623: "0.4491", UC_NM: "0.4491",
+    "k_c_y": "0.5456", "λ_rel_y": "1.199", M_d: "3.341", N_d: "-1.179", UC_623: "0.453", UC_NM: "0.453",
     UC_V: "0.13", k_v: "0.8458", UC_keep: "0.1762", "f_c_α_d": "2.22", l_zv: "50", "σ_c_voet": "1.087", UC_opl: "0.4896",
     UC_wbij: "0.3735", UC_wmax: "0.505", UC_max: "0.505",
   });
@@ -652,6 +721,14 @@ const V1 = { ...STANDAARD, α_dak: 30, l_h: 3.4641, g_opb: 0.5 };
 //   + 0,1340·0,5 = 0,2680 kN, H_voet = 0. Combinatie 1: M = 1,35·0,1547 = 0,2089 kNm.
 // Doorbuiging: per veld een ligger met één ingeklemd einde, max 0,00542·q·L⁴/EI op
 //   0,42·L; in de uitwerking t.o.v. de koorde van het veld.
+// Combinatie 3, Q_k op de ongunstigste plaats (twee gelijke velden l = 2 m langs de spoor):
+//   q⊥ = 1,2·0,30947 = 0,37136 kN/m, P⊥ = 1,5·2·cos 30° = 2,5981 kN op a in veld 1.
+//   Steunmoment: M_C = −q⊥·l²/8 − P·a·(l² − a²)/(4l²) = −0,18568 − P·a·(4 − a²)/16; het grootst
+//   bij a = l/√3 = 1,1547 m (horizontaal 1,0 m): −0,18568 − 2,5981·3,0792/16 = −0,68568 kNm
+//   (met Q_k midden in het veld −0,67282).
+//   Veldmoment onder de last: M(a) = q⊥·a(l − a)/2 + M_C,G·a/l + P·a(l − a)/l + M_C,Q(a)·a/l;
+//   dM/da = 0 geeft a = 0,850 m (0,425·l, horizontaal 0,736 m): M = 1,1801 kNm, tegen 1,1483 kNm
+//   met Q_k midden in het veld (+2,8 %). Het blad vindt 0,74 m en 1,0 m horizontaal.
 {
   const { got } = vergelijk("Handberekening 3 — knieschot halverwege", { ...V1, systeem: 2, l_ks: 1.73205 });
   const tr = got.tabellen.find((t) => t.kop[0] === "Geval" && t.kop.includes("R knieschot"));
@@ -660,6 +737,10 @@ const V1 = { ...STANDAARD, α_dak: 30, l_h: 3.4641, g_opb: 0.5 };
     "G: 0,27 / 0 / 0,89 / 0,27 kN", g?.join(" "));
   const c1 = tabel(got, "Combinatie")?.rijen.find((r) => r[0].startsWith("1:"));
   meld(c1 && dicht(parseFloat(c1[2]), 0.21, 0, 0.001), "combinatie 1: |M| = 0,21 kNm (steunmoment)", c1?.join(" "));
+  const c3 = tabel(got, "Combinatie")?.rijen.find((r) => r[0].startsWith("3:"));
+  meld(c3 && dicht(parseFloat(c3[2]), 1.18, 0, 0.001), "combinatie 3: M = 1,18 kNm met Q_k op 0,425·l (midden in het veld: 1,15)", c3?.join(" "));
+  meld(/grootste veldmoment \(0\.74 m horizontaal vanaf de voet\) en op de plaats met het grootste moment bij het knieschot \(1 m\)/.test(got.text),
+    "Q_k op 0,74 m (veldmoment) en 1,0 m (steunmoment) horizontaal vanaf de voet");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -693,6 +774,16 @@ const V1 = { ...STANDAARD, α_dak: 30, l_h: 3.4641, g_opb: 0.5 };
 //   − 0,30947·2 = 1,8568 kNm (drie keer de ligger tussen voet en nok);
 //   N boven de hanenbalk: −0,7147 + 0,17867·2 − 2,4757·cos 30° = −2,5014 kN.
 //   Combinatie 1: M = 1,35·1,8568 = 2,5067 kNm, N = −1,35·2,5014 = −3,3769 kN.
+// Combinatie 3, 1,2·G + 1,5·Q_k: het grootste moment ontstaat met Q_k in de knoop van de hanenbalk.
+//   Per spoor W = 1,2·1,42936 = 1,71523 kN, P = 3,0 kN verticaal op x = 1,7321 m.
+//   R_rechts = (1,71523·6,9282 + 3·1,7321)/6,9282 = 2,46523; R_links = 2·1,71523 + 3 − 2,46523 = 3,96523.
+//   Hanenbalk uit de rechter helft om de nok: T·(2,0 − 1,0) = 3,4641·2,46523 − 1,7321·1,71523 → T = 5,5689 kN.
+//   M in de knoop: R⊥ voet·s − q⊥·s²/2 = 3,96523·cos 30°·2 − 1,2·0,30947·2²/2 = 6,8680 − 0,7427 = 6,1253 kNm
+//   (het blad zet Q_k tot 0,001·L naast de knoop en drukt 6,12).
+//   N net boven de knoop, met Q_k net erboven: −3,96523·0,5 + 1,2·0,17867·2 − 5,5689·cos 30° = −1,98262
+//   + 0,42881 − 4,82277 = −6,3766 kN (met Q_k net eronder: + 1,5 = −4,8766).
+//   Knik als staaftoets: σ_m = 6,1253e6/454 589 = 13,474 → 0,8110; σ_c = 6376,6/13 916 = 0,45822;
+//   (6.23) = 0,45822/(0,5456·14,538) + 0,8110 = 0,0578 + 0,8110 = 0,8687.
 {
   const { got } = vergelijk("Handberekening 5 — A-spant met hanenbalk", { ...V1, systeem: 3, z_hb: 1.0 });
   const tr = got.tabellen.find((t) => t.kop[0] === "Geval" && t.kop.includes("R links"));
@@ -700,6 +791,9 @@ const V1 = { ...STANDAARD, α_dak: 30, l_h: 3.4641, g_opb: 0.5 };
   meld(g && dicht(g[4], 2.48, 0, 0.001), "G: T hanenbalk 2,48 kN", g?.join(" "));
   const c1 = tabel(got, "Combinatie")?.rijen.find((r) => r[0].startsWith("1:"));
   meld(c1 && dicht(parseFloat(c1[2]), 2.51, 0, 0.001) && dicht(parseFloat(c1[3]), -3.38, 0, 0.001), "combinatie 1: M = 2,51 kNm, N = −3,38 kN", c1?.join(" "));
+  const c3 = tabel(got, "Combinatie")?.rijen.find((r) => r[0].startsWith("3:"));
+  meld(c3 && dicht(parseFloat(c3[2]), 6.125, 0, 0.006) && dicht(parseFloat(c3[3]), -6.38, 0, 0.001) && dicht(parseFloat(c3[5]), 0.869, 0, 0.0011),
+    "combinatie 3: Q_k bij de hanenbalk, M = 6,125 kNm (tabel op 2 decimalen), N = −6,38 kN, N+M = 0,869", c3?.join(" "));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -754,6 +848,24 @@ const V1 = { ...STANDAARD, α_dak: 30, l_h: 3.4641, g_opb: 0.5 };
   meld(c1 && dicht(parseFloat(c1[2]), 2.59, 0, 0.011), "combinatie 1: M = 2,59 kNm", c1?.join(" "));
   const w1 = tabel(got, "Richting")?.rijen.find((r) => r[0] === "W1");
   meld(w1 && dicht(parseFloat(w1[8]), 1.569, 0, 0.0011), "W1: 1,569 kN/m bij de nok", w1?.join(" "));
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Handberekening 8 — standaardinvoer (40°): knik als staaftoets
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// L = 4/cos 40° = 5,2216 m; G = 0,6·0,6 + 0,05734 = 0,41734 kN/m; combinatie 3, 1,2·G + 1,5·Q_k midden
+// (bij één veld de plaats met het grootste veldmoment).
+//   M = 1,2·0,31970·5,2216²/8 + 1,5·2 = 1,3075 + 3,0 = 4,3075 kNm; σ_m = 9,4756 → 9,4756/16,615 = 0,5703.
+//   Bovenin R = (1,2·0,41734·5,2216 + 3)/2 = 2,8075 kN, langs 1,8046 (trek); langslast 1,2·0,26826·5,2216
+//   + 1,5·2·sin 40° = 1,6809 + 1,9284 = 3,6093 → N_voet = −1,8047 kN.
+//   λ_rel,y = 5221,6/56,580/π·√(21/7400) = 1,5649; k_y = 1,8510; k_c,y = 0,35218.
+//   In de doorsnede onder de last (N = −0,964): 0,0135 + 0,5703 = 0,5838. Als staaf met de grootste
+//   druk: σ_c = 1804,7/13 916 = 0,12969; (6.23) = 0,12969/(0,35218·14,538) + 0,5703 = 0,02533 + 0,5703 = 0,5956.
+{
+  const got = doorreken(STANDAARD);
+  fouten += toets("Handberekening 8 — knik als staaftoets", got, { M_d: "4.308", N_d: "-1.805", UC_623: "0.5956", UC_NM: "0.5956" });
+  meld(/de staaf als geheel: het grootste moment samen met de grootste drukkracht/.test(got.text), "het blad noemt de staaftoets als maatgevend");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

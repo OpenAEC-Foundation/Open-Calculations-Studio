@@ -389,6 +389,32 @@ let fouten = 0;
   fouten += toets("tapse ligger — C24, steiler, druk",
     reken(steil, { sterkteklasse: C24, belastingduurklasse: MIDDELLANG }, PROJECT),
     { k_malpha: "0.9565", UC_taps: "0.4247" });
+  // Afschuiving bij het lage einde (6.13), k_cr = 1,0: in de standaardset V = 6·8/2 = 24 kN,
+  // τ = 1,5·24 000/(140·300) = 0,8571, f_v,d = 2,24 → UC_v = 0,3827; de buiging (0,7550) blijft maatgevend.
+  fouten += toets("tapse ligger — afschuiving bij het lage einde, standaardset",
+    reken(tpl, { sterkteklasse: GL24h, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { V_Ed: "24", tau_d: "0.8571", UC_v: "0.3827", UC_max: "0.7550" });
+  // Kort en hoog: GL24h 140 × 200/600 over 3 m, q_d = 25 kN/m, middellang. De verhouding τ/σ is h_1/L
+  // (σ_max = 3qL²/(4·b·h_0·h_1), τ = 0,75·qL/(b·h_0)), hier 0,2: afschuiving wordt maatgevend.
+  // V = 37,5 kN; τ = 1,5·37 500/(140·200) = 2,009; UC_v = 2,009/2,24 = 0,8968.
+  // σ = 3·25·3000²/(4·140·200·600) = 10,045 (x = 750, h_x = 300, M = 25·0,75·2,25/2 = 21,09 kNm);
+  // tan α = 400/3000 = 0,1333; druk (6.40): k = 1/√(1 + (15,36/3,36·0,1333)² + (15,36/1,60·0,01778)²)
+  // = 1/√(1 + 0,37152 + 0,02913) = 0,84496; UC_taps = 10,045/(0,84496·15,36) = 0,7739; rechte rand 10,045/15,36 = 0,6539.
+  // Maatgevend afschuiving 0,8968: voldoet. Zonder deze toets bleef het oordeel op 0,7739 staan.
+  fouten += toetsMetOordeel("tapse ligger — kort en hoog: afschuiving bij het lage einde maatgevend",
+    reken(met(tpl, { h_0: "200 mm", h_1: "600 mm", L: "3000 mm", q_d: "25 kN/m" }), { sterkteklasse: GL24h, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { x_m: "750", h_x: "300", M_Ed: "21.09", sigma_mad: "10.04", k_malpha: "0.8450", UC_taps: "0.7739", UC_recht: "0.6539",
+      V_Ed: "37.5", tau_d: "2.009", UC_v: "0.8968", UC_max: "0.8968", UC_slot: "0.8968", voldoet: "1" });
+  // Met q_d = 30 kN/m: τ = 2,411, UC_v = 1,076 > 1 terwijl de buiging 12,054/(0,84496·15,36) = 0,9287 geeft: voldoet niet.
+  fouten += toetsMetOordeel("tapse ligger — kort en hoog, q_d 30: voldoet niet op afschuiving",
+    reken(met(tpl, { h_0: "200 mm", h_1: "600 mm", L: "3000 mm", q_d: "30 kN/m" }), { sterkteklasse: GL24h, belastingduurklasse: MIDDELLANG }, PROJECT),
+    { UC_taps: "0.9287", UC_v: "1.076", UC_slot: "1.076", voldoet: "0" });
+  {
+    const got = reken(tpl, { sterkteklasse: GL24h, belastingduurklasse: MIDDELLANG }, PROJECT);
+    const ok = /Niet getoetst: kip \(§6\.3\.3\), doorbuiging \(§7\.2\) en de oplegdruk/.test(got.text);
+    if (!ok) fouten++;
+    console.log(`\ntapse ligger — regel niet getoetst\n  ${ok ? "OK    " : "FOUT  "} kip, doorbuiging en oplegdruk genoemd`);
+  }
 }
 
 // ── Uitkeping bij de oplegging ───────────────────────────────────────────
