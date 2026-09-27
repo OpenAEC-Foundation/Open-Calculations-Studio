@@ -6,9 +6,11 @@
  * Belasting (bijlage NB.A, tabel NB.A.1): per gebruik van de aangrenzende
  * ruimte de lijnlast q_k en de puntlast F_k in zone a (de leuning), elk apart
  * en in beide richtingen loodrecht op de afscheiding. F_k in zone b en in zone
- * a + b staan erbij voor de vulling; ze zijn niet groter dan F_k in zone a en
- * grijpen lager aan, dus voor staander en leuning niet maatgevend. Een leuning
- * die alleen steun geeft (NB.A.1(2)): F_k = 1 kN. Desgewenst de verticale
+ * a + b staan erbij voor de vulling. F_k in zone b is niet groter dan in zone
+ * a en grijpt lager aan; F_k in zone a + b kan ook in zone a aangrijpen, maar
+ * is ten hoogste de helft van F_k in zone a, ook met de langere duur (k_mod
+ * bij hout) niet maatgevend. Voor staander en leuning geldt dus zone a. Een
+ * leuning die alleen steun geeft (NB.A.1(2)): F_k = 1 kN. Desgewenst de verticale
  * puntlast van 1 kN op de leuning (NB.A.2(4)). Of q_k en F_k zelf invullen.
  * Partiële factor: γ_Q van de gevolgklasse (tabel NB.4 en NB.5 van NEN-EN 1990)
  * of 1,0. De NB bij 6.4(1) verwijst voor de factoren naar de gevolgklasse en de
@@ -33,7 +35,9 @@
  *
  * Leuning: een ligger op twee steunpunten tussen de staanders, q·a²/8 of
  * F·a/4 — ook bij een doorgaande leuning een bovengrens —, horizontaal en met
- * de verticale last ook verticaal. Ronde buis, koker of hout.
+ * de verticale last ook verticaal. De dwarskracht is bij een doorgaande
+ * leuning 0,625·q·a (naast het middensteunpunt van twee gelijke velden), bij
+ * losse velden q·a/2, of F. Ronde buis, koker of hout.
  *
  * Vervorming: de horizontale verplaatsing van de bovenrand, staander en
  * leuning samen, bij de karakteristieke combinatie; standaard ten hoogste 20
@@ -105,7 +109,7 @@ kcrit(λ) = if(λ ≤ 0.75; 1; if(λ ≤ 1.4; 1.56 - 0.75*λ; 1/λ^2))
     #if gebruik ≤ 7
         F_k,b = hlookup(nba1; gebruik; 1; 4)*kN', puntlast in zone b, op de vulling<span class="kolom-2"></span>'
         F_k,ab = hlookup(nba1; gebruik; 1; 5)*kN', puntlast in zone a + b, langdurig<span class="kolom-2"></span>'
-        '<span class="alleen-scherm"><i>q<sub>k</sub> en F<sub>k</sub> zijn aparte lasten, elk in beide richtingen loodrecht op de afscheiding; aan de zijde zonder vloer mag de helft (NB.A.2(3)), dit blad rekent met de volle waarde. F<sub>k</sub> in zone b en a + b is niet groter dan in zone a en grijpt lager aan: voor staander en leuning niet maatgevend. De vulling zelf (glas, paneel, spijlen) valt buiten dit blad; toets die op F<sub>k,b</sub>. De last in zone a + b geldt niet langs trappen (voetnoot b).</i></span>
+        '<span class="alleen-scherm"><i>q<sub>k</sub> en F<sub>k</sub> zijn aparte lasten, elk in beide richtingen loodrecht op de afscheiding; aan de zijde zonder vloer mag de helft (NB.A.2(3)), dit blad rekent met de volle waarde. F<sub>k</sub> in zone b is niet groter dan in zone a en grijpt lager aan; F<sub>k</sub> in zone a + b kan ook in zone a aangrijpen, maar is ten hoogste de helft van F<sub>k</sub> in zone a en ook met de langere duur (k<sub>mod</sub> bij hout) niet maatgevend. Voor staander en leuning geldt zone a. De vulling zelf (glas, paneel, spijlen) valt buiten dit blad; toets die op F<sub>k,b</sub>. De last in zone a + b geldt niet langs trappen (voetnoot b).</i></span>
     #end if
 #end if
 @select verticaal "Verticale puntlast op de leuning, F_k,v = 1 kN (NB.A.2(4))"
@@ -428,10 +432,10 @@ UC_s = max(UC_M,s; UC_V,s)', staander<span class="kolom-3"></span>'
 # 5. Leuning
 
 M_h,Ed = γ_Q*max(q_k*a_st^2/8; F_k*a_st/4) to kN*m', horizontaal<span class="kolom-4"></span>'
-V_h,Ed = γ_Q*max(q_k*a_st/2; F_k) to kN'<span class="kolom-4"></span>'
+V_h,Ed = γ_Q*max(if(doorgaand ≡ 1; 0.625; 0.5)*q_k*a_st; F_k) to kN'<span class="kolom-4"></span>'
 M_v,Ed = γ_Q*F_k,v*a_st/4 to kN*m', verticaal<span class="kolom-4"></span>'
 V_v,Ed = γ_Q*F_k,v to kN'<span class="kolom-4"></span>'
-'<span class="alleen-scherm"><i>De leuning als ligger op twee steunpunten tussen de staanders: q·a²/8 en F·a/4 in het midden. Voor een doorgaande leuning is dat een bovengrens.</i></span>
+'<span class="alleen-scherm"><i>De leuning als ligger op twee steunpunten tussen de staanders: q·a²/8 en F·a/4 in het midden. Voor een doorgaande leuning is dat voor het moment een bovengrens (steunpuntsmoment bij twee gelijke velden ook q·a²/8); de dwarskracht is daar groter: 0,625·q·a naast het middensteunpunt in plaats van q·a/2.</i></span>
 #if vorm_l ≡ 1
     D_l = ?*(mm)', buitendiameter<span class="kolom-3"></span>'
     t_l = ?*(mm)', wanddikte<span class="kolom-3"></span>'
@@ -627,5 +631,5 @@ UC_max = max(UC_s; UC_l; UC_w,h; UC_w,v; UC_a)'<span class="alleen-scherm"></spa
 #else
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>het hekwerk voldoet niet</b></span>
 #end if
-'Buiten dit blad: de vulling, de verbinding van leuning en staander, de voetplaat en de ondergrond, en de stootbelasting van bijlage NB.B.
+'Buiten dit blad: de vulling, wind op een dichte vulling, de verbinding van leuning en staander, de voetplaat en de ondergrond (ook de rotatie van de voet in de verplaatsing van §6), en de stootbelasting van bijlage NB.B.
 `;

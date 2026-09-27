@@ -166,8 +166,10 @@ function uitwerking(v, P) {
   }
   uit.UC_s = Math.max(uit.UCM_s, uit.UCV_s);
 
-  // Leuning
-  const Mh = gQ * Math.max((q * a * a) / 8, (F * a) / 4), Vh = gQ * Math.max((q * a) / 2, F);
+  // Leuning. Dwarskracht: bij een doorgaande leuning 5/8·q·a naast het middensteunpunt van twee
+  // gelijke velden (het grootste voor elk aantal gelijke velden), bij losse velden q·a/2.
+  const kV = v.doorgaand ? 0.625 : 0.5;
+  const Mh = gQ * Math.max((q * a * a) / 8, (F * a) / 4), Vh = gQ * Math.max(kV * q * a, F);
   const Mv = (gQ * Fv * a) / 4, Vv = gQ * Fv;
   let l;
   if (v.vorm_l === 1) {
@@ -321,6 +323,49 @@ const SETS = [
   {
     naam: "11 — kleine strip 40 × 8 bij klasse C5: voldoet niet",
     invoer: { gebruik: 6, d_s: 40, t_s: 8 },
+    // Met de hand, de doorgaande buisleuning 42,4 × 2,6: q_k = 3 kN/m, a = 1,5 m. Dwarskracht naast het
+    // middensteunpunt van twee gelijke velden 5/8·q·a: V_h,Ed = 1,5·0,625·3·1,5 = 4,219 kN (met q·a/2
+    // was het 3,375 kN). A = π(42,4² − 37,2²)/4 = 325,1 mm², A_v = 2A/π = 207,0 mm² → V_pl,Rd =
+    // 207,0·235/√3 = 28,08 kN → UC 0,1502. M_h,Ed = 1,5·3·1,5²/8 = 1,266 kNm, M_Rd = 0,9692 → UC 1,306.
+    handwerk: { V_h_Ed: "4.219", UC_V_l: "0.1502", M_h_Ed: "1.266", UC_M_l: "1.306" },
+  },
+  {
+    naam: "12 — ronde buis 60,3 × 3,2 ingeklemd, leuning 48,3 × 2,6 doorgaand over twee velden van 1,8 m, gemeenschappelijke woonfunctie",
+    invoer: { gebruik: 2, a_st: 1.8, vorm_s: 1, D_s: 60.3, t_s: 3.2, D_l: 48.3, t_l: 2.6, z_a: 100, N_Rd_a: 12, V_Rd_a: 8 },
+    // Met de hand: tabel NB.A.1 q_k = 0,5 kN/m, F_k = 1 kN, γ_Q = 1,5. Middelste staander: 1,25·q·a,
+    // R = 1,5·1,25·0,5·1,8 = 1,6875 kN > F_Ed = 1,5 kN → M_Ed = 1,688 kNm. Buis: d/t = 18,84 ≤ 50 →
+    // klasse 1; W_pl = (60,3³ − 53,9³)/6 = (219 256 − 156 591)/6 = 10 444 mm³ → M_c,Rd = 2,454 kNm →
+    // UC 0,6875. Leuning: W_pl = (48,3³ − 43,1³)/6 = 5436 mm³ → M_Rd = 1,277 kNm; M_h = 1,5·1·1,8/4 =
+    // 0,675 kNm → UC 0,5284. Verplaatsing: I_staander = π(60,3⁴ − 53,9⁴)/64 = 234 680 mm⁴, I_leuning =
+    // π(48,3⁴ − 43,1⁴)/64 = 97 765 mm⁴; w_q = 1,25·0,5·1800·1000³/(3·210 000·234 680) +
+    // 5·0,5·1800⁴/(384·210 000·97 765) = 7,609 + 3,329 = 10,94 mm ≤ 20 mm. Verticaal: w_v =
+    // 1000·1800³/(48·210 000·97 765) = 5,918 mm ≤ 12 mm. Ankers: 1,6875e6/(2·100) = 8438 N →
+    // 8,438/12 + 0,4219/8 = 0,7559.
+    handwerk: { R_Ed: "1.688", M_Ed: "1.688", M_c_Rd: "2.454", UC_M_s: "0.6875", M_Rd_lh: "1.277", UC_M_l: "0.5284",
+      w_q: "10.94", w_v: "5.918", UC_a: "0.7559" },
+  },
+  {
+    naam: "13 — strip 80 × 10 S355, klasse C5, losse velden van 1,0 m, h = 1,1 m: de kip beslist",
+    invoer: { gebruik: 6, a_st: 1.0, h_leu: 1.1, doorgaand: 0, d_s: 80, t_s: 10, staalsoort: 355 },
+    // Met de hand: R = 1,5·1·3·1,0 = 4,5 kN > F_Ed = 1,5 kN → M_Ed = 4,5·1,1 = 4,95 kNm. W_pl =
+    // 10·80²/4 = 16 000 mm³ → M_c,Rd = 5,680 kNm (zonder kip UC 0,8715). I_z = 80·10³/12 = 6667 mm⁴,
+    // I_t = 80·10³/3·(1 − 0,63·10/80) = 24 567 mm⁴; M_cr = 4,013/1100·√(210 000·6667·81 000·24 567) =
+    // 6,089 kNm → λ̄_LT = √(5,680/6,089) = 0,9658; kromme d: Φ = 0,5·(1 + 0,76·0,7658 + 0,9328) =
+    // 1,2574 → χ_LT = 1/(1,2574 + √(1,5811 − 0,9328)) = 0,4848 → M_Rd = 2,754 kNm → UC 1,797.
+    handwerk: { M_Ed: "4.95", M_c_Rd: "5.68", M_cr: "6.089", λ_LT: "0.9658", χ_LT: "0.4848", UC_M_s: "1.797" },
+  },
+  {
+    naam: "14 — houten staander 45 × 95 C24 met houten leuning 70 × 45, woonfunctie, klimaatklasse 2, kort",
+    invoer: { gebruik: 1, a_st: 1.2, vorm_s: 6, b_s: 45, d_s: 95, vorm_l: 3, b_l: 70, h_l: 45, klimaat: 2 },
+    // Met de hand: q_k = 0,3 kN/m, F_k = 0,5 kN; R = 1,5·1,25·0,3·1,2 = 0,675 kN < F_Ed = 0,75 kN →
+    // M_Ed = 0,75 kNm. k_h = (150/95)^0,2 = 1,0957 → f_m,d = 0,9·1,0957·24/1,3 = 18,20 N/mm²; W =
+    // 45·95²/6 = 67 688 mm³ → σ = 11,08 N/mm²; σ_crit = 0,78·45²·7400/(95·800) = 153,8 → λ = 0,3950 →
+    // k_crit = 1 → UC 0,6087. Leuning verticaal: M = 1,5·1·1,2/4 = 0,45 kNm, W = 70·45²/6 = 23 625 mm³
+    // → σ = 19,05 N/mm²; k_h = (150/45)^0,2 = 1,2723 → f = 0,9·1,2723·24/1,3 = 21,14 N/mm²; σ_crit =
+    // 0,78·70²·7400/(45·1080) = 582,0 → k_crit = 1 → UC 0,9011. w_v = 1000·1200³/(48·11 000·531 563)
+    // = 6,157 mm ≤ 8 mm.
+    handwerk: { F_Ed: "0.75", f_m_d: "18.20", σ_m_d: "11.08", σ_m_crit: "153.8", UC_M_s: "0.6087", σ_m_lv: "19.05",
+      f_m_lv: "21.14", UC_M_l: "0.9011", w_v: "6.157" },
   },
 ];
 
