@@ -29,13 +29,18 @@
  * Hout: een eigen uitwerking van de gereduceerde doorsnede (§4.2.2), waarin de
  * inbranddiepte met een beschermende laag niet met de formules per fase van
  * het blad maar door de inbrandsnelheid over de tijd op te tellen wordt
- * bepaald (stap 0,001 min); verder k_fi, buiging met kip, afschuiving en druk
+ * bepaald (stap 0,001 min); verder k_fi, buiging met kip ((6.32) bij massief
+ * naaldhout, (6.31) met G_0,05 = 540 N/mm² bij GL), afschuiving en druk
  * met knik, met handberekeningen voor onbeschermd, gips type A/H en F, een
  * eigen bescherming, (6.19) bij kleine slankheid, een volledig ingebrande
  * doorsnede (UC = ∞) en ontbrekende invoer.
  *
  * Beton: de tabelwaarden zijn invoer; nagerekend worden de asafstand, de
- * benuttingsgraad met de tabelkolom, de UC, μ_fi > 0,7 buiten tabel 5.2a en
+ * benuttingsgraad met de tabelkolom, de UC, μ_fi > 0,7 buiten tabel 5.2a,
+ * de toepassingsvoorwaarden van methode A (§5.3.2(2) met de NB), bij balken
+ * Δa volgens (5.3) met θ_cr uit kromme 1 van figuur 5.1 — hier gevonden door
+ * de kromme in stapjes van 0,01 °C af te lopen, niet met de omgekeerde
+ * formule van het blad —, bij vloeren de grens σ_s,fi/f_yk ≤ 0,6 en
  * ontbrekende invoer.
  *
  * De profielgegevens staan hieronder los overgenomen uit de profieltabel,
@@ -66,6 +71,7 @@ const STANDAARD = {
   bekl_h: 0, h_p: 15, t_ch: 20, t_f: 30, k_2: 1,
   element_b: 1, zijde_b: 1, verhouding_b: 1, b_beton: 300, h_beton: 300,
   c_dek: 30, d_beugel: 8, d_staaf: 16, N_Rd: 3000, M_Rd: 150, b_min: 0, h_min: 0, a_min: 0,
+  vorm_b: 1, l_0fi: 3, M_0Ed: 0, M_0Ed_fi: 0, A_s: 1608,
 };
 
 /** Projectgegevens zoals de app ze in de scope zet; de gevolgklasse per set. */
@@ -730,7 +736,13 @@ function uitwerkingHout(v) {
     const σ = M / W;
     let kcrit = 1;
     if (v.werking_h === 2) {
-      const σcrit = ((0.78 * b * b) / (h * v.l_ef * 1000)) * m.E05;   // (6.32)
+      // (6.32) alleen voor massief naaldhout (§6.3.3(3)); GL met (6.31),
+      // G_0,05 = 540 N/mm² (NEN-EN 14080), I_tor = a·c³/3·(1 − 0,63·c/a).
+      const lef = v.l_ef * 1000, Wy = (b * h * h) / 6, Iz = (h * b ** 3) / 12;
+      const a = Math.max(b, h), c = Math.min(b, h), Itor = ((a * c ** 3) / 3) * (1 - (0.63 * c) / a);
+      const σcrit = m.gl
+        ? (Math.PI * Math.sqrt(m.E05 * Iz * 540 * Itor)) / (lef * Wy)   // (6.31)
+        : ((0.78 * b * b) / (h * lef)) * m.E05;                          // (6.32)
       const λ = Math.sqrt(m.fm / σcrit);
       kcrit = λ <= 0.75 ? 1 : λ <= 1.4 ? 1.56 - 0.75 * λ : 1 / (λ * λ);
       Object.assign(uit, { σcrit, λm: λ });
@@ -867,14 +879,18 @@ const SETS_HOUT = [
     oordeel: "voldoet",
   },
   {
-    naam: "H6 — GL24h 140×600 met kip (ℓ_ef = 5 m), driezijdig, onbeschermd, R30: 0,75 < λ_rel,m ≤ 1,4",
+    naam: "H6 — GL24h 140×600 met kip (ℓ_ef = 5 m), driezijdig, onbeschermd, R30: (6.31), 0,75 < λ_rel,m ≤ 1,4",
     invoer: { b_hout: 140, h_hout: 600, werking_h: 2, l_ef: 5, verhitting: 3, eis_min: 30, M_Ed: 120, V_Ed: 60 },
-    // Met de hand: d_ef = 21 + 7 = 28 mm → b_ef = 84 mm, h_ef = 572 mm. σ_m,crit =
-    // 0,78·84²/(572·5000)·9600 = 18,47 N/mm² → λ_rel,m = √(24/18,47) = 1,140 →
-    // k_crit = 1,56 − 0,75·1,140 = 0,7052. M_fi,d = 84 kNm; W = 84·572²/6 =
-    // 4,581·10⁶ mm³ → σ = 18,34 → UC_m = 18,34/(0,7052·27,6) = 0,9422: voldoet.
-    handwerk: { σ_m_crit: "18.47", λ_rel_m: "1.140", k_crit: "0.7052", UC_m: "0.9422" },
-    oordeel: "voldoet",
+    // Met de hand: d_ef = 21 + 7 = 28 mm → b_ef = 84 mm, h_ef = 572 mm. GL, dus
+    // (6.31): I_z = 572·84³/12 = 28,25·10⁶ mm⁴; I_tor = 572·84³/3·(1 − 0,63·84/572)
+    // = 113,0·10⁶·0,9075 = 102,55·10⁶ mm⁴; W = 84·572²/6 = 4,581·10⁶ mm³.
+    // σ_m,crit = π·√(9600·28,25·10⁶·540·102,55·10⁶)/(5000·4,581·10⁶)
+    // = π·1,2256·10¹¹/2,2903·10¹⁰ = 16,81 N/mm² → λ_rel,m = √(24/16,81) = 1,195 →
+    // k_crit = 1,56 − 0,75·1,195 = 0,6639. M_fi,d = 84 kNm → σ = 18,34 →
+    // UC_m = 18,34/(0,6639·27,6) = 1,001: voldoet niet. Met (6.32), alleen voor
+    // massief naaldhout, was σ_m,crit 18,47 en UC 0,942 "voldoet" geweest.
+    handwerk: { I_z_ef: "28250000", I_tor_ef: { waarde: "102550000", tol: 60000, waarom: "het blad drukt vier cijfers af" }, σ_m_crit: "16.81", λ_rel_m: "1.195", k_crit: "0.6639", UC_m: "1.001" },
+    oordeel: "voldoet niet",
   },
   {
     naam: "H7 — C24 45×145 onbeschermd, R60: volledig ingebrand, UC = ∞",
@@ -971,15 +987,52 @@ function uitwerkingBeton(v) {
   const tabel = eb <= 3 ? v.b_min : v.h_min;
   const geenA = !(maat > 0 && uit.a > 0);
   const geenT = !(tabel > 0 && v.a_min > 0);
-  const geenE = kolom && !(E > 0);
-  const geenR = kolom && !(R > 0);
+  const geenE = !(E > 0);
+  const geenR = !(R > 0);
+  const geenK = kolom && !(v.l_0fi > 0);
+  const geenW = kolom && !(v.A_s > 0);
   uit.onvolledig = [
-    geenA && "de afmetingen", geenT && "de tabelwaarden", geenE && "de belasting bij brand", geenR && "N Rd",
+    geenA && "de afmetingen", geenT && "de tabelwaarden", geenE && "de belasting bij brand", geenR && (kolom ? "N Rd" : "M Rd"),
+    geenK && "de kniklengte bij brand", geenW && "de langswapening",
   ].filter(Boolean);
   uit.buiten = kolom && uit.μ > 0.7;
   uit.overbelast = !kolom && uit.μ > 1;
+
+  // Methode A, §5.3.2(2): l_0,fi ≤ 3 m, e ≤ e_max (NB: 0,4·h bij een
+  // kolombreedte ≥ 300 mm, anders 0,15·h) en A_s < 0,04·A_c.
+  uit.toepasbaar = true;
+  if (kolom) {
+    const rond = v.vorm_b === 2;
+    const N = Math.abs(v.bron_fi === 1 ? v.N_Ed : v.N_fi), M0 = Math.abs(v.bron_fi === 1 ? v.M_0Ed : v.M_0Ed_fi);
+    uit.e = N > 0 ? (M0 / N) * 1000 : 0;
+    uit.emax = (maat >= 300 ? 0.4 : 0.15) * (rond ? maat : v.h_beton);
+    uit.Ac = rond ? (Math.PI * maat * maat) / 4 : v.b_beton * v.h_beton;
+    uit.ρ = v.A_s / uit.Ac;
+    uit.toepasbaar = v.l_0fi <= 3 && uit.e <= uit.emax && uit.ρ < 0.04;
+  }
+
+  // Balk: σ_s,fi/f_yk ≈ μ_fi/1,15 (5.2); θ_cr is de eerste temperatuur waarbij
+  // kromme 1 van figuur 5.1 tot die verhouding is gezakt, niet boven 700 °C
+  // (§5.2(8)); Δa = 0,1·(500 − θ_cr) (5.3), bij een doorgaande balk ≥ 0.
+  // Vloer (tabel 5.8, niet genoemd in §5.2(7)): boven 0,6 niet aangetoond.
+  const ks = (θ) => θ <= 350 ? 1 : θ <= 500 ? 1 - (0.4 * (θ - 350)) / 150 : θ <= 700 ? 0.61 - (0.5 * (θ - 500)) / 200 : 0.1 - (0.1 * (θ - 700)) / 500;
+  uit.Δa = 0;
+  uit.vloerOpen = false;
+  if (!kolom && uit.μ > 0 && uit.μ <= 1) {
+    uit.k = uit.μ / 1.15;
+    if (eb <= 3) {
+      let θ = 20;
+      while (θ < 700 && ks(θ) > uit.k) θ = Math.round((θ + 0.01) * 100) / 100;
+      uit.θcr = θ;
+      uit.Δa = 0.1 * (500 - θ);
+      if (eb === 3) uit.Δa = Math.max(uit.Δa, 0);
+    } else {
+      uit.vloerOpen = uit.k > 0.6;
+    }
+  }
+  uit.anodig = v.a_min + uit.Δa;
   uit.UCb = tabel / maat;
-  uit.UCa = v.a_min / uit.a;
+  uit.UCa = uit.anodig / uit.a;
   uit.UCmax = Math.max(uit.UCb, uit.UCa);
   return uit;
 }
@@ -1008,11 +1061,34 @@ const SETS_BETON = [
     buiten: true,
   },
   {
-    naam: "B3 — balk 250×500 vrij opgelegd, c = 25, Ø8, Ø20; b_min = 200, a = 45 ingevuld",
+    naam: "B3 — balk 250×500 vrij opgelegd, c = 25, Ø8, Ø20; b_min = 200, a = 45 ingevuld: Δa < 0",
     invoer: { element_b: 2, b_beton: 250, h_beton: 500, c_dek: 25, d_beugel: 8, d_staaf: 20, M_Ed: 100, M_Rd: 150, b_min: 200, a_min: 45 },
-    // Met de hand: a = 25 + 8 + 10 = 43 mm → UC_a = 45/43 = 1,047; UC_b = 200/250 =
-    // 0,8 → UC = 1,047: voldoet niet. μ_fi = 0,7·100/150 = 0,4667 (alleen ter info).
-    handwerk: { a_hw: "43.0", μ_fi: "0.4667", UC_b: "0.8000", UC_a: "1.047" },
+    // Met de hand: a = 25 + 8 + 10 = 43 mm. μ_fi = 0,7·100/150 = 0,4667;
+    // σ_s,fi/f_yk = 0,4667/1,15 = 0,4058 < 0,6 → kromme 1, 500–700 °C:
+    // 0,61 − 0,5·(θ − 500)/200 = 0,4058 → θ_cr = 500 + 400·(0,61 − 0,4058) =
+    // 581,7 °C (§5.2(6)); Δa = 0,1·(500 − 581,7) = −8,17 mm (5.3) →
+    // a_nodig = 45 − 8,17 = 36,83 mm → UC_a = 36,83/43 = 0,8566; UC_b = 200/250 =
+    // 0,8 → UC = 0,8566: voldoet. (Zonder Δa: 45/43 = 1,047.)
+    handwerk: { a_hw: "43.0", μ_fi: "0.4667", k_s_fi: "0.4058", θ_cr: "581.7", Δa: "-8.17", a_nodig: "36.83", UC_b: "0.8000", UC_a: "0.8566" },
+    oordeel: "voldoet",
+  },
+  {
+    naam: "B3b — als B3, doorgaande balk (tabel 5.6): alleen een vergroting van a",
+    invoer: { element_b: 3, b_beton: 250, h_beton: 500, c_dek: 25, d_beugel: 8, d_staaf: 20, M_Ed: 100, M_Rd: 150, b_min: 200, a_min: 45 },
+    // Met de hand: θ_cr = 581,7 °C → (5.3) −8,17 mm, maar bij een doorgaande
+    // balk geen verlaging: Δa = 0 → UC_a = 45/43 = 1,047: voldoet niet.
+    handwerk: { θ_cr: "581.7", Δa: "0", a_nodig: "45.0", UC_a: "1.047" },
+    oordeel: "voldoet niet",
+  },
+  {
+    naam: "B3c — balk vrij opgelegd met η_fi = 0,8 en M_Ed = M_Rd: σ_s,fi/f_yk > 0,6, Δa > 0",
+    invoer: { element_b: 2, b_beton: 250, h_beton: 500, c_dek: 25, d_beugel: 8, d_staaf: 20, η_fi: 0.8, M_Ed: 150, M_Rd: 150, b_min: 200, a_min: 42 },
+    // Met de hand: μ_fi = 0,8·150/150 = 0,8; σ_s,fi/f_yk = 0,8/1,15 = 0,6957 > 0,6
+    // → kromme 1, 350–500 °C: 1 − 0,4·(θ − 350)/150 = 0,6957 → θ_cr = 350 +
+    // 375·(1 − 0,6957) = 464,1 °C; Δa = 0,1·(500 − 464,1) = +3,59 mm →
+    // a_nodig = 42 + 3,59 = 45,59 mm > a = 43 → UC_a = 1,060: voldoet niet.
+    // (Zonder Δa: 42/43 = 0,977 "voldoet".)
+    handwerk: { k_s_fi: "0.6957", θ_cr: "464.1", Δa: "3.59", a_nodig: "45.59", UC_a: "1.060" },
     oordeel: "voldoet niet",
   },
   {
@@ -1045,6 +1121,65 @@ const SETS_BETON = [
     overbelast: true,
   },
   {
+    naam: "B4b — vloer eenzijdig dragend als B4, M_Ed = M_Rd: σ_s,fi/f_yk > 0,6",
+    invoer: { element_b: 4, h_beton: 200, c_dek: 25, d_staaf: 10, M_Ed: 100, M_Rd: 100, h_min: 100, a_min: 30 },
+    // Met de hand: μ_fi = 0,7·100/100 = 0,7 → σ_s,fi/f_yk = 0,7/1,15 = 0,6087 > 0,6.
+    // Tabel 5.8 hoort bij 0,6 (§5.2(4)) en §5.2(7) noemt tabel 5.8 niet: niet
+    // aangetoond → voldoet niet (eerder: UC_a = 30/30 = 1,000 "voldoet").
+    handwerk: { μ_fi: "0.7000", k_s_fi: "0.6087" },
+    vloerOpen: true,
+  },
+  {
+    naam: "B9 — kolom als B1 met l_0,fi = 3,5 m: methode A niet toepasbaar",
+    invoer: { b_beton: 300, h_beton: 400, N_Ed: 1500, N_Rd: 3000, eis_min: 90, b_min: 250, a_min: 40, l_0fi: 3.5 },
+    // Met de hand: l_0,fi = 3,5 m > 3 m (§5.3.2(2)) → buiten methode A, ook al is
+    // UC = 0,8696 op de tabel: voldoet niet.
+    handwerk: { UC_a: "0.8696" },
+    nietToepasbaar: true,
+  },
+  {
+    naam: "B10 — kolom 250×250, N_Ed = 800 kN, M_0Ed = 32 kNm: e > 0,15·h",
+    invoer: { b_beton: 250, h_beton: 250, N_Ed: 800, M_0Ed: 32, N_Rd: 2000, eis_min: 60, b_min: 200, a_min: 36, A_s: 1608 },
+    // Met de hand: e = 32/800 = 40 mm; kolombreedte 250 < 300 → e_max = 0,15·250 =
+    // 37,5 mm (NB bij §5.3.2(2)) → e > e_max: methode A niet toepasbaar.
+    // A_c = 62 500 mm², ρ = 1608/62 500 = 0,02573.
+    handwerk: { e_fi: "40.0", e_max: "37.5", ρ_s: "0.02573" },
+    nietToepasbaar: true,
+  },
+  {
+    naam: "B10b — kolom 300×400, N_Ed = 1500 kN, M_0Ed = 200 kNm: e ≤ 0,4·h",
+    invoer: { b_beton: 300, h_beton: 400, N_Ed: 1500, M_0Ed: 200, N_Rd: 3000, eis_min: 90, b_min: 250, a_min: 40 },
+    // Met de hand: e = 200/1500 = 133,3 mm; kolombreedte 300 ≥ 300 → e_max =
+    // 0,4·400 = 160 mm → binnen de voorwaarden; verder als B1: UC = 0,8696.
+    handwerk: { e_fi: "133.3", e_max: "160.0", A_c: "120000", ρ_s: "0.01340", UC_a: "0.8696" },
+    oordeel: "voldoet",
+  },
+  {
+    naam: "B11 — kolom 300×400 met A_s = 4826 mm² (6Ø32): A_s ≥ 0,04·A_c",
+    invoer: { b_beton: 300, h_beton: 400, N_Ed: 1500, N_Rd: 3000, eis_min: 90, b_min: 250, a_min: 40, A_s: 4826 },
+    // Met de hand: ρ = 4826/120 000 = 0,04022 ≥ 0,04 → niet toepasbaar.
+    handwerk: { ρ_s: "0.04022" },
+    nietToepasbaar: true,
+  },
+  {
+    naam: "B12 — ronde kolom Ø400 met A_s = 5100 mm²: A_c = π·D²/4",
+    invoer: { vorm_b: 2, b_beton: 400, h_beton: 400, N_Ed: 1500, N_Rd: 3000, eis_min: 90, b_min: 250, a_min: 40, A_s: 5100 },
+    // Met de hand: A_c = π·400²/4 = 125 664 mm² → ρ = 5100/125 664 = 0,04058 ≥ 0,04
+    // → niet toepasbaar (als rechthoek 400·400 was het 0,0319 geweest).
+    handwerk: { A_c: { waarde: "125664", tol: 50, waarom: "het blad drukt vier cijfers af" }, ρ_s: "0.04058" },
+    nietToepasbaar: true,
+  },
+  {
+    naam: "B13 — kolom zonder kniklengte en zonder wapening: niet te bepalen",
+    invoer: { b_beton: 300, h_beton: 400, N_Ed: 1500, N_Rd: 3000, eis_min: 90, b_min: 250, a_min: 40, l_0fi: 0, A_s: 0 },
+    onvolledig: "vul de kniklengte bij brand en de langswapening in",
+  },
+  {
+    naam: "B14 — balk zonder belasting: de staalspanning is niet bekend",
+    invoer: { element_b: 2, b_beton: 250, h_beton: 500, c_dek: 25, d_beugel: 8, d_staaf: 20, M_Ed: 0, M_Rd: 150, b_min: 200, a_min: 40 },
+    onvolledig: "vul de belasting bij brand in",
+  },
+  {
     naam: "B7 — kolom aan één zijde verhit, R60",
     invoer: { zijde_b: 2, b_beton: 200, h_beton: 600, b_min: 150, a_min: 25 },
     // Met de hand: a = 46 mm; b = 200 mm → UC_b = 0,75, UC_a = 25/46 = 0,5435.
@@ -1065,7 +1200,8 @@ for (const set of SETS_BETON) {
   if (set.onvolledig !== undefined || r.onvolledig.length) {
     const m = slot.match(/Maatgevende UC niet te bepalen: (.*?) → het element voldoet niet/);
     const wil = `vul ${opsomming(r.onvolledig)} in`;
-    const ok = set.onvolledig === wil && m !== null && m[1].trim() === set.onvolledig;
+    const ons = m ? m[1].trim().replace(/ ,/g, ",") : null;
+    const ok = set.onvolledig === wil && ons === set.onvolledig;
     if (!ok) fouten++;
     console.log(`\n${set.naam}`);
     console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${m ? `"${m[1].trim()}" → voldoet niet` : "een UC"}   verwacht "${set.onvolledig ?? "—"}", narekening "${wil}"`);
@@ -1075,6 +1211,9 @@ for (const set of SETS_BETON) {
   const verwacht = { a_hw: ruim(r.a) };
   if (r.μ > 0) verwacht.μ_fi = ruim(r.μ);
   if (!r.buiten) Object.assign(verwacht, { UC_b: ruim(r.UCb), UC_a: ruim(r.UCa) });
+  if (r.e !== undefined) Object.assign(verwacht, { e_fi: ruim(r.e), e_max: ruim(r.emax), A_c: ruim(r.Ac), ρ_s: ruim(r.ρ) });
+  if (r.k !== undefined) verwacht.k_s_fi = ruim(r.k);
+  if (r.θcr !== undefined) Object.assign(verwacht, { θ_cr: { waarde: s4(r.θcr), tol: 0.02 }, a_nodig: { waarde: s4(r.anodig), tol: 0.003 } });
   fouten += toets(`${set.naam} — narekening`, got, verwacht);
   if (set.handwerk) fouten += toets(`${set.naam} — handberekening`, got, set.handwerk);
 
@@ -1093,6 +1232,18 @@ for (const set of SETS_BETON) {
     const ok = set.buiten === true && /niet te bepalen: μ fi > 0,7 valt buiten tabel 5.2a → het element voldoet niet/.test(slot);
     if (!ok) fouten++;
     console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    μ_fi > 0,7: buiten de tabel, voldoet niet`);
+    continue;
+  }
+  if (!r.toepasbaar) {
+    const ok = set.nietToepasbaar === true && /niet te bepalen: buiten de toepassingsvoorwaarden van §5\.3\.2\(2\), methode A niet toepasbaar → het element voldoet niet/.test(slot);
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    buiten §5.3.2(2): methode A niet toepasbaar, voldoet niet`);
+    continue;
+  }
+  if (r.vloerOpen) {
+    const ok = set.vloerOpen === true && /tabel 5\.8 niet aangetoond → het element voldoet niet/.test(slot) && !/voldoet aan/.test(slot);
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} oordeel    vloer met σ_s,fi/f_yk > 0,6: niet aangetoond, voldoet niet`);
     continue;
   }
   if (r.overbelast) {
