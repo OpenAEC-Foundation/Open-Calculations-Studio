@@ -44,14 +44,22 @@
  *     k_c,y over de veldlengte en k_c,z over de steunafstand van de bovenrand;
  *   • kip (6.33)/(6.35): bovenrand met l_ef = 0,9·l_st + 2h (last op de
  *     gedrukte rand), onderrand met 0,9·l − 0,5h (tabel 6.1);
+ *   • knik en kip zijn staaftoetsen: per combinatie en per staaf ook de
+ *     grootste drukkracht samen met het grootste |M| (kip: de grootste
+ *     σ_m/(k_crit·f_m,d)), naast de toets per doorsnede;
  *   • afschuiving (6.13) met k_cr = 1,0 (NB bij 6.1.7(2)), de keep aan de voet
  *     met (6.60)/(6.62);
  *   • oplegging §6.1.5 met 6.2.2 (6.16): de reactie op een horizontaal
  *     zadelvlak staat onder 90° − β op de vezel; k_c,90 = 1,0. Aan de voet is
  *     het zadelvlak van een keep t_keep (loodrecht op de staaf) t_keep/sin β
  *     lang, ten hoogste de breedte van de muurplaat.
- * Q_k staat voor M en N midden in het (langste) veld; voor V en de reacties
- * komt daar γ_Q·Q_k/2 bij, zoals met de last op het steunpunt.
+ * Q_k staat op de ongunstigste plaats: gezocht langs de staaf (per deel negen
+ * plaatsen, dan zes keer halverend verfijnd) naar het grootste veldmoment en,
+ * bij knieschot of hanenbalk, het grootste moment daar; de combinatie met Q_k
+ * rekent met die plaatsen en met Q_k direct onder en boven de knoop. Voor de doorbuiging is apart gezocht naar de
+ * grootste w_bij. Voor V en de reacties komt γ_Q·Q_k/2 erbij, zoals met de last
+ * op het steunpunt; de tabel met reacties toont Q_k op de plaats van het
+ * grootste veldmoment.
  *
  * Doorbuiging loodrecht op het dakvlak volgens A1.4.3(3) van de NB bij NEN-EN
  * 1990: w_2 + w_3 = k_def·u_G + u_Q ≤ ℓ/250 bij de karakteristieke combinatie,
@@ -523,7 +531,7 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     S_VT = if(zh ≡ 1; s_n*Lm*cb^2/2; 0)
     F_Gn = F_G/(1 kN)
     F_Qn = if(puntlast ≡ 1; QQ; F_Q/(1 kN))
-    'Q_k midden in het langste veld: bij het knieschot of de hanenbalk het langste deel.
+    'Beginplaats van Q_k: midden in het langste veld (de zoektocht verderop vindt de ongunstigste).
     s_Q = if(systeem ≡ 2; if(SCk ≥ Lm - SCk; SCk/2; (SCk + Lm)/2); if(systeem ≡ 3 and z_t > 0; if(SCt ≥ Lm - SCt; SCt/2; (SCt + Lm)/2); Lm/2))
     s_P = if(puntlast ≡ 2; x_F/(1 m)/cb; s_Q)
     'Geval v: 0 alleen G, 1 q_k, 2 puntlast, 3 tot en met 5 sneeuw (i), (ii), (iii), 6 tot en met 10 wind W1 tot en met W5.
@@ -733,6 +741,10 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     cVmax(z) = max(abs(Vx(sp(0))); abs(Vx(sp(1))); abs(Vx(sp(2))); abs(Vx(sp(3))); abs(Vx(sp(4))); abs(Vx(sp(5))); abs(Vx(sp(6))); abs(Vx(sp(7))); abs(Vx(sp(8))); abs(Vx(sp(9))); abs(Vx(sp(10))); abs(Vx(sp(11))); abs(Vx(sp(12))); abs(Vx(sp(13))); abs(Vx(sp(14))); abs(Vx(sp(15))); abs(Vx(sp(16))); abs(Vx(sp(17))); abs(Vx(sp(18))); abs(Vx(sp(19))); abs(Vx(sp(20))))
     cNMmax(z) = max(uNMx(sp(0)); uNMx(sp(1)); uNMx(sp(2)); uNMx(sp(3)); uNMx(sp(4)); uNMx(sp(5)); uNMx(sp(6)); uNMx(sp(7)); uNMx(sp(8)); uNMx(sp(9)); uNMx(sp(10)); uNMx(sp(11)); uNMx(sp(12)); uNMx(sp(13)); uNMx(sp(14)); uNMx(sp(15)); uNMx(sp(16)); uNMx(sp(17)); uNMx(sp(18)); uNMx(sp(19)); uNMx(sp(20)))
     cKPmax(z) = max(uKx(sp(0)); uKx(sp(1)); uKx(sp(2)); uKx(sp(3)); uKx(sp(4)); uKx(sp(5)); uKx(sp(6)); uKx(sp(7)); uKx(sp(8)); uKx(sp(9)); uKx(sp(10)); uKx(sp(11)); uKx(sp(12)); uKx(sp(13)); uKx(sp(14)); uKx(sp(15)); uKx(sp(16)); uKx(sp(17)); uKx(sp(18)); uKx(sp(19)); uKx(sp(20)); kN0(0); kN0(1); kN0(2); kN0(3); kN0(4); kN0(5); kN0(6); kN0(7); kN0(8); kN0(9); kN0(10); kN0(11); kN0(12); kN0(13); kN0(14); kN0(15))
+    'Knik (6.23)/(6.24) en kip (6.35) zijn staaftoetsen: naast de toets per doorsnede ook de grootste drukkracht samen met het grootste moment langs de staaf (bij kip de grootste σ_m/(k_crit·f_m,d)).
+    rK(x) = σm(Mx(x))/(kcr(Mx(x))*fmd)
+    cKr(z) = max(rK(sp(0)); rK(sp(1)); rK(sp(2)); rK(sp(3)); rK(sp(4)); rK(sp(5)); rK(sp(6)); rK(sp(7)); rK(sp(8)); rK(sp(9)); rK(sp(10)); rK(sp(11)); rK(sp(12)); rK(sp(13)); rK(sp(14)); rK(sp(15)); rK(sp(16)); rK(sp(17)); rK(sp(18)); rK(sp(19)); rK(sp(20)); kN0(0); kN0(1); kN0(2); kN0(3); kN0(4); kN0(5); kN0(6); kN0(7); kN0(8); kN0(9); kN0(10); kN0(11); kN0(12); kN0(13); kN0(14); kN0(15))
+    uKst(ro; n) = if(n < 0; ro^2 - σn(n)/(k_cz*fcd); 0)
     'Keep (6.60) tot en met (6.63): uitkeping aan de steunpuntzijde, rechthoekig (i = 0), x tot het midden van de oplegging.
     h_ef = h_sp - t_keep
     α_v = h_ef/h_sp
@@ -743,6 +755,69 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     'Zadelvlak aan de voet: een keep t_keep loodrecht op de staaf laat een horizontaal zadelvlak van t_keep/sin β over, ten hoogste de breedte van de muurplaat.
     l_zv = if(t_keep > 0 mm; min(a_opl; t_keep/sb); a_opl)
     a_zn = l_zv/(1 m)
+    'Q_k op de ongunstigste plaats. Per deel van de staaf (bij het knieschot of de hanenbalk twee delen) negen plaatsen op 0,1 tot 0,9 van het deel, dan rond de beste zes keer verfijnd met halverende stappen vanaf 0,06 van het deel. Gezocht in γ_G·G + γ_Q·Q_k (6.10b): het grootste moment onder de last (veldmoment) en het grootste moment bij het knieschot of de hanenbalk (steunmoment). De combinatie met Q_k rekent met beide plaatsen.
+    SC_q = if(systeem ≡ 2; SCk; if(systeem ≡ 3 and z_t > 0; SCt; Lm))
+    n_sg = if(SC_q < Lm; 2; 1)
+    s_P0 = s_P
+    qF = s_Q
+    qS = s_Q
+    #def q_doel()
+    s_P = xq
+    kap_los()
+    r = 1
+    kap_staaf()
+    oF = Mx(xq)
+    oS = abs(Mx(SC_q))
+    #end def
+    #if puntlast ≡ 1
+        fg = γ_G
+        fq = γ_Q
+        v = 2
+        bF = -10^9
+        bS = -10^9
+        #for j = 1 : n_sg
+            #for i = 1 : 9
+                xq = if(j ≡ 1; 0; SC_q) + if(j ≡ 1; SC_q; Lm - SC_q)*i/10
+                q_doel()
+                qF = if(oF > bF; xq; qF)
+                bF = max(bF; oF)
+                qS = if(oS > bS; xq; qS)
+                bS = max(bS; oS)
+            #loop
+        #loop
+        h_q = 0.06*if(qF ≤ SC_q; SC_q; Lm - SC_q)
+        #for it = 1 : 6
+            xq = cl(qF - h_q; ε_s; Lm - ε_s)
+            q_doel()
+            o_1 = oF
+            x_1 = xq
+            xq = cl(qF + h_q; ε_s; Lm - ε_s)
+            q_doel()
+            qF = if(oF > max(o_1; bF); xq; if(o_1 > bF; x_1; qF))
+            bF = max(bF; o_1; oF)
+            h_q = h_q/2
+        #loop
+        #if n_sg ≡ 2
+            h_q = 0.06*if(qS ≤ SC_q; SC_q; Lm - SC_q)
+            #for it = 1 : 6
+                xq = cl(qS - h_q; ε_s; Lm - ε_s)
+                q_doel()
+                o_1 = oS
+                x_1 = xq
+                xq = cl(qS + h_q; ε_s; Lm - ε_s)
+                q_doel()
+                qS = if(oS > max(o_1; bS); xq; if(o_1 > bS; x_1; qS))
+                bS = max(bS; o_1; oS)
+                h_q = h_q/2
+            #loop
+        #end if
+    #end if
+    'Kandidaten: het grootste veldmoment, het grootste steunmoment en Q_k direct onder en boven het knieschot of de hanenbalk (0,001·L ervandaan).
+    δ_q = 0.001*Lm
+    nQ = if(puntlast ≡ 1; if(n_sg ≡ 2; 4; 1); 1)
+    qpos(jq) = if(jq ≡ 1; qF; if(jq ≡ 2; qS; if(jq ≡ 3; SC_q - δ_q; SC_q + δ_q)))
+    j_nm = 1
+    j_kp = 1
     'Maxima over de combinaties, met de maatgevende combinatie.
     g_unm = 0
     g_knm = 1
@@ -802,52 +877,105 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
             fvd = kmd*f_vk/γ_M
             fc90d = kmd*f_c90k/γ_M
             fcad = fcd/(fcd/fc90d*cb^2 + sb^2)
-            kap_los()
-            'Q_k op het steunpunt geeft γ_Q·Q_k/2 meer dan midden in het veld.
+            'Q_k op het steunpunt geeft γ_Q·Q_k/2 meer dan in het veld.
             dPQ = fq*bool(v ≡ 2)*bool(puntlast ≡ 1)*QQ/2
+            'Vrije Q_k: beide gezochte plaatsen; in de extra doorgangen de maatgevende.
+            vq = bool(v ≡ 2)*bool(puntlast ≡ 1)
+            n_q = if(vq ≡ 1 and kk ≤ 13; nQ; 1)
             c_M = 0
             c_N = 0
             c_V = 0
             c_Vv = 0
             c_nm = 0
             c_kp = 0
-            #for r = 1 : n_r
-                kap_staaf()
-                c_Vv = max(c_Vv; abs(Vx(ε_s)))
-                c_M = max(c_M; cMmax(0))
-                c_N = min(c_N; cNmin(0))
-                c_V = max(c_V; cVmax(0))
-                c_nm = max(c_nm; cNMmax(0))
-                c_kp = max(c_kp; cKPmax(0))
-                'De maatgevende doorsnede alleen in de twee extra doorgangen.
-                #if kk ≡ 14
-                    #for i = 0 : NS + 4
-                        x_i = sp(i)
-                        unm = uNMx(x_i)
-                        d_m = if(unm > d_u; Mx(x_i); d_m)
-                        d_n = if(unm > d_u; Nx(x_i); d_n)
-                        d_s = if(unm > d_u; x_i; d_s)
-                        d_r = if(unm > d_u; r; d_r)
-                        d_u = max(d_u; unm)
-                    #loop
-                #else if kk ≡ 15
-                    #for i = 0 : NS + 4
-                        x_i = sp(i)
-                        ukp = uKx(x_i)
-                        e_m = if(ukp > e_u; Mx(x_i); e_m)
-                        e_n = if(ukp > e_u; Nx(x_i); e_n)
-                        e_s = if(ukp > e_u; x_i; e_s)
-                        e_r = if(ukp > e_u; r; e_r)
-                        e_u = max(e_u; ukp)
-                    #loop
-                    #for i = 0 : NS - 1
-                        ukp = kN0(i)
-                        e_m = if(ukp > e_u; Mx(xN0(i)); e_m)
-                        e_n = if(ukp > e_u; 0; e_n)
-                        e_s = if(ukp > e_u; xN0(i); e_s)
-                        e_r = if(ukp > e_u; r; e_r)
-                        e_u = max(e_u; ukp)
-                    #loop
+            σ_A = 0
+            σ_B = 0
+            σ_C = 0
+            #for jq = 1 : n_q
+                s_P = if(vq ≡ 1; qpos(if(kk ≤ 13; jq; if(kk ≡ 14; j_nm; j_kp))); s_P0)
+                kap_los()
+                q_nm = 0
+                q_kp = 0
+                #for r = 1 : n_r
+                    kap_staaf()
+                    c_Vv = max(c_Vv; abs(Vx(ε_s)))
+                    c_M = max(c_M; cMmax(0))
+                    c_N = min(c_N; cNmin(0))
+                    c_V = max(c_V; cVmax(0))
+                    'De staaf als geheel: grootste |M| met de grootste drukkracht (knik), grootste σ_m/(k_crit·f_m,d) met de grootste drukkracht (kip).
+                    M_st = cMmax(0)
+                    N_st = min(cNmin(0); 0)
+                    u_nme = uNM2(M_st; N_st)
+                    u_kpe = uKst(cKr(0); N_st)
+                    q_nm = max(q_nm; cNMmax(0); u_nme)
+                    q_kp = max(q_kp; cKPmax(0); u_kpe)
+                    'De maatgevende doorsnede alleen in de twee extra doorgangen; −1 als plaats: de staaftoets.
+                    #if kk ≡ 14
+                        #for i = 0 : NS + 4
+                            x_i = sp(i)
+                            unm = uNMx(x_i)
+                            d_m = if(unm > d_u; Mx(x_i); d_m)
+                            d_n = if(unm > d_u; Nx(x_i); d_n)
+                            d_s = if(unm > d_u; x_i; d_s)
+                            d_r = if(unm > d_u; r; d_r)
+                            d_u = max(d_u; unm)
+                        #loop
+                        d_m = if(u_nme > d_u; M_st; d_m)
+                        d_n = if(u_nme > d_u; N_st; d_n)
+                        d_s = if(u_nme > d_u; -1; d_s)
+                        d_r = if(u_nme > d_u; r; d_r)
+                        d_u = max(d_u; u_nme)
+                    #else if kk ≡ 15
+                        ρ_b = 0
+                        ρ_x = ε_s
+                        #for i = 0 : NS + 4
+                            x_i = sp(i)
+                            ukp = uKx(x_i)
+                            e_m = if(ukp > e_u; Mx(x_i); e_m)
+                            e_n = if(ukp > e_u; Nx(x_i); e_n)
+                            e_s = if(ukp > e_u; x_i; e_s)
+                            e_r = if(ukp > e_u; r; e_r)
+                            e_u = max(e_u; ukp)
+                            ρ_x = if(rK(x_i) > ρ_b; x_i; ρ_x)
+                            ρ_b = max(ρ_b; rK(x_i))
+                        #loop
+                        #for i = 0 : NS - 1
+                            ukp = kN0(i)
+                            e_m = if(ukp > e_u; Mx(xN0(i)); e_m)
+                            e_n = if(ukp > e_u; 0; e_n)
+                            e_s = if(ukp > e_u; xN0(i); e_s)
+                            e_r = if(ukp > e_u; r; e_r)
+                            e_u = max(e_u; ukp)
+                            ρ_x = if(ukp > ρ_b; xN0(i); ρ_x)
+                            ρ_b = max(ρ_b; ukp)
+                        #loop
+                        e_m = if(u_kpe > e_u; Mx(ρ_x); e_m)
+                        e_n = if(u_kpe > e_u; N_st; e_n)
+                        e_s = if(u_kpe > e_u; -1; e_s)
+                        e_r = if(u_kpe > e_u; r; e_r)
+                        e_u = max(e_u; u_kpe)
+                    #end if
+                #loop
+                j_nm = if(kk ≤ 13 and vq ≡ 1 and q_nm > c_nm; jq; j_nm)
+                j_kp = if(kk ≤ 13 and vq ≡ 1 and q_kp > c_kp; jq; j_kp)
+                c_nm = max(c_nm; q_nm)
+                c_kp = max(c_kp; q_kp)
+                'Opleggingen: de voet, bovenin (bij het A-spant de rechter voet) en het knieschot; alleen druk.
+                σ_A = max(σ_A; max(R_Az + dPQ; 0)/(b_n*a_zn)/1000)
+                σ_B = max(σ_B; max(R_Bn + dPQ*if(rol ≡ 1; 1; cb); 0)/(b_n*if(systeem ≡ 3; a_zn; a_kn))/1000)
+                σ_C = max(σ_C; max(R_Cz + dPQ; 0)/(b_n*a_on)/1000)
+                #if kk ≤ 13
+                    g_Azmax = max(g_Azmax; R_Az + dPQ)
+                    g_Azmin = min(g_Azmin; R_Az)
+                    g_Axmax = max(g_Axmax; R_Ax)
+                    g_Axmin = min(g_Axmin; R_Ax)
+                    g_Bzmax = max(g_Bzmax; R_Bz + dPQ)
+                    g_Bzmin = min(g_Bzmin; R_Bz)
+                    g_Bxmax = max(g_Bxmax; R_Bx + dPQ*sb*bool(rol ≡ 2))
+                    g_Czmax = max(g_Czmax; R_Cz + dPQ)
+                    g_Czmin = min(g_Czmin; R_Cz)
+                    g_Tmax = max(g_Tmax; T_t)
+                    g_Tmin = min(g_Tmin; T_t)
                 #end if
             #loop
             c_V = c_V + dPQ*cb
@@ -856,10 +984,6 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
             u_V = τ_c/fvd
             τ_kc = 1.5*c_Vv/(b_n*h_efn)/1000
             u_kp = if(t_keep > 0 mm; τ_kc/(k_v*fvd); 0)
-            'Opleggingen: de voet, bovenin (bij het A-spant de rechter voet) en het knieschot; alleen druk.
-            σ_A = max(R_Az + dPQ; 0)/(b_n*a_zn)/1000
-            σ_B = max(R_Bn + dPQ*if(rol ≡ 1; 1; cb); 0)/(b_n*if(systeem ≡ 3; a_zn; a_kn))/1000
-            σ_C = max(R_Cz + dPQ; 0)/(b_n*a_on)/1000
             u_o = max(σ_A/fcad; σ_B/if(rol ≡ 2 and systeem ≠ 3; fc90d; fcad); σ_C/fcad)
             #if kk ≤ 13
                 g_knm = if(c_nm > g_unm; k; g_knm)
@@ -877,17 +1001,6 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
                 g_σC = if(u_o > g_uo; σ_C; g_σC)
                 g_ko = if(u_o > g_uo; k; g_ko)
                 g_uo = max(g_uo; u_o)
-                g_Azmax = max(g_Azmax; R_Az + dPQ)
-                g_Azmin = min(g_Azmin; R_Az)
-                g_Axmax = max(g_Axmax; R_Ax)
-                g_Axmin = min(g_Axmin; R_Ax)
-                g_Bzmax = max(g_Bzmax; R_Bz + dPQ)
-                g_Bzmin = min(g_Bzmin; R_Bz)
-                g_Bxmax = max(g_Bxmax; R_Bx + dPQ*sb*bool(rol ≡ 2))
-                g_Czmax = max(g_Czmax; R_Cz + dPQ)
-                g_Czmin = min(g_Czmin; R_Cz)
-                g_Tmax = max(g_Tmax; T_t)
-                g_Tmin = min(g_Tmin; T_t)
             #end if
             #show
             #if kk ≤ 13
@@ -897,8 +1010,13 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     #loop
     '</table>
     #if puntlast ≡ 1
-        '<i>Q<sub>k</sub> staat voor M en N midden in het 'if(systeem ≡ 2 or (systeem ≡ 3 and z_t > 0); "langste deel"; "veld")'; voor V en de opleggingen is γ<sub>Q</sub>·Q<sub>k</sub>/2 opgeteld, zoals met de last op het steunpunt.</i><span class="alleen-scherm"></span>
+        #if n_sg ≡ 2
+            '<i>Q<sub>k</sub> staat voor M en N op de plaats met het grootste veldmoment ('round(qF*cb*100)/100' m horizontaal vanaf de voet) en op de plaats met het grootste moment bij 'if(systeem ≡ 2; "het knieschot"; "de hanenbalk")' ('round(qS*cb*100)/100' m), beide gezocht langs de spoor, en direct onder en boven 'if(systeem ≡ 2; "het knieschot"; "de hanenbalk")'; de combinatie geeft het grootste van deze vier. Voor V en de opleggingen is γ<sub>Q</sub>·Q<sub>k</sub>/2 opgeteld, zoals met de last op het steunpunt.</i><span class="alleen-scherm"></span>
+        #else
+            '<i>Q<sub>k</sub> staat voor M en N op de plaats met het grootste veldmoment, gezocht langs de 'if(zh ≡ 1; "hoekkeper"; "spoor")' ('round(qF*cb*100)/100' m horizontaal vanaf de voet). Voor V en de opleggingen is γ<sub>Q</sub>·Q<sub>k</sub>/2 opgeteld, zoals met de last op het steunpunt.</i><span class="alleen-scherm"></span>
+        #end if
     #end if
+    '<i>N+M en kip zijn per doorsnede getoetst en voor de staaf als geheel met de grootste drukkracht samen met het grootste moment (knik en kip zijn staaftoetsen).</i><span class="alleen-scherm"></span>
 
     # 4. Reacties
 
@@ -916,6 +1034,7 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
             #hide
             fg = bool(v ≡ 0)
             fq = bool(v > 0)
+            s_P = if(v ≡ 2 and puntlast ≡ 1; qF; s_P0)
             kap_los()
             #show
             #if systeem ≡ 3
@@ -993,7 +1112,11 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     k_c,y', (6.25)<span class="kolom-4"></span>'
     λ_rel,z', (6.22), ℓ<sub>z</sub> = l<sub>st</sub><span class="kolom-4"></span>'
     k_c,z', (6.26)<span class="kolom-4"></span>'
-    'Maatgevend: combinatie 'g_knm''if(systeem ≡ 3; if(d_r ≡ 1; ", linker spoor"; ", rechter spoor"); "")', op 'round(d_s*100)/100' m langs de 'if(zh ≡ 1; "hoekkeper"; "spoor")' vanaf de voet:
+    #if d_s < 0
+        'Maatgevend: combinatie 'g_knm''if(systeem ≡ 3; if(d_r ≡ 1; ", linker spoor"; ", rechter spoor"); "")', de staaf als geheel: het grootste moment samen met de grootste drukkracht langs de 'if(zh ≡ 1; "hoekkeper"; "spoor")' (knik is een staaftoets):
+    #else
+        'Maatgevend: combinatie 'g_knm''if(systeem ≡ 3; if(d_r ≡ 1; ", linker spoor"; ", rechter spoor"); "")', op 'round(d_s*100)/100' m langs de 'if(zh ≡ 1; "hoekkeper"; "spoor")' vanaf de voet:
+    #end if
     k_mod'<span class="kolom-4"></span>'
     M_d'<span class="kolom-4"></span>'
     N_d', + trek<span class="kolom-4"></span>'
@@ -1047,7 +1170,11 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     k_crit,boven', (6.34)<span class="kolom-4"></span>'
     l_ef,onder', 0,9·l − 0,5h<span class="kolom-4"></span>'
     k_crit,onder'<span class="kolom-4"></span>'
-    'Maatgevend: combinatie 'g_kkp''if(systeem ≡ 3; if(e_r ≡ 1; ", linker spoor"; ", rechter spoor"); "")', op 'round(e_s*100)/100' m, 'if(e_m ≥ 0; "bovenrand gedrukt"; "onderrand gedrukt")': M<sub>d</sub> = 'round(e_m*100)/100' kNm, N<sub>d</sub> = 'round(e_n*100)/100' kN.
+    #if e_s < 0
+        'Maatgevend: combinatie 'g_kkp''if(systeem ≡ 3; if(e_r ≡ 1; ", linker spoor"; ", rechter spoor"); "")', de staaf als geheel, 'if(e_m ≥ 0; "bovenrand gedrukt"; "onderrand gedrukt")': het moment met de grootste σ<sub>m,d</sub>/(k<sub>crit</sub>·f<sub>m,d</sub>), M<sub>d</sub> = 'round(e_m*100)/100' kNm, samen met de grootste drukkracht N<sub>d</sub> = 'round(e_n*100)/100' kN.
+    #else
+        'Maatgevend: combinatie 'g_kkp''if(systeem ≡ 3; if(e_r ≡ 1; ", linker spoor"; ", rechter spoor"); "")', op 'round(e_s*100)/100' m, 'if(e_m ≥ 0; "bovenrand gedrukt"; "onderrand gedrukt")': M<sub>d</sub> = 'round(e_m*100)/100' kNm, N<sub>d</sub> = 'round(e_n*100)/100' kN.
+    #end if
     #if e_n < 0
         UC_kip', (σ<sub>m,d</sub>/(k<sub>crit</sub>·f<sub>m,d</sub>))² + σ<sub>c,0,d</sub>/(k<sub>c,z</sub>·f<sub>c,0,d</sub>) (6.35)'
     #else
@@ -1141,7 +1268,7 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     #if wmax_eis ≡ 1
         '<i>Het uiterlijk is van belang: ook w<sub>max</sub> = (1 + k<sub>def</sub>)·u<sub>G</sub> + u<sub>Q</sub> ≤ ℓ/250 (A1.4.3(4)).</i>
     #end if
-    '<i>ℓ is de veldlengte langs de spoor; de zakking ten opzichte van de lijn door de steunpunten van het veld, op 0,3 tot 0,7 van ℓ.</i><span class="alleen-scherm"></span>
+    '<i>ℓ is de veldlengte langs de spoor; de zakking ten opzichte van de lijn door de steunpunten van het veld, op 0,3 tot 0,7 van ℓ.'if(puntlast ≡ 1; " Q<sub>k</sub> staat op de plaats met de grootste w<sub>bij</sub>, gezocht langs de staaf; w<sub>max</sub> met dezelfde plaats."; "")'</i><span class="alleen-scherm"></span>
     #hide
     'Zakking × EI op x in een veld [s0, s0 + l] ten opzichte van de koorde: gedeeltelijk gelijkmatig (UW), puntlast (UPl), driehoek (UT), randmomenten (UE).
     F1(a; x; l) = (l - x)/(6*l)*((l^2 - (l - x)^2)*a^2/2 - a^4/4)
@@ -1154,6 +1281,47 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     'Grootste zakking in een veld op 0,3 tot 0,7 van de lengte, in m; 0,4 en 0,6 vangen het uiterste van een veld met een ingeklemd einde.
     uF(s0; l) = max(abs(Uf(0.3*l; s0; l)); abs(Uf(0.4*l; s0; l)); abs(Uf(0.45*l; s0; l)); abs(Uf(0.5*l; s0; l)); abs(Uf(0.55*l; s0; l)); abs(Uf(0.6*l; s0; l)); abs(Uf(0.7*l; s0; l)))/EI
     n_f = if(systeem ≡ 2; 2; 1)
+    'Q_k voor de doorbuiging: gezocht zoals voor de momenten, met w_bij = k_def·u_G + u_Q als maat; w_max rekent met dezelfde plaats.
+    #def w_doel()
+    s_P = xq
+    kap_los()
+    oW = 0
+    #for r = 1 : n_r
+        kap_staaf()
+        #for f = 1 : n_f
+            s_0 = if(f ≡ 1; 0; SCk)
+            l_f = if(n_f ≡ 1; Lm; if(f ≡ 1; SCk; Lm - SCk))
+            oW = max(oW; uF(s_0; l_f)/(l_f/250))
+        #loop
+    #loop
+    #end def
+    qW = qF
+    #if puntlast ≡ 1
+        fg = k_def
+        fq = 1
+        v = 2
+        bW = -1
+        #for j = 1 : n_sg
+            #for i = 1 : 9
+                xq = if(j ≡ 1; 0; SC_q) + if(j ≡ 1; SC_q; Lm - SC_q)*i/10
+                w_doel()
+                qW = if(oW > bW; xq; qW)
+                bW = max(bW; oW)
+            #loop
+        #loop
+        h_q = 0.06*if(qW ≤ SC_q; SC_q; Lm - SC_q)
+        #for it = 1 : 6
+            xq = cl(qW - h_q; ε_s; Lm - ε_s)
+            w_doel()
+            o_1 = oW
+            x_1 = xq
+            xq = cl(qW + h_q; ε_s; Lm - ε_s)
+            w_doel()
+            qW = if(oW > max(o_1; bW); xq; if(o_1 > bW; x_1; qW))
+            bW = max(bW; o_1; oW)
+            h_q = h_q/2
+        #loop
+    #end if
     g_ub = 0
     g_vb = 3
     g_wb = 0
@@ -1175,6 +1343,7 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
             #hide
             fg = if(stp ≡ 1; k_def; 1 + k_def)
             fq = 1
+            s_P = if(v ≡ 2 and puntlast ≡ 1; qW; s_P0)
             #if stp ≡ 1 or wmax_eis ≡ 1
                 kap_los()
             #end if

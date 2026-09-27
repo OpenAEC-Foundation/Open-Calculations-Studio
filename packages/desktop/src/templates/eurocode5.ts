@@ -1328,13 +1328,29 @@ Unity check aan de rechte rand (formule 6.11):
 
 UC_recht = sigma_m0d / f_md
 
-UC_max = max(UC_taps; UC_recht)
+## Toetsing afschuiving bij het lage einde (art. 6.1.7, formule 6.13)
+
+'De dwarskracht is bij de opleggingen het grootst en de hoogte bij het lage einde het kleinst: daar is de schuifspanning maatgevend.
+
+V_Ed = q_d * L / 2 to kN
+
+Scheurfactor k_cr voor een ligger met een rechthoekige doorsnede (NB art. 6.1.7(2)):
+
+k_cr = 1.0
+
+tau_d = 1.5 * V_Ed / (k_cr * b * h_0) to N/mm^2
+
+UC_v = tau_d / f_vd
+
+UC_max = max(UC_taps; UC_recht; UC_v)
 
 #if UC_max ≤ 1
   '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>tapse ligger voldoet</b></span>
 #else
   '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>tapse ligger voldoet niet</b></span>
 #end if
+
+'<i>Niet getoetst: kip (§6.3.3), doorbuiging (§7.2) en de oplegdruk (§6.1.5).</i>
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────
