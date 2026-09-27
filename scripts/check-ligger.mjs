@@ -28,7 +28,12 @@
  *      met alleen de permanente last en k_mod blijvend is maatgevend.
  *   5b. Gelamineerde balk met een vloerlast en een opslaglast (puntlast):
  *      w_bij en w_max volgens A1.4.3 met k_def en per punt de overheersende
- *      last, buiging per belastingsduur, afschuiving en oplegdruk.
+ *      last, buiging per belastingsduur, afschuiving en oplegdruk. De
+ *      doorbuiging van hout telt de afschuifvervorming mee (M/κGA).
+ *   5c. Kip van een houten overstek over een gaffel (l_ef = 2·l + 2h) en van
+ *      een ingeklemde uitkraging (0,8·l + 2h, tabel 6.1).
+ *   5d. ψ_0 van categorie C: 0,6 voor vluchtroutes en trappen (standaard),
+ *      0,4 voor de overige delen.
  *   6. Overstek met een puntlast op het eind: trek in het eindsteunpunt uit de
  *      evenwichtscombinatie (G per deel 0,9 en 1,1).
  *   6b. Korte stalen ligger met een zware puntlast: buiging met dwarskracht,
@@ -122,12 +127,15 @@ const VOORBEELD_1 = {
   // Oplegdruk: l_ef = 90 + 30 mm (eindoplegging), k_c,90 = 1,5 (massief, l ≥ 2h).
   const sc90 = (V * 1000) / (71 * 120);
   const fc90d = (0.8 * 2.5) / 1.3;
-  // Doorbuiging: EI = 11000 · 63,86·10⁶ = 702,5 kNm²; w_G = 4,577 mm, w_Q = 4,982 mm.
+  // Doorbuiging: EI = 11000 · 63,86·10⁶ = 702,5 kNm²; met de afschuifvervorming (2.2.3(1)P):
+  // κ·G·A = 5/6 · 690 · 15691 = 9022 kN, w = 5qL⁴/(384EI) + qL²/(8κGA):
+  // w_G = 4,577 + 0,214 = 4,791 mm, w_Q = 4,982 + 0,233 = 5,215 mm (afschuiving + 4,7 %).
   const EI = (E_hout * s.I) / 1e9;
-  const wG = ((5 * g * L ** 4) / (384 * EI)) * 1000;
-  const wQ = ((5 * q * L ** 4) / (384 * EI)) * 1000;
+  const GA = (5 / 6) * 690e3 * s.A * 1e-6;
+  const wG = ((5 * g * L ** 4) / (384 * EI) + (g * L * L) / (8 * GA)) * 1000;
+  const wQ = ((5 * q * L ** 4) / (384 * EI) + (q * L * L) / (8 * GA)) * 1000;
   const kdef = 0.6, ψ1 = 0.5, ψ2 = 0.3;
-  // w_max = (1 + k_def)·w_G + (1 + ψ2·k_def)·w_Q = 13,20 mm ≤ 0,004·4000 = 16 mm.
+  // w_max = (1 + k_def)·w_G + (1 + ψ2·k_def)·w_Q = 13,82 mm ≤ 0,004·4000 = 16 mm (zonder afschuiving 13,20).
   const wmax = (1 + kdef) * wG + (1 + ψ2 * kdef) * wQ;
   // w_bij (frequent) = k_def·w_G + (ψ1 + ψ2·k_def)·w_Q = 6,134 mm ≤ 0,003·4000 = 12 mm.
   const wbij = kdef * wG + (ψ1 + ψ2 * kdef) * wQ;
@@ -465,9 +473,11 @@ console.log("\n5b. GL24h 90×315, L = 6 m, klimaatklasse 2, G = 1,2 kN/m + eigen
   const L = 6, b = 0.09, h = 0.315, A = b * h, W = (b * h * h) / 6, EI = 11500e3 * (b * h ** 3) / 12; // EI = 2695,8 kNm²
   const g = 1.2 + (A * 420 * 9.81) / 1000, q = 2.0, P = 4, aP = 2, bP = L - aP; // g = 1,3168 kN/m
   // Doorbuiging vrij opgelegd: gelijkmatig qx(L³ − 2Lx² + x³)/24EI, puntlast Pbx(L² − b² − x²)/6LEI (x ≤ a) en
-  // Pa(L − x)(2Lx − x² − a²)/6LEI (x ≥ a).
-  const wq = (qq, x) => (qq * x * (L ** 3 - 2 * L * x * x + x ** 3)) / (24 * EI);
-  const wP = (x) => (x <= aP ? (P * bP * x * (L * L - bP * bP - x * x)) / (6 * L * EI) : (P * aP * (L - x) * (2 * L * x - x * x - aP * aP)) / (6 * L * EI));
+  // Pa(L − x)(2Lx − x² − a²)/6LEI (x ≥ a); plus de afschuifvervorming ∫V/κGA = M(x)/κGA (vrij opgelegd: M(0) = 0),
+  // κ·G·A = 5/6 · 650 · 28350 = 15356 kN (GL24h: G_mean = 650 N/mm²).
+  const GA = (5 / 6) * 650e3 * A;
+  const wq = (qq, x) => (qq * x * (L ** 3 - 2 * L * x * x + x ** 3)) / (24 * EI) + (qq * x * (L - x)) / 2 / GA;
+  const wP = (x) => (x <= aP ? (P * bP * x * (L * L - bP * bP - x * x)) / (6 * L * EI) + (P * bP * x) / L / GA : (P * aP * (L - x) * (2 * L * x - x * x - aP * aP)) / (6 * L * EI) + (P * aP * (L - x)) / L / GA);
   // k_def = 0,8. Cat. A: ψ = 0,4 / 0,5 / 0,3; cat. E: ψ = 1,0 / 0,9 / 0,8.
   // w_bij = 0,8·w_G + max((0,5 + 0,8·0,3)·w_Q + (0,8 + 0,8·0,8)·w_F; (0,9 + 0,8·0,8)·w_F + (0,3 + 0,8·0,3)·w_Q)
   // w_max = 1,8·w_G + max((1 + 0,24)·w_Q + (1,0 + 0,64)·w_F; (1 + 0,64)·w_F + (0,4 + 0,24)·w_Q); grootste over x.
@@ -477,7 +487,7 @@ console.log("\n5b. GL24h 90×315, L = 6 m, klimaatklasse 2, G = 1,2 kN/m + eigen
     wb = Math.max(wb, 0.8 * G + Math.max(0.74 * Q + 1.44 * F, 1.54 * F + 0.54 * Q));
     wm = Math.max(wm, 1.8 * G + Math.max(1.24 * Q + 1.64 * F, 1.64 * F + 0.64 * Q));
   }
-  // w_bij = 24,08 mm > 0,003·6000 = 18 mm; w_max = 39,71 mm > 0,004·6000 = 24 mm.
+  // w_bij = 25,21 mm > 0,003·6000 = 18 mm; w_max = 41,57 mm > 0,004·6000 = 24 mm (zonder afschuiving 24,08 en 39,71).
   // UGT, middellang (k_mod 0,8, alle lasten): 6.10b met Q overheersend 1,2·G + 1,5·Q + 1,5·1,0·F:
   // M = 27,05 kNm; f_m,d = 0,8·k_h·24/1,25 met k_h = (600/315)^0,1 = 1,0666 → UC = 1,109.
   // Lang (k_mod 0,7, G en F): 1,2·G + 1,5·F → M = 15,11 kNm, UC 0,708; blijvend 1,35·G → UC 0,437.
@@ -494,6 +504,41 @@ console.log("\n5b. GL24h 90×315, L = 6 m, klimaatklasse 2, G = 1,2 kN/m + eigen
     UC_afsch: (1.5 * R) / A / ((0.8 * 3.5e3) / 1.25), UC_c90: R / (b * 0.13) / ((1.75 * 0.8 * 2.5e3) / 1.25),
     UC_wbij: (wb * 1000) / 18, UC_wmax: (wm * 1000) / 24,
   });
+}
+
+// ── 5c. Hout: kip van een overstek ───────────────────────────────────────────
+console.log("\n5c. C24 45×270, veld 4 m met overstek 1,5 m, G = 1 kN/m, F_Q = 2 kN op het eind (cat. A), last op de bovenzijde: kip");
+{
+  const basis = {
+    materiaal: "1", houtklasse: "2", klimaat: "1", b: "45", h: "270", a_opl: "90", systeem: "2", L_1: "4", a_l: "0", a_r: "1.5",
+    inklemming: "0", scharnieren: "0", kipsteun: "3", a_kip: "0.5", aangrijping: "1", eg: "0",
+    soort_1: "1", vorm_1: "1", q_1: "1", soort_2: "2", vorm_2: "4", cat_2: "1", F_2: "2", a_2: "5.5",
+    soort_3: "0", soort_4: "0", soort_5: "0", soort_6: "0", toepassing: "2", uiterlijk: "1",
+  };
+  // Moment boven het steunpunt (middellang, k_mod 0,8): 1,2·1·1,5²/2 + 1,5·2·1,5 = 5,85 kNm; σ = 5,85·10⁶/546750 = 10,70 N/mm²;
+  // f_m,d = 0,8·24/1,3 = 14,77 N/mm². λ_rel,m = √(f_m,k·h·l_ef/(0,78·b²·E_0,05)), k_crit volgens (6.34).
+  const b = 45, h = 270, W = (b * h * h) / 6, fmd = (0.8 * 24) / 1.3, σ = ((1.2 * 1.5 ** 2) / 2 + 1.5 * 2 * 1.5) * 1e6 / W;
+  const kcrit = (lef) => { const λ = Math.sqrt((24 * h * lef) / (0.78 * b * b * 7400)); return λ <= 0.75 ? 1 : λ <= 1.4 ? 1.56 - 0.75 * λ : 1 / λ ** 2; };
+  // Overstek over een gaffel: l_ef = 2·1500 + 2·270 = 3540 mm → λ = 1,401, k_crit = 0,510 → UC = 1,422
+  // (met 0,8·l, zoals voorheen, 1740 mm: k_crit = 0,823 en UC = 0,880 — onveilig). Het veld heeft kipsteunen op 0,5 m:
+  // l_ef = 500 + 540 = 1040 mm, k_crit = 0,990, UC = 0,731: het overstek is maatgevend.
+  toets(doorreken(basis), { UC_kip: σ / (kcrit(2 * 1500 + 2 * h) * fmd) });
+  // Een ingeklemde uitkraging van 1,5 m met dezelfde lasten: tabel 6.1, l_ef = 0,8·1500 + 540 = 1740 mm → UC = 0,880.
+  toets(doorreken({ ...basis, systeem: "1", L_1: "1.5", a_r: "0", a_2: "1.5" }), { UC_kip: σ / (kcrit(0.8 * 1500 + 2 * h) * fmd) });
+}
+
+// ── 5d. ψ_0 van categorie C ──────────────────────────────────────────────────
+console.log("\n5d. IPE 300, L = 6 m, G = 10 kN/m, Q = 2 kN/m cat. C: ψ_0 = 0,6 (vluchtroute, standaard) of 0,4 (overige delen)");
+{
+  const st = {
+    materiaal: "2", profiel: "24", staalsoort: "235", systeem: "2", L_1: "6", a_l: "0", a_r: "0", inklemming: "0", scharnieren: "0", kipsteun: "1", eg: "0",
+    soort_1: "1", vorm_1: "1", q_1: "10", soort_2: "2", vorm_2: "1", cat_2: "3", q_2: "2",
+    soort_3: "0", soort_4: "0", soort_5: "0", soort_6: "0", toepassing: "2", uiterlijk: "1",
+  };
+  // Tabel NB.2: C 0,6/0,4 met voetnoot a (0,6 voor vluchtroutes en trappen). Keuze 3: 6.10a 1,35·10 + 1,5·0,6·2 = 15,3 kN/m
+  // > 6.10b 1,2·10 + 1,5·2 = 15,0 → M = 15,3·6²/8 = 68,85 kNm. Keuze 11 (ψ_0 = 0,4): 6.10a 14,7 < 15,0 → M = 67,5 kNm.
+  toets(doorreken(st), { M_Ed_max: (15.3 * 36) / 8 });
+  toets(doorreken({ ...st, cat_2: "11" }), { M_Ed_max: (15 * 36) / 8 });
 }
 
 // ── 7. Beweeglijk en leeg ───────────────────────────────────────────────────

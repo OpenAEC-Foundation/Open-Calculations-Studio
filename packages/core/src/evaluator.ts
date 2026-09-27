@@ -338,31 +338,35 @@ function liggerVector(v: unknown): number[] | undefined {
   });
 }
 const liggerMatrix = (m: number[][]) => math.matrix(m);
+/** Stijfheid van de ligger: EI (kNm²) of de vector [EI; GA] met GA = κ·G·A (kN) voor de afschuifvervorming. */
+function liggerStijf(v: unknown): number | number[] {
+  return toArrayLike(v) ? (liggerVector(v) ?? [0]) : liggerGetal(v);
+}
 
 math.import(
   {
     /** ligger(geo; last; EI[; f[; deel[; xs]]]) → [x, V, M, w] langs de ligger, met de punten xs erbij. */
     ligger: function (geo: unknown, last: unknown, EI: unknown, f?: unknown, deel?: unknown, xs?: unknown) {
       return liggerMatrix(liggerOplossing(
-        liggerRijen(geo), liggerRijen(last), liggerGetal(EI), liggerVector(f), deel === undefined ? 0 : liggerGetal(deel),
+        liggerRijen(geo), liggerRijen(last), liggerStijf(EI), liggerVector(f), deel === undefined ? 0 : liggerGetal(deel),
         liggerVector(xs) ?? [],
       ));
     },
     /** ligger_R(geo; last; EI[; f[; deel]]) → [x, R, M] per steunpunt. */
     ligger_R: function (geo: unknown, last: unknown, EI: unknown, f?: unknown, deel?: unknown) {
-      return liggerMatrix(liggerReacties(liggerRijen(geo), liggerRijen(last), liggerGetal(EI), liggerVector(f), deel === undefined ? 0 : liggerGetal(deel)));
+      return liggerMatrix(liggerReacties(liggerRijen(geo), liggerRijen(last), liggerStijf(EI), liggerVector(f), deel === undefined ? 0 : liggerGetal(deel)));
     },
     /** ligger_omh(geo; last; EI; groep; f1; f2; teken[; lead]) → omhullende [x, V, M, w]. */
     ligger_omh: function (geo: unknown, last: unknown, EI: unknown, groep: unknown, f1: unknown, f2: unknown, teken?: unknown, lead?: unknown) {
       return liggerMatrix(liggerOmhullende(
-        liggerRijen(geo), liggerRijen(last), liggerGetal(EI), liggerVector(groep) ?? [], liggerVector(f1) ?? [], liggerVector(f2) ?? [],
+        liggerRijen(geo), liggerRijen(last), liggerStijf(EI), liggerVector(groep) ?? [], liggerVector(f1) ?? [], liggerVector(f2) ?? [],
         teken === undefined ? 1 : liggerGetal(teken), lead === undefined ? 0 : liggerGetal(lead),
       ));
     },
     /** ligger_omhR(…) → omhullende [x, R, M] per steunpunt, argumenten als ligger_omh. */
     ligger_omhR: function (geo: unknown, last: unknown, EI: unknown, groep: unknown, f1: unknown, f2: unknown, teken?: unknown, lead?: unknown) {
       return liggerMatrix(liggerOmhullendeReacties(
-        liggerRijen(geo), liggerRijen(last), liggerGetal(EI), liggerVector(groep) ?? [], liggerVector(f1) ?? [], liggerVector(f2) ?? [],
+        liggerRijen(geo), liggerRijen(last), liggerStijf(EI), liggerVector(groep) ?? [], liggerVector(f1) ?? [], liggerVector(f2) ?? [],
         teken === undefined ? 1 : liggerGetal(teken), lead === undefined ? 0 : liggerGetal(lead),
       ));
     },
@@ -389,7 +393,7 @@ math.import(
     },
     /** ligger_status(geo[; EI]) → 1 stabiel, -1 beweeglijk, 0 ongeldig. */
     ligger_status: function (geo: unknown, EI?: unknown) {
-      return liggerStatus(liggerRijen(geo), EI === undefined ? 1 : liggerGetal(EI));
+      return liggerStatus(liggerRijen(geo), EI === undefined ? 1 : liggerStijf(EI));
     },
     /** ligger_delen(geo) → [x_begin, x_eind] per deel voor de schaakbordbelasting. */
     ligger_delen: function (geo: unknown) {

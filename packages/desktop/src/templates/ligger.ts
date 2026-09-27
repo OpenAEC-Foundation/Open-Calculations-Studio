@@ -22,7 +22,9 @@
  * een oplegging.
  *
  * Hout (NEN-EN 1995-1-1 + NB): buiging, afschuiving met k_cr = 1,0 (NB),
- * oplegdruk, kip met k_crit en de doorbuiging met k_def. k_mod per
+ * oplegdruk, kip met k_crit (een overstek over een gaffel met l_ef = 2·l, een
+ * ingeklemde uitkraging met 0,8·l) en de doorbuiging met k_def en de
+ * afschuifvervorming (κ·G_mean·A in de rekenkern). k_mod per
  * belastingsduur: de toetsen lopen de duurklassen af, telkens met de lasten die
  * minstens zo lang duren en de k_mod van die klasse. Staal (NEN-EN 1993-1-1 +
  * NB): doorsnedeklasse, buiging, dwarskracht, interactie met de dwarskracht,
@@ -80,9 +82,9 @@ hout = bool(materiaal ≡ 1)
     h = ?*(mm)', hoogte<span class="kolom-3"></span>'
     a_opl = ?*(mm)', opleglengte<span class="kolom-3"></span>'
     #hide
-    'Materiaalmatrix [id | f_m,k | f_v,k | f_c,90,k | E_mean | E_0,05 (N/mm²) | ρ_mean (kg/m³) | γ_M]:
+    'Materiaalmatrix [id | f_m,k | f_v,k | f_c,90,k | E_mean | E_0,05 (N/mm²) | ρ_mean (kg/m³) | γ_M | G_mean (N/mm²)]:
     'EN 338 voor C18 t/m C30, EN 14080 voor GL24h t/m GL32h.
-    houtsoorten = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |380; 420; 460; 420; 460; 490 |1.30; 1.30; 1.30; 1.25; 1.25; 1.25]
+    houtsoorten = [1; 2; 3; 4; 5; 6 |18; 24; 30; 24; 28; 32 |3.4; 4.0; 4.0; 3.5; 3.5; 3.5 |2.2; 2.5; 2.7; 2.5; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600; 14200 |6000; 7400; 8000; 9600; 10500; 11800 |380; 420; 460; 420; 460; 490 |1.30; 1.30; 1.30; 1.25; 1.25; 1.25 |560; 690; 750; 650; 650; 650]
     f_m,k = hlookup(houtsoorten; houtklasse; 1; 2)*N/mm^2
     f_v,k = hlookup(houtsoorten; houtklasse; 1; 3)*N/mm^2
     f_c,90,k = hlookup(houtsoorten; houtklasse; 1; 4)*N/mm^2
@@ -90,6 +92,7 @@ hout = bool(materiaal ≡ 1)
     E_0,05 = hlookup(houtsoorten; houtklasse; 1; 6)*N/mm^2
     ρ_mean = hlookup(houtsoorten; houtklasse; 1; 7)*kg/m^3
     γ_M = hlookup(houtsoorten; houtklasse; 1; 8)
+    G_mean = hlookup(houtsoorten; houtklasse; 1; 9)*N/mm^2
     gelijmd = bool(houtklasse ≥ 4)
     'Hoogtefactor op f_m,k: massief §3.2(3) bij h < 150 mm, gelamineerd §3.3(3) bij h < 600 mm.
     h_ruw = max(h/(1 mm); 1)
@@ -112,6 +115,8 @@ hout = bool(materiaal ≡ 1)
     fvk_n = f_v,k/(1 kN/m^2)
     fc90k_n = f_c,90,k/(1 kN/m^2)
     E005_n = E_0,05/(1 kN/m^2)
+    'Afschuifstijfheid κ·G_mean·A met κ = 5/6 (rechthoek): de afschuifvervorming telt mee in de doorbuiging (2.2.3(1)P).
+    GA_n = 5/6*G_mean*A/(1 kN)
     #show
     f_m,k'<span class="kolom-4"></span>'
     f_v,k'<span class="kolom-4"></span>'
@@ -122,6 +127,7 @@ hout = bool(materiaal ≡ 1)
     γ_M'<span class="kolom-4"></span>'
     k_h', §3.2(3) en §3.3(3)<span class="kolom-4"></span>'
     k_def', tabel 3.2<span class="kolom-4"></span>'
+    G_mean', voor de afschuifvervorming<span class="kolom-4"></span>'
     W_y', b·h²/6<span class="kolom-4"></span>'
     I_y', b·h³/12<span class="kolom-4"></span>'
 #else
@@ -221,10 +227,14 @@ hout = bool(materiaal ≡ 1)
     Iz_n = I_z/(1 m^4)
     It_n = I_t/(1 m^4)
     Iw_n = I_w/(1 m^6)
+    'Staal: de afschuifvervorming van een gewalst profiel is te verwaarlozen.
+    GA_n = 0
     #show
 #end if
 #hide
 EI_n = max(E*I_y/(1 kN*m^2); 0.001)
+'Stijfheid voor de rekenkern: [EI; GA], GA = 0 zonder afschuifvervorming.
+EIG = [EI_n; GA_n]
 g_n = g_eg/(1 kN/m)
 #show
 EI = E*I_y to kN*m^2', buigstijfheid<span class="kolom-2"></span>'
@@ -343,7 +353,7 @@ xh_2 = x_h2/(1 m)
 sh_1 = if(scharnieren ≥ 1; if(xh_1 > 0; if(xh_1 < x_eind; 3; -1); -1); -1)
 sh_2 = if(scharnieren ≡ 2; if(xh_2 > 0; if(xh_2 < x_eind; 3; -1); -1); -1)
 geo = [0; xs_1; xs_2; xs_3; xs_4; x_eind; xh_1; xh_2 |0; st_1; st_2; st_3; st_4; 0; sh_1; sh_2]
-status = if(span_min > 0; ligger_status(geo; EI_n); 0)
+status = if(span_min > 0; ligger_status(geo; EIG); 0)
 L_tot = x_eind*m
 vSt = [st_1; st_2; st_3; st_4]
 a_kn = max(a_kip/(1 m); 0)
@@ -396,7 +406,8 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
         @select cat_1 "Categorie van last 1 (tabel NB.2 — A1.1)"
           A — woon- en verblijfsruimtes = 1
           B — kantoorruimtes = 2
-          C — bijeenkomstruimtes = 3
+          C — bijeenkomstruimtes, vluchtroutes en trappen (ψ₀ 0,6) = 3
+          C — bijeenkomstruimtes, overige delen (ψ₀ 0,4) = 11
           D — winkelruimtes = 4
           E — opslagruimtes = 5
           F — verkeersruimte, voertuig ≤ 25 kN = 6
@@ -489,7 +500,8 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
         @select cat_2 "Categorie van last 2 (tabel NB.2 — A1.1)"
           A — woon- en verblijfsruimtes = 1
           B — kantoorruimtes = 2
-          C — bijeenkomstruimtes = 3
+          C — bijeenkomstruimtes, vluchtroutes en trappen (ψ₀ 0,6) = 3
+          C — bijeenkomstruimtes, overige delen (ψ₀ 0,4) = 11
           D — winkelruimtes = 4
           E — opslagruimtes = 5
           F — verkeersruimte, voertuig ≤ 25 kN = 6
@@ -582,7 +594,8 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
         @select cat_3 "Categorie van last 3 (tabel NB.2 — A1.1)"
           A — woon- en verblijfsruimtes = 1
           B — kantoorruimtes = 2
-          C — bijeenkomstruimtes = 3
+          C — bijeenkomstruimtes, vluchtroutes en trappen (ψ₀ 0,6) = 3
+          C — bijeenkomstruimtes, overige delen (ψ₀ 0,4) = 11
           D — winkelruimtes = 4
           E — opslagruimtes = 5
           F — verkeersruimte, voertuig ≤ 25 kN = 6
@@ -675,7 +688,8 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
         @select cat_4 "Categorie van last 4 (tabel NB.2 — A1.1)"
           A — woon- en verblijfsruimtes = 1
           B — kantoorruimtes = 2
-          C — bijeenkomstruimtes = 3
+          C — bijeenkomstruimtes, vluchtroutes en trappen (ψ₀ 0,6) = 3
+          C — bijeenkomstruimtes, overige delen (ψ₀ 0,4) = 11
           D — winkelruimtes = 4
           E — opslagruimtes = 5
           F — verkeersruimte, voertuig ≤ 25 kN = 6
@@ -768,7 +782,8 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
         @select cat_5 "Categorie van last 5 (tabel NB.2 — A1.1)"
           A — woon- en verblijfsruimtes = 1
           B — kantoorruimtes = 2
-          C — bijeenkomstruimtes = 3
+          C — bijeenkomstruimtes, vluchtroutes en trappen (ψ₀ 0,6) = 3
+          C — bijeenkomstruimtes, overige delen (ψ₀ 0,4) = 11
           D — winkelruimtes = 4
           E — opslagruimtes = 5
           F — verkeersruimte, voertuig ≤ 25 kN = 6
@@ -861,7 +876,8 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
         @select cat_6 "Categorie van last 6 (tabel NB.2 — A1.1)"
           A — woon- en verblijfsruimtes = 1
           B — kantoorruimtes = 2
-          C — bijeenkomstruimtes = 3
+          C — bijeenkomstruimtes, vluchtroutes en trappen (ψ₀ 0,6) = 3
+          C — bijeenkomstruimtes, overige delen (ψ₀ 0,4) = 11
           D — winkelruimtes = 4
           E — opslagruimtes = 5
           F — verkeersruimte, voertuig ≤ 25 kN = 6
@@ -942,7 +958,9 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
 'ψ-factoren uit tabel NB.2 — A1.1 van NEN-EN 1990 en de belastingsduurklasse
 '(1 blijvend, 2 lang, 3 middellang, 4 kort) per categorie:
 '   [categorie | ψ_0 | ψ_1 | ψ_2 | duurklasse]
-ψ_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10 |0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0 |0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2 |0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0 |3; 3; 3; 3; 2; 3; 3; 4; 4; 4]
+'Categorie C: 3 met ψ_0 = 0,6 voor delen die bij een calamiteit zwaar door een mensenmenigte
+'belast kunnen worden (vluchtroutes, trappen; voetnoot a bij tabel NB.2), 11 met 0,4 voor de overige delen.
+ψ_tabel = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11 |0.4; 0.5; 0.6; 0.4; 1.0; 0.7; 0.7; 0; 0; 0; 0.4 |0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2; 0.7 |0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0; 0.6 |3; 3; 3; 3; 2; 3; 3; 4; 4; 4; 3]
 'Per last de rij [soort, a, b, q_a, q_b] voor de rekenkern, in m, kN/m en kN;
 'soort 1 is een verdeelde last, 2 een puntlast, 0 geen last. Rij 7 is het
 'eigen gewicht.
@@ -1033,7 +1051,7 @@ vψ2 = [ψ2_1; ψ2_2; ψ2_3; ψ2_4; ψ2_5; ψ2_6; 0]
 vD = [duur_1; duur_2; duur_3; duur_4; duur_5; duur_6; 1]
 vEen = [1; 1; 1; 1; 1; 1; 1]
 n_Q = isQ_1 + isQ_2 + isQ_3 + isQ_4 + isQ_5 + isQ_6
-catnaam(c) = if(c ≡ 1; "A"; if(c ≡ 2; "B"; if(c ≡ 3; "C"; if(c ≡ 4; "D"; if(c ≡ 5; "E"; if(c ≡ 6; "F"; if(c ≡ 7; "G"; if(c ≡ 8; "H"; if(c ≡ 9; "sneeuw"; if(c ≡ 10; "wind"; "–"))))))))))
+catnaam(c) = if(c ≡ 1; "A"; if(c ≡ 2; "B"; if(c ≡ 3 or c ≡ 11; "C"; if(c ≡ 4; "D"; if(c ≡ 5; "E"; if(c ≡ 6; "F"; if(c ≡ 7; "G"; if(c ≡ 8; "H"; if(c ≡ 9; "sneeuw"; if(c ≡ 10; "wind"; "–"))))))))))
 vormnaam(v) = if(v ≡ 1; "gelijkmatig"; if(v ≡ 2; "gelijkmatig, deel"; if(v ≡ 3; "trapezium"; "puntlast")))
 duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellang"; "kort")))
 #show
@@ -1062,7 +1080,7 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
 
 #if status ≡ 1
     #hide
-    RR0 = ligger_R(geo; last; EI_n)
+    RR0 = ligger_R(geo; last; EIG)
     'Tekening: de ligger over 400 px, elke last een eigen strook van 18 px erboven.
     sx = 400/max(x_eind; 0.001)
     sX(x) = 40 + sx*min(max(x; 0); x_eind)
@@ -1132,7 +1150,7 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
     Dl = ligger_delen(geo)
     n_del = n_rows(Dl)
     ej(j) = [bool(j ≡ 1); bool(j ≡ 2); bool(j ≡ 3); bool(j ≡ 4); bool(j ≡ 5); bool(j ≡ 6); 0]
-    Rbg1 = ligger(geo; last; EI_n; vG)
+    Rbg1 = ligger(geo; last; EIG; vG)
     #show
     'Karakteristiek, per belastinggeval over de hele ligger; 'n_del' delen voor de schaakbordbelasting.
     '<table style="width:100%; border-collapse:collapse; font-size:0.85em; line-height:1.25;">
@@ -1145,7 +1163,7 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
         #if vQ.(j) ≡ 1
             #hide
             k_bg = k_bg + 1
-            Rbg = ligger(geo; last; EI_n; ej(j))
+            Rbg = ligger(geo; last; EIG; ej(j))
             #show
             '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0 4px;">BG'k_bg' — Q'j' ('catnaam(vCat.(j))')</td><td style="padding:0 4px; text-align:right;">'r2(ligger_ext(Rbg; 3)[1])'</td><td style="padding:0 4px; text-align:right;">'r2(ligger_ext(Rbg; 3)[3])'</td><td style="padding:0 4px; text-align:right;">'r2(max(ligger_ext(Rbg; 2)[1]; -ligger_ext(Rbg; 2)[3]))'</td><td style="padding:0 4px; text-align:right;">'r2(1000*ligger_ext(Rbg; 4)[1])'</td><td style="padding:0 4px; text-align:right;">'r2(1000*ligger_ext(Rbg; 4)[3])'</td></tr>
         #end if
@@ -1191,10 +1209,10 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
     FE1 = [fe1(1); fe1(2); fe1(3); fe1(4); fe1(5); fe1(6); fe1(7)]
     FE2 = [fe2(1); fe2(2); fe2(3); fe2(4); fe2(5); fe2(6); fe2(7)]
     FW(cG; vL) = [fw(1; cG; vL); fw(2; cG; vL); fw(3; cG; vL); fw(4; cG; vL); fw(5; cG; vL); fw(6; cG; vL); fw(7; cG; vL)]
-    Oa(d; t) = ligger_omh(geo; last; EI_n; vGr; Fa1(d); Fb2(d); t; 0)
-    Ob(d; t; ld) = ligger_omh(geo; last; EI_n; vGr; Fb1(d); Fb2(d); t; ld)
-    Ra(d; t) = ligger_omhR(geo; last; EI_n; vGr; Fa1(d); Fb2(d); t; 0)
-    Rb(d; t; ld) = ligger_omhR(geo; last; EI_n; vGr; Fb1(d); Fb2(d); t; ld)
+    Oa(d; t) = ligger_omh(geo; last; EIG; vGr; Fa1(d); Fb2(d); t; 0)
+    Ob(d; t; ld) = ligger_omh(geo; last; EIG; vGr; Fb1(d); Fb2(d); t; ld)
+    Ra(d; t) = ligger_omhR(geo; last; EIG; vGr; Fa1(d); Fb2(d); t; 0)
+    Rb(d; t; ld) = ligger_omhR(geo; last; EIG; vGr; Fb1(d); Fb2(d); t; ld)
     'Omhullende van 6.10a en 6.10b samen, per niveau.
     Pmx(d) = ligger_max(Oa(d; 1); Ob(d; 1; 0))
     Pmn(d) = ligger_min(Oa(d; -1); Ob(d; -1; 0))
@@ -1289,8 +1307,8 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
     'Eindstand w_max (§7) voor de lijn van de doorbuiging.
     vFin1 = vEen + k_def*vψ2
     vFin2 = vψ0 + k_def*vψ2
-    WT1 = ligger_omh(geo; last; EI_n; vGr; FW(1 + k_def; vFin1); FW(1 + k_def; vFin2); 1; 0)
-    WT2 = ligger_omh(geo; last; EI_n; vGr; FW(1 + k_def; vFin1); FW(1 + k_def; vFin2); -1; 0)
+    WT1 = ligger_omh(geo; last; EIG; vGr; FW(1 + k_def; vFin1); FW(1 + k_def; vFin2); 1; 0)
+    WT2 = ligger_omh(geo; last; EIG; vGr; FW(1 + k_def; vFin1); FW(1 + k_def; vFin2); -1; 0)
     eWT1 = ligger_ext(WT1; 4)
     eWT2 = ligger_ext(WT2; 4)
     M_p = max(eMT1.1; 0)
@@ -1356,11 +1374,11 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
 
     '<h6>Oplegreacties<span class="alleen-scherm"></span></h6>
     #hide
-    RGk = ligger_R(geo; last; EI_n; vG)
-    RQk = ligger_omhR(geo; last; EI_n; vGr; vQ; vQ; 1; 0)
+    RGk = ligger_R(geo; last; EIG; vG)
+    RQk = ligger_omhR(geo; last; EIG; vGr; vQ; vQ; 1; 0)
     RUmx = Rmx(dT)
     RUmn = Rmn(dT)
-    REq = ligger_omhR(geo; last; EI_n; vGrE; FE1; FE2; -1; 0)
+    REq = ligger_omhR(geo; last; EIG; vGrE; FE1; FE2; -1; 0)
     R_min = 10^9
     #show
     '<table style="width:100%; border-collapse:collapse; font-size:0.85em; line-height:1.25;">
@@ -1577,7 +1595,7 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
     n_k = 0
     #show
     #if hout ≡ 1
-        '<i>§6.3.3: σ<sub>m,crit</sub> = 0,78·b²·E<sub>0,05</sub>/(h·l<sub>ef</sub>) (6.32), λ<sub>rel,m</sub> (6.30), k<sub>crit</sub> (6.34); σ<sub>m,d</sub> ≤ k<sub>crit</sub>·f<sub>m,d</sub> per niveau van belastingsduur. l<sub>ef</sub> volgens tabel 6.1: in een veld 1,0·l (constant moment, aan de veilige kant), bij een overstek 0,8·l, plus 2h voor een last op de bovenzijde of min 0,5h op de onderzijde; in een zone met een negatief moment naast een steunpunt de lengte van die zone.</i><span class="alleen-scherm"></span>
+        '<i>§6.3.3: σ<sub>m,crit</sub> = 0,78·b²·E<sub>0,05</sub>/(h·l<sub>ef</sub>) (6.32), λ<sub>rel,m</sub> (6.30), k<sub>crit</sub> (6.34); σ<sub>m,d</sub> ≤ k<sub>crit</sub>·f<sub>m,d</sub> per niveau van belastingsduur. l<sub>ef</sub> volgens tabel 6.1: in een veld 1,0·l (constant moment, aan de veilige kant), bij een ingeklemde uitkraging 0,8·l, bij een overstek over een steunpunt (gaffel, niet ingeklemd) 2·l zoals bij staal, plus 2h voor een last op de bovenzijde of min 0,5h op de onderzijde; in een zone met een negatief moment naast een steunpunt de lengte van die zone.</i><span class="alleen-scherm"></span>
         #hide
         λm(lf) = sqrt(fmk_n*h_n*max(lf; 10^-6)/(0.78*b_n^2*E005_n))
         kcrit(lf) = if(λm(lf) ≤ 0.75; 1; if(λm(lf) ≤ 1.4; 1.56 - 0.75*λm(lf); 1/λm(lf)^2))
@@ -1639,6 +1657,11 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
             v0 = Vd.(v; 1)
             v1 = Vd.(v; 2)
             ov = Vd.(v; 3)
+            'Een overstek met een inklemming als steunpunt is een uitkraging (tabel 6.1: 0,8·l); over een gaffel 2·l.
+            klem_v = 0
+            #for i = 1 : n_s
+                klem_v = max(klem_v; bool(vSt.(i) ≡ 2)*(bool(abs(RR0.(i; 1) - v0) < 10^-6) + bool(abs(RR0.(i; 1) - v1) < 10^-6)))
+            #loop
             n_sg = if(ov ≡ 1; 1; if(kipsteun ≡ 3; if(a_kn > 0; min(40; max(1; ceil((v1 - v0)/max(a_kn; 10^-6) - 10^-9))); 1); 1))
             #show
             #for p = 1 : n_sg
@@ -1650,7 +1673,7 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
                 #show
                 #if hout ≡ 1
                     #hide
-                    lf_k = max(if(ov ≡ 1; 0.8; 1)*L_st + Δlef; 10^-6)
+                    lf_k = max(if(ov ≡ 1; if(klem_v ≥ 1; 0.8; 2); 1)*L_st + Δlef; 10^-6)
                     u_t = ukh(k0; k1; lf_k; 0)
                     u_k = max(u_k; u_t)
                     #show
@@ -1690,7 +1713,7 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
 
     # 7. Toetsing BGT — doorbuiging
 
-    '<i>Volgens de NB bij NEN-EN 1990, A1.4.3: w<sub>bij</sub> = w<sub>2</sub> + w<sub>3</sub> (de kruip plus het veranderlijke deel) bij de frequente combinatie (6.15b) voor vloeren of de karakteristieke (6.14b) voor daken, en de eindstand w<sub>max</sub> = w<sub>inst</sub> (6.14b) + k<sub>def</sub>·w<sub>qp</sub> (6.16b), 'if(hout ≡ 1; "met k<sub>def</sub> uit tabel 3.2 (§2.2.3)"; "bij staal zonder kruip")'. Per veld, met l<sub>rep</sub> de overspanning of tweemaal de lengte van een overstek; de schaakbordbelasting per deel en per punt de ongunstigste overheersende last, zoals in §5. De absolute waarde telt: ook een opbuiging.</i><span class="alleen-scherm"></span>
+    '<i>Volgens de NB bij NEN-EN 1990, A1.4.3: w<sub>bij</sub> = w<sub>2</sub> + w<sub>3</sub> (de kruip plus het veranderlijke deel) bij de frequente combinatie (6.15b) voor vloeren of de karakteristieke (6.14b) voor daken, en de eindstand w<sub>max</sub> = w<sub>inst</sub> (6.14b) + k<sub>def</sub>·w<sub>qp</sub> (6.16b), 'if(hout ≡ 1; "met k<sub>def</sub> uit tabel 3.2 (§2.2.3) en met de afschuifvervorming (κ = 5/6, G<sub>mean</sub>; 2.2.3(1)P)"; "bij staal zonder kruip")'. Per veld, met l<sub>rep</sub> de overspanning of tweemaal de lengte van een overstek; de schaakbordbelasting per deel en per punt de ongunstigste overheersende last, zoals in §5. De absolute waarde telt: ook een opbuiging.</i><span class="alleen-scherm"></span>
     @select toepassing "Grens bijkomende doorbuiging w_bij (A1.4.3(3))"
       Overige vloer of intensief gebruikt dak: 0,003·l_rep, frequent = 2
       Vloer met scheurgevoelige scheidingswanden: 0,002·l_rep, frequent = 1
@@ -1708,8 +1731,8 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
     'ψ_2 of ψ_0; beide plus k_def·ψ_2.
     vBij1 = if(freq ≡ 1; vψ1; vEen) + k_def*vψ2
     vBij2 = if(freq ≡ 1; vψ2; vψ0) + k_def*vψ2
-    WB1 = ligger_omh(geo; last; EI_n; vGr; FW(k_def; vBij1); FW(k_def; vBij2); 1; 0)
-    WB2 = ligger_omh(geo; last; EI_n; vGr; FW(k_def; vBij1); FW(k_def; vBij2); -1; 0)
+    WB1 = ligger_omh(geo; last; EIG; vGr; FW(k_def; vBij1); FW(k_def; vBij2); 1; 0)
+    WB2 = ligger_omh(geo; last; EIG; vGr; FW(k_def; vBij1); FW(k_def; vBij2); -1; 0)
     Wabs(Wa; Wb; x0; x1) = 1000*max(ligger_ext(Wa; 4; x0; x1)[1]; -ligger_ext(Wb; 4; x0; x1)[3]; 0)
     u_wf = 0
     u_wb = 0

@@ -46,19 +46,22 @@
  * doorsnede), dwarskracht (6.17), knik om beide assen (6.46), kip (6.54) met
  * M_cr volgens bijlage NB.NB en druk met buiging (6.61)/(6.62) met tabel B.2 en
  * C_m uit tabel B.3. Uit het vlak: de afstand tussen de zijdelingse steunen
- * voor knik en kip; ligt die binnen de staaf, dan C_1 = 1,0 en C_mLT = 1,0 (aan
+ * van de buiten- of bovenrand voor knik en voor kip bij een positief moment,
+ * die van de binnen- of onderrand (standaard de hele staaf) voor kip bij een
+ * negatief moment, zoals bij de knie; ligt een steunafstand binnen de staaf, dan C_1 = 1,0 en C_mLT = 1,0 (aan
  * de veilige kant), anders C_1 uit tabel NB.NB.1 (eindmomenten) of, met een
  * last op de staaf, uit de momenten op de kwartpunten. De trekband
  * op trek, A·f_y/γ_M0; een trekband op druk voldoet niet.
  * Toetsing hout (NEN-EN 1995-1-1 + NB): trek of druk met buiging (6.17)/(6.19),
- * knik (6.23)/(6.24), kip (6.33)/(6.35) en afschuiving (6.13) met k_cr = 1,0,
+ * knik (6.23)/(6.24), kip (6.33)/(6.35) per gedrukte rand en afschuiving (6.13) met k_cr = 1,0,
  * met k_mod van de kortste last in de combinatie (dakbelasting middellang, aan
  * de veilige kant; sneeuw en wind kort).
  *
  * BGT volgens A1.4.3 van de NB bij NEN-EN 1990: de horizontale verplaatsing
  * van de knieën bij de karakteristieke combinatie ≤ h/300 (of h/150 voor een
  * industriegebouw), de bijkomende doorbuiging van het dak w_2 + w_3 ≤ l/250 en
- * desgewenst de eindstand w_max ≤ l/250; hout met k_def. Bij het portaal is de
+ * desgewenst de eindstand w_max ≤ l/250; hout met k_def en met de
+ * afschuifvervorming (κ·G_mean·A in de rekenkern). Bij het portaal is de
  * doorbuiging de verticale verplaatsing van de regel ten opzichte van de lijn
  * door de knieën (l = de overspanning), bij het A-spant en het lessenaarspant
  * die loodrecht op de staaf ten opzichte van zijn koorde (l = de staaflengte).
@@ -152,13 +155,16 @@ a_sp = ?*(m)', hart-op-hartafstand van de spanten<span class="kolom-3"></span>'
     #show
 #end if
 #if systeem ≠ 3
-    a_zk = ?*(m)', kolom: afstand tussen de zijdelingse steunen, knik uit het vlak en kip (0 = alleen de einden)<span class="kolom-3"></span>'
+    a_zk = ?*(m)', kolom: afstand tussen de zijdelingse steunen van de buitenflens of -rand (gevelregels), knik uit het vlak en kip bij druk buiten (0 = alleen de einden)<span class="kolom-3"></span>'
+    a_zk,i = ?*(m)', kolom: afstand tussen de steunen van de binnenflens of -rand (kopschoren), kip bij druk binnen (0 = geen: de hele kolom)<span class="kolom-3"></span>'
 #else
     #hide
     a_zk = 0 m
+    a_zk,i = 0 m
     #show
 #end if
-a_zr = ?*(m)', regel of spoor: afstand tussen de zijdelingse steunen van de gedrukte rand (0 = alleen de einden)<span class="kolom-3"></span>'
+a_zr = ?*(m)', regel of spoor: afstand tussen de zijdelingse steunen van de bovenflens of -rand (gordingen, tengels), knik uit het vlak en kip bij druk boven (0 = alleen de einden)<span class="kolom-3"></span>'
+a_zr,o = ?*(m)', regel of spoor: afstand tussen de steunen van de onderflens of -rand (kopschoren), kip bij druk onder, zoals bij de knie (0 = geen: de hele staaf)<span class="kolom-3"></span>'
 
 #hide
 Ln = max(L_sp/(1 m); 0)
@@ -294,6 +300,9 @@ ok_inv = bool(Ln > 0 and an > 0)*if(systeem ≡ 3; bool(trekband ≡ 0 or dtb > 
     ge_1 = 78.5*A_1
     ge_2 = 78.5*A_2
     k_def = 0
+    'Staal: geen afschuifvervorming (te verwaarlozen bij gewalste profielen).
+    GA_1 = 0
+    GA_2 = 0
     #show
     '<table style="border-collapse:collapse; font-size:0.85em; line-height:1.25;">
     '<tr style="border-bottom:1.5px solid #374151;"><th style="padding:1px 6px; text-align:left;">Staaf</th><th style="padding:1px 6px; text-align:right;">A [cm²]</th><th style="padding:1px 6px; text-align:right;">I<sub>y</sub> [cm⁴]</th><th style="padding:1px 6px; text-align:right;">W<sub>pl,y</sub> [cm³]</th><th style="padding:1px 6px; text-align:right;">I<sub>z</sub> [cm⁴]</th><th style="padding:1px 6px; text-align:right;">I<sub>t</sub> [cm⁴]</th><th style="padding:1px 6px; text-align:right;">I<sub>w</sub> [cm⁶]</th></tr>
@@ -329,9 +338,9 @@ ok_inv = bool(Ln > 0 and an > 0)*if(systeem ≡ 3; bool(trekband ≡ 0 or dtb > 
     b_reg = ?*(mm)', regel of spoor: breedte<span class="kolom-4"></span>'
     h_reg = ?*(mm)', regel of spoor: hoogte in het vlak van het spant<span class="kolom-4"></span>'
     #hide
-    'Materiaal [id, f_m,k, f_t,0,k, f_c,0,k, f_v,k, f_c,90,k, E_0,mean, E_0,05, ρ_mean, γ_M, gelamineerd]:
+    'Materiaal [id, f_m,k, f_t,0,k, f_c,0,k, f_v,k, f_c,90,k, E_0,mean, E_0,05, ρ_mean, γ_M, gelamineerd, G_mean]:
     'EN 338 voor C18 tot en met C30, EN 14080 voor GL24h en GL28h.
-    materialen = [1; 2; 3; 4; 5 |18; 24; 30; 24; 28 |11; 14; 18; 19.2; 22.3 |18; 21; 23; 24; 28 |3.4; 4.0; 4.0; 3.5; 3.5 |2.2; 2.5; 2.7; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600 |6000; 7400; 8000; 9600; 10500 |380; 420; 460; 420; 460 |1.30; 1.30; 1.30; 1.25; 1.25 |0; 0; 0; 1; 1]
+    materialen = [1; 2; 3; 4; 5 |18; 24; 30; 24; 28 |11; 14; 18; 19.2; 22.3 |18; 21; 23; 24; 28 |3.4; 4.0; 4.0; 3.5; 3.5 |2.2; 2.5; 2.7; 2.5; 2.5 |9000; 11000; 12000; 11500; 12600 |6000; 7400; 8000; 9600; 10500 |380; 420; 460; 420; 460 |1.30; 1.30; 1.30; 1.25; 1.25 |0; 0; 0; 1; 1 |560; 690; 750; 650; 650]
     f_mk = hlookup(materialen; houtklasse; 1; 2)
     f_t0k = hlookup(materialen; houtklasse; 1; 3)
     f_c0k = hlookup(materialen; houtklasse; 1; 4)
@@ -341,6 +350,7 @@ ok_inv = bool(Ln > 0 and an > 0)*if(systeem ≡ 3; bool(trekband ≡ 0 or dtb > 
     ρ_m = hlookup(materialen; houtklasse; 1; 9)
     γ_M = hlookup(materialen; houtklasse; 1; 10)
     gl = hlookup(materialen; houtklasse; 1; 11)
+    G_m = hlookup(materialen; houtklasse; 1; 12)
     β_c = if(gl ≡ 1; 0.1; 0.2)
     k_def = if(klimaat ≡ 1; 0.6; if(klimaat ≡ 2; 0.8; 2.0))
     'k_mod per belastingsduurklasse d (tabel 3.1): 1 blijvend, 3 middellang, 4 kort.
@@ -359,6 +369,9 @@ ok_inv = bool(Ln > 0 and an > 0)*if(systeem ≡ 3; bool(trekband ≡ 0 or dtb > 
     kh(hm) = if(gl ≡ 1; if(hm < 0.6; min(1.1; (0.6/hm)^0.1); 1); if(hm < 0.15; min(1.3; (0.15/hm)^0.2); 1))
     E_n = E_0m*1000
     E_bgt = E_n
+    'Afschuifstijfheid κ·G_mean·A (kN) met κ = 5/6: de afschuifvervorming telt mee (2.2.3(1)P).
+    GA_1 = 5/6*G_m*1000*A_1
+    GA_2 = 5/6*G_m*1000*A_2
     ge_1 = ρ_m*9.81*A_1/1000
     ge_2 = ρ_m*9.81*A_2/1000
     #show
@@ -559,6 +572,7 @@ g_dak = ?*(kN/m^2)', dakopbouw per m² dakvlak, zonder het spant zelf<span class
     EA_2 = E_n*A_2
     EIs(t) = if(t ≡ 1; EI_1; if(t ≡ 2; EI_2; EI_tb))
     EAs(t) = if(t ≡ 1; EA_1; if(t ≡ 2; EA_2; EA_tb))
+    GAs(t) = if(t ≡ 1; GA_1; if(t ≡ 2; GA_2; 0))
     'Begin- en eindknoop per staaf.
     vI = if(systeem ≡ 3; [1; 2; 3*trekband; 0]; if(systeem ≡ 4; [1; 2; 3; 0]; [1; 2; 3; 4]))
     vJ = if(systeem ≡ 3; [2; 3; 1*trekband; 0]; if(systeem ≡ 4; [2; 3; 4; 0]; [2; 3; 4; 5]))
@@ -580,9 +594,13 @@ g_dak = ?*(kN/m^2)', dakopbouw per m² dakvlak, zonder het spant zelf<span class
     sEA_2 = EAs(vT.(2))
     sEA_3 = EAs(vT.(3))
     sEA_4 = EAs(vT.(4))
+    sGA_1 = GAs(vT.(1))
+    sGA_2 = GAs(vT.(2))
+    sGA_3 = GAs(vT.(3))
+    sGA_4 = GAs(vT.(4))
     hI_3 = bool(vT.(3) ≡ 3)
     hJ_1 = if(systeem ≡ 3; nok; 0)
-    st = [nI_1; nI_2; nI_3; nI_4 | nJ_1; nJ_2; nJ_3; nJ_4 | sEI_1; sEI_2; sEI_3; sEI_4 | sEA_1; sEA_2; sEA_3; sEA_4 | 0; 0; hI_3; 0 | hJ_1; 0; hI_3; 0]
+    st = [nI_1; nI_2; nI_3; nI_4 | nJ_1; nJ_2; nJ_3; nJ_4 | sEI_1; sEI_2; sEI_3; sEI_4 | sEA_1; sEA_2; sEA_3; sEA_4 | 0; 0; hI_3; 0 | hJ_1; 0; hI_3; 0 | sGA_1; sGA_2; sGA_3; sGA_4]
     'Opleggingen: [knoop, x, y, rotatie].
     kR = if(systeem ≡ 3; 3; if(systeem ≡ 4; 4; 5))
     opl = [1; kR | 1; 1 - trekband | 1; 1 | voet; voet]
@@ -864,6 +882,10 @@ g_dak = ?*(kN/m^2)', dakopbouw per m² dakvlak, zonder het spant zelf<span class
         vLy = if(systeem ≡ 3; [vL.(1); vL.(2); 0; 0]; if(systeem ≡ 4; [Hn; L_regel; H2n; 0]; [Hn; L_regel; L_regel; Hn]))
         Lz(k) = if(vT.(k) ≡ 1; if(a_zk > 0 m; min(a_zk/(1 m); vL.(k)); vL.(k)); if(vT.(k) ≡ 2; if(a_zr > 0 m; min(a_zr/(1 m); vL.(k)); vL.(k)); 0))
         vLz = [Lz(1); Lz(2); Lz(3); Lz(4)]
+        'Afstand tussen de steunen van de binnen- of onderrand: kip bij een negatief moment (trek buiten, druk binnen,
+        'zoals bij de knie). Zonder invoer de hele staaf: een gordingafstand telt niet voor de gedrukte onderflens.
+        Lzi(k) = if(vT.(k) ≡ 1; if(a_zk,i > 0 m; min(a_zk,i/(1 m); vL.(k)); vL.(k)); if(vT.(k) ≡ 2; if(a_zr,o > 0 m; min(a_zr,o/(1 m); vL.(k)); vL.(k)); 0))
+        vLzi = [Lzi(1); Lzi(2); Lzi(3); Lzi(4)]
         nT(t) = bool(vT.(1) ≡ t) + bool(vT.(2) ≡ t) + bool(vT.(3) ≡ t) + bool(vT.(4) ≡ t)
         'Snedekrachten van staaf k uit de uitkomst R, als kale getallen: drukkracht, trekkracht, |M| en |V| als grootste waarde langs de staaf, M op een fractie x van de lengte.
         'raamwerk_sam(R; k) geeft [N_min; N_max; V_min; V_max; M_min; M_max; M(0); M(L/4); M(L/2); M(3L/4); M(L); L; w_min; w_max].
@@ -874,7 +896,7 @@ g_dak = ?*(kN/m^2)', dakopbouw per m² dakvlak, zonder het spant zelf<span class
         sdiv(a; b) = if(abs(b) > 10^-12; a/b; 0)
         #show
         #if staal ≡ 1
-            '<i>NEN-EN 1993-1-1 met NB, per staaf en per combinatie na de vergroting: doorsnedeklasse bij N en M (tabel 5.2), doorsnede (6.9) met (6.31) en (6.36) of (6.42), met (1 − ρ)·f<sub>y</sub> bij V<sub>Ed</sub> > 0,5·V<sub>pl,Rd</sub> (6.2.8, veilige kant), dwarskracht (6.17), knik (6.46) met de systeemlengte in het vlak en de afstand tussen de zijdelingse steunen uit het vlak, kip (6.54) met M<sub>cr</sub> volgens bijlage NB.NB (λ̄<sub>LT,0</sub> = 0,4, β = 0,75, kromme b of c naar h/b) en druk met buiging (6.61)/(6.62) met tabel B.2 en C<sub>m</sub> uit tabel B.3. Ligt de steunafstand binnen de staaf, dan C<sub>1</sub> = 1,0 en C<sub>mLT</sub> = 1,0; anders C<sub>1</sub> uit tabel NB.NB.1 (eindmomenten) of, met een last op de staaf, uit de momenten op de kwartpunten, en bij de regel C<sub>2</sub> = −0,45 (last op de bovenflens). N<sub>Ed</sub> en M<sub>Ed</sub> zijn de grootste waarden langs de staaf (veilige kant).</i><span class="alleen-scherm"></span>
+            '<i>NEN-EN 1993-1-1 met NB, per staaf en per combinatie na de vergroting: doorsnedeklasse bij N en M (tabel 5.2), doorsnede (6.9) met (6.31) en (6.36) of (6.42), met (1 − ρ)·f<sub>y</sub> bij V<sub>Ed</sub> > 0,5·V<sub>pl,Rd</sub> (6.2.8, veilige kant), dwarskracht (6.17), knik (6.46) met de systeemlengte in het vlak en de afstand tussen de zijdelingse steunen uit het vlak, kip (6.54) met M<sub>cr</sub> volgens bijlage NB.NB (λ̄<sub>LT,0</sub> = 0,4, β = 0,75, kromme b of c naar h/b) en druk met buiging (6.61)/(6.62) met tabel B.2 en C<sub>m</sub> uit tabel B.3. Kip per gedrukte flens: bij een positief moment (druk buiten of boven) de steunafstand van die flens, bij een negatief moment (druk binnen of onder, zoals bij de knie) die van de binnen- of onderflens, standaard de hele staaf. Ligt de steunafstand binnen de staaf, dan C<sub>1</sub> = 1,0 en C<sub>mLT</sub> = 1,0; anders C<sub>1</sub> uit tabel NB.NB.1 (eindmomenten) of, met een last op de staaf, uit de momenten op de kwartpunten, en bij de regel C<sub>2</sub> = −0,45 (last op de bovenflens). N<sub>Ed</sub> en M<sub>Ed</sub> zijn de grootste waarden langs de staaf (veilige kant).</i><span class="alleen-scherm"></span>
             #hide
             'Staal, per staafsoort: de grootheden A_, Iy_ enzovoort van de staafsoort in de lus hieronder.
             αwf(N) = min(1; 0.5*(1 + N/(cw*tw_*fy_n)))
@@ -911,10 +933,14 @@ g_dak = ?*(kN/m^2)', dakopbouw per m² dakvlak, zonder het spant zelf<span class
             nyf(N; λ; α) = N/(χf(λ; α)*A_*fy_n/γ_M1)
             uig(N; M; kl; λy; λz; Cmy; CmLT; Mb) = max(nyf(N; λy; αy) + kyyf(kl; λy; nyf(N; λy; αy); Cmy)*M/Mb; nyf(N; λz; αz) + kzyf(kl; λz; nyf(N; λz; αz); CmLT)*M/Mb)
             'Per staaf en combinatie: [doorsnede; dwarskracht; knik; kip; druk met buiging].
-            UCs(Nc; Nt; M; V; a; b; s; q1; q3; Lk; Ly; Lz) = [udg(max(Nc; Nt); M; klas(Nc; M); fyrf(V)); V/Vpl; Nc/(min(χf(λyf(Ly); αy); χf(λzf(Lz); αz))*A_*fy_n/γ_M1); M/MbRdf(Wyf(klas(Nc; M)); Mcrg(a; b; s; M; q1; q3; Lz; Lk)); uig(Nc; M; klas(Nc; M); λyf(Ly); λzf(Lz); Cmf(a; b; s); if(heelf(Lz; Lk) ≡ 1; Cmf(a; b; s); 1); MbRdf(Wyf(klas(Nc; M)); Mcrg(a; b; s; M; q1; q3; Lz; Lk)))]
+            'Kip en druk met buiging per gedrukte rand: het positieve moment (druk buiten of boven) met de steunen van
+            'die rand (Lz), het negatieve moment (druk binnen of onder) met de steunen van de andere rand (Lzi).
+            Mbk(M; a; b; s; q1; q3; Lk; Lzk; kl) = MbRdf(Wyf(kl); Mcrg(a; b; s; M; q1; q3; Lzk; Lk))
+            uik(Nc; Mk; M; a; b; s; q1; q3; Lk; Ly; Lz; Lzk) = uig(Nc; Mk; klas(Nc; M); λyf(Ly); λzf(Lz); Cmf(a; b; s); if(heelf(Lzk; Lk) ≡ 1; Cmf(a; b; s); 1); Mbk(M; a; b; s; q1; q3; Lk; Lzk; klas(Nc; M)))
+            UCs(Nc; Nt; M; Mp; Mn; V; a; b; s; q1; q3; Lk; Ly; Lz; Lzi) = [udg(max(Nc; Nt); M; klas(Nc; M); fyrf(V)); V/Vpl; Nc/(min(χf(λyf(Ly); αy); χf(λzf(Lz); αz))*A_*fy_n/γ_M1); max(Mp/Mbk(M; a; b; s; q1; q3; Lk; Lz; klas(Nc; M)); Mn/Mbk(M; a; b; s; q1; q3; Lk; Lzi; klas(Nc; M))); max(uik(Nc; Mp; M; a; b; s; q1; q3; Lk; Ly; Lz; Lz); uik(Nc; Mn; M; a; b; s; q1; q3; Lk; Ly; Lz; Lzi))]
             #show
         #else
-            '<i>NEN-EN 1995-1-1 met NB, per staaf en per combinatie na de vergroting, met k<sub>mod</sub> van de kortste last in de combinatie: trek of druk met buiging (6.17)/(6.19), knik (6.23)/(6.24) met de systeemlengte in het vlak en de afstand tussen de zijdelingse steunen uit het vlak (β<sub>c</sub> = 'β_c'), kip (6.33)/(6.35) met l<sub>ef</sub> = de steunafstand, bij de regel plus 2h (tabel 6.1, last op de gedrukte rand, veilige kant) en afschuiving (6.13) met k<sub>cr</sub> = 1,0 (NB). N<sub>Ed</sub> en M<sub>Ed</sub> zijn de grootste waarden langs de staaf (veilige kant).</i><span class="alleen-scherm"></span>
+            '<i>NEN-EN 1995-1-1 met NB, per staaf en per combinatie na de vergroting, met k<sub>mod</sub> van de kortste last in de combinatie: trek of druk met buiging (6.17)/(6.19), knik (6.23)/(6.24) met de systeemlengte in het vlak en de afstand tussen de zijdelingse steunen uit het vlak (β<sub>c</sub> = 'β_c'), kip (6.33)/(6.35) per gedrukte rand met l<sub>ef</sub> = de steunafstand van die rand (bij een negatief moment die van de binnen- of onderrand, standaard de hele staaf), bij de regel plus 2h (tabel 6.1, last op de gedrukte rand, veilige kant) en afschuiving (6.13) met k<sub>cr</sub> = 1,0 (NB). N<sub>Ed</sub> en M<sub>Ed</sub> zijn de grootste waarden langs de staaf (veilige kant).</i><span class="alleen-scherm"></span>
             #hide
             'Hout, per staafsoort: sterkten met k_mod van de combinatie c, slankheden en k_c, k_crit.
             fmdf(c) = k_mod(dc(c))*k_h*f_mk*1000/γ_M
@@ -927,7 +953,9 @@ g_dak = ?*(kN/m^2)', dakopbouw per m² dakvlak, zonder het spant zelf<span class
             λmf(Lz) = sqrt(f_mk*h_*(Lz + if(t_ ≡ 2; 2*h_; 0))/(0.78*b_^2*E_005))
             kcritf(λ) = if(λ ≤ 0.75; 1; if(λ ≤ 1.4; 1.56 - 0.75*λ; 1/λ^2))
             'Per staaf en combinatie: [trek of druk met buiging; afschuiving; knik; kip; 0].
-            UCh(Nc; Nt; M; V; Ly; Lz; c) = [max(if(Nt > 0; Nt/A_/ft0df(c) + M/W_/fmdf(c); 0); (Nc/A_/fc0df(c))^2 + M/W_/fmdf(c)); 1.5*V/(b_*h_)/fvdf(c); if(Nc > 0; max(Nc/A_/(kcf(λrf(Ly; h_))*fc0df(c)) + M/W_/fmdf(c); Nc/A_/(kcf(λrf(Lz; b_))*fc0df(c)) + 0.7*M/W_/fmdf(c)); 0); if(Nc > 0; (M/W_/(kcritf(λmf(Lz))*fmdf(c)))^2 + Nc/A_/(kcf(λrf(Lz; b_))*fc0df(c)); M/W_/(kcritf(λmf(Lz))*fmdf(c))); 0]
+            'Kip per gedrukte rand: het positieve moment met de steunen van de buiten- of bovenrand (Lz), het negatieve met die van de binnen- of onderrand (Lzi).
+            ukf(Nc; Mk; Lz; Lzk; c) = if(Nc > 0; (Mk/W_/(kcritf(λmf(Lzk))*fmdf(c)))^2 + Nc/A_/(kcf(λrf(Lz; b_))*fc0df(c)); Mk/W_/(kcritf(λmf(Lzk))*fmdf(c)))
+            UCh(Nc; Nt; M; Mp; Mn; V; Ly; Lz; Lzi; c) = [max(if(Nt > 0; Nt/A_/ft0df(c) + M/W_/fmdf(c); 0); (Nc/A_/fc0df(c))^2 + M/W_/fmdf(c)); 1.5*V/(b_*h_)/fvdf(c); if(Nc > 0; max(Nc/A_/(kcf(λrf(Ly; h_))*fc0df(c)) + M/W_/fmdf(c); Nc/A_/(kcf(λrf(Lz; b_))*fc0df(c)) + 0.7*M/W_/fmdf(c)); 0); max(ukf(Nc; Mp; Lz; Lz; c); ukf(Nc; Mn; Lz; Lzi; c)); 0]
             #show
         #end if
         #hide
@@ -999,10 +1027,10 @@ g_dak = ?*(kN/m^2)', dakopbouw per m² dakvlak, zonder het spant zelf<span class
                             #if vT.(k) ≡ t_
                                 S = raamwerk_sam(Rc; k)
                                 #if staal ≡ 1
-                                    U = UCs(fNc(S); fNt(S); fM(S); fV(S); S.7; S.11; S.9; abs(S.8); abs(S.10); vL.(k); vLy.(k); vLz.(k))
+                                    U = UCs(fNc(S); fNt(S); fM(S); max(S.6; 0); max(-S.5; 0); fV(S); S.7; S.11; S.9; abs(S.8); abs(S.10); vL.(k); vLy.(k); vLz.(k); vLzi.(k))
                                     kl4 = max(kl4; bool(klas(fNc(S); fM(S)) ≡ 4))
                                 #else
-                                    U = UCh(fNc(S); fNt(S); fM(S); fV(S); vLy.(k); vLz.(k); c)
+                                    U = UCh(fNc(S); fNt(S); fM(S); max(S.6; 0); max(-S.5; 0); fV(S); vLy.(k); vLz.(k); vLzi.(k); c)
                                 #end if
                                 ck = 100*c + k
                                 g_d = if(U.1 > u_d; ck; g_d)
@@ -1081,9 +1109,9 @@ g_dak = ?*(kN/m^2)', dakopbouw per m² dakvlak, zonder het spant zelf<span class
                 #end if
                 '</table>
                 #if staal ≡ 1
-                    '<span class="alleen-scherm">Maatgevend voor de stabiliteit: combinatie 'cg', staaf 'kg': N<sub>Ed</sub> = 'r2(dN)' kN, M<sub>Ed</sub> = 'r2(dM)' kNm, klasse 'dkl', L<sub>cr,y</sub> = 'r2(dLy)' m, λ̄<sub>y</sub> = 'r2(dλy)', χ<sub>y</sub> = 'r2(χf(dλy; αy))', L<sub>cr,z</sub> = 'r2(dLz)' m, λ̄<sub>z</sub> = 'r2(dλz)', χ<sub>z</sub> = 'r2(χf(dλz; αz))', C<sub>1</sub> = 'r2(dC1)', M<sub>cr</sub> = 'r2(dMcr)' kNm, λ̄<sub>LT</sub> = 'r2(dλl)', χ<sub>LT</sub> = 'r2(χlf(dλl))', C<sub>my</sub> = 'r2(dCmy)', C<sub>mLT</sub> = 'r2(dCmLT)'.</span>
+                    '<span class="alleen-scherm">Maatgevend voor de stabiliteit: combinatie 'cg', staaf 'kg': N<sub>Ed</sub> = 'r2(dN)' kN, M<sub>Ed</sub> = 'r2(dM)' kNm, klasse 'dkl', L<sub>cr,y</sub> = 'r2(dLy)' m, λ̄<sub>y</sub> = 'r2(dλy)', χ<sub>y</sub> = 'r2(χf(dλy; αy))', L<sub>cr,z</sub> = 'r2(dLz)' m (kip bij druk binnen of onder over 'r2(vLzi.(kg))' m), λ̄<sub>z</sub> = 'r2(dλz)', χ<sub>z</sub> = 'r2(χf(dλz; αz))', C<sub>1</sub> = 'r2(dC1)', M<sub>cr</sub> = 'r2(dMcr)' kNm, λ̄<sub>LT</sub> = 'r2(dλl)', χ<sub>LT</sub> = 'r2(χlf(dλl))', C<sub>my</sub> = 'r2(dCmy)', C<sub>mLT</sub> = 'r2(dCmLT)'.</span>
                 #else
-                    '<span class="alleen-scherm">Maatgevend voor knik of kip: combinatie 'cg', staaf 'kg': N<sub>Ed</sub> = 'r2(dN)' kN, M<sub>Ed</sub> = 'r2(dM)' kNm, k<sub>mod</sub> = 'k_mod(dc(cg))', l<sub>ef,y</sub> = 'r2(dLy)' m, λ<sub>rel,y</sub> = 'r2(dλy)', k<sub>c,y</sub> = 'r2(kcf(dλy))', l<sub>ef,z</sub> = 'r2(dLz)' m, λ<sub>rel,z</sub> = 'r2(dλz)', k<sub>c,z</sub> = 'r2(kcf(dλz))', λ<sub>rel,m</sub> = 'r2(dλm)', k<sub>crit</sub> = 'r2(kcritf(dλm))'.</span>
+                    '<span class="alleen-scherm">Maatgevend voor knik of kip: combinatie 'cg', staaf 'kg': N<sub>Ed</sub> = 'r2(dN)' kN, M<sub>Ed</sub> = 'r2(dM)' kNm, k<sub>mod</sub> = 'k_mod(dc(cg))', l<sub>ef,y</sub> = 'r2(dLy)' m, λ<sub>rel,y</sub> = 'r2(dλy)', k<sub>c,y</sub> = 'r2(kcf(dλy))', l<sub>ef,z</sub> = 'r2(dLz)' m (kip bij druk binnen of onder over 'r2(vLzi.(kg))' m), λ<sub>rel,z</sub> = 'r2(dλz)', k<sub>c,z</sub> = 'r2(kcf(dλz))', λ<sub>rel,m</sub> = 'r2(dλm)', k<sub>crit</sub> = 'r2(kcritf(dλm))'.</span>
                 #end if
             #end if
         #loop
@@ -1121,7 +1149,7 @@ g_dak = ?*(kN/m^2)', dakopbouw per m² dakvlak, zonder het spant zelf<span class
 
         # 8. Toetsing BGT — vervormingen
 
-        '<i>Volgens de NB bij NEN-EN 1990, A1.4.3, bij de karakteristieke combinatie (6.14b) met elke veranderlijke last apart (ψ<sub>0</sub> = 0), zonder scheefstand en zonder vergroting'if(staal ≡ 1; ""; "; hout met k<sub>def</sub> op de permanente last")'. Het dak: de bijkomende doorbuiging w<sub>2</sub> + w<sub>3</sub> = k<sub>def</sub>·w<sub>G</sub> + w<sub>Q</sub> ≤ l/250 (A1.4.3(3), overige daken) en desgewenst de eindstand w<sub>max</sub> = (1 + k<sub>def</sub>)·w<sub>G</sub> + w<sub>Q</sub> ≤ l/250 (A1.4.3(4)); 'if(systeem ≤ 2; "bij het portaal de verticale verplaatsing van de regel ten opzichte van de lijn door de knieën, met l de overspanning"; "per staaf ten opzichte van zijn koorde, met l de staaflengte")'. De knieën: de horizontale verplaatsing (A1.4.3(7)), h = de laagste kolom.</i><span class="alleen-scherm"></span>
+        '<i>Volgens de NB bij NEN-EN 1990, A1.4.3, bij de karakteristieke combinatie (6.14b) met elke veranderlijke last apart (ψ<sub>0</sub> = 0), zonder scheefstand en zonder vergroting'if(staal ≡ 1; ""; "; hout met k<sub>def</sub> op de permanente last en met de afschuifvervorming (κ = 5/6, G<sub>mean</sub>; 2.2.3(1)P)")'. Het dak: de bijkomende doorbuiging w<sub>2</sub> + w<sub>3</sub> = k<sub>def</sub>·w<sub>G</sub> + w<sub>Q</sub> ≤ l/250 (A1.4.3(3), overige daken) en desgewenst de eindstand w<sub>max</sub> = (1 + k<sub>def</sub>)·w<sub>G</sub> + w<sub>Q</sub> ≤ l/250 (A1.4.3(4)); 'if(systeem ≤ 2; "bij het portaal de verticale verplaatsing van de regel ten opzichte van de lijn door de knieën, met l de overspanning"; "per staaf ten opzichte van zijn koorde, met l de staaflengte")'. De knieën: de horizontale verplaatsing (A1.4.3(7)), h = de laagste kolom.</i><span class="alleen-scherm"></span>
         @select gebouw "Horizontale verplaatsing van de knieën (A1.4.3(7))"
           Andere gebouwen: h/300 = 300
           Industriegebouw: h/150 = 150
