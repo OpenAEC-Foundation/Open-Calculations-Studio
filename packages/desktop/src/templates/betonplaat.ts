@@ -49,7 +49,8 @@
  * Betondoorsnede, met een ongescheurde doorsnede als m_fr ≤ W·f_ctm (7.1(2)).
  * Doorbuiging met de slankheidsregel (7.16a/b) en (7.17), K uit tabel 7.4N
  * (normatief volgens de NB), met 7/l_eff of 8,5/l_eff bij kwetsbare
- * scheidingswanden. Dwarskracht is niet getoetst.
+ * scheidingswanden; A_s,prov/A_s,req in (7.17) ten hoogste 1,5 (een eigen
+ * ontwerpaanname). Dwarskracht is niet getoetst.
  *
  * ── Korte console (constructiedeel 3) ───────────────────────────────────────
  *
@@ -60,7 +61,9 @@
  * ≤ 2,5 (J.3(1)); een steilere diagonaal rekent met a_c = z_0/2,5.
  * H_Ed ten minste 0,2·F_Ed: een ontwerpaanname voor krimp, kruip en
  * temperatuur, EN 1992-1-1 zelf noemt geen minimum. Bovenste knoop (6.61) met
- * k_2 = 0,85 op de oplegplaat en op de diagonaal (figuur 6.27, u = 2·(h_c − d)).
+ * k_2 = 0,85 op de oplegplaat en op de diagonaal (figuur 6.27, u = 2·(h_c − d));
+ * de diagonaal daar ook als drukstaaf met dwarstrek, 0,6·ν'·f_cd (6.5.2(2)).
+ * Aan de kolomzijde spreidt de diagonaal in de gedrukte kolom: alleen de knoop.
  * Beugels volgens J.3(2) of J.3(3) met k_1 = 0,25 en k_2 = 0,5 (NB),
  * V_Rd,c met σ_cp uit H_Ed. Verankering (8.4) aan beide zijden volgens J.3(4).
  *
@@ -555,7 +558,7 @@ f_ctm = 0.3*betonklasse^(2/3)*N/mm^2', tabel 3.1<span class="kolom-3"></span>'
             #else
                 ld_basis = K_ld*(11 + 1.5*sqrt(f_ck_)*ρ_0/ρ_ld)', (7.16b) met ρ′ = 0'
             #end if
-            f_ld = a_s,ld/a_s,req,ld', (7.17): 310/σ<sub>s</sub> = A<sub>s,prov</sub>/A<sub>s,req</sub><span class="kolom-2"></span>'
+            f_ld = min(a_s,ld/a_s,req,ld; 1.5)', (7.17): 310/σ<sub>s</sub> = A<sub>s,prov</sub>/A<sub>s,req</sub>, ten hoogste 1,5 (ontwerpaanname: de norm stelt geen grens, maar meer overwapening verkleint de doorbuiging niet evenredig)<span class="kolom-2"></span>'
             #if wanden ≡ 1 and l_ld > l_wand
                 f_w = l_wand/l_ld', 7/l<sub>eff</sub>, bij een vlakke plaatvloer 8,5/l<sub>eff</sub>: kwetsbare scheidingswanden<span class="kolom-2"></span>'
             #else
@@ -686,6 +689,9 @@ f_ctm = 0.3*betonklasse^(2/3)*N/mm^2', tabel 3.1<span class="kolom-3"></span>'
                 σ_diag = C_d/(b_opl*a_2) to N/mm^2', aan de bovenste knoop<span class="kolom-3"></span>'
                 UC_N1 = σ_opl/σ_Rd,2', bovenste knoop, oplegvlak (6.61)<span class="kolom-2"></span>'
                 UC_N1d = σ_diag/σ_Rd,2', bovenste knoop, diagonaal (6.61)<span class="kolom-2"></span>'
+                σ_Rd,d = 0.6*ν_k*f_cd', drukdiagonaal met dwarstrek, gescheurde zone (6.5.2(2), (6.56))<span class="kolom-3"></span>'
+                UC_dd = σ_diag/σ_Rd,d', drukdiagonaal, aan de bovenste knoop waar zij het smalst is (6.5.2(2))'
+                '<i>Aan de kolomzijde gaat de diagonaal over in de gedrukte kolom en spreidt zij over de kolomdoorsnede: daar is alleen de knoop getoetst (UC<sub>N2</sub>, aanname).</i><span class="alleen-scherm"></span>
 
                 # 5. Beugels (J.3(2) en (3))
 
@@ -733,7 +739,7 @@ f_ctm = 0.3*betonklasse^(2/3)*N/mm^2', tabel 3.1<span class="kolom-3"></span>'
 
                 # 7. Samenvatting
 
-                UC_max = max(UC_T; UC_N1; UC_N1d; UC_N2; UC_bgl; UC_vk; UC_vc)', grootste van de toetsen hierboven'
+                UC_max = max(UC_T; UC_N1; UC_N1d; UC_dd; UC_N2; UC_bgl; UC_vk; UC_vc)', grootste van de toetsen hierboven'
                 #if UC_max ≤ 1
                     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
                 #else

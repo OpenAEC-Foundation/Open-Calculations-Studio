@@ -406,7 +406,9 @@ function plaat(v) {
       ? r.K * (11 + 1.5 * Math.sqrt(mt.fck) * (rho0 / rho) + 3.2 * Math.sqrt(mt.fck) * (rho0 / rho - 1) ** 1.5)
       : r.K * (11 + 1.5 * Math.sqrt(mt.fck) * (rho0 / rho));
     const fw = v.wanden === 1 && r.lld > r.lw ? r.lw / r.lld : 1;
-    r.ldg = r.ldb * (L.as / L.req) * fw;
+    // (7.17) met A_s,prov/A_s,req ten hoogste 1,5 (ontwerpaanname van het blad).
+    r.fld = Math.min(L.as / L.req, 1.5);
+    r.ldg = r.ldb * r.fld * fw;
     r.ld = (r.lld * 1000) / L.d;
     r.UCld = r.ld / r.ldg;
   }
@@ -443,6 +445,8 @@ function consoleUit(v) {
   const Ch = r.Ftd - H, C = Math.hypot(F, Ch);
   r.a2 = (v.l_opl * F) / C + 2 * (h - r.d) * (Ch / C); r.C = C;
   r.sdiag = C / (v.b_opl * r.a2); r.UCN1d = r.sdiag / s2;
+  // De diagonaal als drukstaaf met dwarstrek (6.5.2(2), (6.56)): 0,6·ν′·f_cd, op de breedte aan de bovenste knoop.
+  r.sRdd = 0.6 * (1 - fck / 250) * (fck / 1.5); r.UCdd = r.sdiag / r.sRdd;
   if (a <= 0.5 * h) r.Amin = 0.25 * r.A;
   else {
     const k = Math.min(1 + Math.sqrt(200 / r.d), 2), rho = Math.min(r.A / (b * r.d), 0.02);
@@ -460,7 +464,7 @@ function consoleUit(v) {
   r.lbd = Math.max(a1 * a4 * r.lbrqd, r.lbmin);
   r.UCvk = v.l_bkol > 0 ? r.lbd / v.l_bkol : Infinity;
   r.UCvc = r.lbd / r.lbcon;
-  r.UCmax = Math.max(r.UCT, r.UCN1, r.UCN1d, r.UCN2, r.UCbgl, r.UCvk, r.UCvc);
+  r.UCmax = Math.max(r.UCT, r.UCN1, r.UCN1d, r.UCdd, r.UCN2, r.UCbgl, r.UCvk, r.UCvc);
   return r;
 }
 
@@ -484,14 +488,14 @@ function verwachtingen(r) {
     }
     if (!r.hoofdY) uit.UC_verd = ruim(r.UCverd);
     if (r.At) Object.assign(uit, { A_t_x: ruim(r.At.x), A_bx: ruim(r.Aband.x), A_t_y: ruim(r.At.y), A_by: ruim(r.Aband.y), UC_941: ruim(r.UC941) });
-    if (r.UCld > 0) Object.assign(uit, { K_ld: ruim(r.K), ρ_ld: ruim(r.rho), ld_basis: ruim(r.ldb), ld_grens: ruim(r.ldg), ld: ruim(r.ld), UC_ld: ruim(r.UCld) });
+    if (r.UCld > 0) Object.assign(uit, { K_ld: ruim(r.K), ρ_ld: ruim(r.rho), ld_basis: ruim(r.ldb), f_ld: ruim(r.fld), ld_grens: ruim(r.ldg), ld: ruim(r.ld), UC_ld: ruim(r.UCld) });
   } else {
     Object.assign(uit, { d_con: ruim(r.d), UC_N2: ruim(r.UCN2) });
     if (!r.gestopt) Object.assign(uit, { z_0: ruim(r.z), tan_θ: ruim(r.tan), y_0: ruim(r.y0), M_0: ruim(r.M0 / 1e6) });
     if (r.UCT !== undefined) {
       Object.assign(uit, {
         H_Ed_r: ruim(r.H / 1e3), F_td: ruim(r.Ftd / 1e3), UC_T: ruim(r.UCT), σ_opl: ruim(r.sopl), a_2: ruim(r.a2), C_d: ruim(r.C / 1e3),
-        σ_diag: ruim(r.sdiag), UC_N1: ruim(r.UCN1), UC_N1d: ruim(r.UCN1d), UC_bgl: ruim(r.UCbgl), f_bd: ruim(r.fbd),
+        σ_diag: ruim(r.sdiag), UC_N1: ruim(r.UCN1), UC_N1d: ruim(r.UCN1d), σ_Rd_d: ruim(r.sRdd), UC_dd: ruim(r.UCdd), UC_bgl: ruim(r.UCbgl), f_bd: ruim(r.fbd),
         σ_sd: ruim(r.ssd), l_b_rqd: ruim(r.lbrqd), l_b_min: ruim(r.lbmin), l_bd: ruim(r.lbd), UC_vk: ruim(r.UCvk), UC_vc: ruim(r.UCvc),
       });
       if (r.Amin > 0) uit.A_lnk_min = ruim(r.Amin);
@@ -533,13 +537,14 @@ function slotzin(text) {
  * Boven x, Ø10-150 (d = 170): UC_M = 23,84/37,41 = 0,6375, maatgevend.
  * Doorbuiging: K = 1,3 (één doorgaande rand langs de korte overspanning), ρ = 173,8/(1000·170) = 0,001023,
  *   ρ_0 = √30/1000 = 0,005477 ≥ ρ → (7.16a): 1,3·(11 + 1,5·5,477·5,356 + 3,2·5,477·4,356^1,5) = 278,7;
- *   (7.17): 523,6/173,8 = 3,012 → 839,4 tegen l/d = 4500/170 = 26,47 → UC = 0,03154.
+ *   (7.17): 523,6/173,8 = 3,012, begrensd tot 1,5 (ontwerpaanname) → 418,0 tegen l/d = 4500/170 = 26,47
+ *   → UC = 0,06332 (zonder de grens 839,4 en 0,03154).
  */
 const HAND_1 = {
   α_xo_c: "0.05328", α_xo_s: "0.06827", α_yo_c: "0.03548", α_yo_s: "0.04872", α_xb_c: "0.1047", α_xb_s: "0.04632", α_yb_c: "0.03434", α_yb_s: "0.04632",
   m_Ed_xo: "12.71", m_Ed_yo: "8.586", m_Ed_xb: "23.84", m_Ed_yb: "8.279",
   d_pl_xo: "170", a_s_xo: "523.6", x_u_xo: "14.23", m_Rd_xo: "37.41", UC_M_xo: "0.3397", a_s_req_xo: "173.8", a_s_min1_xo: "265.8", a_s_min_xo: "217.3", UC_min_xo: "0.415", UC_s_xo: "0.6",
-  UC_M_xb: "0.6375", K_ld: "1.3", ld_basis: "278.7", f_ld: "3.012", ld_grens: "839.4", ld: "26.47", UC_ld: "0.03154", UC_max: "0.6375",
+  UC_M_xb: "0.6375", K_ld: "1.3", ld_basis: "278.7", f_ld: "1.5", ld_grens: "418.0", ld: "26.47", UC_ld: "0.06332", UC_max: "0.6375",
 };
 
 /*
@@ -568,11 +573,11 @@ const HAND_2 = {
  *   Verdeelwapening Ø8-150 = 335,1 mm² ≥ 0,2·523,6 = 104,7 (UC 0,3125); s_max = 3h ≤ 400 mm voor
  *   verdeelwapening in het gebied met het grootste moment (NB bij 9.3.1.1(3)) → 150/400 = 0,375.
  *   K = 1,5 (twee doorgaande of ingeklemde einden); nodig 178,8 mm² → ρ = 0,001052 → (7.16a) 307,7,
- *   × 523,6/178,8 = 2,929 → 901,3 tegen 5000/170 = 29,41.
+ *   × min(523,6/178,8 = 2,929; 1,5) = 1,5 → 461,6 tegen 5000/170 = 29,41 → UC 0,06372.
  */
 const HAND_6 = {
   β_f_c: "0.04167", β_f_s: "0.07031", β_s: "0.08333", m_Ed_xo: "13.06", m_Ed_xb: "23.44", UC_M_xb: "0.6266", UC_verd: "0.375",
-  a_s_req_xo: "178.8", K_ld: "1.5", ld_basis: "307.7", ld_grens: "901.3", ld: "29.41",
+  a_s_req_xo: "178.8", K_ld: "1.5", ld_basis: "307.7", f_ld: "1.5", ld_grens: "461.6", ld: "29.41", UC_ld: "0.06372",
 };
 
 /*
@@ -605,6 +610,7 @@ const HAND_8 = {
  *   F_td = 40,9·10⁶/340,6 + 50 000 = 170,1 kN → UC = 170,1/(603,2·434,8) = 0,6485.
  *   Oplegplaat 250 000/(120·200) = 10,42 N/mm² → 0,6963. Diagonaal: C_h = 120,1 kN, C = 277,3 kN,
  *   a_2 = 120·0,9014 + 96·0,4329 = 149,7 mm → 277 300/(200·149,7) = 9,261 N/mm² → 0,6191.
+ *   Als drukstaaf met dwarstrek (6.5.2(2)): 0,6·0,88·20 = 10,56 N/mm² → 9,261/10,56 = 0,877.
  *   Beugels: a_c ≤ 200 → 0,25·603,2 = 150,8 mm² tegen 3·2·78,54 = 471,2 → 0,32.
  *   Verankering: f_bd = 2,25·0,7·0,7·2,896/1,5 = 2,129; σ_sd = 170 070/603,2 = 281,9 →
  *   l_b,rqd = 16/4·281,9/2,129 = 529,8; gelaste dwarsstaaf α_4 = 0,7 → l_bd = 370,8 mm;
@@ -612,7 +618,7 @@ const HAND_8 = {
  */
 const HAND_12 = {
   d_con: "352", σ_Rd_1: "17.6", σ_Rd_2: "14.96", H_Ed_r: "50", a_H: "68", M_0: "40.9", UC_N2: "0.125", z_0: "340.6", tan_θ: "2.271", y_0: "22.74",
-  F_td: "170.1", UC_T: "0.6485", σ_opl: "10.42", UC_N1: "0.6963", a_2: "149.7", σ_diag: "9.261", UC_N1d: "0.6191", A_lnk_min: "150.8", UC_bgl: "0.32",
+  F_td: "170.1", UC_T: "0.6485", σ_opl: "10.42", UC_N1: "0.6963", a_2: "149.7", σ_diag: "9.261", UC_N1d: "0.6191", σ_Rd_d: "10.56", UC_dd: "0.877", A_lnk_min: "150.8", UC_bgl: "0.32",
   f_bd: "2.129", l_b_rqd: "529.8", l_bd: "370.8", UC_vk: "0.927", UC_vc: "0.9759", UC_max: "0.9759",
 };
 

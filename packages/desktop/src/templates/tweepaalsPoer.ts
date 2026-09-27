@@ -110,8 +110,10 @@
  *     oppervlakte) en de oversteek min de paalafwijking; langs een diagonaal
  *     of een schuine zijde ligt de rand verder weg (veilige kant). Boven de
  *     paal zijn bij drie palen en bij banden langs de randen trekbanden in
- *     twee richtingen verankerd: (6.62) met k_3 = 0,75; alleen bij banden over
- *     de diagonalen (6.61) met k_2 = 0,85.
+ *     twee richtingen verankerd: (6.62) met k_3 = 0,75. Bij banden over de
+ *     diagonalen (6.61) met k_2 = 0,85, maar alleen als de gebruiker
+ *     haarspelden loodrecht op het vlak bevestigt (voorwaarde van de NB);
+ *     anders 0,75.
  *   • Dwarskracht over de volle breedte tussen kolom en paalrij (6.2.2(6))
  *     zonder dwarskrachtwapening, met ρ_l van de trekbanden uitgesmeerd over
  *     de poer, en de bovengrens (6.5). Bij drie palen de doorsnede langs de
@@ -122,12 +124,17 @@
  *     V_Ed rond de kolom is de som van de paalreacties (het eigen gewicht
  *     binnen de omtrek niet afgetrokken), het moment met (6.51); rond de paal
  *     de zwaarste paalreactie met de omtrek bij de hoek van de poer
- *     afgesneden (figuur 6.15). Langs de kolom en de paal (6.53).
+ *     afgesneden (figuur 6.15), de paal e_paal naar de rand verschoven, en
+ *     dan β = 1,5 voor een hoek (figuur 6.21N, NB). Langs de kolom en de paal
+ *     (6.53); ligt de paalrand dichter dan d bij de randen (6.4.2(5)), dan
+ *     als hoekkolom u_0 = 3d ≤ c_1 + c_2 (6.4.5(3)) met β = 1,5.
  *   • Scheurwijdte zoals bij twee palen, met de trekband over de breedte van
  *     zijn band; A_s,min (NB bij 9.2.1.1(1)) per richting over de breedte van
  *     de poer.
  *
- * Niet getoetst: de dwarstrek in de drukdiagonalen (6.5.3(3)), een trekpaal,
+ * Niet getoetst: de dwarstrek in de drukdiagonalen (6.5.3(3): het blad kent
+ * geen wapening die haar opneemt, en trek in het beton telt in een staafwerk
+ * niet mee; de slotregel zegt het erbij), een trekpaal,
  * bovenwapening, de verankering van de paalwapening en huidwapening.
  *
  * ── Poer op staal (poertype 1) ────────────────────────────────────────────────
@@ -668,6 +675,12 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
           Langs de randen, van paal tot paal = 1
           Over de diagonalen, van paal tot paal = 2
         @end
+        #if trekbanden ≡ 2
+            @select haarspelden "Haarspelden om de paalknoop, loodrecht op het vlak van de diagonaal (NB bij 6.5.4(4)b)"
+              Nee = 0
+              Ja = 1
+            @end
+        #end if
     #end if
 
     c_dek = ?*(mm)', betondekking op de trekbanden<span class="kolom-3"></span>'
@@ -921,8 +934,10 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
             σ_Rd,2 = 0.75*ν_k*f_cd', k<sub>3</sub> = 0,75: twee trekbanden verankerd in de knoop (6.62, NB)<span class="kolom-2"></span>'
         #else if trekbanden ≡ 1
             σ_Rd,2 = 0.75*ν_k*f_cd', k<sub>3</sub> = 0,75: trekbanden in x en in y verankerd in de knoop (6.62, NB)<span class="kolom-2"></span>'
+        #else if haarspelden ≡ 1
+            σ_Rd,2 = 0.85*ν_k*f_cd', k<sub>2</sub> = 0,85: één trekband, over de diagonaal, met haarspelden loodrecht op het vlak (6.61, NB)<span class="kolom-2"></span>'
         #else
-            σ_Rd,2 = 0.85*ν_k*f_cd', k<sub>2</sub> = 0,85: één trekband, over de diagonaal (6.61, NB)<span class="kolom-2"></span>'
+            σ_Rd,2 = 0.75*ν_k*f_cd', één trekband, maar zonder haarspelden: de NB staat k<sub>2</sub> = 0,85 van (6.61) alleen met haarspelden toe; aangehouden k = 0,75 (veilige kant)<span class="kolom-2"></span>'
         #end if
         UC_kn,2 = max(σ_p; σ_d)/σ_Rd,2', knoop boven de paal'
 
@@ -1019,11 +1034,22 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
         #end if
         #hide
         α_h = if(poertype ≡ 3; pi/3; pi/2)
+        u_vol = u_p0 + 2*pi*a_pons
+        u_rand = 2*(oversteek - e_paal) + α_h/(2*pi)*u_vol
         #show
-        u_pp = min(u_p0 + 2*pi*a_pons; 2*oversteek + α_h/(2*pi)*(u_p0 + 2*pi*a_pons))', controle-omtrek rond de paal, bij de hoek van de poer afgesneden met de randen op de oversteek (figuur 6.15)'
-        v_Ed,p = R_Ed/(u_pp*d) to N/mm^2'<span class="kolom-2"></span>'
+        u_pp = min(u_vol; u_rand)', controle-omtrek rond de paal, bij de hoek van de poer afgesneden door de randen, met de paal e<sub>paal</sub> naar de rand verschoven (figuur 6.15)'
+        β_p = if(u_rand < u_vol; 1.5; 1)', hoekpaal: de omtrek is door de randen afgesneden en de paalreactie ligt buiten zijn zwaartepunt, β = 1,5 (figuur 6.21N, NB); anders 1,0<span class="kolom-2"></span>'
+        v_Ed,p = β_p*R_Ed/(u_pp*d) to N/mm^2'<span class="kolom-2"></span>'
         UC_pons,p = v_Ed,p/v_Rd', pons rond de paal'
-        v_Ed,p0 = R_Ed/(u_p0*d) to N/mm^2', langs de paal<span class="kolom-2"></span>'
+        e_r = oversteek - e_paal - max(b_paal; p_y)/2', van de paalrand tot de rand van de poer, met de paalafwijking<span class="kolom-2"></span>'
+        #if e_r < d
+            u_p0,r = min(3*d; u_p0/2)', dichter dan d bij twee randen (6.4.2(5)): als bij een hoekkolom u<sub>0</sub> = 3d ≤ c<sub>1</sub> + c<sub>2</sub> (6.4.5(3)); bij een ronde paal de halve omtrek<span class="kolom-2"></span>'
+            β_p0 = 1.5', hoek (figuur 6.21N, NB)<span class="kolom-2"></span>'
+        #else
+            u_p0,r = u_p0', de hele paalomtrek<span class="kolom-2"></span>'
+            β_p0 = 1', de paalreactie centrisch<span class="kolom-2"></span>'
+        #end if
+        v_Ed,p0 = β_p0*R_Ed/(u_p0,r*d) to N/mm^2', langs de paal (6.53)<span class="kolom-2"></span>'
         UC_pons,0 = max(v_Ed,0; v_Ed,p0)/v_Rd,max', langs de kolom en de paal (6.53)'
 
         # 9. Scheurwijdte (§7.3.4)
@@ -1162,7 +1188,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Dwarskracht</td><td style="padding:3px 8px;">§6.2.2(6)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_V)'">'UC_V'</td><td style="padding:3px 8px; color:'kleur(UC_V)'">'oordeel(UC_V)'</td></tr>
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Dwarskracht, bovengrens</td><td style="padding:3px 8px;">(6.5)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_Vmax)'">'UC_Vmax'</td><td style="padding:3px 8px; color:'kleur(UC_Vmax)'">'oordeel(UC_Vmax)'</td></tr>
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Pons rond de kolom</td><td style="padding:3px 8px;">(6.50), (6.51)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_pons,k)'">'UC_pons,k'</td><td style="padding:3px 8px; color:'kleur(UC_pons,k)'">'oordeel(UC_pons,k)'</td></tr>
-        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Pons rond de paal</td><td style="padding:3px 8px;">(6.50), figuur 6.15</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_pons,p)'">'UC_pons,p'</td><td style="padding:3px 8px; color:'kleur(UC_pons,p)'">'oordeel(UC_pons,p)'</td></tr>
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Pons rond de paal</td><td style="padding:3px 8px;">(6.50), figuur 6.15 en 6.21N</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_pons,p)'">'UC_pons,p'</td><td style="padding:3px 8px; color:'kleur(UC_pons,p)'">'oordeel(UC_pons,p)'</td></tr>
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Pons langs kolom en paal</td><td style="padding:3px 8px;">(6.53)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_pons,0)'">'UC_pons,0'</td><td style="padding:3px 8px; color:'kleur(UC_pons,0)'">'oordeel(UC_pons,0)'</td></tr>
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Scheurwijdte</td><td style="padding:3px 8px;">§7.3.4</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_w)'">'UC_w'</td><td style="padding:3px 8px; color:'kleur(UC_w)'">'oordeel(UC_w)'</td></tr>
         #if ok_det ≡ 1
@@ -1181,7 +1207,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
         #else if ok_druk ≡ 0
             '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ('maatg') ≤ 1,0, maar een paal of de kolomvoet kan trek krijgen → <b>de poer is niet volledig getoetst</b></span>
         #else
-            '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ('maatg') ≤ 1,0 → <b>de poer voldoet</b></span>
+            '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ('maatg') ≤ 1,0 → <b>de poer voldoet</b> op de getoetste punten; niet getoetst: dwarstrek in de drukdiagonalen (6.5.3(3))</span>
         #end if
     #end if
 #else

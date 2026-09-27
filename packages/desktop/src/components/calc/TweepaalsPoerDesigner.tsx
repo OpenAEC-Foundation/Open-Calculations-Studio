@@ -64,7 +64,7 @@ const DEFAULTS: Record<string, number> = {
   betonklasse: 35, betonstaal: 2, betonoppervlak: 1, c_dek: 55,
   n_langs: 6, d_langs: 32, n_sneden: 4, d_beugel: 12, s_beugel: 75,
   F_Ed: 3600, M_Ed: 0, F_fr: 2500, R_cd: 2400,
-  l_hoh_y: 1600, M_Ed_y: 0, trekbanden: 1,
+  l_hoh_y: 1600, M_Ed_y: 0, trekbanden: 1, haarspelden: 0,
   B_x: 2400, B_y: 2400, D_aanleg: 1500, belasting_staal: 1, afwijking: 1,
   phi_k: 30, c_eff_k: 0, gamma_k: 18, gamma_sat: 20, grondwater: 1,
   s_langs: 150, d_boven: 16, s_boven: 150, H_Ed: 0, phi_cv_k: 30, factoren: 1,
