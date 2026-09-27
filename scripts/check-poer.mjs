@@ -70,7 +70,7 @@ const STANDAARD = {
   betonklasse: 35, betonstaal: 2, betonoppervlak: 1, c_dek: 55,
   n_langs: 6, d_langs: 32, n_sneden: 4, d_beugel: 12, s_beugel: 75,
   F_Ed: 3600, M_Ed: 0, F_fr: 2500, R_cd: 2400,
-  l_hoh_y: 1600, M_Ed_y: 0, trekbanden: 1,
+  l_hoh_y: 1600, M_Ed_y: 0, trekbanden: 1, haarspelden: 0,
   B_x: 2400, B_y: 2400, D_aanleg: 1500, belasting_staal: 1, afwijking: 1,
   phi_k: 30, c_eff_k: 0, gamma_k: 18, gamma_sat: 20, grondwater: 1,
   s_langs: 150, d_boven: 16, s_boven: 150, H_Ed: 0, phi_cv_k: 30, factoren: 1,
@@ -398,8 +398,9 @@ function uitwerking34(v, CC = 2) {
   const sd = (C * 1e3) / (w2 * ap);
   // Boven de paal: bij drie palen en bij banden langs de randen zijn trekbanden
   // in twee richtingen verankerd, (6.62) met k_3 = 0,75; over de diagonalen één
-  // band, (6.61) met k_2 = 0,85.
-  const kKnoop = drie || !diag ? 0.75 : 0.85;
+  // band, (6.61) met k_2 = 0,85 — volgens de NB alleen met haarspelden
+  // loodrecht op het vlak, anders ook 0,75.
+  const kKnoop = !drie && diag && v.haarspelden === 1 ? 0.85 : 0.75;
   const UCkn2 = Math.max((R * 1e3) / Ap, sd) / (kKnoop * nuK * fcd);
 
   // Verankering en ombuiging
@@ -473,10 +474,19 @@ function uitwerking34(v, CC = 2) {
   }
   const UCponsK = vEdk / vRd;
   const up0 = rondP ? Math.PI * v.b_paal : 2 * (pxP + pyP);
+  // Rond de paal: de omtrek op a, bij de hoek afgesneden door de twee randen op
+  // o − e van het paalhart (figuur 6.15): twee rechte stukken o − e plus een boog
+  // van de hoek tussen de randen (90° of 60°). Afgesneden → hoek, β = 1,5 (figuur 6.21N).
   const hoek = drie ? Math.PI / 3 : Math.PI / 2;
-  const upp = Math.min(up0 + 2 * Math.PI * apons, 2 * o + (hoek / (2 * Math.PI)) * (up0 + 2 * Math.PI * apons));
-  const UCponsP = (R * 1e3) / (upp * d) / vRd;
-  const UCpons0 = Math.max((beta0 * v.F_Ed * 1e3) / (u0 * d), (R * 1e3) / (up0 * d)) / vRdmax;
+  const uVol = up0 + 2 * Math.PI * apons, uRand = 2 * (o - e) + (hoek / (2 * Math.PI)) * uVol;
+  const upp = Math.min(uVol, uRand);
+  const betaP = uRand < uVol ? 1.5 : 1;
+  const UCponsP = (betaP * R * 1e3) / (upp * d) / vRd;
+  // Langs de paal (6.53): paalrand dichter dan d bij de randen → hoekkolom, u_0 = min(3d; c_1 + c_2)
+  // (de halve omtrek) en β = 1,5; anders de hele omtrek met β = 1.
+  const er = o - e - Math.max(pxP, pyP) / 2;
+  const [up0r, betaP0] = er < d ? [Math.min(3 * d, up0 / 2), 1.5] : [up0, 1];
+  const UCpons0 = Math.max((beta0 * v.F_Ed * 1e3) / (u0 * d), (betaP0 * R * 1e3) / (up0r * d)) / vRdmax;
 
   // Scheurwijdte
   const Nfr = v.F_fr + Gk;
@@ -1054,7 +1064,10 @@ const SETS = [
     // = 972,5 kN → UC_V = 0,25·2261/972,5 = 0,581. (6.5): 2261/(0,5·2400·1163·0,516·23,33) = 0,135.
     // Pons: kolomrand tot paalhoek (575; 575): √2·575 − 250 = 563,2 mm < 2d → a = 563,2; v_Rd = 0,3484·2326/563,2 = 1,439.
     // Kolom: u = π·(500 + 2·563,2) = 5109 → v_Ed = 3843e3/(5109·1163) = 0,647 → UC 0,449.
-    // Paal: min(1800 + 2π·563,2; 2·400 + ¼·(1800 + 2π·563,2)) = min(5339; 2135) = 2135 → 1130,6e3/(2135·1163) = 0,455 → UC 0,317.
+    // Paal: de randen op o − e = 300 van het paalhart (9.8.1(1)): min(1800 + 2π·563,2; 2·300 + ¼·(1800 + 2π·563,2))
+    // = min(5339; 1935) = 1935, afgesneden → hoek, β = 1,5 (figuur 6.21N): 1,5·1130,6e3/(1935·1163) = 0,754 → UC 0,524
+    // (zonder β en met de randen op 400 was het 0,317). Langs de paal: paalrand 300 − 225 = 75 < d → hoekkolom,
+    // u_0 = min(3·1163; 450 + 450) = 900: 1,5·1130,6e3/(900·1163) = 1,620 < 1,971 van de kolom.
     // Langs de kolom: 3600e3/(1571·1163) = 1,971 tegen 0,4·0,516·23,33 = 4,816 → 0,409.
     // Scheurwijdte: R_fr = 2680/4 + 268,0/2·0,8839 = 670 + 118,4 = 788,4; σ_s = 731,1·788,4/1130,6·1e3/4825 = 105,7;
     // h_c,ef = 217,5, ρ_p,eff = 4825/(624·217,5) = 0,03555; s_r,max = 3,4·55 + 0,17·32/0,03555 = 340,0;
@@ -1068,11 +1081,12 @@ const SETS = [
       σ_d: "7.574", σ_Rd_2: "15.05", UC_kn_2: "0.503", b_band: "624", s_h: "118.4", l_b_rqd: "359.6", α_5: "0.884", l_bd: "320",
       φ_m_bet: "169.8", UC_rol: "0.477", l_b_besch: "1519", UC_ank: "0.211", ρ_l: "0.002305", v_Rd_c: "0.3484",
       β_1: "0.25", V_Rd_c_1: "972.5", UC_V: "0.581", UC_Vmax: "0.135", a_pk: "563.2", v_Rd: "1.439", u_pk: "5109",
-      v_Ed_k: "0.647", UC_pons_k: "0.449", u_pp: "2135", UC_pons_p: "0.317", v_Ed_0: "1.971", UC_pons_0: "0.409",
+      v_Ed_k: "0.647", UC_pons_k: "0.449", u_pp: "1935", β_p: "1.5", UC_pons_p: "0.524", u_p0_r: "900", v_Ed_p0: "1.620", v_Ed_0: "1.971", UC_pons_0: "0.409",
       R_fr: "788.4", σ_s: "105.7", ρ_p_eff: "0.03555", s_r_max: "340.0", w_k: "0.1078", UC_w: "0.359", A_s_min_x: "4022",
       UC_max: "0.914",
     },
-    melding: /\(knoop onder de kolom\) ≤ 1,0 → de poer voldoet/,
+    // De slotregel noemt wat niet getoetst is: de dwarstrek in de drukdiagonalen (6.5.3(3)).
+    melding: /\(knoop onder de kolom\) ≤ 1,0 → de poer voldoet op de getoetste punten; niet getoetst: dwarstrek in de drukdiagonalen/,
   },
   {
     naam: "30 — driepaals poer: Ø500 op drie palen 450×450 in een driehoek met zijde 1600, 6Ø32 per band langs de zijden",
@@ -1088,11 +1102,11 @@ const SETS = [
     // Voor de derde paal: V = 1521,1 kN over (2/√3)·(800 + 225) = 1183,6; a_v = 923,8 − 250 − 225 = 448,8 → β = 0,25;
     // 0,25·1521,1e3/(0,3624·1183,6·1163) = 0,762 (langs de zijde met twee palen 0,752).
     // Pons: van de kolom tot paal A (575; 236,9): √(575² + 236,9²) − 250 = 371,9 mm;
-    // rond de paal min(1800 + 2π·371,9; 800 + (1800 + 2π·371,9)/6) = min(4137; 1489,5) = 1489,5.
+    // rond de paal, de randen op o − e = 300: min(1800 + 2π·371,9; 600 + (1800 + 2π·371,9)/6) = min(4137; 1289,5) = 1289,5.
     handwerk: {
       r_p: "923.8", A_poer: "3.583", G_k: "112.0", ΔR_e: "270.7", R_Ed: "1521", R_Ed_min: "979.7", UC_paal: "0.634",
       x_k: "137.8", a: "785.9", z: "1096", F_td: "629.8", UC_trek: "0.300", θ: "54.35", σ_p: "7.512", ρ_l: "0.002779",
-      v_Rd_c: "0.3624", b_V_2: "1184", a_v_2: "448.8", UC_V: "0.762", a_pk: "371.9", u_pp: "1489", UC_max: "0.914",
+      v_Rd_c: "0.3624", b_V_2: "1184", a_v_2: "448.8", UC_V: "0.762", a_pk: "371.9", u_pp: "1289", UC_max: "0.914",
     },
   },
   {
@@ -1280,6 +1294,32 @@ const SETS = [
       R_fr: "636.0", σ_s: "258.7", ρ_p_eff: "0.01995", w_k: "0.330", UC_w: "1.10", UC_max: "1.136",
     },
     melding: /\(knoop onder de kolom\) > 1,0/,
+  },
+  {
+    naam: "49 — als 47, maar trekbanden over de diagonalen, zonder haarspelden: k = 0,75",
+    invoer: {
+      poertype: 4, kolomvorm: 2, d_kolom: 500, b_kolom: 500, paalvorm: 1, b_paal: 400, l_paal: 400, h_poer: 1000, l_hoh: 1500,
+      l_hoh_y: 1500, oversteek: 450, e_paal: 0, betonklasse: 30, c_dek: 50, n_langs: 6, d_langs: 20, F_Ed: 3000, M_Ed: 300, F_fr: 2000, R_cd: 0,
+      trekbanden: 2,
+    },
+    // Staafwerk als set 47 (het zwaarste vlak door de knoop hangt niet af van de banden): z = 815,2, σ_d = 8,86.
+    // Eén trekband over de diagonaal, maar de NB staat k_2 = 0,85 van (6.61) alleen toe met haarspelden loodrecht
+    // op het vlak; zonder: 0,75·0,88·20 = 13,20 → UC_kn,2 = 8,86/13,20 = 0,671.
+    handwerk: { z: "815.2", σ_d: "8.86", σ_Rd_2: "13.20", UC_kn_2: "0.671" },
+  },
+  {
+    naam: "50 — als 49, met haarspelden loodrecht op het vlak: k_2 = 0,85",
+    invoer: {
+      poertype: 4, kolomvorm: 2, d_kolom: 500, b_kolom: 500, paalvorm: 1, b_paal: 400, l_paal: 400, h_poer: 1000, l_hoh: 1500,
+      l_hoh_y: 1500, oversteek: 450, e_paal: 0, betonklasse: 30, c_dek: 50, n_langs: 6, d_langs: 20, F_Ed: 3000, M_Ed: 300, F_fr: 2000, R_cd: 0,
+      trekbanden: 2, haarspelden: 1,
+    },
+    // 0,85·0,88·20 = 14,96 → UC_kn,2 = 8,86/14,96 = 0,592.
+    // Pons rond de paal (ook in 47): a = 424,3, u = min(1600 + 2π·424,3; 2·450 + ¼·4266) = min(4266; 1966) = 1966,
+    // afgesneden → β = 1,5: 1,5·898,6e3/(1966·930) = 0,737 tegen v_Rd = 1,488 → UC 0,495. Langs de paal: paalrand
+    // 450 − 200 = 250 < d = 930 → u_0 = min(2790; 800) = 800: 1,5·898,6e3/(800·930) = 1,812; kolom 3000e3/(2000·930)
+    // ·β_0 (1,043) = 1,682 → UC 1,812/4,224 = 0,429.
+    handwerk: { σ_Rd_2: "14.96", UC_kn_2: "0.592", u_pp: "1966", UC_pons_p: "0.495", v_Ed_p0: "1.812", UC_pons_0: "0.429" },
   },
   {
     naam: "48 — poer op staal, dun met een grote dekking: binnen x_min = h/2 geen verankeringslengte",
