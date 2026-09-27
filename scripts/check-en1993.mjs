@@ -610,6 +610,38 @@ const SETS = [
     blad: "ec3Onderflens", invoer: {}, vervang: { n_w: "80 mm" },
     melding: /het T-stuk-model geldt niet/,
   },
+  {
+    naam: "Onderflens 6 — IPE 240 S235, één wiel van 8 kN midden in de ligger",
+    blad: "ec3Onderflens", invoer: { profiel: 240 }, vervang: { F_zEd: "8 kN", n_w: "12 mm", sigma_fEd: "80 N/mm^2" },
+    narekening: onderflens({ b: 120, tw: 6.2, tf: 9.8, r: 15, fy: 235, F: 8, n: 12, sigma: 80, wielen: 1 }),
+    // Met de hand: m = (120 − 6,2)/2 − 0,8·15 − 12 = 32,9 mm, e = 12 mm. Tussengelegen rij, afzonderlijk
+    // (tabel 6.4): ℓ_cp = 2π·32,9 = 206,7 mm, ℓ_nc = 4·32,9 + 1,25·12 = 146,6 mm → ℓ_eff = 146,6 mm.
+    // M_pl = 0,25·146,6·9,8²·235 = 0,8272 kNm; k = 1 − (80/235)² = 0,8841; zonder wrikkrachten per
+    // flenshelft M_pl/m (tabel 6.2: 2·M_pl/m voor het hele T-stuk) → F_f,Rd = 0,8841·0,8272e6/32,9 =
+    // 22,23 kN → UC = 0,3599.
+    handwerk: { m_f: "32.9", l_eff: "146.6", M_plRd: "0.8272", k_sigma: "0.8841", F_fRd: "22.23", UC_flens: "0.3599" },
+  },
+  {
+    naam: "Onderflens 7 — IPE 240 S235, één wiel op 30 mm van een onverstijfd liggereinde",
+    blad: "ec3Onderflens", invoer: { profiel: 240, plaats: 2 },
+    vervang: { F_zEd: "8 kN", n_w: "12 mm", sigma_fEd: "80 N/mm^2", e_1: "30 mm" },
+    narekening: onderflens({ b: 120, tw: 6.2, tf: 9.8, r: 15, fy: 235, F: 8, n: 12, sigma: 80, wielen: 1, e1: 30 }),
+    // Met de hand: eindrij, afzonderlijk: ℓ_cp = min(206,7; π·32,9 + 2·30) = min(206,7; 163,4) = 163,4
+    // mm, ℓ_nc = min(146,6; 2·32,9 + 0,625·12 + 30) = min(146,6; 103,3) = 103,3 mm → ℓ_eff = 103,3 mm.
+    // M_pl = 0,25·103,3·9,8²·235 = 0,5829 kNm → F_f,Rd = 0,8841·0,5829e6/32,9 = 15,66 kN → UC = 0,5108.
+    handwerk: { l_cp: "163.4", l_nc: "103.3", M_plRd: "0.5829", F_fRd: "15.66", UC_flens: "0.5108" },
+  },
+  {
+    naam: "Onderflens 8 — IPE 240 S235, twee wielen p = 100 mm bij het onverstijfde einde: de groep beslist",
+    blad: "ec3Onderflens", invoer: { profiel: 240, plaats: 2, wielen: 2 },
+    vervang: { F_zEd: "8 kN", n_w: "12 mm", sigma_fEd: "80 N/mm^2", e_1: "30 mm", p_w: "100 mm" },
+    narekening: onderflens({ b: 120, tw: 6.2, tf: 9.8, r: 15, fy: 235, F: 8, n: 12, sigma: 80, wielen: 2, p: 100, e1: 30 }),
+    // Met de hand: groep van twee eindrijen (tabel 6.4). Rij aan het einde: ℓ_cp = min(π·32,9 + 100;
+    // 2·30 + 100) = min(203,4; 160) = 160 mm, ℓ_nc = min(2·32,9 + 7,5 + 50; 30 + 50) = min(123,3; 80) =
+    // 80 mm. Andere rij: 203,4 en 123,3 mm. Σℓ_cp = 363,4, Σℓ_nc = 203,3 → Σℓ_eff = 203,3 mm; F_g,Rd =
+    // 0,8841·0,25·203,3·9,8²·235/32,9 = 30,83 kN → UC = 16/30,83 = 0,5191 > 0,5108 van één wiel.
+    handwerk: { l_cpg: "363.4", l_ncg: "203.3", F_gRd: "30.83", UC_groep: "0.5191", UC_max: "0.5191" },
+  },
 ];
 
 let fouten = 0;
