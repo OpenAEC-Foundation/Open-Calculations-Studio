@@ -452,6 +452,15 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
             '<span class="alleen-scherm" style="color:#b45309">Last 1: het eind b ligt niet voorbij het begin a; de last telt niet mee.</span>
         #end if
     #end if
+    #if vorm_1 ≡ 4
+        #if bool(x_eind > 0)*(bool(a_1/(1 m) < -10^-6) + bool(a_1/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b91c1c">Last 1: de puntlast ligt buiten de ligger (van 0 tot 'r2(x_eind)' m) en telt niet mee.</span>
+        #end if
+    #else if vorm_1 ≥ 2
+        #if bool(x_eind > 0)*(bool(a_1/(1 m) < -10^-6) + bool(b_1/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b45309">Last 1: de last loopt buiten de ligger (van 0 tot 'r2(x_eind)' m); alleen het deel op de ligger telt mee.</span>
+        #end if
+    #end if
 #else
     #hide
     vorm_1 = 1
@@ -534,6 +543,15 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
     #else if vorm_2 ≡ 3
         #if b_2 ≤ a_2
             '<span class="alleen-scherm" style="color:#b45309">Last 2: het eind b ligt niet voorbij het begin a; de last telt niet mee.</span>
+        #end if
+    #end if
+    #if vorm_2 ≡ 4
+        #if bool(x_eind > 0)*(bool(a_2/(1 m) < -10^-6) + bool(a_2/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b91c1c">Last 2: de puntlast ligt buiten de ligger (van 0 tot 'r2(x_eind)' m) en telt niet mee.</span>
+        #end if
+    #else if vorm_2 ≥ 2
+        #if bool(x_eind > 0)*(bool(a_2/(1 m) < -10^-6) + bool(b_2/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b45309">Last 2: de last loopt buiten de ligger (van 0 tot 'r2(x_eind)' m); alleen het deel op de ligger telt mee.</span>
         #end if
     #end if
 #else
@@ -620,6 +638,15 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
             '<span class="alleen-scherm" style="color:#b45309">Last 3: het eind b ligt niet voorbij het begin a; de last telt niet mee.</span>
         #end if
     #end if
+    #if vorm_3 ≡ 4
+        #if bool(x_eind > 0)*(bool(a_3/(1 m) < -10^-6) + bool(a_3/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b91c1c">Last 3: de puntlast ligt buiten de ligger (van 0 tot 'r2(x_eind)' m) en telt niet mee.</span>
+        #end if
+    #else if vorm_3 ≥ 2
+        #if bool(x_eind > 0)*(bool(a_3/(1 m) < -10^-6) + bool(b_3/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b45309">Last 3: de last loopt buiten de ligger (van 0 tot 'r2(x_eind)' m); alleen het deel op de ligger telt mee.</span>
+        #end if
+    #end if
 #else
     #hide
     vorm_3 = 1
@@ -702,6 +729,15 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
     #else if vorm_4 ≡ 3
         #if b_4 ≤ a_4
             '<span class="alleen-scherm" style="color:#b45309">Last 4: het eind b ligt niet voorbij het begin a; de last telt niet mee.</span>
+        #end if
+    #end if
+    #if vorm_4 ≡ 4
+        #if bool(x_eind > 0)*(bool(a_4/(1 m) < -10^-6) + bool(a_4/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b91c1c">Last 4: de puntlast ligt buiten de ligger (van 0 tot 'r2(x_eind)' m) en telt niet mee.</span>
+        #end if
+    #else if vorm_4 ≥ 2
+        #if bool(x_eind > 0)*(bool(a_4/(1 m) < -10^-6) + bool(b_4/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b45309">Last 4: de last loopt buiten de ligger (van 0 tot 'r2(x_eind)' m); alleen het deel op de ligger telt mee.</span>
         #end if
     #end if
 #else
@@ -788,6 +824,15 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
             '<span class="alleen-scherm" style="color:#b45309">Last 5: het eind b ligt niet voorbij het begin a; de last telt niet mee.</span>
         #end if
     #end if
+    #if vorm_5 ≡ 4
+        #if bool(x_eind > 0)*(bool(a_5/(1 m) < -10^-6) + bool(a_5/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b91c1c">Last 5: de puntlast ligt buiten de ligger (van 0 tot 'r2(x_eind)' m) en telt niet mee.</span>
+        #end if
+    #else if vorm_5 ≥ 2
+        #if bool(x_eind > 0)*(bool(a_5/(1 m) < -10^-6) + bool(b_5/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b45309">Last 5: de last loopt buiten de ligger (van 0 tot 'r2(x_eind)' m); alleen het deel op de ligger telt mee.</span>
+        #end if
+    #end if
 #else
     #hide
     vorm_5 = 1
@@ -870,6 +915,15 @@ L_tot', totale lengte van de ligger<span class="kolom-3"></span>'
     #else if vorm_6 ≡ 3
         #if b_6 ≤ a_6
             '<span class="alleen-scherm" style="color:#b45309">Last 6: het eind b ligt niet voorbij het begin a; de last telt niet mee.</span>
+        #end if
+    #end if
+    #if vorm_6 ≡ 4
+        #if bool(x_eind > 0)*(bool(a_6/(1 m) < -10^-6) + bool(a_6/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b91c1c">Last 6: de puntlast ligt buiten de ligger (van 0 tot 'r2(x_eind)' m) en telt niet mee.</span>
+        #end if
+    #else if vorm_6 ≥ 2
+        #if bool(x_eind > 0)*(bool(a_6/(1 m) < -10^-6) + bool(b_6/(1 m) > x_eind + 10^-6)) ≥ 1
+            '<span style="color:#b45309">Last 6: de last loopt buiten de ligger (van 0 tot 'r2(x_eind)' m); alleen het deel op de ligger telt mee.</span>
         #end if
     #end if
 #else
@@ -1514,8 +1568,11 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
     'steunpunten; 3: een overstek; 4: een stuk tussen kipsteunen.
     Mq(x) = max(abs(ligger_int(PT; 3; x)); abs(ligger_int(NT; 3; x)))
     Msg(x) = if(ligger_int(PT; 3; x) ≥ -ligger_int(NT; 3; x); ligger_int(PT; 3; x); ligger_int(NT; 3; x))
-    C1q(x0; x1) = min(2.3; max(1; sqrt(35*Mabs(dT; x0; x1)^2/max(Mabs(dT; x0; x1)^2 + 9*Mq(x0 + (x1 - x0)/4)^2 + 16*Mq((x0 + x1)/2)^2 + 9*Mq(x1 - (x1 - x0)/4)^2; 10^-12))))
     βk(x0; x1) = if(abs(Msg(x0)) ≥ abs(Msg(x1)); Msg(x1)/max(abs(Msg(x0)); 10^-9)*sign(Msg(x0)); Msg(x0)/max(abs(Msg(x1)); 10^-9)*sign(Msg(x1)))
+    'C_1: bij een rechte momentenlijn (geen last in het segment) tabel NB.NB.1 geval 1 met β = βk; anders uit de
+    'momenten op de kwartpunten. De kwartpuntformule geeft bij een rechte lijn een te hoge C_1 (1,82 tegen 1,75 bij β = 0).
+    Mrecht(x0; x1) = bool(abs(Msg((x0 + x1)/2) - (Msg(x0) + Msg(x1))/2) + abs(Msg(x0 + (x1 - x0)/4) - (3*Msg(x0) + Msg(x1))/4) + abs(Msg(x1 - (x1 - x0)/4) - (Msg(x0) + 3*Msg(x1))/4) ≤ 0.001*max(abs(Msg(x0)); abs(Msg(x1)); 10^-9))
+    C1q(x0; x1) = if(Mrecht(x0; x1) ≡ 1; min(1.75 - 1.05*βk(x0; x1) + 0.3*βk(x0; x1)^2; 2.3); min(2.3; max(1; sqrt(35*Mabs(dT; x0; x1)^2/max(Mabs(dT; x0; x1)^2 + 9*Mq(x0 + (x1 - x0)/4)^2 + 16*Mq((x0 + x1)/2)^2 + 9*Mq(x1 - (x1 - x0)/4)^2; 10^-12)))))
     u_k = 0
     n_k = 0
     #show
@@ -1530,7 +1587,7 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
         '<table class="alleen-scherm" style="width:100%; border-collapse:collapse; font-size:0.85em; line-height:1.25;">
         '<tr style="border-bottom:1.5px solid #374151;"><th style="padding:1px 4px; text-align:left;">Segment</th><th style="padding:1px 4px; text-align:right;">van – tot [m]</th><th style="padding:1px 4px; text-align:right;">l<sub>ef</sub> [m]</th><th style="padding:1px 4px; text-align:right;">λ<sub>rel,m</sub></th><th style="padding:1px 4px; text-align:right;">k<sub>crit</sub></th><th style="padding:1px 4px; text-align:right;">M<sub>Ed</sub> [kNm]</th><th style="padding:1px 4px; text-align:right;">UC</th></tr>
     #else
-        '<i>§6.3.2.3 met bijlage NB.NB: M<sub>cr</sub> = C·√(E·I<sub>z</sub>·G·I<sub>t</sub>) met C = C<sub>1</sub>·π/L<sub>kip</sub>·(√(1 + π²S²(C<sub>2</sub>² + 1)/L<sub>kip</sub>²) + π·C<sub>2</sub>·S/L<sub>kip</sub>), S = √(E·I<sub>w</sub>/(G·I<sub>t</sub>)) en k<sub>red</sub> = 1 (gewalst profiel). Kipkromme 'if(h/b ≤ 2; "b"; "c")' (tabel 6.5), λ̄<sub>LT,0</sub> = 0,4, β = 0,75. C<sub>1</sub> uit de momenten op de kwartpunten van het segment (een benadering voor een willekeurige momentenlijn, tussen 1,0 en 2,3); C<sub>2</sub> = −0,45 voor een last op de bovenflens, +0,45 op de onderflens (tabel NB.NB.1). Tussen twee steunpunten L<sub>kip</sub> = L<sub>st</sub>; bij een kipsteun (1,4 − 0,8β)·L<sub>st</sub> tussen 1,0 en 1,4·L<sub>st</sub>; een overstek als 2·L met C<sub>1</sub> = 1. In een zone met een negatief moment naast een steunpunt (gedrukte rand in het veld gesteund): L<sub>kip</sub> is de lengte van die zone, C<sub>1</sub> = 1 en C<sub>2</sub> = 0.</i><span class="alleen-scherm"></span>
+        '<i>§6.3.2.3 met bijlage NB.NB: M<sub>cr</sub> = C·√(E·I<sub>z</sub>·G·I<sub>t</sub>) met C = C<sub>1</sub>·π/L<sub>kip</sub>·(√(1 + π²S²(C<sub>2</sub>² + 1)/L<sub>kip</sub>²) + π·C<sub>2</sub>·S/L<sub>kip</sub>), S = √(E·I<sub>w</sub>/(G·I<sub>t</sub>)) en k<sub>red</sub> = 1 (gewalst profiel). Kipkromme 'if(h/b ≤ 2; "b"; "c")' (tabel 6.5), λ̄<sub>LT,0</sub> = 0,4, β = 0,75. C<sub>1</sub> bij een rechte momentenlijn (geen last in het segment) uit tabel NB.NB.1, geval 1: 1,75 − 1,05β + 0,3β² ≤ 2,3, anders uit de momenten op de kwartpunten van het segment (een benadering voor een willekeurige momentenlijn, tussen 1,0 en 2,3); C<sub>2</sub> = −0,45 voor een last op de bovenflens, +0,45 op de onderflens (tabel NB.NB.1). Tussen twee steunpunten L<sub>kip</sub> = L<sub>st</sub>; bij een kipsteun (1,4 − 0,8β)·L<sub>st</sub> tussen 1,0 en 1,4·L<sub>st</sub>; een overstek als 2·L met C<sub>1</sub> = 1. In een zone met een negatief moment naast een steunpunt (gedrukte rand in het veld gesteund): L<sub>kip</sub> is de lengte van die zone, C<sub>1</sub> = 1 en C<sub>2</sub> = 0.</i><span class="alleen-scherm"></span>
         #hide
         S_n = sqrt(E_n*Iw_n/(G_n*It_n))
         Mcr(Lk; C1; C2) = C1*pi/max(Lk; 10^-6)*(sqrt(1 + pi^2*S_n^2*(C2^2 + 1)/max(Lk; 10^-6)^2) + pi*C2*S_n/max(Lk; 10^-6))*sqrt(E_n*Iz_n*G_n*It_n)

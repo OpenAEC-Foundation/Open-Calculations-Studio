@@ -741,8 +741,9 @@ g_dak = ?*(kN/m^2)', dakopbouw per m² dakvlak, zonder het spant zelf<span class
         #loop
         ok_52 = bool(systeem ≠ 3)*bool(a_deg ≤ 26)*bool(Nr_max < 0.09*Ncr_regel)
         'Gebruikte methode: 0 niet verplaatsbaar (A-spant, eerste orde), 1 (5.2), 2 de knikberekening.
-        mth = if(methode ≡ 2; 2; if(systeem ≡ 3; 0; if(ok_52 ≡ 1; 1; 2)))
-        acr(c) = if(mth ≡ 2; raamwerk_acr(kn; st; opl; last; F(c)); if(mth ≡ 1; if(vV.(c) > 0; min(h_st/(vV.(c)*δ_1); 10^6); 10^6); 10^6))
+        'Het A-spant blijft bij methode 2 eerste orde (mth 0); de knikberekening geeft dan alleen α_cr ter informatie.
+        mth = if(systeem ≡ 3; 0; if(methode ≡ 2; 2; if(ok_52 ≡ 1; 1; 2)))
+        acr(c) = if(mth ≡ 2 or methode ≡ 2; raamwerk_acr(kn; st; opl; last; F(c)); if(mth ≡ 1; if(vV.(c) > 0; min(h_st/(vV.(c)*δ_1); 10^6); 10^6); 10^6))
         vA = [acr(1); acr(2); acr(3); acr(4); acr(5); acr(6); acr(7); acr(8); acr(9); acr(10); acr(11); acr(12); acr(13)]
         'Hout: tweede orde met de rekenwaarde E_mean/γ_M (2.2.2(1)P); staal: vergroten bij α_cr < 10 (5.2.1(3)).
         αe(c) = if(staal ≡ 1; vA.(c); vA.(c)/γ_M)
