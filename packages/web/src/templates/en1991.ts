@@ -284,8 +284,10 @@ Geen = 0
 Wel: referentiehoogte z_n volgens A.4 = 1
 @end
 #hide
-a4 = 0
 z_eff = z
+'a4_st: A.4 van toepassing en x kleiner dan 2r; de stroken van het windmoment in 6 rekenen dan elk met max(z_e; z_n).
+a4_st = 0
+zn_st = 0
 #show
 #if hoger_bw ≡ 1
     h_hoog = ?*(m)', hoogte h_high van het hoge bouwwerk<span class="kolom-2"></span>'
@@ -309,10 +311,13 @@ z_eff = z
     #else
         '<i>z<sub>n</sub> &gt; z<sub>e</sub>: gerekend met de stuwdruk op hoogte z<sub>n</sub> (A.4 van de NB).</i>
         #hide
-        a4 = 1
         z_eff = z_n
         #show
     #end if
+    #hide
+    a4_st = if(h_hoog > 2*h_gem and z ≤ h_hoog/2 and x_hoog < 2*r_A4; 1; 0)
+    zn_st = z_n/(1 m)
+    #show
     '<i>A.4 is volgens de NB normatief; h<sub>low</sub> is hier de ingevulde hoogte z. Voor een lager deel van hetzelfde gebouw naast een hoger deel is x = 0.</i><span class="alleen-scherm"></span>
 #end if
 
@@ -1017,8 +1022,8 @@ Zones D en E, zonder die factor = 2
     h_st = if(n_m > 0; (h_r - 2*b_r)/n_m; 0)
     zb(k) = if(k ≡ 1; min(b_r; h_r); if(k ≡ n_st; h_r; b_r + (k - 1)*h_st))
     zo(k) = if(k ≡ 1; 0; zb(k - 1))
-    'Met een hoger bouwwerk in de buurt (A.4) en z_n > z_e: overal de stuwdruk op z_n.
-    zq(k) = if(a4 ≡ 1; max(zb(k); z_eff/(1 m)); zb(k))
+    'Met een hoger bouwwerk in de buurt (A.4) en x kleiner dan 2r: elke strook met de grootste van z_e en z_n (bij z_n > h dus overal z_n).
+    zq(k) = if(a4_st ≡ 1; max(zb(k); zn_st); zb(k))
     Fk(k) = f_cor*cs_cd*(c_D - c_E)*qp_f(zq(k))*b_r*(zb(k) - zo(k))
     F_som = 0
     M_som = 0
@@ -1034,6 +1039,9 @@ Zones D en E, zonder die factor = 2
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0 8px;">'round(zo(k); 2)' – 'round(zb(k); 2)'</td><td style="padding:0 8px; text-align:right;">'round(zq(k); 2)'</td><td style="padding:0 8px; text-align:right;">'round(qp_f(zq(k)); 3)'</td><td style="padding:0 8px; text-align:right;">'round(Fk(k); 2)'</td><td style="padding:0 8px; text-align:right;">'round((zo(k) + zb(k))/2; 2)'</td><td style="padding:0 8px; text-align:right;">'round(Fk(k)*(zo(k) + zb(k))/2; 1)'</td></tr>
     #loop
     '</table>
+    #if a4_st ≡ 1
+        '<i>A.4, gekozen lezing: binnen het invloedsgebied (x &lt; 2r) rekent elke strook met de grootste van z<sub>e</sub> en z<sub>n</sub> = 'round(zn_st; 2)' m; bij x ≥ 2r houdt elke strook zijn eigen z<sub>e</sub>.</i>
+    #end if
     F_wind = F_som*kN', horizontale kracht op het gebouw, de som over de stroken<span class="kolom-3"></span>'
     M_wind = M_som*kN*m', kantelend moment op maaiveld<span class="kolom-3"></span>'
     #if F_som > 0
