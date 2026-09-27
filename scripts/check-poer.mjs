@@ -396,7 +396,11 @@ function uitwerking34(v, CC = 2) {
   const ap = rondP ? Math.sqrt(Ap) : Math.min(pxP, pyP);
   const w2 = ap * (z / L) + 2 * ys * (a / L);
   const sd = (C * 1e3) / (w2 * ap);
-  const UCkn2 = Math.max((R * 1e3) / Ap, sd) / (0.85 * nuK * fcd);
+  // Boven de paal: bij drie palen en bij banden langs de randen zijn trekbanden
+  // in twee richtingen verankerd, (6.62) met k_3 = 0,75; over de diagonalen één
+  // band, (6.61) met k_2 = 0,85.
+  const kKnoop = drie || !diag ? 0.75 : 0.85;
+  const UCkn2 = Math.max((R * 1e3) / Ap, sd) / (kKnoop * nuK * fcd);
 
   // Verankering en ombuiging
   const bband = Math.min(ap + 2 * ys, 2 * (o - c));
@@ -572,9 +576,10 @@ function uitwerkingStaal(v, CC = 2) {
     const pn = pons(v.F_Ed, qt, dp, rho, 0, 0);
     const u0 = rondK ? Math.PI * cx : 2 * (cx + cy);
     const UCpons0 = (v.F_Ed * 1e3) / (u0 * dp) / (0.4 * 0.6 * (1 - fck / 250) * fcd);
-    const asmin1 = (fcd * (dx - Math.sqrt(dx * dx - (h * h * fctm) / (3 * fcd)))) / fyd;
+    // A_s,min1 per richting met de eigen nuttige hoogte (de staven in y liggen een staaf hoger).
+    const asmin1 = (dd) => (fcd * (dd - Math.sqrt(dd * dd - (h * h * fctm) / (3 * fcd)))) / fyd;
     const det = phi >= 8 && sp <= Math.min(2 * h, 250) && sp - phi >= Math.max(phi, 37) &&
-      as * By >= Math.min(asmin1 * By, 1.25 * Asxn) && as * Bx >= Math.min(asmin1 * Bx, 1.25 * Asyn);
+      as * By >= Math.min(asmin1(dx) * By, 1.25 * Asxn) && as * Bx >= Math.min(asmin1(dy) * Bx, 1.25 * Asyn);
     const okM = dx * dx > (2 * Mx) / (By * fcd) && dy * dy > (2 * My) / (Bx * fcd);
     const UCmax = Math.max(UCupl, UCM, UCV, pn.UC, UCpons0);
     return { geldig, trek, Gk, UCupl, UCM, UCV, UCpons: pn.UC, akrit: pn.a, UCpons0, UCmax, voldoet: okM && det && UCmax <= 1 };
@@ -642,7 +647,9 @@ function uitwerkingStaal(v, CC = 2) {
     const ze = B / 2 - Mr / Ra - xm;
     const Fs = Math.max((Ra * ze) / (0.9 * dd), 0);
     const lbrqd = ((phi / 4) * Fs) / As / fbd;
-    return Math.max(lbrqd, 10 * phi, 100) / (xa - c);
+    // Blijft er binnen x_min na de dekking niets over, dan is de staaf niet te
+    // verankeren: 1 mm als ondergrens maakt de UC groot in plaats van negatief.
+    return Math.max(lbrqd, 10 * phi, 100) / Math.max(xa - c, 1);
   };
   const UCank = Math.max(ank(px, Bx, By, xM, dx, as * By), ank(py, By, Bx, yM, dy, as * Bx));
   // Dwarskracht op d van de kolomrand
@@ -662,9 +669,9 @@ function uitwerkingStaal(v, CC = 2) {
   }
   const u0 = rondK ? Math.PI * cx : 2 * (cx + cy);
   const UCpons0 = (beta0 * v.F_Ed * 1e3) / (u0 * dp) / (0.4 * 0.6 * (1 - fck / 250) * fcd);
-  const asmin1 = (fcd * (dx - Math.sqrt(dx * dx - (h * h * fctm) / (3 * fcd)))) / fyd;
+  const asmin1 = (dd) => (fcd * (dd - Math.sqrt(dd * dd - (h * h * fctm) / (3 * fcd)))) / fyd;
   const det = phi >= 8 && sp <= Math.min(2 * h, 250) && sp - phi >= Math.max(phi, 37) &&
-    as * By >= Math.min(asmin1 * By, 1.25 * Asxn) && as * Bx >= Math.min(asmin1 * Bx, 1.25 * Asyn);
+    as * By >= Math.min(asmin1(dx) * By, 1.25 * Asxn) && as * Bx >= Math.min(asmin1(dy) * Bx, 1.25 * Asyn);
   const hoekLos = (6 * ex) / Bx + (6 * ey) / By > 1 && ex > 0 && ey > 0;
   const UCmax = Math.max(UCdraag, UCglij, UCM, UCank, UCV, pn.UC, UCpons0);
   return {
@@ -1034,7 +1041,9 @@ const SETS = [
     // θ = atan(1073,0/981,3) = 47,56°; L_d = 1454,0; C_d = 1130,6·1454,0/1073,0 = 1532 kN; u = 193 120/1073,0 = 180,0 mm.
     // Trekband langs de rand: F_td = 1130,6·693,9/1073,0 = 731,1 kN → A_s,nodig = 1682 mm² tegen 4825: UC 0,349.
     // Knoop onder de kolom als bij twee palen: 18,33/20,07 = 0,914 (maatgevend). Boven de paal: σ_p = 1130,6e3/202 500
-    // = 5,583; w_2 = (450·1073,0 + 174·981,3)/1454,0 = 449,5; σ_d = 1532e3/(449,5·450) = 7,574 → UC 7,574/17,06 = 0,444.
+    // = 5,583; w_2 = (450·1073,0 + 174·981,3)/1454,0 = 449,5; σ_d = 1532e3/(449,5·450) = 7,574. Boven de paal zijn
+    // de banden in x en in y verankerd: (6.62) met k_3 = 0,75 → 0,75·0,86·23,33 = 15,05 → UC 7,574/15,05 = 0,503
+    // (met k_2 = 0,85 van (6.61), één trekrichting, zou het 0,444 zijn: 13 % te gunstig).
     // Band: min(450 + 2·87; 2·(400 − 55)) = 624, s_h = (624 − 32)/5 = 118,4. σ_sd = 731,1e3/4825 = 151,5;
     // l_b,rqd = 8·151,5/3,370 = 359,6; p = 1130,6e3/624² = 2,904 → α_5 = 0,884; c_d = 43,2 → α_1 = 1;
     // 0,884·359,6 = 318 < l_b,min = 320 → l_bd = 320. φ_m,bet = 121 850·(1/59,2 + 1/64)/23,33 = 169,8 (> 160);
@@ -1056,7 +1065,7 @@ const SETS = [
       L_x: "2400", G_k: "180.0", N_Ed: "3843", ΔR_e: "169.8", R_Ed: "1131", R_Ed_min: "790.9", UC_paal: "0.471",
       y_s: "87", d: "1163", x_k: "106.1", a_x: "693.9", a: "981.3", z: "1073", θ: "47.56", L_d: "1454", C_d: "1532",
       u_k: "180.0", F_td: "731.1", A_s_nodig: "1682", UC_trek: "0.349", UC_kn_1: "0.914", σ_p: "5.583", w_2: "449.5",
-      σ_d: "7.574", UC_kn_2: "0.444", b_band: "624", s_h: "118.4", l_b_rqd: "359.6", α_5: "0.884", l_bd: "320",
+      σ_d: "7.574", σ_Rd_2: "15.05", UC_kn_2: "0.503", b_band: "624", s_h: "118.4", l_b_rqd: "359.6", α_5: "0.884", l_bd: "320",
       φ_m_bet: "169.8", UC_rol: "0.477", l_b_besch: "1519", UC_ank: "0.211", ρ_l: "0.002305", v_Rd_c: "0.3484",
       β_1: "0.25", V_Rd_c_1: "972.5", UC_V: "0.581", UC_Vmax: "0.135", a_pk: "563.2", v_Rd: "1.439", u_pk: "5109",
       v_Ed_k: "0.647", UC_pons_k: "0.449", u_pp: "2135", UC_pons_p: "0.317", v_Ed_0: "1.971", UC_pons_0: "0.409",
@@ -1147,6 +1156,9 @@ const SETS = [
     // u = 1600 + 2π·408,1 = 4164; A = 160 000 + 2·408,1·800 + π·408,1² = 1,336 m² → V_red = 1500 − 260,4·1,336
     // = 1152,1 kN; v_Ed = 1152,1e3/(4164·534) = 0,518 tegen 0,3923·2·534/408,1 = 1,027 → UC 0,505.
     // (Op a = 0,5d: 0,469; op a = d: 0,483.) Langs de kolom: 1500e3/(1600·534) = 1,756 tegen 0,4·0,6·0,88·20 = 4,224 → 0,416.
+    // A_s,min1 (NB bij 9.2.1.1(1)) per richting met de eigen d: h²·f_ctm/(3·f_cd) = 360 000·2,8965/60 = 17 379 mm²;
+    // x: 20·(542 − √(293 764 − 17 379))/434,78 = 20·16,276/434,78 = 0,7487 mm²/mm; y: 20·(526 − √(276 676 − 17 379))/434,78
+    // = 20·16,788/434,78 = 0,7722 mm²/mm → A_s,min,y = min(0,7722·2400; 1,25·1556) = 1853 mm² (met d_x ten onrechte 1797).
     handwerk: {
       G_k: "126.7", V_d: "1671", phi_d: "26.66", N_q: "12.72", N_c: "23.35", N_γ: "11.77", s_q: "1.449", s_c: "1.487",
       q_eff: "16.36", σ_max_d: "463.3", R_d: "2669", UC_draag: "0.626", σ_x_max: "290.1", g_d: "29.70", x_M: "140.0",
@@ -1154,6 +1166,7 @@ const SETS = [
       l_b_rqd_x: "143.0", l_bd_x: "160", UC_ank: "0.640", V_Ed_x: "286.3", V_Rd_c_x: "508.2", UC_V: "0.596", d_p: "534",
       v_Rd_c: "0.3923", σ_n: "260.4", u_krit: { waarde: "4164", tol: 60, waarom: "de omtrek volgt a_krit, dat in een vlak maximum ligt" },
       UC_pons: "0.505", v_Ed_0: "1.756", UC_pons_0: "0.416", UC_max: "0.640",
+      a_s_min1: "748.7", a_s_min1_y: "772.2", A_s_min_y: "1853",
     },
     melding: /\(verankering\) ≤ 1,0 → de poer voldoet/,
   },
@@ -1236,6 +1249,50 @@ const SETS = [
     naam: "46 — poer op staal met de onderkant boven de bovenkant: invoer past niet",
     invoer: { ...STAAL, D_aanleg: 500 },
     melding: /invoer onvolledig/,
+  },
+  {
+    naam: "47 — vierpaals poer met moment: kolom 500×500, M_Ed = 300 kNm in x, palen 400×400 h.o.h. 1500, h = 1000, 6Ø20 langs de randen",
+    invoer: {
+      poertype: 4, kolomvorm: 2, d_kolom: 500, b_kolom: 500, paalvorm: 1, b_paal: 400, l_paal: 400, h_poer: 1000, l_hoh: 1500,
+      l_hoh_y: 1500, oversteek: 450, e_paal: 0, betonklasse: 30, c_dek: 50, n_langs: 6, d_langs: 20, F_Ed: 3000, M_Ed: 300, F_fr: 2000, R_cd: 0,
+    },
+    // Met de hand (N, mm, kN), C30/37: f_cd = 20, ν′ = 0,88, f_yd = 434,8, f_ctm = 2,896, f_ctd = 1,352.
+    // G_k = 25·2,4·2,4·1,0 = 144,0 kN; N = 3000 + 1,35·144 = 3194,4 kN. Palen op x = ±750: Σx² = 4·0,75² = 2,25 m²
+    // → ΔR = 300·0,75/2,25 = 100,0 kN; R_Ed = 798,6 + 100 = 898,6 kN, R_Ed,min = 698,6 kN.
+    // Drukblok: e = 300/3000 = 100 mm → 300 × 500, σ = 3000e3/150 000 = 20,00 tegen 1,0·0,88·20 = 17,60 → UC_kn,1 = 1,136.
+    // Kwart kolom: x_k = y_k = 125, a_x = a_y = 625, a = 883,9. Het vlak loodrecht op y is het zwaarst (blok 500 lang):
+    // 2·898,6·625·500/3000 = 187 208 → z = (930 + √(864 900 − 374 417))/2 = (930 + 700,3)/2 = 815,2 mm.
+    // (Werkelijk ligt de knoop van de zware palen dichter bij de palen, x ≈ 165: a_x = 625 is de veilige kant.)
+    // F_td = 898,6·625/815,2 = 689,0 kN → A_s,nodig = 1585 mm² tegen 6·314,2 = 1885: UC 0,841.
+    // Paalknoop: L_d = √(815,2² + 883,9²) = 1202,4; C_d = 898,6·1202,4/815,2 = 1325 kN; w_2 = (400·815,2 + 140·883,9)/1202,4
+    // = 374,1; σ_d = 1325e3/(374,1·400) = 8,86 (σ_p = 5,616). Banden in x en y verankerd: (6.62), 0,75·17,6 = 13,20
+    // → UC_kn,2 = 0,671 (met k_2 = 0,85 zou het 0,592 zijn).
+    // Pons: kolomhoek (250; 250) tot paalhoek (550; 550): a = 424,3; v_Rd = 0,3395·1860/424,3 = 1,488 (v_min, k = 1,464);
+    // u = 2000 + 2π·424,3 = 4666; W = 125 000 + 250 000 + 1000·424,3 + 4·424,3² + π·424,3·500 = 2,186e6;
+    // v_Ed = 3194,4e3/(4666·930) + 0,6·300e6/(2,186e6·930) = 0,736 + 0,089 = 0,825 → UC 0,554.
+    // Scheurwijdte: R_fr = 2144/4 + 100 = 636,0; σ_s = 689,0·636,0/898,6·1e3/1885 = 258,7; band 540 breed, h_c,ef = 175,
+    // ρ = 0,01995; s_r,max = 170 + 0,17·20/0,01995 = 340,4; ε = (258,7 − 0,4·2,896/0,01995·1,1215)/2e5 = 9,68e-4
+    // → w_k = 0,330 → UC 1,10.
+    handwerk: {
+      G_k: "144.0", ΔR_M: "100.0", R_Ed: "898.6", R_Ed_min: "698.6", A_blok: "150000", σ_Ed_1: "20.00", UC_kn_1: "1.136",
+      a: "883.9", z: "815.2", F_td: "689.0", UC_trek: "0.841", C_d: "1325", w_2: "374.1", σ_d: "8.86", σ_p: "5.616",
+      σ_Rd_2: "13.20", UC_kn_2: "0.671", a_pk: "424.3", v_Rd: "1.488", u_pk: "4666", v_Ed_k: "0.825", UC_pons_k: "0.554",
+      R_fr: "636.0", σ_s: "258.7", ρ_p_eff: "0.01995", w_k: "0.330", UC_w: "1.10", UC_max: "1.136",
+    },
+    melding: /\(knoop onder de kolom\) > 1,0/,
+  },
+  {
+    naam: "48 — poer op staal, dun met een grote dekking: binnen x_min = h/2 geen verankeringslengte",
+    invoer: { ...STAAL, B_x: 700, B_y: 700, h_poer: 150, D_aanleg: 600, c_dek: 90, d_langs: 10, s_langs: 150, F_Ed: 100 },
+    // x_min = h/2 = 75 mm < c = 90 mm: na de dekking blijft er niets over om te verankeren.
+    // G_k = 25·0,49·0,15 + 18·0,33·0,45 = 1,838 + 2,673 = 4,511 kN; netto grondspanning = F/A = 100/0,49 = 204,1 kPa.
+    // R = 204,1·0,7·0,075 = 10,71 kN, z_e = 350 − 37,5 − 140 = 172,5, d_x = 150 − 90 − 5 = 55:
+    // F_s = 10,71·172,5/(0,9·55) = 37,34 kN; A_s = 523,6·0,7 = 366,5 mm² → σ = 101,9 → l_b,rqd = 2,5·101,9/3,041 = 83,7
+    // → l_bd = 100 mm (8.6). In y (d_y = 45): F_s = 10,71·172,5/40,5 = 45,64 kN → σ = 124,5 → l_bd = 102,3 mm.
+    // Beschikbaar 75 − 90 < 0: vóór de correctie UC = 102,3/(−15) = −6,8 en "voldoet";
+    // nu ten minste 1 mm → UC_ank = 102,3 → voldoet niet.
+    handwerk: { x_a: "75.0", F_s_x: "37.34", l_b_rqd_x: "83.7", l_bd_x: "100", F_s_y: "45.6", l_bd_y: "102.3", UC_ank: "102.3" },
+    melding: /geen verankeringslengte over/,
   },
 ];
 

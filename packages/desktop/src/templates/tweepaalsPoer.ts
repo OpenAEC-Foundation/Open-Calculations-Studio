@@ -105,10 +105,13 @@
  *     zijden (R·a/(√3·z): twee banden onder 30° met de diagonaal). Twee lagen
  *     kruisen boven de paal: y_s = c + φ, het hart ertussen. Elke band ligt
  *     binnen de drukspreiding boven de paal (9.8.1(3), (5)) en binnen de poer.
- *   • Knopen (6.60), (6.61) en verankering, ombuiging en opgebogen einde zoals
- *     bij twee palen, met de kleinste paalmaat (of het vierkant met dezelfde
+ *   • Knopen (6.60) en verankering, ombuiging en opgebogen einde zoals bij
+ *     twee palen, met de kleinste paalmaat (of het vierkant met dezelfde
  *     oppervlakte) en de oversteek min de paalafwijking; langs een diagonaal
- *     of een schuine zijde ligt de rand verder weg (veilige kant).
+ *     of een schuine zijde ligt de rand verder weg (veilige kant). Boven de
+ *     paal zijn bij drie palen en bij banden langs de randen trekbanden in
+ *     twee richtingen verankerd: (6.62) met k_3 = 0,75; alleen bij banden over
+ *     de diagonalen (6.61) met k_2 = 0,85.
  *   • Dwarskracht over de volle breedte tussen kolom en paalrij (6.2.2(6))
  *     zonder dwarskrachtwapening, met ρ_l van de trekbanden uitgesmeerd over
  *     de poer, en de bovengrens (6.5). Bij drie palen de doorsnede langs de
@@ -914,7 +917,13 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
         σ_p = R_Ed/A_p to N/mm^2', oplegspanning op de paal<span class="kolom-2"></span>'
         w_2 = (a_p*z + 2*y_s*a)/L_d to mm', a<sub>p</sub>·sin θ + u·cos θ met u = 2·y<sub>s</sub> (figuur 6.27)<span class="kolom-2"></span>'
         σ_d = C_d/(w_2*a_p) to N/mm^2', drukdiagonaal aan de paalknoop<span class="kolom-2"></span>'
-        σ_Rd,2 = 0.85*ν_k*f_cd', k<sub>2</sub> = 0,85 (6.61, NB)<span class="kolom-2"></span>'
+        #if poertype ≡ 3
+            σ_Rd,2 = 0.75*ν_k*f_cd', k<sub>3</sub> = 0,75: twee trekbanden verankerd in de knoop (6.62, NB)<span class="kolom-2"></span>'
+        #else if trekbanden ≡ 1
+            σ_Rd,2 = 0.75*ν_k*f_cd', k<sub>3</sub> = 0,75: trekbanden in x en in y verankerd in de knoop (6.62, NB)<span class="kolom-2"></span>'
+        #else
+            σ_Rd,2 = 0.85*ν_k*f_cd', k<sub>2</sub> = 0,85: één trekband, over de diagonaal (6.61, NB)<span class="kolom-2"></span>'
+        #end if
         UC_kn,2 = max(σ_p; σ_d)/σ_Rd,2', knoop boven de paal'
 
         # 7. Verankering en ombuiging (§8.3, §8.4, §9.8.1)
@@ -1147,7 +1156,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
         #else
             '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Knoop onder de kolom</td><td style="padding:3px 8px;">(6.60)</td><td style="padding:3px 8px; text-align:right; color:#9ca3af;">—</td><td style="padding:3px 8px; color:#9ca3af;">niet getoetst</td></tr>
         #end if
-        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Knoop boven de paal</td><td style="padding:3px 8px;">(6.61)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_kn,2)'">'UC_kn,2'</td><td style="padding:3px 8px; color:'kleur(UC_kn,2)'">'oordeel(UC_kn,2)'</td></tr>
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Knoop boven de paal</td><td style="padding:3px 8px;">(6.61), (6.62)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_kn,2)'">'UC_kn,2'</td><td style="padding:3px 8px; color:'kleur(UC_kn,2)'">'oordeel(UC_kn,2)'</td></tr>
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Verankering trekband</td><td style="padding:3px 8px;">§8.4, §9.8.1(5)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_ank)'">'UC_ank'</td><td style="padding:3px 8px; color:'kleur(UC_ank)'">'oordeel(UC_ank)'</td></tr>
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Ombuiging voorbij het paalhart</td><td style="padding:3px 8px;">§8.3</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_rol)'">'UC_rol'</td><td style="padding:3px 8px; color:'kleur(UC_rol)'">'oordeel(UC_rol)'</td></tr>
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:3px 8px;">Dwarskracht</td><td style="padding:3px 8px;">§6.2.2(6)</td><td style="padding:3px 8px; text-align:right; color:'kleur(UC_V)'">'UC_V'</td><td style="padding:3px 8px; color:'kleur(UC_V)'">'oordeel(UC_V)'</td></tr>
@@ -1562,7 +1571,10 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
                 l_b,rqd,y = d_langs/4*F_s,y/(A_s,y*f_bd) to mm'<span class="kolom-3"></span>'
                 l_bd,x = max(l_b,rqd,x; 10*d_langs; 100 mm)', (8.4) en (8.6); rechte staaf, α = 1 (veilige kant)<span class="kolom-2"></span>'
                 l_bd,y = max(l_b,rqd,y; 10*d_langs; 100 mm)'<span class="kolom-2"></span>'
-                UC_ank = max(l_bd,x/(x_a - c_dek); l_bd,y/(y_a - c_dek))', verankering, beschikbaar x<sub>min</sub> min de dekking (figuur 9.13)'
+                #if x_a ≤ c_dek or y_a ≤ c_dek
+                    '<b style="color:#b91c1c">Binnen x<sub>min</sub> van de rand blijft na de dekking geen verankeringslengte over (x<sub>min</sub> ≤ c): de staven zijn daar niet te verankeren.</b>
+                #end if
+                UC_ank = max(l_bd,x/max(x_a - c_dek; 1 mm); l_bd,y/max(y_a - c_dek; 1 mm))', verankering, beschikbaar x<sub>min</sub> min de dekking (figuur 9.13), ten minste 1 mm'
             #end if
 
             #if belasting_staal ≡ 2
@@ -1656,9 +1668,10 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
                 s_s = s_langs
                 #show
             #end if
-            a_s,min1 = f_cd*(d_x - sqrt(d_x^2 - h_poer^2*f_ctm/(3*f_cd)))/f_yd to mm^2/m', per breedte, voor M<sub>E,min</sub> = W·f<sub>ctm</sub> bij zuivere buiging<span class="kolom-2"></span>'
+            a_s,min1 = f_cd*(d_x - sqrt(d_x^2 - h_poer^2*f_ctm/(3*f_cd)))/f_yd to mm^2/m', per breedte, voor M<sub>E,min</sub> = W·f<sub>ctm</sub> bij zuivere buiging, staven in x<span class="kolom-2"></span>'
+            a_s,min1,y = f_cd*(d_y - sqrt(d_y^2 - h_poer^2*f_ctm/(3*f_cd)))/f_yd to mm^2/m', staven in y, met d<sub>y</sub><span class="kolom-2"></span>'
             A_s,min,x = min(a_s,min1*B_y; 1.25*A_s,x,nodig) to mm^2', NB bij 9.2.1.1(1): de kleinste van A<sub>s,min1</sub> en 1,25·A<sub>s,nodig</sub><span class="kolom-2"></span>'
-            A_s,min,y = min(a_s,min1*B_x; 1.25*A_s,y,nodig) to mm^2'<span class="kolom-2"></span>'
+            A_s,min,y = min(a_s,min1,y*B_x; 1.25*A_s,y,nodig) to mm^2'<span class="kolom-2"></span>'
             #hide
             ok_det = 1
             #show

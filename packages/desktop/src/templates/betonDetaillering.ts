@@ -661,7 +661,7 @@ KL = ["C12/15"; "C16/20"; "C20/25"; "C25/30"; "C30/37"; "C35/45"; "C40/50"; "C45
               Bij een overlappingslas = 3
             @end
             ds_dw,min = max(6 mm; ds_v/4)', 6 mm of een kwart van de langsstaaf (9.5.3(1))<span class="kolom-2"></span>'
-            UC_dw1 = ds_dw,min/ds_dw'<span class="kolom-2"></span>'
+            UC_dw1 = ds_dw,min/max(ds_dw; 0 mm)', geen beugel (≤ 0) geeft ∞<span class="kolom-2"></span>'
             #hide
             f_06 = if(zone_dw ≡ 2 or (zone_dw ≡ 3 and ds_v > 14 mm); 0.6; 1)
             #show
@@ -691,7 +691,7 @@ KL = ["C12/15"; "C16/20"; "C20/25"; "C25/30"; "C30/37"; "C35/45"; "C40/50"; "C45
             #else
                 '<i>De verticale staven liggen het dichtst bij het wandoppervlak: dwarsverbindingen in de vorm van beugels, ten minste 4 per m² wandoppervlak (9.6.4(2)). Niet nodig bij staven tot en met Ø16 met een dekking groter dan 2Ø (opmerking bij 9.6.4(2)).</i><span class="alleen-scherm"></span>
                 n_dw = ?', dwarsverbindingen per m² wandoppervlak'
-                UC_n = 4/n_dw', ten minste 4 per m² (9.6.4(2))'
+                UC_n = 4/max(n_dw; 0)', ten minste 4 per m² (9.6.4(2)); geen (≤ 0) geeft ∞'
             #end if
         #else
             #hide

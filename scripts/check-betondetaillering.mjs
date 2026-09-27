@@ -284,6 +284,18 @@ const WAND = { onderwerp: "3", d_g: "16", h_el: "200", l_w: "3", c_dek: "25", ne
   tekst(got, /geen dwarswapening nodig/);
 }
 
+{
+  // Een tikfout met een minteken: n_dw = −4 en een beugel Ø−8 gaven UC_n = 4/(−4) = −1 en
+  // UC_dw1 = 6/(−8) = −0,75, en daarmee "voldoet". Met de hand: er zijn geen dwarsverbindingen
+  // en geen beugels, dus 4/0 = ∞ en 6/0 = ∞ → voldoet niet (verder als wand 2).
+  const got = reken(tpl, { ...WAND, ds_v: "20", s_v: "100", buitenlaag: "2",
+    ds_dw: "-8", s_dw: "150", zone_dw: "2", n_dw: "-4" }, project());
+  console.log("\nwand 5 — negatieve beugel en dwarsverbindingen");
+  tekst(got, /= ∞ , geen beugel/);
+  tekst(got, /= ∞ , ten minste 4 per m²/);
+  tekst(got, /Maatgevende UC = ∞ > 1,0 → voldoet niet/);
+}
+
 // ── Doorloop over alle keuzes ───────────────────────────────────────────────
 {
   console.log("\ndoorloop — alle keuzes met gewone invoer");
