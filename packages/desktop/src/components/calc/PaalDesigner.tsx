@@ -139,9 +139,10 @@ export default function PaalDesigner() {
   const Lopz = taps ? clamp(d("L_opz"), 0, zKop - zPunt) : 0;
   const zHout = zKop - Lopz;
   // Positieve schachtwrijving alleen onder de lagen met negatieve kleef, zoals ΔL_max in het blad;
-  // een trekpaal in een groep ook niet in de bovenste meter grond (7.6.3.3(g)).
+  // een trekpaal in een groep ook niet in de bovenste meter grond (7.6.3.3(g)), gemeten vanaf
+  // maaiveld of vanaf de kop als die dieper ligt.
   const trekgroep = trek && Math.round(d("trekgroep")) === 1;
-  const dlMax = Math.max(Math.min(zKop, zDraag, trekgroep ? zMv - 1 : zKop) - zPunt, 0);
+  const dlMax = Math.max(Math.min(zKop, zDraag, trekgroep ? Math.min(zKop, zMv) - 1 : zKop) - zPunt, 0);
 
   const sonderingen = Array.from({ length: MAX_S }, (_, i) => leesSondering(waarden[`sondering_${i + 1}`]));
   const geladen = sonderingen.filter((s): s is Sondering => s !== null);
