@@ -19,11 +19,15 @@
  * Daarnaast dezelfde twee wegen voor wat later is toegevoegd: de overige
  * paaltypen van tabel 7.c, de tapse houten paal met betonopzetter (omtrek
  * lineair van de punt naar het hout bovenaan, daarboven de opzetter; per
- * sondering de gemiddelde omtrek over ΔL, per kleeflaag die van de laag), de
- * open stalen buis met onderrand en grondprop (7.6.2.3(d)), trekpalen
+ * sondering de gemiddelde omtrek over ΔL, per kleeflaag die van de laag; een
+ * ΔL tot in de opzetter telt daar met α_s = 0,010 van een geprefabriceerde
+ * betonpaal), de open stalen buis met onderrand en grondprop (7.6.2.3(d)), trekpalen
  * (7.6.3.3: α_t, ξ, γ_s;t = 1,35, γ_m;var;qc, en in een groep f2 en het
  * kluitgewicht) en de indicatieve kalendercontrole met de energievergelijking
- * van Hiley.
+ * van Hiley. De sets 37 tot en met 45 zijn met de hand nagerekend, los van de
+ * uitwerking: een tapse paal met opzetter en negatieve kleef in twee lagen,
+ * een open buis met prop, een trekpaal alleenstaand en in een groep, en de
+ * kalendercontrole met een bekend heiblok.
  *
  * Het eindoordeel kent drie uitkomsten: voldoet niet (UC > 1), niet
  * aangetoond (VC > 12 %, een open stalen buis waarvan de volle doorsnede een
@@ -151,6 +155,8 @@ function uitwerking(v) {
   // Een trekpaal in een groep: geen schachtwrijving in de bovenste meter grond (7.6.3.3(g)).
   const zMv = v.nk === 1 ? v.z_mv : v.z_kop;
   const dLmax = Math.max(Math.min(v.z_kop, zDraag, groep ? zMv - 1 : v.z_kop) - v.z_punt, 0);
+  // Wat ΔL begrenst: de bovenste meter alleen als die dieper reikt dan de kleeflagen en de kop.
+  const bm = groep && zMv - 1 < Math.min(v.z_kop, zDraag);
   const R = [];
   let begrensd = false, ingekort = false;
   for (let j = 1; j <= v.n_s; j++) {
@@ -169,7 +175,8 @@ function uitwerking(v) {
     if (qIII < v[`q_cIII_${j}`]) begrensd = true;
     const qb = Math.min(0.5 * ap * v.β * s * ((v[`q_cI_${j}`] + v[`q_cII_${j}`]) / 2 + qIII), 15);
     const Rb = Ab * qb * 1000;
-    const Rs = Oj * as * qs * dL;
+    // Tapse paal: reikt ΔL tot in de opzetter, dan dat deel met α_s = 0,010 (geprefabriceerde betonpaal).
+    const Rs = taps13 && dL > Lh ? (((O + Oh) / 2) * Lh * as + Oo * 0.010 * (dL - Lh)) * qs : Oj * as * qs * dL;
     // Grondprop: wrijving op de binnenwand over de prop, niet meer dan de volle doorsnede aan de punt.
     const Rprop = open14 ? Math.min(Oi * as * qs * Math.min(v.L_prop ?? 0, dL), Ai * qb * 1000) : 0;
     R.push({ O: Oj, qb, Rb, Rs, Rprop, Rc: Rb + Rprop + Rs });
@@ -258,7 +265,7 @@ function uitwerking(v) {
   }
   return {
     trek, Ab, Ai, O, Deq, R, gem, min, x3, x4, Rck, Rcd, Rtk, Rtd, gVar, VC, Fnk, Onk, UC, oordeel, reden,
-    begrensd, ingekort, openBuis, puntInKleef, taps, taps13, open14, vpFout, mpFout, tpFout, trBuiten, gepulst, kal,
+    begrensd, ingekort, bm, openBuis, puntInKleef, taps, taps13, open14, vpFout, mpFout, tpFout, trBuiten, gepulst, kal,
   };
 }
 
@@ -613,6 +620,124 @@ const SETS = [
     // = 719,7; R_t;d = 719,7/1,35 = 533,1 kN (f2 = 1, kluit niet maatgevend); UC = 300/533,1 = 0,563.
     handwerk: { ΔL_1: "13.0", R_tcal_1: "1056", R_td: "533.1", UC: "0.563" },
   },
+  // ── Nareken met de hand, los van de uitwerking hierboven ─────────────────────
+  {
+    naam: "37 — tapse houten paal Ø150/Ø240 met opzetter Ø300 over 3 m, negatieve kleef in twee lagen, kop onder maaiveld",
+    invoer: {
+      paaltype: 13, D: 150, D_hout: 240, L_opz: 3, D_opz: 300, z_kop: -1, z_punt: -16,
+      z_mv: 0, d_gw: 0.5, q_mv: 5, n_l: 2, d_1: 3, γ_1: 17, γ_sat_1: 17, φ_1: 20, d_2: 6, γ_2: 15, γ_sat_2: 15, φ_2: 17.5,
+      q_cI_1: 15, q_cII_1: 13, q_cIII_1: 10, q_cs_1: 10, ΔL_1: 5, q_cI_2: 13, q_cII_2: 12, q_cIII_2: 9, q_cs_2: 9, ΔL_2: 8, F_c_d: 200,
+    },
+    // Met de hand: het hout loopt over L_h = 15 − 3 = 12 m van Ø150 naar Ø240, d(x) = 150 + 7,5·x mm op x m boven de punt;
+    // de opzetter Ø300 zit van NAP −4 tot −1. A_b = π/4·0,15² = 0,01767 m².
+    // q_b,max,1 = 0,35·(14 + 10) = 8,40 MPa → R_b = 148,4 kN; q_b,max,2 = 0,35·(12,5 + 9) = 7,525 MPa → 133,0 kN.
+    // Kleeflagen tot NAP −9 → ΔL ≤ 16 − 9 = 7 m (sondering 2: 8 → 7 m). Gemiddelde omtrek over ΔL: Ø168,75 → 0,5301 m (5 m)
+    // en Ø176,25 → 0,5537 m (7 m). R_s,1 = 0,5301·0,012·10 000·5 = 318,1; R_s,2 = 0,5537·0,012·9000·7 = 418,6 kN →
+    // R_c;cal = 466,5 en 551,6 kN; ξ3 = ξ4 = 1,32 → R_c;k = min(509,1; 466,5)/1,32 = 353,4; R_c;d = 294,5 kN.
+    // VC = (85,05/√2)/509,1 = 11,8 %, net onder 12 %.
+    // Negatieve kleef, δ = 0,75·φ: K0·tan δ = 0,658·tan 15° = 0,176 en 0,699·tan 13,1° = 0,163 → beide 0,25.
+    // Laag 1 (NAP 0 tot −3) naast de opzetter; ook de meter boven de kop telt mee, zoals bij de andere paaltypen:
+    // O = π·0,30 = 0,9425 m; σ'v = 5 → 13,5 (grondwater op 0,5 m) → 13,5 + 7·2,5 = 31,0 kPa; ∫ = 4,625 + 55,625 = 60,25 kN/m
+    // → 0,9425·0,25·60,25 = 14,20 kN. Laag 2 (NAP −3 tot −9): 1 m opzetter en 5 m hout van Ø240 naar Ø202,5 (gemiddeld
+    // Ø221,25 → 0,6951 m): O = (0,9425 + 5·0,6951)/6 = 0,7363 m; σ'v = 31 → 61 kPa, ∫ = 276 kN/m → 50,81 kN.
+    // F_nk = 65,00 kN (één gemiddelde omtrek over de schacht in de kleeflagen, 0,7879 m, zou 66,2 kN geven).
+    // UC = (200 + 65,00)/294,5 = 0,900 → voldoet.
+    handwerk: {
+      A_b: "0.01767", q_bmax_1: "8.400", q_bmax_2: "7.525", O_s_ΔL_1: "0.5301", O_s_ΔL_2: "0.5537", R_ccal_1: "466.5", R_ccal_2: "551.6",
+      R_cd: "294.5", S_v_1: "60.25", S_v_2: "276.0", O_nk_1: "0.9425", O_nk_2: "0.7363", F_nk_k: "65.00", UC: "0.8998",
+    },
+  },
+  {
+    naam: "38 — open stalen buis Ø610 × 14,2 met een grondprop van 4 m, één sondering, geen negatieve kleef",
+    invoer: { paaltype: 14, D: 610, t_w: 14.2, L_prop: 4, z_kop: -2, z_punt: -22, nk: 0, n_s: 1, q_cI_1: 20, q_cII_1: 18, q_cIII_1: 14, q_cs_1: 12, ΔL_1: 6, F_c_d: 900 },
+    // Met de hand: D_i = 610 − 2·14,2 = 581,6 mm; A_b = π/4·(0,610² − 0,5816²) = 0,02658 m² (onderrand), A_i = π/4·0,5816² = 0,2657 m².
+    // q_b,max = 0,35·(19 + 14) = 11,55 MPa → R_b = 0,02658·11 550 = 307,0 kN. Buitenwand: π·0,610·0,006·12 000·6 = 827,9 kN.
+    // Binnenwand over de prop: π·0,5816·0,006·12 000·4 = 526,2 kN < A_i·q_b,max = 3068 kN → R_prop = 526,2 kN.
+    // R_c;cal = 307,0 + 526,2 + 827,9 = 1661 kN; n = 1: ξ = 1,39 → R_c;k = 1195,0; R_c;d = 995,9 kN; UC = 900/995,9 = 0,904.
+    handwerk: { A_b: "0.02658", A_i: "0.2657", R_bcal_1: "307.0", R_scal_1: "827.9", R_prop_1: "526.2", R_ccal_1: "1661", R_cd: "995.9", UC: "0.9037" },
+  },
+  {
+    naam: "39 — trekpaal 350 × 350 alleenstaand, drie sonderingen, kleeflagen tot NAP −7, γ_m;var;qc = 1,10",
+    invoer: {
+      richting: 1, vorm: 2, a_p: 350, z_kop: -1.5, z_punt: -18.5, z_mv: 0, d_gw: 1, q_mv: 0, n_l: 2,
+      d_1: 2, γ_1: 16, γ_sat_1: 16, φ_1: 20, d_2: 5, γ_2: 12, γ_sat_2: 12, φ_2: 15,
+      n_s: 3, q_cs_1: 11, ΔL_1: 10, q_cs_2: 9, ΔL_2: 11.5, q_cs_3: 10, ΔL_3: 12, γ_var: 1.1, F_t_d: 500,
+    },
+    // Met de hand: O = 4·0,35 = 1,40 m, α_t = 0,007. ΔL ≤ −7 + 18,5 = 11,5 m (sondering 3: 12 → 11,5).
+    // R_t = 1,40·0,007·q_cs·ΔL = 1078,0 / 1014,3 / 1127,0 kN; gemiddeld 1073,1, laagst 1014,3.
+    // n = 3, niet stijf: ξ3 = ξ4 = 1,30 → R_t;k = min(825,5; 780,2) = 780,2 kN; R_t;d = 780,2/(1,35·1,10) = 525,4 kN.
+    // UC = 500/525,4 = 0,952. L = 17 m, L/D_eq = 17/0,3949 = 43 (7.6.3.3(a) gehaald). VC = 56,5/1073,1 = 5,3 %.
+    handwerk: { R_tcal_1: "1078", R_tcal_2: "1014", R_tcal_3: "1127", R_tcal_gem: "1073", R_tk: "780.2", R_td: "525.4", UC: "0.9516", VC: "0.05266" },
+  },
+  {
+    naam: "40 — als set 39 in een paalgroep: f2 = 0,85, kluitgewicht 420 kN maatgevend, voldoet niet",
+    invoer: {
+      richting: 1, trekgroep: 1, vorm: 2, a_p: 350, z_kop: -1.5, z_punt: -18.5, z_mv: 0, d_gw: 1, q_mv: 0, n_l: 2,
+      d_1: 2, γ_1: 16, γ_sat_1: 16, φ_1: 20, d_2: 5, γ_2: 12, γ_sat_2: 12, φ_2: 15,
+      n_s: 3, q_cs_1: 11, ΔL_1: 10, q_cs_2: 9, ΔL_2: 11.5, q_cs_3: 10, ΔL_3: 12, γ_var: 1.1, F_t_d: 500, f_2: 0.85, R_tkluit_d: 420,
+    },
+    // Met de hand: de bovenste meter (tot NAP −1) valt binnen de kleeflagen; ΔL en R_t;k als set 39 (780,2 kN).
+    // f1 = 1, f2 = 0,85: 0,85·525,4 = 446,6 kN > kluitgewicht 420 kN → R_t;d = 420 kN; UC = 500/420 = 1,190.
+    handwerk: { R_tk: "780.2", R_td: "420.0", UC: "1.190" },
+  },
+  {
+    naam: "41 — als set 39 in een paalgroep, stijf, zonder kleeflagen: ΔL tot een meter onder de kop, ξ uit tabel A.10b",
+    invoer: {
+      richting: 1, trekgroep: 1, stijf: 1, nk: 0, vorm: 2, a_p: 350, z_kop: -1.5, z_punt: -18.5,
+      n_s: 3, q_cs_1: 11, ΔL_1: 20, q_cs_2: 9, ΔL_2: 20, q_cs_3: 10, ΔL_3: 20, γ_var: 1.1, F_t_d: 500, f_2: 1, R_tkluit_d: 5000,
+    },
+    // Met de hand: zonder kleeflagen telt de kop als maaiveld: ΔL ≤ (−1,5 − 1) + 18,5 = 16 m.
+    // R_t = 1,40·0,007·16·q_cs = 1724,8 / 1411,2 / 1568,0 kN; gemiddeld 1568,0. Stijf, n = 3: ξ3 = 1,18, ξ4 = 0,94 →
+    // R_t;k = min(1568,0/1,18; 1411,2/0,94) = min(1328,8; 1501,3) = 1328,8 kN; R_t;d = 1328,8/(1,35·1,10) = 894,8 kN;
+    // UC = 500/894,8 = 0,559.
+    handwerk: { ΔL_1: "16.0", R_tk: "1329", R_td: "894.8", UC: "0.5588" },
+  },
+  {
+    naam: "42 — kalendercontrole: valgewicht 50 kN, slag 0,8 m, η = 0,9 op een paal 350 × 350 met heimuts (57 kN), gemeten 45 slagen",
+    invoer: {
+      vorm: 2, a_p: 350, z_kop: -1.5, z_punt: -18.5, nk: 0, n_s: 1, q_cI_1: 18, q_cII_1: 16, q_cIII_1: 13, q_cs_1: 11, ΔL_1: 8, F_c_d: 900,
+      kal: 1, G_blok: 50, h_val: 0.8, η_h: 0.9, G_paal: 57, e_r: 0.25, c_el: 12, n_25: 45,
+    },
+    // Met de hand: R_c;cal = 0,1225·10 500 + 1,40·0,010·11 000·8 = 1286,3 + 1232,0 = 2518 kN (= R_min, één sondering).
+    // E = 0,9·50·0,8 = 36,0 kNm. Valblok zwaarder dan e·paal (50 > 14,25): ε = (50 + 0,25²·57)/(50 + 57) = 53,56/107 = 0,5006.
+    // Hiley: s = E·ε/R − c/2 = 18,02/2518 − 0,006 = 0,001156 m = 1,156 mm per klap → 250/1,156 = 216,2 → 217 slagen per 0,25 m.
+    // Gemeten 45 slagen: s = 5,556 mm → R = 18,02/(0,005556 + 0,006) = 1560 kN < 2518 kN → melding "blijft onder".
+    handwerk: { R_kal: "2518", E_n: "36.00", ε_k: "0.5006", s_max: "1.156", n_kal: "217", R_dyn: "1560" },
+  },
+  {
+    naam: "43 — kalendercontrole met een terugkaatsend blok: 20 kN op een paal van 100 kN, e = 0,5",
+    invoer: {
+      vorm: 2, a_p: 350, z_kop: -1.5, z_punt: -18.5, nk: 0, n_s: 1, q_cI_1: 18, q_cII_1: 16, q_cIII_1: 13, q_cs_1: 11, ΔL_1: 8, F_c_d: 900,
+      kal: 1, G_blok: 20, h_val: 1.5, η_h: 0.8, G_paal: 100, e_r: 0.5, c_el: 12, n_25: 200,
+    },
+    // Met de hand, met de snelheden na de stoot (valsnelheid 1): paal 20·(1 + 0,5)/120 = 0,25, blok (20 − 50)/120 = −0,25
+    // (omhoog, zijn energie gaat verloren). ε = 100·0,25²/20 = 0,3125; E = 0,8·20·1,5 = 24 kNm;
+    // s = 24·0,3125/2518 − 0,006 = −3,022 mm → heiblok te licht.
+    handwerk: { ε_k: "0.3125", s_max: "-3.022" },
+  },
+  {
+    naam: "44 — tapse paal Ø150/Ø240 met opzetter Ø300 over 3 m, ΔL = 14 m tot in de opzetter: daar α_s = 0,010",
+    invoer: {
+      paaltype: 13, D: 150, D_hout: 240, L_opz: 3, D_opz: 300, z_kop: -1, z_punt: -16, nk: 0,
+      n_s: 1, q_cI_1: 15, q_cII_1: 13, q_cIII_1: 10, q_cs_1: 10, ΔL_1: 14, F_c_d: 200,
+    },
+    // Met de hand: het hout (12 m) geheel, ∫O = π·(0,15 + 0,24)/2·12 = 7,3513 m², met α_s = 0,012 (taps hout);
+    // de opzetter over 2 m, π·0,30·2 = 1,8850 m², met α_s = 0,010 (geprefabriceerde betonpaal, tabel 7.c).
+    // R_s = (0,012·7,3513 + 0,010·1,8850)·10 000 = 882,2 + 188,5 = 1070,7 kN (met 0,012 overal 1108,4 kN).
+    // R_c;cal = 148,4 + 1070,7 = 1219,1 kN; ξ = 1,39 → R_c;k = 877,1; R_c;d = 730,9 kN; UC = 200/730,9 = 0,274.
+    // De gemiddelde omtrek over ΔL is (7,3513 + 1,8850)/14 = 0,6597 m.
+    handwerk: { O_s_ΔL_1: "0.6597", R_scal_1: "1071", R_ccal_1: "1219", R_cd: "730.9", UC: "0.2736" },
+  },
+  {
+    naam: "45 — trekpaal in een paalgroep, kleeflaag van 0,5 m: ΔL begrensd door de bovenste meter, en zo gemeld",
+    invoer: {
+      richting: 1, trekgroep: 1, vorm: 2, a_p: 350, z_kop: 0.5, z_punt: -14, z_mv: 0, d_gw: 1, q_mv: 0, n_l: 1,
+      d_1: 0.5, γ_1: 16, γ_sat_1: 16, φ_1: 20, n_s: 1, q_cs_1: 12, ΔL_1: 20, γ_var: 1, f_2: 1, R_tkluit_d: 5000, F_t_d: 100,
+    },
+    // Met de hand: kleeflaag tot NAP −0,5, bovenste meter tot NAP −1 → ΔL ≤ −1 + 14 = 13 m (de melding noemt de bovenste meter).
+    // R_t = 1,40·0,007·12 000·13 = 1528,8 kN; n = 1: ξ = 1,39 → 1099,9; R_t;d = 1099,9/1,35 = 814,7 kN; UC = 100/814,7 = 0,123.
+    handwerk: { ΔL_1: "13.0", R_tcal_1: "1529", R_td: "814.7", UC: "0.1227" },
+  },
 ];
 
 /** Het eindoordeel zoals het blad het in de slotzin geeft. */
@@ -644,9 +769,9 @@ for (const set of SETS) {
   // melding bij ΔL geen kleeflagen.
   for (const [wel, patroon, wat] of [
     [r.begrensd, /avegaarpaal: traject III ten hoogste 2 MPa/, "traject III begrensd op 2 MPa"],
-    [r.ingekort && v.nk === 1, /ingekort tot de paallengte onder de lagen met negatieve kleef/, "ΔL ingekort onder de kleeflagen"],
-    [r.ingekort && v.nk !== 1 && !(v.richting === 1 && v.trekgroep === 1), /ingekort tot de paallengte(?! onder)/, "ΔL ingekort tot de paallengte"],
-    [r.ingekort && v.nk !== 1 && v.richting === 1 && v.trekgroep === 1, /ingekort tot de paallengte onder de bovenste meter/, "ΔL ingekort onder de bovenste meter (groep)"],
+    [r.ingekort && !r.bm && v.nk === 1, /ingekort tot de paallengte onder de lagen met negatieve kleef/, "ΔL ingekort onder de kleeflagen"],
+    [r.ingekort && !r.bm && v.nk !== 1, /ingekort tot de paallengte(?! onder)/, "ΔL ingekort tot de paallengte"],
+    [r.ingekort && r.bm, /ingekort tot de paallengte onder de bovenste meter/, "ΔL ingekort onder de bovenste meter (groep)"],
     [r.puntInKleef, /paalpunt ligt niet onder de lagen met negatieve kleef/, "paalpunt in de kleeflagen"],
     [r.openBuis, /Open stalen buis: de volle doorsnede/, "open buis: grondprop"],
     [r.taps, /Tapse houten paal: de omtrek van de punt/, "tapse paal: omtrek van de punt"],

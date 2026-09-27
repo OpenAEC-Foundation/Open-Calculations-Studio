@@ -33,7 +33,10 @@
  * lineair verlopend van de middellijn aan de punt naar die bovenaan het hout,
  * daarboven de opzetter. De punt rekent met de middellijn onder, de
  * schachtwrijving met de gemiddelde omtrek over ΔL per sondering en de
- * negatieve kleef per laag met de gemiddelde omtrek van die laag. Een open
+ * negatieve kleef per laag met de gemiddelde omtrek van die laag. Reikt ΔL tot
+ * in de opzetter, dan telt dat deel op druk met α_s = 0,010 van een
+ * geprefabriceerde betonpaal: de 0,012 van tabel 7.c hoort bij het tapse
+ * hout. Op trek is α_t voor beide 0,007. Een open
  * stalen buis (paaltype 14) rekent de onderrand en de grondprop apart
  * (7.6.2.3(d)): de wrijving op de binnenwand over de ingevulde hoogte van de
  * prop (ten hoogste ΔL), begrensd op A_i·q_b;max.
@@ -280,6 +283,13 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
         O_o = O_h
         #show
     #end if
+    #if L_opz > 0 m and richting ≡ 0
+        α_s,o = 0.010', α<sub>s</sub> langs de opzetter: geprefabriceerde betonpaal (tabel 7.c)<span class="kolom-2"></span>'
+    #else
+        #hide
+        α_s,o = 0.010
+        #show
+    #end if
     #hide
     'De omtrek verloopt lineair van O_s aan de punt naar O_h bovenaan het hout; daarboven O_o.
     'O_cum(x) is de integraal van de omtrek van de punt tot x erboven; O_dl(x) het gemiddelde daarover.
@@ -514,6 +524,8 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
 'Positieve schachtwrijving alleen onder de lagen met negatieve kleef (7.6.2.3(c)); bij trek ook.
 'Een trekpaal in een paalgroep heeft in de bovenste meter grond geen schachtwrijving (7.6.3.3(g)).
 ΔL_max = max(min(z_kop; z_draag; if(trekgroep ≡ 1; z_mv - 1 m; z_kop)) - z_punt; 0 m)
+'De melding bij een ingekorte ΔL noemt wat hem begrenst: de bovenste meter alleen als die dieper reikt dan de kleeflagen en de kop.
+ΔL_bm = if(trekgroep ≡ 1 and z_mv - 1 m < min(z_kop; z_draag); 1; 0)
 #show
 
 # 3. Draagvermogen per sondering
@@ -538,10 +550,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,1 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_1 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_1 > ΔL_max and nk ≡ 1
-        ΔL_1 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
-    #else if ΔL_1 > ΔL_max and trekgroep ≡ 1
+    #if ΔL_1 > ΔL_max and ΔL_bm ≡ 1
         ΔL_1 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
+    #else if ΔL_1 > ΔL_max and nk ≡ 1
+        ΔL_1 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_1 > ΔL_max
         ΔL_1 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
@@ -560,7 +572,11 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
         #show
     #else
         #if paaltype ≡ 13
-            R_scal,1 = O_s,ΔL,1*α_s*min(q_cs,1; 15 MPa)*ΔL_1 to kN', schachtwrijving'
+            #if ΔL_1 > L_h
+                R_scal,1 = (α_s*(O_s + O_h)/2*L_h + α_s,o*O_o*(ΔL_1 - L_h))*min(q_cs,1; 15 MPa) to kN', schachtwrijving: langs het hout met α<sub>s</sub>, langs de opzetter met α<sub>s,o</sub>'
+            #else
+                R_scal,1 = O_s,ΔL,1*α_s*min(q_cs,1; 15 MPa)*ΔL_1 to kN', schachtwrijving'
+            #end if
         #else
             R_scal,1 = O_s,ΔL*α_s*min(q_cs,1; 15 MPa)*ΔL_1 to kN', schachtwrijving'
         #end if
@@ -600,10 +616,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,2 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_2 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_2 > ΔL_max and nk ≡ 1
-        ΔL_2 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
-    #else if ΔL_2 > ΔL_max and trekgroep ≡ 1
+    #if ΔL_2 > ΔL_max and ΔL_bm ≡ 1
         ΔL_2 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
+    #else if ΔL_2 > ΔL_max and nk ≡ 1
+        ΔL_2 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_2 > ΔL_max
         ΔL_2 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
@@ -622,7 +638,11 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
         #show
     #else
         #if paaltype ≡ 13
-            R_scal,2 = O_s,ΔL,2*α_s*min(q_cs,2; 15 MPa)*ΔL_2 to kN', schachtwrijving'
+            #if ΔL_2 > L_h
+                R_scal,2 = (α_s*(O_s + O_h)/2*L_h + α_s,o*O_o*(ΔL_2 - L_h))*min(q_cs,2; 15 MPa) to kN', schachtwrijving: langs het hout met α<sub>s</sub>, langs de opzetter met α<sub>s,o</sub>'
+            #else
+                R_scal,2 = O_s,ΔL,2*α_s*min(q_cs,2; 15 MPa)*ΔL_2 to kN', schachtwrijving'
+            #end if
         #else
             R_scal,2 = O_s,ΔL*α_s*min(q_cs,2; 15 MPa)*ΔL_2 to kN', schachtwrijving'
         #end if
@@ -662,10 +682,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,3 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_3 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_3 > ΔL_max and nk ≡ 1
-        ΔL_3 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
-    #else if ΔL_3 > ΔL_max and trekgroep ≡ 1
+    #if ΔL_3 > ΔL_max and ΔL_bm ≡ 1
         ΔL_3 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
+    #else if ΔL_3 > ΔL_max and nk ≡ 1
+        ΔL_3 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_3 > ΔL_max
         ΔL_3 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
@@ -684,7 +704,11 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
         #show
     #else
         #if paaltype ≡ 13
-            R_scal,3 = O_s,ΔL,3*α_s*min(q_cs,3; 15 MPa)*ΔL_3 to kN', schachtwrijving'
+            #if ΔL_3 > L_h
+                R_scal,3 = (α_s*(O_s + O_h)/2*L_h + α_s,o*O_o*(ΔL_3 - L_h))*min(q_cs,3; 15 MPa) to kN', schachtwrijving: langs het hout met α<sub>s</sub>, langs de opzetter met α<sub>s,o</sub>'
+            #else
+                R_scal,3 = O_s,ΔL,3*α_s*min(q_cs,3; 15 MPa)*ΔL_3 to kN', schachtwrijving'
+            #end if
         #else
             R_scal,3 = O_s,ΔL*α_s*min(q_cs,3; 15 MPa)*ΔL_3 to kN', schachtwrijving'
         #end if
@@ -724,10 +748,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,4 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_4 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_4 > ΔL_max and nk ≡ 1
-        ΔL_4 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
-    #else if ΔL_4 > ΔL_max and trekgroep ≡ 1
+    #if ΔL_4 > ΔL_max and ΔL_bm ≡ 1
         ΔL_4 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
+    #else if ΔL_4 > ΔL_max and nk ≡ 1
+        ΔL_4 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_4 > ΔL_max
         ΔL_4 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
@@ -746,7 +770,11 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
         #show
     #else
         #if paaltype ≡ 13
-            R_scal,4 = O_s,ΔL,4*α_s*min(q_cs,4; 15 MPa)*ΔL_4 to kN', schachtwrijving'
+            #if ΔL_4 > L_h
+                R_scal,4 = (α_s*(O_s + O_h)/2*L_h + α_s,o*O_o*(ΔL_4 - L_h))*min(q_cs,4; 15 MPa) to kN', schachtwrijving: langs het hout met α<sub>s</sub>, langs de opzetter met α<sub>s,o</sub>'
+            #else
+                R_scal,4 = O_s,ΔL,4*α_s*min(q_cs,4; 15 MPa)*ΔL_4 to kN', schachtwrijving'
+            #end if
         #else
             R_scal,4 = O_s,ΔL*α_s*min(q_cs,4; 15 MPa)*ΔL_4 to kN', schachtwrijving'
         #end if
@@ -786,10 +814,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,5 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_5 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_5 > ΔL_max and nk ≡ 1
-        ΔL_5 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
-    #else if ΔL_5 > ΔL_max and trekgroep ≡ 1
+    #if ΔL_5 > ΔL_max and ΔL_bm ≡ 1
         ΔL_5 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
+    #else if ΔL_5 > ΔL_max and nk ≡ 1
+        ΔL_5 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_5 > ΔL_max
         ΔL_5 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
@@ -808,7 +836,11 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
         #show
     #else
         #if paaltype ≡ 13
-            R_scal,5 = O_s,ΔL,5*α_s*min(q_cs,5; 15 MPa)*ΔL_5 to kN', schachtwrijving'
+            #if ΔL_5 > L_h
+                R_scal,5 = (α_s*(O_s + O_h)/2*L_h + α_s,o*O_o*(ΔL_5 - L_h))*min(q_cs,5; 15 MPa) to kN', schachtwrijving: langs het hout met α<sub>s</sub>, langs de opzetter met α<sub>s,o</sub>'
+            #else
+                R_scal,5 = O_s,ΔL,5*α_s*min(q_cs,5; 15 MPa)*ΔL_5 to kN', schachtwrijving'
+            #end if
         #else
             R_scal,5 = O_s,ΔL*α_s*min(q_cs,5; 15 MPa)*ΔL_5 to kN', schachtwrijving'
         #end if
@@ -848,10 +880,10 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,6 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_6 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_6 > ΔL_max and nk ≡ 1
-        ΔL_6 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
-    #else if ΔL_6 > ΔL_max and trekgroep ≡ 1
+    #if ΔL_6 > ΔL_max and ΔL_bm ≡ 1
         ΔL_6 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
+    #else if ΔL_6 > ΔL_max and nk ≡ 1
+        ΔL_6 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
     #else if ΔL_6 > ΔL_max
         ΔL_6 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte</b>'
     #end if
@@ -870,7 +902,11 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
         #show
     #else
         #if paaltype ≡ 13
-            R_scal,6 = O_s,ΔL,6*α_s*min(q_cs,6; 15 MPa)*ΔL_6 to kN', schachtwrijving'
+            #if ΔL_6 > L_h
+                R_scal,6 = (α_s*(O_s + O_h)/2*L_h + α_s,o*O_o*(ΔL_6 - L_h))*min(q_cs,6; 15 MPa) to kN', schachtwrijving: langs het hout met α<sub>s</sub>, langs de opzetter met α<sub>s,o</sub>'
+            #else
+                R_scal,6 = O_s,ΔL,6*α_s*min(q_cs,6; 15 MPa)*ΔL_6 to kN', schachtwrijving'
+            #end if
         #else
             R_scal,6 = O_s,ΔL*α_s*min(q_cs,6; 15 MPa)*ΔL_6 to kN', schachtwrijving'
         #end if
