@@ -13,7 +13,10 @@
  * γ_s;t (1,35) en γ_m;var;qc staan in de norm op q_c; omdat R_t lineair is in
  * q_c is dat hetzelfde als delen van de berekende trekweerstand (7.17). Een
  * paal in een paalgroep krijgt f1 = 1 (geen verdichting) en een elders
- * bepaalde f2 en kluitgewicht (7.6.3.3(c) t/m (h)). Negatieve kleef werkt bij
+ * bepaalde f2 en kluitgewicht (7.6.3.3(c) t/m (h)). De bovenste meter grond
+ * zonder schachtwrijving (7.6.3.3(g)) telt vanaf maaiveld, of vanaf de kop als
+ * die dieper ligt: de strengere lezing. Het blad raadt aan bij twijfel als
+ * groep te rekenen (opmerking bij 7.6.3.3(b)). Negatieve kleef werkt bij
  * trek gunstig en telt niet mee; de kleeflagen begrenzen alleen ΔL. Buiten
  * L/D ≥ 13,5 en 7 m ≤ L ≤ 50 m (7.6.3.3(a)) en bij een gepulste paal (geen
  * α_t in tabel 7.c) is het oordeel "niet aangetoond". Toets F_t;d ≤ R_t;d (7.12).
@@ -24,7 +27,11 @@
  * bevestiging door proefbelastingen) en de grens van de schachtmiddellijn
  * (voetnoot d). Bij een stalen buis met gesloten punt mag de voetplaat ten
  * hoogste 10 mm uitsteken (voetnoot b), bij een trekpaal met mantelbuis en
- * voetplaat ten hoogste 25 mm (voetnoot c).
+ * voetplaat ten hoogste 25 mm (voetnoot c). Een geprefabriceerde beton- of
+ * houten paal (paaltype 1 of 11) met een andere schacht waarvan de voet meer
+ * dan 10 mm uitsteekt, heeft een verbrede voet: ΔL is dan ten hoogste de
+ * lengte van de verbreding (7.6.2.3(c)), ook op trek. Zonder verbreding
+ * verandert er niets.
  *
  * De omtrek van de paalvoet geldt ook voor de schacht, tenzij de gebruiker een
  * andere schacht kiest: dan vult hij O_s;ΔL;gem in voor de schachtwrijving
@@ -33,13 +40,18 @@
  * lineair verlopend van de middellijn aan de punt naar die bovenaan het hout,
  * daarboven de opzetter. De punt rekent met de middellijn onder, de
  * schachtwrijving met de gemiddelde omtrek over ΔL per sondering en de
- * negatieve kleef per laag met de gemiddelde omtrek van die laag. Reikt ΔL tot
+ * negatieve kleef met één gemiddelde omtrek O_s;gem over de kleeflagen, zoals
+ * 7.3.2.2(d) die voor houten palen voorschrijft; boven de kop telt de omtrek
+ * van de kop, zoals de kleef daar bij alle paaltypen meetelt. Reikt ΔL tot
  * in de opzetter, dan telt dat deel op druk met α_s = 0,010 van een
  * geprefabriceerde betonpaal: de 0,012 van tabel 7.c hoort bij het tapse
  * hout. Op trek is α_t voor beide 0,007. Een open
  * stalen buis (paaltype 14) rekent de onderrand en de grondprop apart
  * (7.6.2.3(d)): de wrijving op de binnenwand over de ingevulde hoogte van de
- * prop (ten hoogste ΔL), begrensd op A_i·q_b;max.
+ * prop (ten hoogste ΔL). Het blad begrenst die op A_i·q_b;max, zodat onderrand
+ * en prop samen niet meer geven dan de volle doorsnede: een aanname aan de
+ * veilige kant, want 7.6.2.3(d) begrenst op de draagkracht van de punt met een
+ * vaste prop.
  *
  * Bij een avegaarpaal begint traject III onderaan met ten hoogste 2 MPa en is
  * elke waarde erboven niet hoger dan die eronder (7.6.2.3(e)); de invoer is
@@ -63,7 +75,8 @@
  * negatieve kleef en de omtrek van de punt, bij onvolledige maten van een
  * tapse paal of open buis en buiten de grenzen van tabel 7.c is het oordeel
  * "niet aangetoond"; ook als de UC niet uit te rekenen is (lege invoer), zodat
- * het blad dan nooit "voldoet" zegt. De zakking (7.6.4) is niet getoetst.
+ * het blad dan nooit "voldoet" zegt. Die UC toont het blad dan niet als getal
+ * (geen NaN), maar als "niet te bepalen". De zakking (7.6.4) is niet getoetst.
  *
  * Nieuwe keuzes en velden zijn zo gekozen dat een bestaand blad na "Bladen
  * bijwerken" hetzelfde rekent: de eerste keuze van elk nieuw @select (druk,
@@ -102,6 +115,9 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
       Alleenstaande paal (b) = 0
       Paal in een paalgroep: f2 en kluitgewicht elders bepaald, (c) t/m (h) = 1
     @end
+    #if trekgroep ≡ 0
+        '<i>Alleen voor een paal die zeker alleen staat. Is dat bij de hart-op-hartafstand in het palenplan niet op voorhand te zeggen, reken dan als paal in een paalgroep (opmerking bij 7.6.3.3(b)).</i>
+    #end if
 #else
     #hide
     trekgroep = 0
@@ -174,6 +190,7 @@ geheid = hlookup(tab7c; paaltype; 1; 6)
     D_eq = D to m', equivalente middellijn'
     #if richting ≡ 0
         L_prop = ?*(m)', hoogte van de grondprop die wrijving op de binnenwand geeft<span class="alleen-scherm">; gemeten of aangenomen, ten hoogste ΔL; 0 zonder prop</span>'
+        '<i>Aanname aan de veilige kant: de wrijving op de binnenwand telt ten hoogste A<sub>i</sub>·q<sub>b;max</sub>, zodat onderrand en prop samen niet meer geven dan de volle doorsnede. 7.6.2.3(d) begrenst ruimer, op de draagkracht van de punt met een vaste prop.</i>
     #end if
     #hide
     s_p = 1
@@ -239,6 +256,21 @@ mp_fout = 0
     #show
     #if vp_fout ≡ 1
         '<b style="color:#b91c1c">De voetplaat steekt 'Δ_vp' mm buiten de schacht uit, meer dan 'Δ_vp,max' mm (tabel 7.c, voetnoot b of c): de factoren van tabel 7.c gelden dan niet.</b>
+    #end if
+#end if
+#hide
+'Verbrede voet van een geprefabriceerde beton- of houten paal: steekt de voet meer dan 10 mm buiten de schacht uit, dan is ΔL ten hoogste de lengte van de verbreding (7.6.2.3(c)).
+vv = 0
+L_vv = 0 m
+#show
+#if schacht ≡ 1 and (paaltype ≡ 1 or paaltype ≡ 11)
+    #hide
+    Δ_vv = if(vorm ≡ 1; (O_s - O_s,ΔL)/(2*pi); (O_s - O_s,ΔL)/8) to mm
+    vv = if(Δ_vv > 10 mm; 1; 0)
+    #show
+    #if vv ≡ 1
+        '<b style="color:#b45309">De voet steekt 'Δ_vv' mm buiten de schacht uit, meer dan 10 mm: een verbrede voet. ΔL is dan ten hoogste de lengte van de verbreding (7.6.2.3(c)).</b>
+        L_vv = ?*(m)', lengte van de verbrede voet<span class="kolom-2"></span>'
     #end if
 #end if
 #if paaltype ≥ 17
@@ -362,8 +394,9 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
         δ_1 = f_δ*φ_1', wrijvingshoek paal–grond in graden<span class="alleen-scherm">: φ′ bij in de grond gevormd, anders 0,75·φ′</span><span class="kolom-2"></span>'
         c_nk,1 = max(K_0,1*tan(δ_1*pi/180); 0.25)', K_0·tan δ, ten minste 0,25<span class="kolom-2"></span>'
         #if paaltype ≡ 13
-            O_nk,1 = O_laag(z_t,1; z_b,1) to m', gemiddelde omtrek in laag 1<span class="kolom-2"></span>'
-            F_nk,1 = O_nk,1*c_nk,1*S_v,1 to kN', bijdrage van laag 1<span class="kolom-2"></span>'
+            #hide
+            T_nk,1 = c_nk,1*S_v,1
+            #show
         #else
             F_nk,1 = O_s,gem*c_nk,1*S_v,1 to kN', bijdrage van laag 1'
         #end if
@@ -372,6 +405,7 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
         z_b,1 = 0 m
         σ_b,1 = q_mv
         F_nk,1 = 0 kN
+        T_nk,1 = 0 kN/m
         #show
     #end if
     #if n_l ≥ 2
@@ -394,8 +428,9 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
         δ_2 = f_δ*φ_2', wrijvingshoek paal–grond in graden<span class="alleen-scherm">: φ′ bij in de grond gevormd, anders 0,75·φ′</span><span class="kolom-2"></span>'
         c_nk,2 = max(K_0,2*tan(δ_2*pi/180); 0.25)', K_0·tan δ, ten minste 0,25<span class="kolom-2"></span>'
         #if paaltype ≡ 13
-            O_nk,2 = O_laag(z_t,2; z_b,2) to m', gemiddelde omtrek in laag 2<span class="kolom-2"></span>'
-            F_nk,2 = O_nk,2*c_nk,2*S_v,2 to kN', bijdrage van laag 2<span class="kolom-2"></span>'
+            #hide
+            T_nk,2 = c_nk,2*S_v,2
+            #show
         #else
             F_nk,2 = O_s,gem*c_nk,2*S_v,2 to kN', bijdrage van laag 2'
         #end if
@@ -404,6 +439,7 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
         z_b,2 = z_b,1
         σ_b,2 = σ_b,1
         F_nk,2 = 0 kN
+        T_nk,2 = 0 kN/m
         #show
     #end if
     #if n_l ≥ 3
@@ -426,8 +462,9 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
         δ_3 = f_δ*φ_3', wrijvingshoek paal–grond in graden<span class="alleen-scherm">: φ′ bij in de grond gevormd, anders 0,75·φ′</span><span class="kolom-2"></span>'
         c_nk,3 = max(K_0,3*tan(δ_3*pi/180); 0.25)', K_0·tan δ, ten minste 0,25<span class="kolom-2"></span>'
         #if paaltype ≡ 13
-            O_nk,3 = O_laag(z_t,3; z_b,3) to m', gemiddelde omtrek in laag 3<span class="kolom-2"></span>'
-            F_nk,3 = O_nk,3*c_nk,3*S_v,3 to kN', bijdrage van laag 3<span class="kolom-2"></span>'
+            #hide
+            T_nk,3 = c_nk,3*S_v,3
+            #show
         #else
             F_nk,3 = O_s,gem*c_nk,3*S_v,3 to kN', bijdrage van laag 3'
         #end if
@@ -436,6 +473,7 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
         z_b,3 = z_b,2
         σ_b,3 = σ_b,2
         F_nk,3 = 0 kN
+        T_nk,3 = 0 kN/m
         #show
     #end if
     #if n_l ≥ 4
@@ -458,8 +496,9 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
         δ_4 = f_δ*φ_4', wrijvingshoek paal–grond in graden<span class="alleen-scherm">: φ′ bij in de grond gevormd, anders 0,75·φ′</span><span class="kolom-2"></span>'
         c_nk,4 = max(K_0,4*tan(δ_4*pi/180); 0.25)', K_0·tan δ, ten minste 0,25<span class="kolom-2"></span>'
         #if paaltype ≡ 13
-            O_nk,4 = O_laag(z_t,4; z_b,4) to m', gemiddelde omtrek in laag 4<span class="kolom-2"></span>'
-            F_nk,4 = O_nk,4*c_nk,4*S_v,4 to kN', bijdrage van laag 4<span class="kolom-2"></span>'
+            #hide
+            T_nk,4 = c_nk,4*S_v,4
+            #show
         #else
             F_nk,4 = O_s,gem*c_nk,4*S_v,4 to kN', bijdrage van laag 4'
         #end if
@@ -468,6 +507,7 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
         z_b,4 = z_b,3
         σ_b,4 = σ_b,3
         F_nk,4 = 0 kN
+        T_nk,4 = 0 kN/m
         #show
     #end if
     #if n_l ≥ 5
@@ -490,8 +530,9 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
         δ_5 = f_δ*φ_5', wrijvingshoek paal–grond in graden<span class="alleen-scherm">: φ′ bij in de grond gevormd, anders 0,75·φ′</span><span class="kolom-2"></span>'
         c_nk,5 = max(K_0,5*tan(δ_5*pi/180); 0.25)', K_0·tan δ, ten minste 0,25<span class="kolom-2"></span>'
         #if paaltype ≡ 13
-            O_nk,5 = O_laag(z_t,5; z_b,5) to m', gemiddelde omtrek in laag 5<span class="kolom-2"></span>'
-            F_nk,5 = O_nk,5*c_nk,5*S_v,5 to kN', bijdrage van laag 5<span class="kolom-2"></span>'
+            #hide
+            T_nk,5 = c_nk,5*S_v,5
+            #show
         #else
             F_nk,5 = O_s,gem*c_nk,5*S_v,5 to kN', bijdrage van laag 5'
         #end if
@@ -500,9 +541,15 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
         z_b,5 = z_b,4
         σ_b,5 = σ_b,4
         F_nk,5 = 0 kN
+        T_nk,5 = 0 kN/m
         #show
     #end if
-    F_nk,k = F_nk,1 + F_nk,2 + F_nk,3 + F_nk,4 + F_nk,5 to kN', karakteristieke negatieve kleef'
+    #if paaltype ≡ 13
+        O_s,gem = O_laag(0 m; z_b,5) to m', gemiddelde omtrek van de schacht over de kleeflagen (7.3.2.2(d))<span class="alleen-scherm">; boven de kop die van de kop</span>'
+        F_nk,k = O_s,gem*(T_nk,1 + T_nk,2 + T_nk,3 + T_nk,4 + T_nk,5) to kN', karakteristieke negatieve kleef: O<sub>s;gem</sub>·Σ K<sub>0</sub>·tan δ·∫σ′<sub>v</sub> dz'
+    #else
+        F_nk,k = F_nk,1 + F_nk,2 + F_nk,3 + F_nk,4 + F_nk,5 to kN', karakteristieke negatieve kleef'
+    #end if
     γ_fnk = 1.0', berekend volgens 7.3.2.2(d)<span class="kolom-2"></span>'
     F_nk,d = γ_fnk*F_nk,k to kN'<span class="kolom-2"></span>'
     #hide
@@ -522,10 +569,14 @@ L_paal = z_kop - z_punt to m', paallengte<span class="kolom-3"></span>'
 #end if
 #hide
 'Positieve schachtwrijving alleen onder de lagen met negatieve kleef (7.6.2.3(c)); bij trek ook.
-'Een trekpaal in een paalgroep heeft in de bovenste meter grond geen schachtwrijving (7.6.3.3(g)).
-ΔL_max = max(min(z_kop; z_draag; if(trekgroep ≡ 1; z_mv - 1 m; z_kop)) - z_punt; 0 m)
-'De melding bij een ingekorte ΔL noemt wat hem begrenst: de bovenste meter alleen als die dieper reikt dan de kleeflagen en de kop.
-ΔL_bm = if(trekgroep ≡ 1 and z_mv - 1 m < min(z_kop; z_draag); 1; 0)
+'Een trekpaal in een paalgroep heeft in de bovenste meter grond geen schachtwrijving (7.6.3.3(g)): vanaf maaiveld, of vanaf de kop als die dieper ligt.
+z_bm = min(z_kop; z_mv) - 1 m
+ΔL_0 = max(min(z_kop; z_draag; if(trekgroep ≡ 1; z_bm; z_kop)) - z_punt; 0 m)
+'Een verbrede voet begrenst ΔL tot de lengte van de verbreding (7.6.2.3(c)).
+ΔL_max = if(vv ≡ 1; min(ΔL_0; max(L_vv; 0 m)); ΔL_0)
+'De melding bij een ingekorte ΔL noemt wat hem begrenst: eerst de verbrede voet, dan de bovenste meter als die dieper reikt dan de kleeflagen en de kop.
+ΔL_vv = if(vv ≡ 1 and L_vv < ΔL_0; 1; 0)
+ΔL_bm = if(trekgroep ≡ 1 and z_bm < min(z_kop; z_draag); 1; 0)
 #show
 
 # 3. Draagvermogen per sondering
@@ -550,7 +601,9 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,1 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_1 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_1 > ΔL_max and ΔL_bm ≡ 1
+    #if ΔL_1 > ΔL_max and ΔL_vv ≡ 1
+        ΔL_1 = ΔL_max', <b style="color:#b91c1c">ingekort tot de lengte van de verbrede voet (7.6.2.3(c))</b>'
+    #else if ΔL_1 > ΔL_max and ΔL_bm ≡ 1
         ΔL_1 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
     #else if ΔL_1 > ΔL_max and nk ≡ 1
         ΔL_1 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
@@ -581,7 +634,7 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
             R_scal,1 = O_s,ΔL*α_s*min(q_cs,1; 15 MPa)*ΔL_1 to kN', schachtwrijving'
         #end if
         #if paaltype ≡ 14
-            R_prop,1 = min(O_i*α_s*min(q_cs,1; 15 MPa)*min(L_prop; ΔL_1); A_i*q_bmax,1) to kN', grondprop: wrijving op de binnenwand, ten hoogste A_i·q_b;max (7.6.2.3(d))'
+            R_prop,1 = min(O_i*α_s*min(q_cs,1; 15 MPa)*min(L_prop; ΔL_1); A_i*q_bmax,1) to kN', grondprop: wrijving op de binnenwand (7.6.2.3(d)), ten hoogste A_i·q_b;max: aanname aan de veilige kant'
             R_ccal,1 = R_bcal,1 + R_prop,1 + R_scal,1 to kN', maximumdraagkracht bij sondering 1'
         #else
             R_ccal,1 = R_bcal,1 + R_scal,1 to kN', maximumdraagkracht bij sondering 1'
@@ -616,7 +669,9 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,2 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_2 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_2 > ΔL_max and ΔL_bm ≡ 1
+    #if ΔL_2 > ΔL_max and ΔL_vv ≡ 1
+        ΔL_2 = ΔL_max', <b style="color:#b91c1c">ingekort tot de lengte van de verbrede voet (7.6.2.3(c))</b>'
+    #else if ΔL_2 > ΔL_max and ΔL_bm ≡ 1
         ΔL_2 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
     #else if ΔL_2 > ΔL_max and nk ≡ 1
         ΔL_2 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
@@ -647,7 +702,7 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
             R_scal,2 = O_s,ΔL*α_s*min(q_cs,2; 15 MPa)*ΔL_2 to kN', schachtwrijving'
         #end if
         #if paaltype ≡ 14
-            R_prop,2 = min(O_i*α_s*min(q_cs,2; 15 MPa)*min(L_prop; ΔL_2); A_i*q_bmax,2) to kN', grondprop: wrijving op de binnenwand, ten hoogste A_i·q_b;max (7.6.2.3(d))'
+            R_prop,2 = min(O_i*α_s*min(q_cs,2; 15 MPa)*min(L_prop; ΔL_2); A_i*q_bmax,2) to kN', grondprop: wrijving op de binnenwand (7.6.2.3(d)), ten hoogste A_i·q_b;max: aanname aan de veilige kant'
             R_ccal,2 = R_bcal,2 + R_prop,2 + R_scal,2 to kN', maximumdraagkracht bij sondering 2'
         #else
             R_ccal,2 = R_bcal,2 + R_scal,2 to kN', maximumdraagkracht bij sondering 2'
@@ -682,7 +737,9 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,3 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_3 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_3 > ΔL_max and ΔL_bm ≡ 1
+    #if ΔL_3 > ΔL_max and ΔL_vv ≡ 1
+        ΔL_3 = ΔL_max', <b style="color:#b91c1c">ingekort tot de lengte van de verbrede voet (7.6.2.3(c))</b>'
+    #else if ΔL_3 > ΔL_max and ΔL_bm ≡ 1
         ΔL_3 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
     #else if ΔL_3 > ΔL_max and nk ≡ 1
         ΔL_3 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
@@ -713,7 +770,7 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
             R_scal,3 = O_s,ΔL*α_s*min(q_cs,3; 15 MPa)*ΔL_3 to kN', schachtwrijving'
         #end if
         #if paaltype ≡ 14
-            R_prop,3 = min(O_i*α_s*min(q_cs,3; 15 MPa)*min(L_prop; ΔL_3); A_i*q_bmax,3) to kN', grondprop: wrijving op de binnenwand, ten hoogste A_i·q_b;max (7.6.2.3(d))'
+            R_prop,3 = min(O_i*α_s*min(q_cs,3; 15 MPa)*min(L_prop; ΔL_3); A_i*q_bmax,3) to kN', grondprop: wrijving op de binnenwand (7.6.2.3(d)), ten hoogste A_i·q_b;max: aanname aan de veilige kant'
             R_ccal,3 = R_bcal,3 + R_prop,3 + R_scal,3 to kN', maximumdraagkracht bij sondering 3'
         #else
             R_ccal,3 = R_bcal,3 + R_scal,3 to kN', maximumdraagkracht bij sondering 3'
@@ -748,7 +805,9 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,4 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_4 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_4 > ΔL_max and ΔL_bm ≡ 1
+    #if ΔL_4 > ΔL_max and ΔL_vv ≡ 1
+        ΔL_4 = ΔL_max', <b style="color:#b91c1c">ingekort tot de lengte van de verbrede voet (7.6.2.3(c))</b>'
+    #else if ΔL_4 > ΔL_max and ΔL_bm ≡ 1
         ΔL_4 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
     #else if ΔL_4 > ΔL_max and nk ≡ 1
         ΔL_4 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
@@ -779,7 +838,7 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
             R_scal,4 = O_s,ΔL*α_s*min(q_cs,4; 15 MPa)*ΔL_4 to kN', schachtwrijving'
         #end if
         #if paaltype ≡ 14
-            R_prop,4 = min(O_i*α_s*min(q_cs,4; 15 MPa)*min(L_prop; ΔL_4); A_i*q_bmax,4) to kN', grondprop: wrijving op de binnenwand, ten hoogste A_i·q_b;max (7.6.2.3(d))'
+            R_prop,4 = min(O_i*α_s*min(q_cs,4; 15 MPa)*min(L_prop; ΔL_4); A_i*q_bmax,4) to kN', grondprop: wrijving op de binnenwand (7.6.2.3(d)), ten hoogste A_i·q_b;max: aanname aan de veilige kant'
             R_ccal,4 = R_bcal,4 + R_prop,4 + R_scal,4 to kN', maximumdraagkracht bij sondering 4'
         #else
             R_ccal,4 = R_bcal,4 + R_scal,4 to kN', maximumdraagkracht bij sondering 4'
@@ -814,7 +873,9 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,5 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_5 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_5 > ΔL_max and ΔL_bm ≡ 1
+    #if ΔL_5 > ΔL_max and ΔL_vv ≡ 1
+        ΔL_5 = ΔL_max', <b style="color:#b91c1c">ingekort tot de lengte van de verbrede voet (7.6.2.3(c))</b>'
+    #else if ΔL_5 > ΔL_max and ΔL_bm ≡ 1
         ΔL_5 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
     #else if ΔL_5 > ΔL_max and nk ≡ 1
         ΔL_5 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
@@ -845,7 +906,7 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
             R_scal,5 = O_s,ΔL*α_s*min(q_cs,5; 15 MPa)*ΔL_5 to kN', schachtwrijving'
         #end if
         #if paaltype ≡ 14
-            R_prop,5 = min(O_i*α_s*min(q_cs,5; 15 MPa)*min(L_prop; ΔL_5); A_i*q_bmax,5) to kN', grondprop: wrijving op de binnenwand, ten hoogste A_i·q_b;max (7.6.2.3(d))'
+            R_prop,5 = min(O_i*α_s*min(q_cs,5; 15 MPa)*min(L_prop; ΔL_5); A_i*q_bmax,5) to kN', grondprop: wrijving op de binnenwand (7.6.2.3(d)), ten hoogste A_i·q_b;max: aanname aan de veilige kant'
             R_ccal,5 = R_bcal,5 + R_prop,5 + R_scal,5 to kN', maximumdraagkracht bij sondering 5'
         #else
             R_ccal,5 = R_bcal,5 + R_scal,5 to kN', maximumdraagkracht bij sondering 5'
@@ -880,7 +941,9 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
     #end if
     q_cs,6 = ?*(MPa)', gereduceerd en afgesnoten, over ΔL (7.6.2.3(i))<span class="kolom-2"></span>'
     ΔL_6 = ?*(m)', lengte met schachtwrijving (7.6.2.3(c))<span class="kolom-2"></span>'
-    #if ΔL_6 > ΔL_max and ΔL_bm ≡ 1
+    #if ΔL_6 > ΔL_max and ΔL_vv ≡ 1
+        ΔL_6 = ΔL_max', <b style="color:#b91c1c">ingekort tot de lengte van de verbrede voet (7.6.2.3(c))</b>'
+    #else if ΔL_6 > ΔL_max and ΔL_bm ≡ 1
         ΔL_6 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de bovenste meter (7.6.3.3(g))</b>'
     #else if ΔL_6 > ΔL_max and nk ≡ 1
         ΔL_6 = ΔL_max', <b style="color:#b91c1c">ingekort tot de paallengte onder de lagen met negatieve kleef</b>'
@@ -911,7 +974,7 @@ n_s = ?', aantal sonderingen (1 tot en met 6)'
             R_scal,6 = O_s,ΔL*α_s*min(q_cs,6; 15 MPa)*ΔL_6 to kN', schachtwrijving'
         #end if
         #if paaltype ≡ 14
-            R_prop,6 = min(O_i*α_s*min(q_cs,6; 15 MPa)*min(L_prop; ΔL_6); A_i*q_bmax,6) to kN', grondprop: wrijving op de binnenwand, ten hoogste A_i·q_b;max (7.6.2.3(d))'
+            R_prop,6 = min(O_i*α_s*min(q_cs,6; 15 MPa)*min(L_prop; ΔL_6); A_i*q_bmax,6) to kN', grondprop: wrijving op de binnenwand (7.6.2.3(d)), ten hoogste A_i·q_b;max: aanname aan de veilige kant'
             R_ccal,6 = R_bcal,6 + R_prop,6 + R_scal,6 to kN', maximumdraagkracht bij sondering 6'
         #else
             R_ccal,6 = R_bcal,6 + R_scal,6 to kN', maximumdraagkracht bij sondering 6'
@@ -1010,7 +1073,17 @@ R_ccal,min = min(R_laag,1; R_laag,2; R_laag,3; R_laag,4; R_laag,5; R_laag,6) to 
 #if richting ≡ 1
     # 5. Toetsing (7.12)
     F_t,d = ?*(kN)', rekenwaarde van de trekkracht op de paalkop'
-    UC = F_t,d/R_td', F_t;d ≤ R_t;d'
+    #hide
+    uc_ok = if(F_t,d/R_td ≤ 1; 1; if(F_t,d/R_td > 1; 1; 0))
+    #show
+    #if uc_ok ≡ 1
+        UC = F_t,d/R_td', F_t;d ≤ R_t;d'
+    #else
+        #hide
+        UC = F_t,d/R_td
+        #show
+        '<b style="color:#b91c1c">UC niet te bepalen: de invoer is onvolledig.</b>
+    #end if
     #hide
     F_d = F_t,d
     L_D = L_paal/D_eq
@@ -1029,7 +1102,17 @@ R_ccal,min = min(R_laag,1; R_laag,2; R_laag,3; R_laag,4; R_laag,5; R_laag,6) to 
         '<span style="color:#b45309">Bij negatieve kleef vallen het eigen gewicht van de paal en de gronddruk op paalpuntniveau niet tegen elkaar weg (7.6.2.1(2)): neem G<sub>paal;d</sub> − σ′<sub>v;punt</sub>·A<sub>b</sub> op in F<sub>c;d</sub>.</span><span class="alleen-scherm"></span>
     #end if
     F_s,d = F_c,d + F_nk,d to kN', belasting inclusief negatieve kleef'
-    UC = F_s,d/R_cd', F_c;d + F_nk;d ≤ R_c;d'
+    #hide
+    uc_ok = if(F_s,d/R_cd ≤ 1; 1; if(F_s,d/R_cd > 1; 1; 0))
+    #show
+    #if uc_ok ≡ 1
+        UC = F_s,d/R_cd', F_c;d + F_nk;d ≤ R_c;d'
+    #else
+        #hide
+        UC = F_s,d/R_cd
+        #show
+        '<b style="color:#b91c1c">UC niet te bepalen: de invoer is onvolledig.</b>
+    #end if
     #hide
     F_d = F_s,d
     tr_buiten = 0
@@ -1184,7 +1267,9 @@ pw = max(8; min(40; D_eq/(1 m)*sch*1.5))
 '</table>
 
 #if richting ≡ 1
-    #if paaltype ≡ 16
+    #if uc_ok ≡ 0
+        '<b>Maatgevende UC niet te bepalen</b><span style="color: red"> → <b>niet aangetoond: invoer onvolledig</b></span>
+    #else if paaltype ≡ 16
         '<b>Maatgevende UC = 'UC'</b><span style="color: red"> → <b>niet aangetoond: tabel 7.c geeft voor een gepulste paal geen α<sub>t</sub></b></span>
     #else if UC > 1.0
         '<b>Maatgevende UC = 'UC'</b><span style="color: red"> > 1,0 → <b>de paal voldoet niet op trek</b></span>
@@ -1202,7 +1287,9 @@ pw = max(8; min(40; D_eq/(1 m)*sch*1.5))
         '<b>Maatgevende UC = 'UC'</b><span style="color: red"> → <b>niet aangetoond: invoer onvolledig</b></span>
     #end if
 #else
-    #if UC > 1.0
+    #if uc_ok ≡ 0
+        '<b>Maatgevende UC niet te bepalen</b><span style="color: red"> → <b>niet aangetoond: invoer onvolledig</b></span>
+    #else if UC > 1.0
         '<b>Maatgevende UC = 'UC'</b><span style="color: red"> > 1,0 → <b>de paal voldoet niet</b></span>
     #else if VC > 0.12
         '<b>Maatgevende UC = 'UC'</b><span style="color: red"> ≤ 1,0, maar de variatiecoëfficiënt is groter dan 12 % → <b>niet aangetoond: deel het terrein op</b></span>

@@ -19,15 +19,20 @@
  * Daarnaast dezelfde twee wegen voor wat later is toegevoegd: de overige
  * paaltypen van tabel 7.c, de tapse houten paal met betonopzetter (omtrek
  * lineair van de punt naar het hout bovenaan, daarboven de opzetter; per
- * sondering de gemiddelde omtrek over ΔL, per kleeflaag die van de laag; een
- * ΔL tot in de opzetter telt daar met α_s = 0,010 van een geprefabriceerde
- * betonpaal), de open stalen buis met onderrand en grondprop (7.6.2.3(d)), trekpalen
+ * sondering de gemiddelde omtrek over ΔL, voor de negatieve kleef één O_s;gem
+ * over de kleeflagen (7.3.2.2(d)); een ΔL tot in de opzetter telt daar met
+ * α_s = 0,010 van een geprefabriceerde betonpaal), de verbrede voet van een
+ * geprefabriceerde beton- of houten paal (ΔL ten hoogste de lengte van de
+ * verbreding, 7.6.2.3(c)), de open stalen buis met onderrand en grondprop
+ * (7.6.2.3(d), de wrijving binnen als aanname ten hoogste A_i·q_b;max), trekpalen
  * (7.6.3.3: α_t, ξ, γ_s;t = 1,35, γ_m;var;qc, en in een groep f2 en het
  * kluitgewicht) en de indicatieve kalendercontrole met de energievergelijking
- * van Hiley. De sets 37 tot en met 45 zijn met de hand nagerekend, los van de
+ * van Hiley. De sets 37 tot en met 48 zijn met de hand nagerekend, los van de
  * uitwerking: een tapse paal met opzetter en negatieve kleef in twee lagen,
- * een open buis met prop, een trekpaal alleenstaand en in een groep, en de
- * kalendercontrole met een bekend heiblok.
+ * een open buis met prop, een trekpaal alleenstaand en in een groep (de
+ * bovenste meter vanaf maaiveld of, dieper, vanaf de kop), de kalendercontrole
+ * met een bekend heiblok en een verbrede voet met en zonder uitsteek boven
+ * 10 mm. Bij lege invoer toont het blad de UC niet als NaN.
  *
  * Het eindoordeel kent drie uitkomsten: voldoet niet (UC > 1), niet
  * aangetoond (VC > 12 %, een open stalen buis waarvan de volle doorsnede een
@@ -152,11 +157,21 @@ function uitwerking(v) {
   const omtrek = (x) => (x < 0 ? O : x <= Lh ? O + ((Oh - O) * x) / Lh : Oo);
   // Positieve schachtwrijving alleen onder de lagen met negatieve kleef.
   const zDraag = v.nk === 1 ? v.z_mv - [1, 2, 3, 4, 5].slice(0, v.n_l).reduce((t, j) => t + v[`d_${j}`], 0) : v.z_kop;
-  // Een trekpaal in een groep: geen schachtwrijving in de bovenste meter grond (7.6.3.3(g)).
+  // Een trekpaal in een groep: geen schachtwrijving in de bovenste meter grond (7.6.3.3(g)),
+  // gemeten vanaf maaiveld of vanaf de kop als die dieper ligt (de strengere lezing).
   const zMv = v.nk === 1 ? v.z_mv : v.z_kop;
-  const dLmax = Math.max(Math.min(v.z_kop, zDraag, groep ? zMv - 1 : v.z_kop) - v.z_punt, 0);
-  // Wat ΔL begrenst: de bovenste meter alleen als die dieper reikt dan de kleeflagen en de kop.
-  const bm = groep && zMv - 1 < Math.min(v.z_kop, zDraag);
+  const zBm = Math.min(v.z_kop, zMv) - 1;
+  const dL0 = Math.max(Math.min(v.z_kop, zDraag, groep ? zBm : v.z_kop) - v.z_punt, 0);
+  // Verbrede voet van een geprefabriceerde beton- of houten paal (7.6.2.3(c)): steekt de voet
+  // meer dan 10 mm buiten de schacht, dan is ΔL ten hoogste de lengte van de verbreding.
+  const uitsteekVoet = anders && (v.paaltype === 1 || v.paaltype === 11)
+    ? (vorm === 1 ? (O - OdL) / (2 * Math.PI) : (O - OdL) / 8) * 1000 : 0;
+  const vv = uitsteekVoet > 10;
+  const dLmax = vv ? Math.min(dL0, Math.max(v.L_vv ?? 0, 0)) : dL0;
+  // Wat ΔL begrenst, in de volgorde van de meldingen: de verbrede voet, de bovenste meter als die
+  // dieper reikt dan de kleeflagen en de kop, de kleeflagen, de paallengte.
+  const vvKort = vv && (v.L_vv ?? 0) < dL0;
+  const bm = groep && zBm < Math.min(v.z_kop, zDraag);
   const R = [];
   let begrensd = false, ingekort = false;
   for (let j = 1; j <= v.n_s; j++) {
@@ -199,10 +214,13 @@ function uitwerking(v) {
     Rcd = Rck / 1.2;
   }
 
-  // negatieve kleef: per laag ∫σ'v dz, stuk voor stuk boven en onder de grondwaterstand
+  // negatieve kleef: per laag ∫σ'v dz, stuk voor stuk boven en onder de grondwaterstand.
+  // Tapse paal: één gemiddelde omtrek over de kleeflagen (7.3.2.2(d)), boven de kop die van de kop.
   let Fnk = 0;
-  const Onk = [];
+  let Onk13;
   if (v.nk === 1) {
+    const dikte = [1, 2, 3, 4, 5].slice(0, v.n_l).reduce((t, j) => t + v[`d_${j}`], 0);
+    if (taps13) Onk13 = gemiddelde(omtrek, v.z_mv - dikte - v.z_punt, v.z_mv - v.z_punt);
     let z = 0, sigma = v.q_mv;
     for (let j = 1; j <= v.n_l; j++) {
       const d = v[`d_${j}`];
@@ -213,10 +231,7 @@ function uitwerking(v) {
       const phi = (v[`φ_${j}`] * Math.PI) / 180;
       const delta = insitu ? phi : 0.75 * phi;
       const c = Math.max((1 - Math.sin(phi)) * Math.tan(delta), 0.25);
-      // Tapse paal: de gemiddelde omtrek over de laag, gemeten vanaf de punt.
-      const Ol = taps13 ? gemiddelde(omtrek, v.z_mv - z - d - v.z_punt, v.z_mv - z - v.z_punt) : Ogem;
-      Onk.push(Ol);
-      Fnk += Ol * c * I;
+      Fnk += (taps13 ? Onk13 : Ogem) * c * I;
       z += d;
       sigma = sB;
     }
@@ -264,8 +279,8 @@ function uitwerking(v) {
     }
   }
   return {
-    trek, Ab, Ai, O, Deq, R, gem, min, x3, x4, Rck, Rcd, Rtk, Rtd, gVar, VC, Fnk, Onk, UC, oordeel, reden,
-    begrensd, ingekort, bm, openBuis, puntInKleef, taps, taps13, open14, vpFout, mpFout, tpFout, trBuiten, gepulst, kal,
+    trek, Ab, Ai, O, Deq, R, gem, min, x3, x4, Rck, Rcd, Rtk, Rtd, gVar, VC, Fnk, Onk13, UC, oordeel, reden,
+    begrensd, ingekort, bm, vv, vvKort, openBuis, puntInKleef, taps, taps13, open14, vpFout, mpFout, tpFout, trBuiten, gepulst, kal,
   };
 }
 
@@ -293,7 +308,7 @@ function verwachtingen(r, v) {
     if (r.open14) uit.A_i = ruim(r.Ai);
   }
   if (r.taps13) r.R.forEach((x, i) => { uit[`O_s_ΔL_${i + 1}`] = ruim(x.O); });
-  if (r.taps13) r.Onk.forEach((o, i) => { if (v[`d_${i + 1}`] > 0) uit[`O_nk_${i + 1}`] = ruim(o); });
+  if (r.taps13 && v.nk === 1) uit.O_s_gem = ruim(r.Onk13);
   if (v.n_s >= 2) uit.VC = ruim(r.VC);
   if (v.nk === 1) uit.F_nk_k = ruim(r.Fnk);
   if (r.kal) {
@@ -465,13 +480,14 @@ const SETS = [
     // Ø140 naar Ø210: 3 m boven de punt Ø158,3, over ΔL gemiddeld Ø149,1 → O = 0,4685 m.
     // R_s,1 = 0,4685·0,012·8000·3 = 134,9; R_s,2 = 0,4685·0,012·7000·3 = 118,1 → R_c;cal = 245,4 en 217,7 kN.
     // ξ = 1,32 → R_c;k = min(231,6; 217,7)/1,32 = 164,95; R_c;d = 137,46 kN.
-    // Negatieve kleef, c = 0,25 in alle lagen: laag 1 ligt geheel naast de opzetter, π·0,28 = 0,8796 m,
-    // ∫σ'v = 8,5 + 21,5 = 30 → 6,60 kN; laag 2 hout van Ø210 naar Ø191,7, gemiddeld 0,6311 m, ∫σ'v = 82,5
-    // → 13,02 kN; laag 3 van Ø191,7 naar Ø173,5, 0,5737 m, ∫σ'v = 114 → 16,35 kN. F_nk = 35,96 kN (met de
-    // omtrek van de punt voor het hout zou het 28,2 kN zijn). UC = (90 + 35,96)/137,46 = 0,916.
+    // Negatieve kleef, c = 0,25 in alle lagen; ∫σ'v = 8,5 + 21,5 = 30, 82,5 en 114 → Σ c·∫σ'v = 0,25·226,5 = 56,63 kN/m.
+    // Eén O_s;gem over de kleeflagen (7.3.2.2(d)), NAP −0,5 tot −8,5 = 13,5 tot 5,5 m boven de punt: 2 m opzetter,
+    // π·0,28 = 0,8796 m, en 6 m hout van Ø210 naar Ø173,5 (gemiddeld Ø191,7 → 0,6024 m):
+    // O_s;gem = (2·0,8796 + 6·0,6024)/8 = 0,6717 m → F_nk = 0,6717·56,63 = 38,03 kN (per laag gemiddeld was het
+    // 35,96 kN). UC = (90 + 38,03)/137,46 = 0,931.
     handwerk: {
       A_b: "0.01539", q_bmax_1: "7.175", q_bmax_2: "6.475", O_s_ΔL_1: "0.4685", R_ccal_1: "245.4", R_ccal_2: "217.7",
-      R_ck: "165.0", R_cd: "137.5", O_nk_1: "0.8796", O_nk_2: "0.6311", O_nk_3: "0.5737", F_nk_k: "35.96", UC: "0.916",
+      R_ck: "165.0", R_cd: "137.5", O_s_gem: "0.6717", F_nk_k: "38.03", UC: "0.9314",
     },
   },
   {
@@ -597,16 +613,17 @@ const SETS = [
     handwerk: { q_bmax_1: "9.45", R_ccal_1: "1143", R_ck: "772.5", R_cd: "643.7", F_nk_k: "95.12", UC: "0.847" },
   },
   {
-    naam: "34 — als set 17, maar laag 2 loopt van de opzetter in het hout: de omtrek per laag over beide delen",
+    naam: "34 — als set 17 met andere laagdikten over dezelfde 8 m: dezelfde O_s;gem, een andere Σ c·∫σ'v",
     invoer: {
       paaltype: 13, D: 140, D_hout: 210, L_opz: 2, D_opz: 280, z_kop: -0.5, z_punt: -14,
       q_cI_1: 12, q_cII_1: 11, q_cIII_1: 9, q_cs_1: 8, q_cI_2: 11, q_cII_2: 10, q_cIII_2: 8, q_cs_2: 7,
       z_mv: -0.5, d_gw: 1, n_l: 3, d_1: 1.5, γ_1: 17, γ_sat_1: 19, φ_1: 30, d_2: 3.5, γ_2: 11, γ_sat_2: 11, φ_2: 15,
       d_3: 3, γ_3: 16, γ_sat_3: 16, φ_3: 22.5, F_c_d: 90,
     },
-    // Met de hand: laag 2 van NAP −2,0 tot −5,5: 0,5 m naast de opzetter (0,8796 m) en 3 m naast het hout
-    // (gemiddeld 0,6311 m, als laag 2 van set 17) → (0,5·0,8796 + 3·0,6311)/3,5 = 0,6666 m.
-    handwerk: { O_nk_1: "0.8796", O_nk_2: "0.6666", O_nk_3: "0.5737" },
+    // Met de hand: de kleeflagen lopen weer van NAP −0,5 tot −8,5 → O_s;gem = 0,6717 m (set 17), ook al loopt laag 2 nu
+    // van de opzetter in het hout. ∫σ'v: laag 1 (1,5 m, grondwater op 1 m) 8,5 + (17 + 21,5)/2·0,5 = 18,13; laag 2 (γ' = 1)
+    // 21,5 → 25,0: 81,38; laag 3 (γ' = 6) 25 → 43: 102,0 → Σ c·∫σ'v = 0,25·201,5 = 50,38 kN/m. F_nk = 0,6717·50,38 = 33,84 kN.
+    handwerk: { O_s_gem: "0.6717", F_nk_k: "33.84" },
   },
   {
     naam: "35 — tapse paal met het hout bovenaan dunner dan aan de punt: niet aangetoond",
@@ -636,15 +653,15 @@ const SETS = [
     // R_c;cal = 466,5 en 551,6 kN; ξ3 = ξ4 = 1,32 → R_c;k = min(509,1; 466,5)/1,32 = 353,4; R_c;d = 294,5 kN.
     // VC = (85,05/√2)/509,1 = 11,8 %, net onder 12 %.
     // Negatieve kleef, δ = 0,75·φ: K0·tan δ = 0,658·tan 15° = 0,176 en 0,699·tan 13,1° = 0,163 → beide 0,25.
-    // Laag 1 (NAP 0 tot −3) naast de opzetter; ook de meter boven de kop telt mee, zoals bij de andere paaltypen:
-    // O = π·0,30 = 0,9425 m; σ'v = 5 → 13,5 (grondwater op 0,5 m) → 13,5 + 7·2,5 = 31,0 kPa; ∫ = 4,625 + 55,625 = 60,25 kN/m
-    // → 0,9425·0,25·60,25 = 14,20 kN. Laag 2 (NAP −3 tot −9): 1 m opzetter en 5 m hout van Ø240 naar Ø202,5 (gemiddeld
-    // Ø221,25 → 0,6951 m): O = (0,9425 + 5·0,6951)/6 = 0,7363 m; σ'v = 31 → 61 kPa, ∫ = 276 kN/m → 50,81 kN.
-    // F_nk = 65,00 kN (één gemiddelde omtrek over de schacht in de kleeflagen, 0,7879 m, zou 66,2 kN geven).
-    // UC = (200 + 65,00)/294,5 = 0,900 → voldoet.
+    // Laag 1 (NAP 0 tot −3): σ'v = 5 → 13,5 (grondwater op 0,5 m) → 13,5 + 7·2,5 = 31,0 kPa; ∫ = 4,625 + 55,625 = 60,25 kN/m.
+    // Laag 2 (NAP −3 tot −9): σ'v = 31 → 61 kPa, ∫ = 276 kN/m. Σ c·∫σ'v = 0,25·336,25 = 84,06 kN/m.
+    // Eén O_s;gem over de kleeflagen, NAP 0 tot −9 (7.3.2.2(d)): de meter boven de kop telt mee met de omtrek van de kop,
+    // zoals de kleef daar bij alle paaltypen meetelt; 1 + 3 m opzetter π·0,30 = 0,9425 m en 5 m hout van Ø240 naar Ø202,5
+    // (gemiddeld Ø221,25 → 0,6951 m): O_s;gem = (4·0,9425 + 5·0,6951)/9 = 0,8050 m. F_nk = 0,8050·84,06 = 67,67 kN
+    // (per laag gemiddeld was het 65,00 kN). UC = (200 + 67,67)/294,5 = 0,909 → voldoet.
     handwerk: {
       A_b: "0.01767", q_bmax_1: "8.400", q_bmax_2: "7.525", O_s_ΔL_1: "0.5301", O_s_ΔL_2: "0.5537", R_ccal_1: "466.5", R_ccal_2: "551.6",
-      R_cd: "294.5", S_v_1: "60.25", S_v_2: "276.0", O_nk_1: "0.9425", O_nk_2: "0.7363", F_nk_k: "65.00", UC: "0.8998",
+      R_cd: "294.5", S_v_1: "60.25", S_v_2: "276.0", O_s_gem: "0.8050", F_nk_k: "67.67", UC: "0.9088",
     },
   },
   {
@@ -738,6 +755,36 @@ const SETS = [
     // R_t = 1,40·0,007·12 000·13 = 1528,8 kN; n = 1: ξ = 1,39 → 1099,9; R_t;d = 1099,9/1,35 = 814,7 kN; UC = 100/814,7 = 0,123.
     handwerk: { ΔL_1: "13.0", R_tcal_1: "1529", R_td: "814.7", UC: "0.1227" },
   },
+  {
+    naam: "46 — trekpaal in een paalgroep, kop 1,5 m onder maaiveld: de bovenste meter telt vanaf de kop",
+    invoer: {
+      richting: 1, trekgroep: 1, vorm: 2, a_p: 350, z_kop: -1.5, z_punt: -18.5, z_mv: 0, d_gw: 1, q_mv: 0, n_l: 1,
+      d_1: 0.5, γ_1: 16, γ_sat_1: 16, φ_1: 20, n_s: 1, q_cs_1: 10, ΔL_1: 20, γ_var: 1, f_2: 1, R_tkluit_d: 5000, F_t_d: 300,
+    },
+    // Met de hand: kleeflaag tot NAP −0,5, de kop op NAP −1,5 ligt dieper; de bovenste meter grond rondom de paal loopt dan
+    // van de kop tot NAP −2,5 (vanaf maaiveld gemeten zou hij boven de kop eindigen en niets afhalen: ΔL 17 m).
+    // ΔL ≤ −2,5 + 18,5 = 16 m. R_t = 1,40·0,007·10 000·16 = 1568,0 kN; n = 1: ξ = 1,39 → 1128,1; R_t;d = 1128,1/1,35 = 835,6 kN;
+    // UC = 300/835,6 = 0,359.
+    handwerk: { ΔL_1: "16.0", R_tcal_1: "1568", R_td: "835.6", UC: "0.3590" },
+  },
+  {
+    naam: "47 — prefab betonpaal 320 × 320 met verbrede voet 400 × 400 over 1,2 m: ΔL ten hoogste 1,2 m (7.6.2.3(c))",
+    invoer: {
+      vorm: 2, a_p: 400, schacht: 1, O_s_ΔL: 1.28, L_vv: 1.2, nk: 0, n_s: 1, q_cI_1: 16, q_cII_1: 14, q_cIII_1: 12, q_cs_1: 10, ΔL_1: 6, F_c_d: 800,
+    },
+    // Met de hand: de voet steekt (4·0,40 − 1,28)/8 = 0,040 m = 40 mm > 10 mm buiten de schacht → ΔL ≤ 1,2 m (ingevuld 6 m).
+    // A_b = 0,16 m²; q_b,max = 0,35·(15 + 12) = 9,45 MPa (β = 1 zoals ingevuld) → R_b = 1512,0 kN;
+    // R_s = 1,28·0,010·10 000·1,2 = 153,6 kN (over 6 m zou het 768 kN zijn). R_c;cal = 1665,6 kN; ξ = 1,39 → R_c;k = 1198,3;
+    // R_c;d = 998,56 kN; UC = 800/998,56 = 0,8012.
+    handwerk: { ΔL_1: "1.20", R_scal_1: "153.6", R_ccal_1: "1666", R_cd: "998.6", UC: "0.8012" },
+  },
+  {
+    naam: "48 — prefab betonpaal Ø450 met schacht Ø440 (5 mm uitsteek): geen verbrede voet, ΔL ongewijzigd",
+    invoer: { vorm: 1, D: 450, schacht: 1, O_s_ΔL: 1.3823, nk: 0, n_s: 1, q_cI_1: 16, q_cII_1: 14, q_cIII_1: 12, q_cs_1: 10, ΔL_1: 6, F_c_d: 800 },
+    // Met de hand: (π·0,45 − 1,3823)/(2π) = 0,0050 m = 5 mm ≤ 10 mm → ΔL blijft 6 m, geen vraag naar de lengte van de voet.
+    // R_s = 1,3823·0,010·10 000·6 = 829,4 kN.
+    handwerk: { R_scal_1: "829.4" },
+  },
 ];
 
 /** Het eindoordeel zoals het blad het in de slotzin geeft. */
@@ -769,9 +816,14 @@ for (const set of SETS) {
   // melding bij ΔL geen kleeflagen.
   for (const [wel, patroon, wat] of [
     [r.begrensd, /avegaarpaal: traject III ten hoogste 2 MPa/, "traject III begrensd op 2 MPa"],
-    [r.ingekort && !r.bm && v.nk === 1, /ingekort tot de paallengte onder de lagen met negatieve kleef/, "ΔL ingekort onder de kleeflagen"],
-    [r.ingekort && !r.bm && v.nk !== 1, /ingekort tot de paallengte(?! onder)/, "ΔL ingekort tot de paallengte"],
-    [r.ingekort && r.bm, /ingekort tot de paallengte onder de bovenste meter/, "ΔL ingekort onder de bovenste meter (groep)"],
+    [r.ingekort && r.vvKort, /ingekort tot de lengte van de verbrede voet/, "ΔL ingekort tot de verbrede voet"],
+    [r.ingekort && !r.vvKort && !r.bm && v.nk === 1, /ingekort tot de paallengte onder de lagen met negatieve kleef/, "ΔL ingekort onder de kleeflagen"],
+    [r.ingekort && !r.vvKort && !r.bm && v.nk !== 1, /ingekort tot de paallengte(?! onder)/, "ΔL ingekort tot de paallengte"],
+    [r.ingekort && !r.vvKort && r.bm, /ingekort tot de paallengte onder de bovenste meter/, "ΔL ingekort onder de bovenste meter (groep)"],
+    [r.vv, /een verbrede voet. ΔL is dan ten hoogste/, "verbrede voet (7.6.2.3(c))"],
+    [v.richting === 1 && v.trekgroep !== 1, /reken dan als paal in een paalgroep/, "trek: hint alleenstaand of groep"],
+    [r.open14 && !r.trek, /Aanname aan de veilige kant: de wrijving op de binnenwand/, "open buis: begrenzing als aanname"],
+    [Number.isNaN(r.UC), /UC niet te bepalen/, "UC niet te bepalen"],
     [r.puntInKleef, /paalpunt ligt niet onder de lagen met negatieve kleef/, "paalpunt in de kleeflagen"],
     [r.openBuis, /Open stalen buis: de volle doorsnede/, "open buis: grondprop"],
     [r.taps, /Tapse houten paal: de omtrek van de punt/, "tapse paal: omtrek van de punt"],
@@ -799,13 +851,15 @@ for (const set of SETS) {
 
 // Een blad zonder invoer (zoals vlak na het invoegen, vóór het beeld de standaardwaarden
 // zet) heeft n_s = 0, dus R_c;cal;gem = 0/0 en UC = NaN. Het oordeel mag dan nooit
-// "voldoet" zijn; vroeger viel NaN door alle vergelijkingen heen naar "voldoet".
-{
-  const got = reken(tpl, {});
+// "voldoet" zijn; vroeger viel NaN door alle vergelijkingen heen naar "voldoet". Het blad
+// toont de UC dan ook niet als NaN, op druk en op trek (alleenstaand en in een groep).
+console.log("\nLege invoer — geen uitrekenbare UC");
+for (const [wat, invoer] of [["druk", {}], ["trek", { richting: "1" }], ["trek, groep", { richting: "1", trekgroep: "1" }]]) {
+  const got = reken(tpl, invoer);
   const oordeel = oordeelBlad(got.text);
-  const ok = oordeel === "niet aangetoond";
+  const ok = oordeel === "niet aangetoond" && !/UC.{0,40}NaN/.test(got.text);
   if (!ok) fouten++;
-  console.log(`\nLege invoer — geen uitrekenbare UC\n  ${ok ? "OK    " : "FOUT  "} oordeel    ons ${oordeel}   verwacht niet aangetoond`);
+  console.log(`  ${ok ? "OK    " : "FOUT  "} ${wat.padEnd(12)} oordeel ${oordeel}, de UC niet als NaN`);
 }
 
 // De correcties op q_c (7.6.2.3(i) t/m (l)) rekent het blad niet; het zegt dat ze in de invoer zitten.
