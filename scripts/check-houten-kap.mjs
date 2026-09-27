@@ -407,8 +407,12 @@ function model(inv, scope = SCOPE) {
     const uV = (1.5 * V) / (b * h) / 1000 / fvd;
     const ukeep = inv.t_keep > 0 ? (1.5 * Vv) / (b * (hef / 1000)) / 1000 / (kv * fvd) : 0;
     const R = opl.R;
-    const sA = Math.max(R.Az + dPQ, 0) / (b * inv.a_opl / 1000) / 1000;
-    const sB = Math.max(R.Bn + dPQ * (rol === 1 ? 1 : cb), 0) / (b * (sys === 3 ? inv.a_opl : inv.a_nok) / 1000) / 1000;
+    // Zadelvlak aan de voet: een keep t loodrecht op de staaf, met een horizontale zadelsnede en
+    // een loodrechte snede, laat een driehoek weg met hoogte t op de schuine zijde; de horizontale
+    // rechthoekszijde is t/sin β. Langer dan de muurplaat kan het contact niet zijn.
+    const lz = inv.t_keep > 0 ? Math.min(inv.a_opl, inv.t_keep / sb) : inv.a_opl;
+    const sA = Math.max(R.Az + dPQ, 0) / (b * lz / 1000) / 1000;
+    const sB = Math.max(R.Bn + dPQ * (rol === 1 ? 1 : cb), 0) / (b * (sys === 3 ? lz : inv.a_nok) / 1000) / 1000;
     const sC = Math.max(R.Cz + dPQ, 0) / (b * inv.a_opl / 1000) / 1000;
     const uo = Math.max(sA / fcad, sB / (rol === 2 && sys !== 3 ? fc90d : fcad), sC / fcad);
     combos[k] = { km, M, N: Nmin, V, unm, ukp, uV, uo, ukeep };
@@ -561,8 +565,11 @@ function vergelijk(naam, inv, scope = SCOPE) {
 //   τ = 1,5·3340,8/13 916 = 0,3601; f_v,d = 2,7692 → UC_V = 0,1300.
 //   Keep 25 mm: h_ef = 171, α = 0,8724, x = 35 mm: k_v = 5/(14·(0,3337 + 0,0887))
 //   = 0,8458; τ = 1,5·3340,8/(71·171) = 0,4128 → 0,4128/(0,8458·2,7692) = 0,1762.
-//   Oplegging: R_voet = 1,2·0,71468 + 1,5·1 + 1,5·1 = 3,8576 kN (Q_k op het steunpunt);
-//   σ = 3857,6/(71·70) = 0,7762; f_c,α,d = 14,538/(8,4·0,75 + 0,25) = 2,2196 → 0,3497.
+//   Oplegging: R_voet = 1,2·0,71468 + 1,5·1 + 1,5·1 = 3,8576 kN (Q_k op het steunpunt).
+//   Zadelvlak: de keep van 25 mm loodrecht op de spoor laat een horizontale zadelsnede van
+//   25/sin 30° = 50 mm over, korter dan de muurplaat van 70 mm: de reactie gaat over 50 mm.
+//   σ = 3857,6/(71·50) = 1,0867; f_c,α,d = 14,538/(8,4·0,75 + 0,25) = 2,2196 → 0,4896.
+//   (Met de hele muurplaat als contact kwam er 0,3497 uit: 1,4 keer te gunstig.)
 // Doorbuiging: u_G = 5·0,30947·4⁴/(384·490,05) = 2,105 mm; u_Q = 2·0,866·4³/(48·490,05)
 //   = 4,713 mm; w_bij = 0,6·2,105 + 4,713 = 5,976 mm; ℓ/250 = 16 mm → 0,3735;
 //   w_max = 1,6·2,105 + 4,713 = 8,081 mm → 0,5050 (maatgevend).
@@ -576,7 +583,7 @@ const V1 = { ...STANDAARD, α_dak: 30, l_h: 3.4641, g_opb: 0.5 };
   fouten += toets("Handberekening 1 — gedrukte waarden", got, {
     g_eig: "0.05734", g_d: "0.3573", μ_1: "0.8", s_dak: "0.56", q_k: "0", q_p: "0.8216", A_ref: "2.4",
     "k_c_y": "0.5456", "λ_rel_y": "1.199", M_d: "3.341", N_d: "-0.75", UC_623: "0.4491", UC_NM: "0.4491",
-    UC_V: "0.13", k_v: "0.8458", UC_keep: "0.1762", "f_c_α_d": "2.22", UC_opl: "0.3497",
+    UC_V: "0.13", k_v: "0.8458", UC_keep: "0.1762", "f_c_α_d": "2.22", l_zv: "50", "σ_c_voet": "1.087", UC_opl: "0.4896",
     UC_wbij: "0.3735", UC_wmax: "0.505", UC_max: "0.505",
   });
   const tc = tabel(got, "Combinatie"), tw = tabel(got, "Richting"), tr = got.tabellen.find((t) => t.kop[0] === "Geval" && t.kop.includes("R voet"));
@@ -606,6 +613,31 @@ const V1 = { ...STANDAARD, α_dak: 30, l_h: 3.4641, g_opb: 0.5 };
     "G: R_voet 0,89, H_voet 0,31 naar buiten, R⊥ boven 0,62, H boven 0,31 kN", g?.join(" "));
   const c1 = tabel(got, "Combinatie")?.rijen.find((r) => r[0].startsWith("1:"));
   meld(c1 && dicht(parseFloat(c1[3]), -0.96, 0, 0.001), "combinatie 1: N = −0,96 kN (hele langslast aan de voet)", c1?.join(" "));
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Handberekening 2b — zadelvlak aan de voet korter dan de muurplaat
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// α = 35°, l_h = 3,5 m → L = 3,5/cos 35° = 4,2727 m; h.o.h. 0,8 m; 46×196 C24; g_opb = 1,0 kN/m²;
+// schuine rol; keep 20 mm; muurplaat 90 mm.
+//   g_eig = 420·9,81·0,009016 = 0,03715 kN/m; G = 1,0·0,8 + 0,03715 = 0,83715 kN/m, W_G = 3,5769 kN.
+//   Schuine rol: bovenin alleen R⊥ = W·cos α/2, de voet krijgt de hele langslast W·sin α. Verticaal aan
+//   de voet: W·(cos²α/2 + sin²α) = 0,66450·W → G: 2,3768 kN.
+//   Q_k = 2 kN midden: verticaal aan de voet 2·(cos²α/2 + sin²α) = 1,3290 kN, plus γ_Q·Q_k/2 voor de last
+//   op het steunpunt. Combinatie 3: 1,2·2,3768 + 1,5·1,3290 + 1,5 = 6,3457 kN.
+//   Zadelvlak: 20/sin 35° = 34,87 mm (niet de 90 mm van de muurplaat).
+//   σ = 6345,7/(46·34,87) = 3,956 N/mm²; f_c,α,d = 14,538/(8,4·cos²35° + sin²35°) = 14,538/5,9655 = 2,4371
+//   → UC = 1,623: voldoet niet. Met de hele muurplaat als contact kwam er 6345,7/(46·90)/2,4371 = 0,629 uit,
+//   en omdat de rest ten hoogste 0,966 is, gaf het blad eerder ten onrechte "voldoet".
+{
+  const V2b = { ...STANDAARD, rol: 2, α_dak: 35, l_h: 3.5, g_opb: 1.0, a_hoh: 0.8, t_keep: 20, b_sp: 46, h_sp: 196, wmax_eis: 0, a_opl: 90 };
+  const { got } = vergelijk("Handberekening 2b — zadelvlak korter dan de muurplaat", V2b);
+  fouten += toets("Handberekening 2b — gedrukte waarden", got, {
+    R_voet_d: "6.346", l_zv: "34.87", "σ_c_voet": "3.956", "f_c_α_d": "2.437", UC_opl: "1.623", UC_max: "1.623",
+  });
+  const s = slot(got);
+  meld(s && !s.voldoet, "het oordeel is voldoet niet (oplegging)", s?.zin.slice(0, 120));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

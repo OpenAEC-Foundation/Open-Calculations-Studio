@@ -37,7 +37,7 @@
  * loodrecht op en langs de spoor, in gesloten vorm (gedeeltelijk gelijkmatige,
  * driehoekige en puntlasten). Knieschot: steunmoment uit de drie-momenten-
  * vergelijking. A-spant: statisch bepaald (scharnier in de nok, trekband of
- * hanenbalk als pendelstaaf). M, V en N worden langs de spoor bemonsterd (20
+ * hanenbalk als pendelstaaf). M, V en N worden langs de spoor bemonsterd (16
  * vakken plus beide kanten van een puntlast en van het knieschot of de
  * hanenbalk); de toetsen per doorsnede:
  *   • trek + buiging (6.17), druk + buiging (6.19), knik (6.23)/(6.24) met
@@ -47,7 +47,9 @@
  *   • afschuiving (6.13) met k_cr = 1,0 (NB bij 6.1.7(2)), de keep aan de voet
  *     met (6.60)/(6.62);
  *   • oplegging §6.1.5 met 6.2.2 (6.16): de reactie op een horizontaal
- *     zadelvlak staat onder 90° − β op de vezel; k_c,90 = 1,0.
+ *     zadelvlak staat onder 90° − β op de vezel; k_c,90 = 1,0. Aan de voet is
+ *     het zadelvlak van een keep t_keep (loodrecht op de staaf) t_keep/sin β
+ *     lang, ten hoogste de breedte van de muurplaat.
  * Q_k staat voor M en N midden in het (langste) veld; voor V en de reacties
  * komt daar γ_Q·Q_k/2 bij, zoals met de last op het steunpunt.
  *
@@ -738,6 +740,9 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     h_efn = h_ef/(1 m)
     a_on = a_opl/(1 m)
     a_kn = a_nok/(1 m)
+    'Zadelvlak aan de voet: een keep t_keep loodrecht op de staaf laat een horizontaal zadelvlak van t_keep/sin β over, ten hoogste de breedte van de muurplaat.
+    l_zv = if(t_keep > 0 mm; min(a_opl; t_keep/sb); a_opl)
+    a_zn = l_zv/(1 m)
     'Maxima over de combinaties, met de maatgevende combinatie.
     g_unm = 0
     g_knm = 1
@@ -852,8 +857,8 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
             τ_kc = 1.5*c_Vv/(b_n*h_efn)/1000
             u_kp = if(t_keep > 0 mm; τ_kc/(k_v*fvd); 0)
             'Opleggingen: de voet, bovenin (bij het A-spant de rechter voet) en het knieschot; alleen druk.
-            σ_A = max(R_Az + dPQ; 0)/(b_n*a_on)/1000
-            σ_B = max(R_Bn + dPQ*if(rol ≡ 1; 1; cb); 0)/(b_n*if(systeem ≡ 3; a_on; a_kn))/1000
+            σ_A = max(R_Az + dPQ; 0)/(b_n*a_zn)/1000
+            σ_B = max(R_Bn + dPQ*if(rol ≡ 1; 1; cb); 0)/(b_n*if(systeem ≡ 3; a_zn; a_kn))/1000
             σ_C = max(R_Cz + dPQ; 0)/(b_n*a_on)/1000
             u_o = max(σ_A/fcad; σ_B/if(rol ≡ 2 and systeem ≠ 3; fc90d; fcad); σ_C/fcad)
             #if kk ≤ 13
@@ -1095,7 +1100,7 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     #end if
 
     '<h6>5.4 Opleggingen — §6.1.5 met 6.2.2 (6.16)</h6>
-    '<i>De reactie op een horizontaal zadelvlak staat onder 90° − β op de vezel: f<sub>c,α,d</sub> = f<sub>c,0,d</sub>/((f<sub>c,0,d</sub>/(k<sub>c,90</sub>·f<sub>c,90,d</sub>))·cos²β + sin²β) met k<sub>c,90</sub> = 1,0 en het zadelvlak als contactlengte, zonder de 30 mm uitbreiding.'if(rol ≡ 2 and systeem ≠ 3; " Bij de schuine rol staat de reactie bovenin loodrecht op de spoor: §6.1.5 met f<sub>c,90,d</sub>."; "")'</i><span class="alleen-scherm"></span>
+    '<i>De reactie op een horizontaal zadelvlak staat onder 90° − β op de vezel: f<sub>c,α,d</sub> = f<sub>c,0,d</sub>/((f<sub>c,0,d</sub>/(k<sub>c,90</sub>·f<sub>c,90,d</sub>))·cos²β + sin²β) met k<sub>c,90</sub> = 1,0 en het zadelvlak als contactlengte, zonder de 30 mm uitbreiding. Aan de voet laat een keep t<sub>keep</sub> loodrecht op de staaf een zadelvlak van t<sub>keep</sub>/sin β over, ten hoogste de breedte van de muurplaat.'if(rol ≡ 2 and systeem ≠ 3; " Bij de schuine rol staat de reactie bovenin loodrecht op de spoor: §6.1.5 met f<sub>c,90,d</sub>."; "")'</i><span class="alleen-scherm"></span>
     #hide
     k_mod,o = kmk(g_ko)
     f_c,0,d,o = k_mod,o*f_c,0,k/γ_M
@@ -1113,6 +1118,7 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     #if rol ≡ 2 and systeem ≠ 3
         f_c,90,d'<span class="kolom-4"></span>'
     #end if
+    l_zv', zadelvlak aan de voet: min(a<sub>opl</sub>; t<sub>keep</sub>/sin β)<span class="kolom-4"></span>'
     σ_c,voet'<span class="kolom-4"></span>'
     #if systeem ≡ 3
         σ_c,rechts'<span class="kolom-4"></span>'
