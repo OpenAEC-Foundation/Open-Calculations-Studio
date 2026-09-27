@@ -193,6 +193,7 @@ const DEFAULTS: Record<string, number> = {
   bekl_h: 0, h_p: 15, t_ch: 20, t_f: 30, k_2: 1,
   element_b: 1, zijde_b: 1, verhouding_b: 1, b_beton: 300, h_beton: 300,
   c_dek: 30, d_beugel: 8, d_staaf: 16, N_Rd: 3000, M_Rd: 150, b_min: 0, h_min: 0, a_min: 0,
+  vorm_b: 1, l_0fi: 3, M_0Ed: 0, M_0Ed_fi: 0, A_s: 1608,
 };
 
 /** Wat elk materiaaldeel van het beeld nodig heeft. */
@@ -941,6 +942,10 @@ function beton(p: Deel): Stukken {
         { v: 1, label: "Aan meer dan één zijde" },
         { v: 2, label: "Aan één zijde (kolom in een wand)" },
       ])}
+      {kolom && keuze("vorm_b", "Doorsnede", Math.round(d("vorm_b")) === 2 ? 2 : 1, [
+        { v: 1, label: "Rechthoekig" },
+        { v: 2, label: "Rond, b = h = de diameter" },
+      ])}
       {el === 5 && keuze("verhouding_b", "Overspanningen", Math.round(d("verhouding_b")) === 2 ? 2 : 1, [
         { v: 1, label: "ly/lx hooguit 1,5" },
         { v: 2, label: "ly/lx tussen 1,5 en 2" },
@@ -950,10 +955,13 @@ function beton(p: Deel): Stukken {
       {numveld("c_dek", vloer ? <>Dekking onderwapening (mm)</> : <>Dekking op de beugel (mm)</>, 5)}
       {!vloer && numveld("d_beugel", <>Beugel Ø (mm)</>, 2)}
       {numveld("d_staaf", <>Hoofdwapening Ø (mm)</>, 2)}
+      {kolom && numveld("A_s", <>A<sub>s</sub> langswapening (mm²)</>, 50)}
+      {kolom && numveld("l_0fi", <>l<sub>0,fi</sub> kniklengte bij brand (m)</>, 0.1)}
 
       <span className="vd-ctrl-h">Belasting bij brand</span>
       {belastingInvoer(p, kolom
-        ? [{ naam: "N_Ed", fi: "N_fi", label: "N", eenheid: "kN", stap: 25 }]
+        ? [{ naam: "N_Ed", fi: "N_fi", label: "N", eenheid: "kN", stap: 25 },
+           { naam: "M_0Ed", fi: "M_0Ed_fi", label: <>M<sub>0</sub></>, eenheid: "kNm", stap: 5 }]
         : [{ naam: "M_Ed", fi: "M_fi", label: "M", eenheid: "kNm", stap: 5 }])}
       {kolom ? numveld("N_Rd", <>N<sub>Rd</sub> (kN)</>, 50) : numveld("M_Rd", <>M<sub>Rd</sub> (kNm)</>, 5)}
 

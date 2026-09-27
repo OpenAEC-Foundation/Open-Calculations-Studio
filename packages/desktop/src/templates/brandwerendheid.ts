@@ -67,7 +67,9 @@
  *      • f_d,fi = k_mod,fi·k_fi·f_k/γ_M,fi (2.1) met (2.4), k_mod,fi = 1,0
  *        (§4.2.2(5)), k_fi uit tabel 2.1 (1,25 en 1,15), γ_M,fi = 1,0 (NB);
  *      • ligger: buiging (6.11) met kip (6.33) en (6.34), σ_m,crit volgens
- *        (6.32) met de effectieve doorsnede, en afschuiving (6.13) met
+ *        (6.32) bij massief naaldhout en (6.31) bij gelijmd gelamineerd hout
+ *        (G_0,05 = 540 N/mm² volgens NEN-EN 14080, I_tor = h·b³/3·(1 − 0,63·b/h)),
+ *        met de effectieve doorsnede, en afschuiving (6.13) met
  *        k_cr = 1,0 (NB bij §6.1.7(2)); afschuiving mag volgens §4.3.1(2)
  *        vervallen, het blad toetst hem toch. Kolom: druk met buiging om de
  *        sterke as, knik (6.23)/(6.24) met k_c (6.25)–(6.29), of (6.19) als
@@ -86,9 +88,19 @@
  *    asafstand a = c + Ø_beugel + Ø/2 (vloer c + Ø/2), de benuttingsgraad
  *    μ_fi = E_fi,d/R_d (kolom N_0Ed,fi/N_Rd, met de tabelkolom 0,2/0,5/0,7
  *    naar boven afgerond en μ_fi > 0,7 buiten de tabel; balk en vloer
- *    M_Ed,fi/M_Rd met σ_s,fi/f_yk ≈ μ_fi/γ_S als hulp bij §5.2) en
- *    UC = max(b_min/b; a_min/a). Een balk of vloer met μ_fi > 1 voldoet al bij
+ *    M_Ed,fi/M_Rd met σ_s,fi/f_yk ≈ μ_fi/γ_S volgens (5.2)) en
+ *    UC = max(b_min/b; a_nodig/a). Een balk of vloer met μ_fi > 1 voldoet al bij
  *    normale temperatuur niet en krijgt geen UC maar "voldoet niet".
+ *      • kolom: de toepassingsvoorwaarden van methode A (§5.3.2(2)) worden
+ *        getoetst: l_0,fi ≤ 3 m, e = M_0Ed,fi/N_0Ed,fi ≤ e_max (NB: 0,4·h bij
+ *        een kolombreedte ≥ 300 mm, anders 0,15·h) en A_s < 0,04·A_c; buiten
+ *        die voorwaarden "methode A niet toepasbaar → voldoet niet";
+ *      • balk (tabel 5.5 en 5.6): a_nodig = a_tabel + Δa met (5.3) en θ_cr
+ *        uit kromme 1 van figuur 5.1 (§5.2(6) en (7)), begrensd op 700 °C
+ *        (§5.2(8)); bij een doorgaande balk alleen een vergroting;
+ *      • vloer (tabel 5.8): §5.2(7) kent geen aanpassing, dus bij
+ *        σ_s,fi/f_yk > 0,6 "niet aangetoond → voldoet niet";
+ *      • de belasting en N_Rd of M_Rd zijn bij elk element nodig.
  *
  * Een blad zonder belasting, lengte, afmeting of tabelwaarde krijgt geen UC
  * maar "niet te bepalen → voldoet niet": een leeg veld telt als 0, en daarmee
@@ -261,8 +273,13 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
           Aan meer dan één zijde = 1
           Aan één zijde (kolom in een wand) = 2
         @end
+        @select vorm_b "Doorsnede"
+          Rechthoekig = 1
+          Rond, b = h = de diameter = 2
+        @end
         b_beton = ?*(mm)', breedte b<span class="kolom-2"></span>'
-        h_beton = ?*(mm)', diepte h<span class="alleen-scherm">; bij een ronde kolom beide de diameter</span><span class="kolom-2"></span>'
+        h_beton = ?*(mm)', diepte h<span class="alleen-scherm">, in de richting van de excentriciteit; bij een ronde kolom beide de diameter</span><span class="kolom-2"></span>'
+        l_0fi = ?*(m)', kniklengte bij brand l<sub>0,fi</sub><span class="alleen-scherm">; in een geschoord gebouw bij een eis boven R 30 mag 0,5·l voor een tussenverdieping en 0,5·l tot 0,7·l voor de bovenste verdieping (§5.3.2(2), opmerking 2)</span>'
     #else if element_b ≤ 3
         b_beton = ?*(mm)', breedte b<span class="alleen-scherm"> (bij een I-vorm geeft de tabel ook een lijfdikte)</span><span class="kolom-2"></span>'
         h_beton = ?*(mm)', hoogte h<span class="kolom-2"></span>'
@@ -280,6 +297,9 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         d_beugel = ?*(mm)', beugeldiameter<span class="kolom-3"></span>'
         d_staaf = ?*(mm)', diameter hoofdwapening<span class="kolom-3"></span>'
         a_hw = c_dek + d_beugel + d_staaf/2', asafstand a van de hoofdwapening tot het verhitte oppervlak (§5.2)'
+        #if element_b ≡ 1
+            A_s = ?*(mm^2)', totale doorsnede van de langswapening<span class="alleen-scherm"> van de kolom</span>'
+        #end if
     #else
         c_dek = ?*(mm)', dekking op de onderwapening<span class="kolom-2"></span>'
         d_staaf = ?*(mm)', diameter onderwapening<span class="kolom-2"></span>'
@@ -458,9 +478,17 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
                 η_fi = ?', reductiefactor (§2.4.2(3))<span class="kolom-2"></span>'
             #end if
             E_fi,d = η_fi*abs(N_Ed) to kN', N<sub>0Ed,fi</sub> (§2.4.2(2))<span class="alleen-scherm">; het teken van de invoer telt niet</span>'
+            M_0Ed = ?*(kN*m)', eerste-orde moment bij normale temperatuur<span class="alleen-scherm"> in dezelfde combinatie, om de as evenwijdig aan b; 0 bij centrische druk</span>'
+            #hide
+            e_fi = if(abs(N_Ed)/(1 kN) > 0; abs(M_0Ed)/abs(N_Ed); 0 m) to mm
+            #show
         #else
             N_fi = ?*(kN)', normaalkracht bij brand (6.11b)'
             E_fi,d = abs(N_fi) to kN
+            M_0Ed,fi = ?*(kN*m)', eerste-orde moment bij brand<span class="alleen-scherm">, om de as evenwijdig aan b; 0 bij centrische druk</span>'
+            #hide
+            e_fi = if(abs(N_fi)/(1 kN) > 0; abs(M_0Ed,fi)/abs(N_fi); 0 m) to mm
+            #show
         #end if
         N_Rd = ?*(kN)', rekenwaarde van de weerstand bij normale temperatuur<span class="alleen-scherm"> volgens NEN-EN 1992-1-1, met de tweede-ordeeffecten</span>'
         #hide
@@ -469,7 +497,7 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         heeft_μ = if(geen_E + geen_R ≡ 0; 1; 0)
         #show
     #else
-        '<i>De belasting geeft hier alleen de benuttingsgraad; de tabel toetst de afmetingen. Laat hem op 0 als die niet nodig is.</i><span class="alleen-scherm"></span>
+        '<i>De belasting en M<sub>Rd</sub> geven de staalspanning bij brand σ<sub>s,fi</sub>/f<sub>yk</sub>. De tabellen horen bij 0,6 (θ<sub>cr</sub> = 500 °C, §5.2(4)); bij een andere spanning past het blad de asafstand aan of toetst het niet.</i><span class="alleen-scherm"></span>
         #if bron_fi ≡ 1
             M_Ed = ?*(kN*m)', grootste moment bij normale temperatuur<span class="alleen-scherm">, bij een vloer per meter breedte</span><span class="kolom-2"></span>'
             #if eta_uit ≡ 1
@@ -482,9 +510,9 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         #end if
         M_Rd = ?*(kN*m)', momentcapaciteit bij normale temperatuur in dezelfde doorsnede<span class="alleen-scherm"> (NEN-EN 1992-1-1)</span>'
         #hide
-        geen_E = 0
-        geen_R = 0
-        heeft_μ = if(E_fi,d/(1 kN*m) > 0 and M_Rd/(1 kN*m) > 0; 1; 0)
+        geen_E = if(E_fi,d/(1 kN*m) > 0; 0; 1)
+        geen_R = if(M_Rd/(1 kN*m) > 0; 0; 1)
+        heeft_μ = if(geen_E + geen_R ≡ 0; 1; 0)
         #show
     #end if
 #end if
@@ -857,8 +885,17 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         W_ef = b_ef*h_ef^2/6 to mm^3'<span class="kolom-2"></span>'
         σ_m,d,fi = M_fi,d/W_ef to N/mm^2'<span class="kolom-2"></span>'
         #if werking_h ≡ 2
-            σ_m,crit = 0.78*b_ef^2/(h_ef*l_ef)*E_0,05 to N/mm^2', (6.32) met de effectieve doorsnede'
-            λ_rel,m = sqrt(f_m,k/σ_m,crit)', (6.30)<span class="alleen-scherm">; k<sub>fi</sub> in f<sub>20</sub> en E<sub>20</sub> valt weg</span>'
+            #if gelijmd ≡ 1
+                #hide
+                G_0,05 = 540 N/mm^2
+                #show
+                I_z,ef = h_ef*b_ef^3/12 to mm^4'<span class="kolom-2"></span>'
+                I_tor,ef = max(b_ef; h_ef)*min(b_ef; h_ef)^3/3*(1 - 0.63*min(b_ef; h_ef)/max(b_ef; h_ef)) to mm^4', rechthoek<span class="kolom-2"></span>'
+                σ_m,crit = pi*sqrt(E_0,05*I_z,ef*G_0,05*I_tor,ef)/(l_ef*W_ef) to N/mm^2', (6.31) met de effectieve doorsnede, G<sub>0,05</sub> = 540 N/mm² (NEN-EN 14080)'
+            #else
+                σ_m,crit = 0.78*b_ef^2/(h_ef*l_ef)*E_0,05 to N/mm^2', (6.32), massief naaldhout (§6.3.3(3)), met de effectieve doorsnede'
+            #end if
+            λ_rel,m = sqrt(f_m,k/σ_m,crit)', (6.30)<span class="alleen-scherm">; k<sub>fi</sub> in f<sub>20</sub>, E<sub>20</sub> en G<sub>20</sub> valt weg</span>'
             #if λ_rel,m ≤ 0.75
                 k_crit = 1', (6.34)'
             #else if λ_rel,m ≤ 1.4
@@ -913,15 +950,33 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
 
     #hide
     μ_fi = 0
+    k_s,fi = 0
+    Δa = 0 mm
+    sig_open = 0
     #show
     #if heeft_μ ≡ 1
         #if element_b ≡ 1
             μ_fi = E_fi,d/N_Rd', benuttingsgraad bij brand N<sub>0Ed,fi</sub>/N<sub>Rd</sub> (§5.3.2)'
         #else
             μ_fi = E_fi,d/M_Rd', benuttingsgraad bij brand M<sub>Ed,fi</sub>/M<sub>Rd</sub>'
-            'Staalspanning bij brand σ<sub>s,fi</sub>/f<sub>yk</sub> ≈ μ<sub>fi</sub>/γ<sub>S</sub> = 'μ_fi/1.15' met γ<sub>S</sub> = 1,15 (NEN-EN 1992-1-1).<span class="alleen-scherm"> De tabellen voor balken en vloeren horen bij één staalspanning bij brand; §5.2 geeft bij een andere σ<sub>s,fi</sub>/f<sub>yk</sub> een aanpassing Δa van de asafstand. Verwerk die in a hieronder.</span>
+            k_s,fi = μ_fi/1.15', σ<sub>s,fi</sub>/f<sub>yk</sub> volgens (5.2) met γ<sub>S</sub> = 1,15<span class="alleen-scherm"> en A<sub>s,req</sub>/A<sub>s,prov</sub> ≈ M<sub>Ed</sub>/M<sub>Rd</sub> (veilige kant)</span>'
             #if μ_fi > 1
                 '<b style="color:#b91c1c">μ<sub>fi</sub> > 1: de belasting bij brand is groter dan de capaciteit bij normale temperatuur.</b>
+            #else if element_b ≤ 3
+                '<i>De tabellen 5.5 en 5.6 horen bij θ<sub>cr</sub> = 500 °C, σ<sub>s,fi</sub>/f<sub>yk</sub> = 0,6 (§5.2(4)). Bij een andere spanning wordt a aangepast met (5.3) (§5.2(7)), met θ<sub>cr</sub> uit kromme 1 van figuur 5.1: k<sub>s</sub> = 1 − 0,4·(θ − 350)/150 tot 500 °C en 0,61 − 0,5·(θ − 500)/200 tot 700 °C (§5.2(6)); (5.3) geldt tussen 350 en 700 °C (§5.2(8)).'if(element_b ≡ 3; " Bij een doorgaande balk alleen een vergroting van a."; "")'</i><span class="alleen-scherm"></span>
+                θ_cr = if(k_s,fi ≥ 0.6; 350 + 375*(1 - k_s,fi); min(500 + 400*(0.61 - k_s,fi); 700))', °C, k<sub>s</sub>(θ<sub>cr</sub>) = σ<sub>s,fi</sub>/f<sub>yk</sub>, kromme 1 van figuur 5.1<span class="alleen-scherm">, boven 700 °C begrensd op 700 °C</span>'
+                #if element_b ≡ 3
+                    Δa = max(0.1*(500 - θ_cr); 0)*mm', (5.3), alleen een vergroting'
+                #else
+                    Δa = 0.1*(500 - θ_cr)*mm', (5.3)'
+                #end if
+            #else if k_s,fi > 0.6
+                #hide
+                sig_open = 1
+                #show
+                '<b style="color:#b91c1c">σ<sub>s,fi</sub>/f<sub>yk</sub> = 'k_s,fi' > 0,6: tabel 5.8 hoort bij θ<sub>cr</sub> = 500 °C, σ<sub>s,fi</sub>/f<sub>yk</sub> = 0,6 (§5.2(4)), en §5.2(7) staat de aanpassing van a alleen toe bij de tabellen 5.5, 5.6 en 5.9. De brandwerendheid is met de tabel niet aangetoond.</b>
+            #else
+                '<i>σ<sub>s,fi</sub>/f<sub>yk</sub> ≤ 0,6: tabel 5.8 is van toepassing zonder aanpassing van a (§5.2(4)).</i><span class="alleen-scherm"></span>
             #end if
         #end if
     #end if
@@ -940,7 +995,6 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         #end if
         b_min = ?*(mm)', b<sub>min</sub> uit de tabel<span class="kolom-2"></span>'
         a_min = ?*(mm)', a uit de tabel<span class="kolom-2"></span>'
-        '<i>Methode A heeft eigen toepassingsvoorwaarden, onder meer voor de kniklengte bij brand, de excentriciteit en het wapeningspercentage (§5.3.2): ga die na.</i><span class="alleen-scherm"></span>
     #else if element_b ≤ 3
         'Lees in tabel 'if(element_b ≡ 2; "5.5"; "5.6")' bij R 'eis_min' een combinatie b<sub>min</sub>/a af met b<sub>min</sub> ≤ b. Bij één laag wapening vraagt de tabel voor de hoekstaven een grotere zijdelingse asafstand a<sub>sd</sub> (opmerking bij de tabel).
         b_min = ?*(mm)', b<sub>min</sub> uit de tabel<span class="kolom-2"></span>'
@@ -972,9 +1026,39 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
     #end if
     geen_A = if(b_k/(1 mm) > 0 and a_hw/(1 mm) > 0; 0; 1)
     geen_T = if(m_min/(1 mm) > 0 and a_min/(1 mm) > 0; 0; 1)
+    geen_K = 0
+    geen_W = 0
+    ok_A = 1
     UC_b = 0
     UC_a = 0
     #show
+    #if element_b ≡ 1
+        #hide
+        geen_K = if(l_0fi/(1 m) > 0; 0; 1)
+        geen_W = if(A_s/(1 mm^2) > 0; 0; 1)
+        #show
+        #if geen_A + geen_K + geen_W ≡ 0
+            ## Toepassingsvoorwaarden van methode A — §5.3.2(2)
+
+            l_0fi', l<sub>0,fi</sub> ≤ 3 m<span class="kolom-3"></span>'
+            e_fi', e = M<sub>0Ed,fi</sub>/N<sub>0Ed,fi</sub><span class="alleen-scherm">, gelijk aan die bij normale temperatuur (opmerking 3)</span><span class="kolom-3"></span>'
+            e_max = if(b_k ≥ 300 mm; 0.4; 0.15)*if(vorm_b ≡ 2; b_k; h_beton)', NB bij §5.3.2(2): 0,4·h bij een kolombreedte ≥ 300 mm, anders 0,15·h<span class="kolom-3"></span>'
+            A_c = if(vorm_b ≡ 2; pi*b_k^2/4; b_beton*h_beton) to mm^2'<span class="kolom-2"></span>'
+            ρ_s = A_s/A_c', A<sub>s</sub> < 0,04·A<sub>c</sub><span class="kolom-2"></span>'
+            #hide
+            ok_A = if(l_0fi ≤ 3 m and e_fi ≤ e_max and ρ_s < 0.04; 1; 0)
+            #show
+            #if l_0fi > 3 m
+                '<span style="color:#b91c1c">l<sub>0,fi</sub> = 'l_0fi' m > 3 m: buiten de toepassingsvoorwaarden van methode A.</span>
+            #end if
+            #if e_fi > e_max
+                '<span style="color:#b91c1c">e = 'e_fi' mm > e<sub>max</sub> = 'e_max' mm: buiten de toepassingsvoorwaarden van methode A.</span>
+            #end if
+            #if ρ_s ≥ 0.04
+                '<span style="color:#b91c1c">A<sub>s</sub> = 'A_s' mm² is niet kleiner dan 0,04·A<sub>c</sub>: buiten de toepassingsvoorwaarden van methode A.</span>
+            #end if
+        #end if
+    #end if
     #if geen_A + geen_T > 0
         '<span style="color:#b91c1c">Zonder afmetingen, asafstand en tabelwaarden is er niets te toetsen.</span>
     #else if element_b ≡ 1
@@ -983,7 +1067,8 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         UC_a = a_min/a_hw', a ≥ a<sub>min</sub><span class="kolom-3"></span>'
     #else if element_b ≤ 3
         UC_b = b_min/b_beton', b ≥ b<sub>min</sub><span class="kolom-2"></span>'
-        UC_a = a_min/a_hw', a ≥ a<sub>min</sub><span class="kolom-2"></span>'
+        a_nodig = a_min + Δa', a uit de tabel met Δa (§5.2(7))<span class="kolom-2"></span>'
+        UC_a = a_nodig/a_hw', a ≥ a<sub>min</sub> + Δa<span class="kolom-2"></span>'
     #else
         UC_b = h_min/h_beton', h<sub>s</sub> ≥ h<sub>s,min</sub><span class="kolom-2"></span>'
         UC_a = a_min/a_hw', a ≥ a<sub>min</sub><span class="kolom-2"></span>'
@@ -991,10 +1076,26 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
     #hide
     UC_max = max(UC_b; UC_a)
     #show
-    #if geen_A + geen_T + geen_E + geen_R > 0
-        '<b>Maatgevende UC</b><span style="color:#b91c1c"> niet te bepalen: vul 'if(geen_A ≡ 1; "de afmetingen"; "")''if(geen_A ≡ 1 and geen_T + geen_E + geen_R > 0; if(geen_T + geen_E + geen_R ≡ 1; " en "; ", "); "")''if(geen_T ≡ 1; "de tabelwaarden"; "")''if(geen_T ≡ 1 and geen_E + geen_R > 0; if(geen_E + geen_R ≡ 1; " en "; ", "); "")''if(geen_E ≡ 1; "de belasting bij brand"; "")''if(geen_E ≡ 1 and geen_R ≡ 1; " en "; "")''if(geen_R ≡ 1; "N<sub>Rd</sub>"; "")' in → <b>het element voldoet niet</b></span>
+    #hide
+    'Ontbrekende invoer als opsomming "a, b en c": het scheidingsteken hangt af van
+    'hoeveel er al staan (k) en hoeveel er in totaal ontbreken (n).
+    n_mis = geen_A + geen_T + geen_E + geen_R + geen_K + geen_W
+    sep_mis(k; n) = if(k ≡ 0; ""; if(k ≡ n - 1; " en "; ", "))
+    m_1 = if(geen_A ≡ 1; "de afmetingen"; "")
+    m_2 = if(geen_T ≡ 1; concat(sep_mis(geen_A; n_mis); "de tabelwaarden"); "")
+    m_3 = if(geen_E ≡ 1; concat(sep_mis(geen_A + geen_T; n_mis); "de belasting bij brand"); "")
+    m_4 = if(geen_R ≡ 1; concat(sep_mis(geen_A + geen_T + geen_E; n_mis); if(element_b ≡ 1; "N<sub>Rd</sub>"; "M<sub>Rd</sub>")); "")
+    m_5 = if(geen_K ≡ 1; concat(sep_mis(geen_A + geen_T + geen_E + geen_R; n_mis); "de kniklengte bij brand"); "")
+    m_6 = if(geen_W ≡ 1; concat(sep_mis(geen_A + geen_T + geen_E + geen_R + geen_K; n_mis); "de langswapening"); "")
+    #show
+    #if n_mis > 0
+        '<b>Maatgevende UC</b><span style="color:#b91c1c"> niet te bepalen: vul 'm_1''m_2''m_3''m_4''m_5''m_6' in → <b>het element voldoet niet</b></span>
     #else if element_b ≡ 1 and μ_fi > 0.7
         '<b>Maatgevende UC</b><span style="color:#b91c1c"> niet te bepalen: μ<sub>fi</sub> > 0,7 valt buiten tabel 5.2a → <b>het element voldoet niet</b></span>
+    #else if element_b ≡ 1 and ok_A ≡ 0
+        '<b>Maatgevende UC</b><span style="color:#b91c1c"> niet te bepalen: buiten de toepassingsvoorwaarden van §5.3.2(2), methode A niet toepasbaar → <b>het element voldoet niet</b></span>
+    #else if element_b ≥ 4 and sig_open ≡ 1
+        '<b>Maatgevende UC</b><span style="color:#b91c1c"> niet te bepalen: σ<sub>s,fi</sub>/f<sub>yk</sub> > 0,6, tabel 5.8 niet aangetoond → <b>het element voldoet niet</b></span>
     #else if element_b ≥ 2 and μ_fi > 1
         '<b>Maatgevende UC</b><span style="color:#b91c1c"> niet te bepalen: μ<sub>fi</sub> > 1, de belasting bij brand is groter dan de capaciteit bij normale temperatuur; de tabellen gaan uit van een element dat volgens NEN-EN 1992-1-1 voldoet → <b>het element voldoet niet</b></span>
     #else if UC_max ≤ 1.0
@@ -1003,6 +1104,6 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>het element voldoet niet aan R 'eis_min'</b></span>
     #end if
 
-    '<i>Tabelmethode van NEN-EN 1992-1-2 bij de standaardbrandkromme; de tabelwaarden zijn invoer en horen bij de gekozen tabel, de eis en de benuttingsgraad. Niet getoetst: de toepassingsvoorwaarden bij de tabellen, afspatten en de verankering van de wapening.</i>
+    '<i>Tabelmethode van NEN-EN 1992-1-2 bij de standaardbrandkromme; de tabelwaarden zijn invoer en horen bij de gekozen tabel, de eis en de benuttingsgraad. Niet getoetst: de overige voorwaarden bij de tabellen voor balken en vloeren (onder meer herverdeling en de bovenwapening bij doorgaande elementen, §5.6.3 en §5.7.3), afspatten en de verankering van de wapening.</i>
 #end if
 `;
