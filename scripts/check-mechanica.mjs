@@ -36,11 +36,15 @@
  *      f. Beweeglijk (een staaf te weinig) en onvolledig.
  *      g. Statisch bepaald vakwerk met de snedemethode, twee verplaatsingen met
  *         virtuele arbeid, en de staaftoets in hoekstaal (knik om v) en hout.
- *   4. Vergeetmenietjes: alle veertien gevallen, de waarden van de oplosser
+ *      h. Enkel hoekstaal op trek, met bouten in één been (NEN-EN 1993-1-8,
+ *         3.10.3: één, twee en drie bouten, A_net, β_2 en β_3) of gelast, en
+ *         zonder volledige boutinvoer: niet getoetst, voldoet niet.
+ *      i. Tekening: een horizontale knooplast valt niet over een staaf.
+ *   4. Vergeetmenietjes: alle vijftien gevallen, de waarden van de oplosser
  *      tegen de formule hieronder in het script, en in het blad een vinkje;
  *      een tweede set met de hand (twee steunpunten met q, uitkraging met
- *      driehoekslast), tweezijdig ingeklemd met de puntlast buiten het midden
- *      in de liggeroplosser, en een last naar boven.
+ *      driehoekslast, geval 15: tweezijdig ingeklemd met de puntlast buiten
+ *      het midden), en een last naar boven.
  *   5. Een leeg blad per keuze, de slotzin zoals de rapportkop hem leest
  *      (geen UC bij doorsnede en vergeetmenietjes), en de registratie.
  *
@@ -549,6 +553,73 @@ console.log("\n3g. Vakwerk met de snedemethode en virtuele arbeid: onderrand 1 (
   waar("hout: f_t,0,d en λ_rel tonen f_t,0,k, f_c,0,k en E_0,05, geen hulpfunctie", !/mh\(|ft0dn|fc0dn|ft0d_n|fc0d_n/.test(plat),plat.match(/.{40}(mh\(|ft0d|fc0d).{40}/)?.[0]);
 }
 
+console.log("\n3h. Hoekstaal L 50x50x5 S235 op trek: twee staven van 1 (0,0) en 2 (4,0) naar 3 (2; −1,5), 100 kN omlaag in 3");
+{
+  // Staaflengte √(2² + 1,5²) = 2,5 m, sin θ = 1,5/2,5 = 0,6: N = 100/(2·0,6) = 83,33 kN trek in beide staven.
+  // L 50x50x5: A = 480 mm², t = 5 mm; S235: f_y = 235, f_u = 360 N/mm² (tabel 3.1, t ≤ 40 mm); γ_M0 = 1,0, γ_M2 = 1,25.
+  // Gelast (NEN-EN 1993-1-8, 4.13(2): bruto doorsnede): N_t,Rd = 480·235 = 112,8 kN; UC = 83,33/112,8 = 0,739.
+  // Bouten in één been, gat d_0 = 13 mm: A_net = 480 − 5·13 = 415 mm² (NEN-EN 1993-1-8, 3.10.3).
+  //   Drie bouten, p_1 = 65 = 5·d_0: β_3 = 0,7 (tabel 3.8); N_u,Rd = 0,7·415·360/1,25 = 83,66 kN (3.13);
+  //     N_t,Rd = min(112,8; 83,66) = 83,66 kN; UC = 83,33/83,66 = 0,996.
+  //   Twee bouten, p_1 = 40 mm: p_1/d_0 = 3,077, β_2 = 0,4 + 0,3·(3,077 − 2,5)/2,5 = 0,4692;
+  //     N_u,Rd = 0,4692·415·360/1,25 = 56,08 kN (3.12); UC = 1,486.
+  //   Eén bout, e_2 = 25 mm: N_u,Rd = 2·(25 − 0,5·13)·5·360/1,25 = 53,28 kN (3.11); UC = 1,564.
+  //   Bouten zonder d_0: niet getoetst → Maatgevende UC = ∞, voldoet niet.
+  const model = { knopen: [[0, 0], [4, 0], [2, -1.5]], staven: [[1, 3], [2, 3]], opl: [[1, 3], [2, 3]], lasten: [[3, 0, 100]] };
+  const N = 100 / 1.2;
+  const basis = { staaf_s: "1", hoek_s: "3", staalsoort: "235" };
+  const gev = [
+    ["gelast", {}, { UC_max: N / 112.8, N_t_Rd: 112.8 }],
+    ["drie bouten, p_1 = 5·d_0", { aansl_s: "2", nb_s: "3", d_0: "13", p_1: "65" }, { A_net: 4.15, β_3: 0.7, N_u_Rd: (0.7 * 415 * 360) / 1250, N_pl_Rd: 112.8, N_t_Rd: (0.7 * 415 * 360) / 1250, UC_max: N / ((0.7 * 415 * 360) / 1250) }],
+    ["twee bouten, p_1 = 40", { aansl_s: "2", nb_s: "2", d_0: "13", p_1: "40" }, { β_2: 0.4 + (0.3 * (40 / 13 - 2.5)) / 2.5, N_u_Rd: ((0.4 + (0.3 * (40 / 13 - 2.5)) / 2.5) * 415 * 360) / 1250, UC_max: N / (((0.4 + (0.3 * (40 / 13 - 2.5)) / 2.5) * 415 * 360) / 1250) }],
+    ["één bout, e_2 = 25", { aansl_s: "2", nb_s: "1", d_0: "13", e_2: "25" }, { N_u_Rd: (2 * (25 - 6.5) * 5 * 360) / 1250, UC_max: N / ((2 * (25 - 6.5) * 5 * 360) / 1250) }],
+  ];
+  for (const [wat, extra, verwacht] of gev) {
+    const r = doorreken(vrij(model, { ...basis, ...extra }), ["Ns(1)", "Ns(2)"]);
+    geenFouten(r, `hoekstaal op trek, ${wat}`);
+    toets(r, { "Ns(1)": N, "Ns(2)": N, ...verwacht }, 1e-3);
+    const lr = leesResultaat(r.nodes);
+    waar(`hoekstaal op trek, ${wat}: slotzin ${verwacht.UC_max <= 1 ? "voldoet" : "voldoet niet"}`, lr.uc !== null && Math.abs(lr.uc - verwacht.UC_max) < 5e-3 && lr.voldoet === verwacht.UC_max <= 1, JSON.stringify(lr));
+  }
+  const open = doorreken(vrij(model, { ...basis, aansl_s: "2", nb_s: "2" }), ["bo"]);
+  geenFouten(open, "hoekstaal op trek, bouten zonder invoer");
+  const lr = leesResultaat(open.nodes);
+  waar("bouten zonder d_0 en p_1: melding, 'niet getoetst' in de tabel, Maatgevende UC = ∞, voldoet niet",
+    open.uit.bo === 1 && /vul de gatdiameter/.test(open.tekst) && /niet getoetst/.test(open.tekst) && lr.uc === Infinity && lr.voldoet === false, JSON.stringify(lr));
+  // Druk wordt bij bouten niet op de netto doorsnede getoetst: 3g met bouten geeft dezelfde knik (staaf 4 maatgevend).
+  const g = doorreken(vrij({ knopen: [[0, 0], [4, 0], [8, 0], [12, 0], [4, 3], [8, 3]], staven: [[1, 2], [2, 3], [3, 4], [1, 5], [5, 6], [6, 4], [2, 5], [3, 6], [5, 3]], opl: [[1, 3], [4, 2]], lasten: [[5, 0, 20], [3, 0, 10], [6, 6, 0]] },
+    { staaf_s: "1", hoek_s: "8", aansl_s: "2", nb_s: "3", d_0: "22", p_1: "70" }), ["mUC"]);
+  // L 100x100x10 met drie bouten d_0 = 22, p_1 = 70: A_net = 1920 − 10·22 = 1700 mm², β_3 = 0,5 + 0,2·(70/22 − 2,5)/2,5 = 0,5545,
+  // N_u,Rd = 0,5545·1700·360/1,25 = 271,5 kN; de onderrand (26,22 kN) haalt UC 0,097, de knik van staaf 4 blijft maatgevend (0,472).
+  toets(g, { mUC: 4, UC_max: 0.4723 }, 2e-3);
+}
+
+console.log("\n3i. Tekening: horizontale knooplasten naast de staven");
+{
+  // Knoop 2 en 3 (onderrand, aan beide kanten een staaf): de pijl 12 px boven de knoop; knoop 6 (links de bovenrand,
+  // rechts een schuine staaf 1 : 0,75): de pijl trekt aan de rechterkant; knoop 5 met een last naar links: rechts ligt
+  // de bovenrand, dus de pijl trekt aan de linkerkant. Geen enkele pijl mag over een staaf vallen.
+  const r = doorreken(vrij({
+    knopen: [[0, 0], [4, 0], [8, 0], [12, 0], [4, 3], [8, 3]],
+    staven: [[1, 2], [2, 3], [3, 4], [1, 5], [5, 6], [6, 4], [2, 5], [3, 6], [5, 3]],
+    opl: [[1, 3], [4, 2]],
+    lasten: [[2, 5, 0], [5, -4, 0], [6, 6, 0], [3, -7, 0]],
+  }, { staaf_s: "0" }));
+  geenFouten(r, "horizontale lasten");
+  const svg = (r.html.match(/<svg viewbox="0 0 480[\s\S]*?<\/svg>/) || [""])[0];
+  const lijnen = [...svg.matchAll(/<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)" style="stroke:(#[0-9a-f]+)/g)].map((m) => ({ x1: +m[1], y1: +m[2], x2: +m[3], y2: +m[4], kleur: m[5] }));
+  const pijlen = lijnen.filter((l) => l.kleur === "#047857" && Math.abs(l.y1 - l.y2) < 0.01);
+  const staven = lijnen.filter((l) => ["#1d4ed8", "#b91c1c", "#9ca3af"].includes(l.kleur));
+  // Een pijl valt over een staaf als een punt van de pijl op minder dan 2 px van die staaf ligt.
+  const afstand = (px, py, s) => {
+    const dx = s.x2 - s.x1, dy = s.y2 - s.y1, L2 = dx * dx + dy * dy;
+    const t = Math.max(0, Math.min(1, ((px - s.x1) * dx + (py - s.y1) * dy) / L2));
+    return Math.hypot(px - s.x1 - t * dx, py - s.y1 - t * dy);
+  };
+  const over = pijlen.filter((p) => staven.some((s) => [0.25, 0.5, 0.75].some((f) => afstand(p.x1 + f * (p.x2 - p.x1), p.y1, s) < 2)));
+  waar("vier horizontale pijlen getekend, geen over een staaf", pijlen.length === 4 && over.length === 0, `${pijlen.length} pijlen, ${over.length} over een staaf`);
+}
+
 // ── 4. Vergeetmenietjes ─────────────────────────────────────────────────────
 console.log("\n4. Vergeetmenietjes: L = 6 m, q = 10 kN/m, F = 20 kN, a = 2 m, E = 210 000 N/mm², I = 8356 cm⁴");
 {
@@ -573,16 +644,22 @@ console.log("\n4. Vergeetmenietjes: L = 6 m, q = 10 kN/m, F = 20 kN, a = 2 m, E 
     [0, F * L, F, w((F * L ** 3) / (3 * EI))],
     [0, (q * L * L) / 6, (q * L) / 2, w((q * L ** 4) / (30 * EI))],
     [0, (q * L * L) / 3, (q * L) / 2, w((11 * q * L ** 4) / (120 * EI))],
+    // Geval 15, tweezijdig ingeklemd met F op a = 2 m (b = 4 m; c = 2 de kortste, d = 4 de langste afstand):
+    // M_A = F·a·b²/L² = 20·2·16/36 = 17,78 kNm (het grootste steunpuntsmoment, F·a·b·d/L²), M_B = F·a²·b/L² = 8,89 kNm;
+    // onder de last M = 2F·a²·b²/L³ = 2·20·4·16/216 = 11,85 kNm; R_A = F·d²·(3c + d)/L³ = 20·16·10/216 = 14,81 kN;
+    // w_max = 2F·d³·c²/(3EI·(3d + c)²) = 2·20·64·4/(3·EI·14²) = 10 240/(588·EI) m, op 2dL/(3d + c) = 3,43 m van het rechter steunpunt.
+    [(2 * F * a * a * b * b) / L ** 3, (F * a * b * b) / L ** 2, (F * b * b * (3 * a + b)) / L ** 3, w((2 * F * b ** 3 * a * a) / (3 * EI * (3 * b + a) ** 2))],
   ];
   const namen = [];
-  for (let i = 1; i <= 14; i++) namen.push(`Mv_${i}`, `Ms_${i}`, `Vm_${i}`, `Wm_${i}`, `ok_${i}`);
+  for (let i = 1; i <= 15; i++) namen.push(`Mv_${i}`, `Ms_${i}`, `Vm_${i}`, `Wm_${i}`, `ok_${i}`);
   const r = doorreken({ taak: "3", L_c: "6", q_c: "10", F_c: "20", a_c: "2", E_c: "210000", I_c: "8356" }, [...namen, "alles_ok"]);
   geenFouten(r, "vergeetmenietjes");
   let mis = 0;
+  // Het blad drukt vier significante cijfers af: een halve eenheid van het vierde cijfer is 5·10⁻⁴ relatief (14,81 voor 14,815).
   hand.forEach((h, k) => {
     const i = k + 1;
     const ons = [r.uit[`Mv_${i}`], r.uit[`Ms_${i}`], r.uit[`Vm_${i}`], r.uit[`Wm_${i}`]];
-    const fout = ons.map((o, j) => (Math.abs(o - h[j]) <= 3e-4 * Math.abs(h[j]) + 1e-9 ? null : `${["M_veld", "M_steun", "V", "w"][j]} ${o} tegen ${h[j]}`)).filter(Boolean);
+    const fout = ons.map((o, j) => (Math.abs(o - h[j]) <= 5e-4 * Math.abs(h[j]) + 1e-9 ? null : `${["M_veld", "M_steun", "V", "w"][j]} ${o} tegen ${h[j]}`)).filter(Boolean);
     getest++;
     if (fout.length || r.uit[`ok_${i}`] !== 1) {
       mis++;
@@ -590,9 +667,9 @@ console.log("\n4. Vergeetmenietjes: L = 6 m, q = 10 kN/m, F = 20 kN, a = 2 m, E 
       console.log(`  FOUT   geval ${i}: ${fout.join(", ")}${r.uit[`ok_${i}`] !== 1 ? " (geen vinkje in het blad)" : ""}`);
     }
   });
-  console.log(`  ${mis ? "FOUT  " : "OK    "} 14 gevallen: M_veld, M_steun, V_max en w_max van de oplosser gelijk aan de handformule, met een vinkje`);
+  console.log(`  ${mis ? "FOUT  " : "OK    "} 15 gevallen: M_veld, M_steun, V_max en w_max van de oplosser gelijk aan de handformule, met een vinkje`);
   toets(r, { alles_ok: 1, EI });
-  waar("vergeetmenietjes: 14 vinkjes, geen kruis", (r.tekst.match(/✓/g) || []).length === 14 && !r.tekst.includes("✗"));
+  waar("vergeetmenietjes: 15 vinkjes, geen kruis", (r.tekst.match(/✓/g) || []).length === 15 && !r.tekst.includes("✗"));
   waar("vergeetmenietjes: geen slotzin, geen UC", leesResultaat(r.nodes).uc === null && /Geen toets/.test(r.tekst));
   // Zonder E en I: M en V blijven, w krijgt een streepje en telt niet in het vinkje.
   const z = doorreken({ taak: "3", L_c: "6", q_c: "10", F_c: "20" }, ["Mv_1", "alles_ok"]);
@@ -611,24 +688,22 @@ console.log("\n4b. Vergeetmenietjes met de hand: L = 5 m, q = 12 kN/m, F = 30 kN
   const EI = 210e6 * 5790e-8;
   const r = doorreken({ taak: "3", L_c: "5", q_c: "12", F_c: "30", a_c: "1.5", E_c: "210000", I_c: "5790" }, [
     "Mv_1", "Vm_1", "Wm_1", "Ms_13", "Vm_13", "Wm_13", "Ms_14", "Vm_14", "Wm_14", "alles_ok",
-    // Tweezijdig ingeklemd met de puntlast buiten het midden staat niet als geval in het blad; de liggeroplosser wel
-    // (x_10 is de uitkomst [x, V, M, w] van de regel ervoor):
-    "ligger(gC(2; 2); lC(2; 1.5; 0; Fc; 0; 0; 0; 0); EIc)",
-    "ligger_int(x_10; 3; 0)", "ligger_int(x_10; 3; 5)", "ligger_int(x_10; 3; 1.5)", "ligger_int(x_10; 2; 0)", "ligger_ext(x_10; 4)[1]", "ligger_ext(x_10; 4)[2]",
+    // Geval 15 in het blad, en de oplossing zelf om het rechter steunpunt en de plaats van w_max (x_15 is de uitkomst [x, V, M, w] van R_15):
+    "Mv_15", "Ms_15", "Vm_15", "Wm_15", "ok_15", "R_15", "ligger_int(x_15; 3; 5)", "ligger_ext(x_15; 4)[2]",
   ]);
   geenFouten(r, "vergeetmenietjes, tweede set");
   toets(r, {
     EI, Mv_1: 37.5, Vm_1: 30, Wm_1: (1000 * 5 * 12 * 5 ** 4) / (384 * EI),
     Ms_13: 50, Vm_13: 30, Wm_13: (1000 * 12 * 5 ** 4) / (30 * EI), Ms_14: 100, Vm_14: 30, Wm_14: (1000 * 11 * 12 * 5 ** 4) / (120 * EI), alles_ok: 1,
   }, 1e-3);
-  // Tweezijdig ingeklemd, F = 30 kN op a = 1,5 m, b = 3,5 m: M_A = F·a·b²/L² = 30·1,5·12,25/25 = 22,05 kNm;
+  // Geval 15, tweezijdig ingeklemd, F = 30 kN op a = 1,5 m, b = 3,5 m: M_A = F·a·b²/L² = 30·1,5·12,25/25 = 22,05 kNm;
   // M_B = F·a²·b/L² = 9,45 kNm; M_F = 2F·a²·b²/L³ = 13,23 kNm; R_A = F·b²·(3a + b)/L³ = 30·12,25·8/125 = 23,52 kN;
   // w_max = 2F·b³·a²/(3EI·(3b + a)²) = 2·30·42,875·2,25/(3·12 159·144) = 1,102 mm, op x = L − 2bL/(3b + a) = 2,083 m.
   const a = 1.5, b = 3.5, F = 30, L = 5;
   toets(r, {
-    "ligger_int(x_10; 3; 0)": (-F * a * b * b) / L ** 2, "ligger_int(x_10; 3; 5)": (-F * a * a * b) / L ** 2,
-    "ligger_int(x_10; 3; 1.5)": (2 * F * a * a * b * b) / L ** 3, "ligger_int(x_10; 2; 0)": (F * b * b * (3 * a + b)) / L ** 3,
-    "ligger_ext(x_10; 4)[1]": (2 * F * b ** 3 * a * a) / (3 * EI * (3 * b + a) ** 2), "ligger_ext(x_10; 4)[2]": L - (2 * b * L) / (3 * b + a),
+    Mv_15: (2 * F * a * a * b * b) / L ** 3, Ms_15: (F * a * b * b) / L ** 2, Vm_15: (F * b * b * (3 * a + b)) / L ** 3,
+    Wm_15: (1000 * 2 * F * b ** 3 * a * a) / (3 * EI * (3 * b + a) ** 2), ok_15: 1,
+    "ligger_int(x_15; 3; 5)": (-F * a * a * b) / L ** 2, "ligger_ext(x_15; 4)[2]": L - (2 * b * L) / (3 * b + a),
   }, 1e-3);
   // Een last naar boven: het blad vraagt om lasten naar beneden in plaats van een veldmoment 0 met een kruis.
   const neg = doorreken({ taak: "3", L_c: "6", q_c: "-10", F_c: "20", E_c: "210000", I_c: "8356" });

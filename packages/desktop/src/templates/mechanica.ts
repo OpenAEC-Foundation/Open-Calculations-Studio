@@ -1195,6 +1195,11 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
     'Startwaarden van de invoer die bij een andere keuze hoort.
     staalsoort = 235
     hoek_s = 3
+    aansl_s = 1
+    nb_s = 2
+    d_0 = 0 mm
+    p_1 = 0 mm
+    e_2 = 0 mm
     prof_s = 21
     D_s = 0 mm
     t_s = 0 mm
@@ -1224,6 +1229,23 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
               L 90x90x9 = 7
               L 100x100x10 = 8
             @end
+            @select aansl_s "Aansluiting van de staven op de knoopplaat"
+              Gelast rondom: bruto doorsnede = 1
+              Bouten in één been, één rij = 2
+            @end
+            #if aansl_s ≡ 2
+                @select nb_s "Aantal bouten in de krachtsrichting"
+                  2 = 2
+                  1 = 1
+                  3 of meer = 3
+                @end
+                d_0 = ?*(mm)', gatdiameter<span class="kolom-3"></span>'
+                #if nb_s ≡ 1
+                    e_2 = ?*(mm)', hart gat tot de rand van het been, dwars op de kracht<span class="kolom-3"></span>'
+                #else
+                    p_1 = ?*(mm)', steek van de bouten in de krachtsrichting<span class="kolom-3"></span>'
+                #end if
+            #end if
         #else if staaf_s ≡ 2
             @select prof_s "Profiel"
               IPE 200 = 21
@@ -1291,6 +1313,22 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
     A_L = hl(hoek_s; 6)*10^-4
     i_L = hl(hoek_s; 14)*10^-2
     kl_L = if(hl(hoek_s; 2)/hl(hoek_s; 3) ≤ 11.5*ε; 3; 4)
+    'Hoekstaal op trek met één rij bouten in één been (NEN-EN 1993-1-8, 3.10.3): de grensweerstand van de netto doorsnede met een
+    'reductie voor de excentriciteit, (3.11) bij één bout, (3.12) met β_2 bij twee en (3.13) met β_3 bij drie of meer. Gelast: bruto (4.13(2)).
+    'f_u uit tabel 3.1 van NEN-EN 1993-1-1 (t ≤ 40 mm), γ_M2 = 1,25; A_net = A − t·d_0 (één gat in het aangesloten been).
+    bout = bool(staaf_s ≡ 1)*bool(aansl_s ≡ 2)
+    fu_n = if(staalsoort ≡ 235; 360; if(staalsoort ≡ 275; 430; 490))*1000
+    tLn = hl(hoek_s; 3)/1000
+    d0n = max(d_0/(1 m); 0)
+    p1n = max(p_1/(1 m); 0)
+    e2n = max(e_2/(1 m); 0)
+    Anet_n = A_L - tLn*d0n
+    'Tabel 3.8: β_2 van 0,4 bij p_1 ≤ 2,5·d_0 tot 0,7 bij p_1 ≥ 5·d_0, β_3 van 0,5 tot 0,7, lineair daartussen.
+    rp = min(max((p1n/max(d0n; 10^-9) - 2.5)/2.5; 0); 1)
+    βn = if(nb_s ≡ 2; 0.4 + 0.3*rp; 0.5 + 0.2*rp)
+    NuRd_n = if(nb_s ≡ 1; 2*(e2n - 0.5*d0n)*tLn*fu_n/1.25; βn*Anet_n*fu_n/1.25)
+    'Compleet: d_0 > 0 en kleiner dan het been, en bij één bout e_2 > d_0/2, anders p_1 > 0.
+    ok_b = bool(d0n > 0)*bool(d0n < hl(hoek_s; 2)/1000)*if(nb_s ≡ 1; bool(e2n > 0.5*d0n); bool(p1n > 0))
     'I- of H-profiel: knik om de z-as, kromme b bij h/b > 1,2 en anders c (tabel 6.2); flens c/t ≤ 14ε en lijf c/t ≤ 42ε voor klasse 3.
     A_I = pm(prof_s; 7)*10^-4
     i_I = pm(prof_s; 16)*10^-2
@@ -1356,6 +1394,33 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
                 #end if
                 f_y = staalsoort*1 N/mm^2'<span class="alleen-scherm">, tabel 3.1 (t ≤ 40 mm)</span><span class="kolom-4"></span>'
                 'Doorsnedeklasse bij druk: 'if(kl_st ≤ 3; "1 tot en met 3 (tabel 5.2)"; "4 — valt buiten deze snelle toets")'; knikkromme 'if(α_k ≡ 0.21; "a"; if(α_k ≡ 0.34; "b"; "c"))' (tabel 6.2'if(staaf_s ≡ 3; if(dn > 0; ", warmgevormde buis; koudgevormd is kromme c"; ", massief rond staal"); "")'), α = 'α_k'; γ<sub>M0</sub> = γ<sub>M1</sub> = 1,0.
+                #if staaf_s ≡ 1
+                    #if bout ≡ 0
+                        'Aansluiting gelast: trek over de bruto doorsnede (NEN-EN 1993-1-8, 4.13(2)).
+                    #else if ok_b ≡ 0
+                        '<span style="color:#b45309">Bouten in één been: vul de gatdiameter d<sub>0</sub> in (kleiner dan het been) en 'if(nb_s ≡ 1; "de randafstand e<sub>2</sub> (groter dan d<sub>0</sub>/2)"; "de steek p<sub>1</sub>")'; zonder die invoer zijn de staven op trek niet getoetst.</span>
+                    #else
+                        #hide
+                        f_u = fu_n/1000*N/mm^2
+                        t_L = tLn*m to mm
+                        #show
+                        'Trek met 'if(nb_s ≡ 1; "één bout"; if(nb_s ≡ 2; "twee bouten"; "drie of meer bouten"))' in één been (NEN-EN 1993-1-8, 3.10.3): N<sub>t,Rd</sub> = min(A·f<sub>y</sub>/γ<sub>M0</sub>; N<sub>u,Rd</sub>), γ<sub>M2</sub> = 1,25.
+                        f_u'<span class="alleen-scherm">, tabel 3.1</span><span class="kolom-4"></span>'
+                        t_L'<span class="alleen-scherm">, dikte van het been</span><span class="kolom-4"></span>'
+                        #if nb_s ≡ 1
+                            N_u,Rd = 2*(e_2 - 0.5*d_0)*t_L*f_u/1.25 to kN'<span class="alleen-scherm">, (3.11)</span><span class="kolom-2"></span>'
+                        #else
+                            A_net = A_s - t_L*d_0 to cm^2'<span class="alleen-scherm">, één gat in het aangesloten been</span><span class="kolom-4"></span>'
+                            #if nb_s ≡ 2
+                                β_2 = 0.4 + 0.3*min(max((p_1/d_0 - 2.5)/2.5; 0); 1)'<span class="alleen-scherm">, tabel 3.8: 0,4 bij p<sub>1</sub> ≤ 2,5·d<sub>0</sub> tot 0,7 bij p<sub>1</sub> ≥ 5·d<sub>0</sub></span><span class="kolom-2"></span>'
+                                N_u,Rd = β_2*A_net*f_u/1.25 to kN'<span class="alleen-scherm">, (3.12)</span><span class="kolom-4"></span>'
+                            #else
+                                β_3 = 0.5 + 0.2*min(max((p_1/d_0 - 2.5)/2.5; 0); 1)'<span class="alleen-scherm">, tabel 3.8: 0,5 bij p<sub>1</sub> ≤ 2,5·d<sub>0</sub> tot 0,7 bij p<sub>1</sub> ≥ 5·d<sub>0</sub></span><span class="kolom-2"></span>'
+                                N_u,Rd = β_3*A_net*f_u/1.25 to kN'<span class="alleen-scherm">, (3.13)</span><span class="kolom-4"></span>'
+                            #end if
+                        #end if
+                    #end if
+                #end if
             #else
                 A_s'<span class="kolom-4"></span>'
                 i_min'<span class="alleen-scherm">, om de zwakste as</span><span class="kolom-4"></span>'
@@ -1483,6 +1548,27 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
                         tq = if(last.(q; 5) > 0; 1; -1)
                         'Een last naar beneden op een knoop van de onderste rand hangt onder de knoop, buiten het vakwerk.
                         onder = bool(tq > 0)*bool(ky(last.(q; 1)) ≤ Ymin + 10^-9*max(Ymax - Ymin; 1))
+                        'Een horizontale last niet over een staaf: aan de knoop per kant kijken of er een (bijna) horizontale staaf aansluit (helling ten hoogste 1 : 2).
+                        'Is de kant van de staart bezet en de andere vrij, dan trekt de pijl aan de andere kant; zijn beide bezet, dan ligt hij 12 px boven de knoop.
+                        kq = last.(q; 1)
+                        bzL = 0
+                        bzR = 0
+                        #if last.(q; 7) ≡ 1
+                            #for nr = 1 : nS
+                                #if sok(nr) ≡ 1
+                                    kqo = if(si(nr) ≡ kq; sj(nr); if(sj(nr) ≡ kq; si(nr); 0))
+                                    #if kqo ≥ 1
+                                        ddx = kx(kqo) - kx(kq)
+                                        ddy = ky(kqo) - ky(kq)
+                                        bzL = max(bzL; bool(ddx < 0)*bool(abs(ddy) ≤ 0.5*abs(ddx)))
+                                        bzR = max(bzR; bool(ddx > 0)*bool(abs(ddy) ≤ 0.5*abs(ddx)))
+                                    #end if
+                                #end if
+                            #loop
+                        #end if
+                        bzIn = if(tq > 0; bzL; bzR)
+                        bzUit = if(tq > 0; bzR; bzL)
+                        dyq = if(bzIn*bzUit ≡ 1; -12; 0)
                         #show
                         #if last.(q; 7) ≡ 2 and onder ≡ 1
                             '<line x1="'Xq'" y1="'Yq + 5'" x2="'Xq'" y2="'Yq + 24'" style="stroke:#047857; stroke-width:1.5"/>
@@ -1492,10 +1578,14 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
                             '<line x1="'Xq'" y1="'Yq - 30*tq'" x2="'Xq'" y2="'Yq - 6*tq'" style="stroke:#047857; stroke-width:1.5"/>
                             '<polygon points="'Xq','Yq - 3*tq' 'Xq - 3.5','Yq - 10*tq' 'Xq + 3.5','Yq - 10*tq'" style="fill:#047857"/>
                             '<text x="'Xq + 3'" y="'Yq - 33*tq + 3'" style="fill:#047857; font-size:8px">'r2(abs(last.(q; 5)))'</text>
+                        #else if bzIn ≡ 1 and bzUit ≡ 0
+                            '<line x1="'Xq + 6*tq'" y1="'Yq'" x2="'Xq + 24*tq'" y2="'Yq'" style="stroke:#047857; stroke-width:1.5"/>
+                            '<polygon points="'Xq + 30*tq','Yq' 'Xq + 23*tq','Yq - 3.5' 'Xq + 23*tq','Yq + 3.5'" style="fill:#047857"/>
+                            '<text x="'Xq + 18*tq'" y="'Yq - 5'" text-anchor="middle" style="fill:#047857; font-size:8px">'r2(abs(last.(q; 5)))'</text>
                         #else
-                            '<line x1="'Xq - 30*tq'" y1="'Yq'" x2="'Xq - 6*tq'" y2="'Yq'" style="stroke:#047857; stroke-width:1.5"/>
-                            '<polygon points="'Xq - 3*tq','Yq' 'Xq - 10*tq','Yq - 3.5' 'Xq - 10*tq','Yq + 3.5'" style="fill:#047857"/>
-                            '<text x="'Xq - 33*tq'" y="'Yq - 4'" text-anchor="middle" style="fill:#047857; font-size:8px">'r2(abs(last.(q; 5)))'</text>
+                            '<line x1="'Xq - 30*tq'" y1="'Yq + dyq'" x2="'Xq - 6*tq'" y2="'Yq + dyq'" style="stroke:#047857; stroke-width:1.5"/>
+                            '<polygon points="'Xq - 3*tq','Yq + dyq' 'Xq - 10*tq','Yq + dyq - 3.5' 'Xq - 10*tq','Yq + dyq + 3.5'" style="fill:#047857"/>
+                            '<text x="'Xq - 33*tq'" y="'Yq + dyq - 4'" text-anchor="middle" style="fill:#047857; font-size:8px">'r2(abs(last.(q; 5)))'</text>
                         #end if
                     #end if
                 #end if
@@ -1528,20 +1618,26 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
             kcs(L) = if(λh(L) ≤ 0.3; 1; 1/(kh(λh(L)) + sqrt(max(kh(λh(L))^2 - λh(L)^2; 0))))
             λr(L) = if(staal ≡ 1; λs(L); λh(L))
             red(L) = if(staal ≡ 1; χs(L); kcs(L))
-            NtRd = A_st*if(staal ≡ 1; fy_n; ft0d_n)
+            'Trek: bruto doorsnede, bij hoekstaal met bouten in één been de kleinste van A·f_y en N_u,Rd (6.2.3(2) en NEN-EN 1993-1-8, 3.10.3).
+            NplRd = A_st*if(staal ≡ 1; fy_n; ft0d_n)
+            NtRd = if(bout*ok_b ≡ 1; min(NplRd; NuRd_n); NplRd)
+            'Bouten zonder volledige invoer: een trekstaaf is niet getoetst en telt niet mee voor de maatgevende staaf; de slotzin keurt het vakwerk dan af.
+            bopen(nr) = bout*(1 - ok_b)*bool(Ns(nr) > 0)
             NcRd(L) = red(L)*A_st*if(staal ≡ 1; fy_n; fc0d_n)
             NRd(nr) = if(Ns(nr) ≥ 0; NtRd; NcRd(Ls(nr)))
             UCm(nr) = abs(Ns(nr))/max(NRd(nr); 10^-12)
             UC_v = 0
             mUC = 1
             druk = 0
+            bo = 0
             #for nr = 1 : nS
                 #if sok(nr)*toets ≡ 1
-                    #if UCm(nr) > UC_v
+                    #if UCm(nr)*(1 - bopen(nr)) > UC_v
                         UC_v = UCm(nr)
                         mUC = nr
                     #end if
                     druk = max(druk; bool(Ns(nr) < 0))
+                    bo = max(bo; bopen(nr))
                 #end if
             #loop
             kl4 = staal*bool(kl_st ≥ 4)*druk
@@ -1556,14 +1652,14 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
             #for nr = 1 : nS
                 #if sok(nr) ≡ 1
                     #if toets ≡ 1
-                        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0 4px;">'nr'</td><td style="padding:0 4px;">'si(nr)'–'sj(nr)'</td><td style="padding:0 4px;">'srtn(nr)'</td><td style="padding:0 4px; text-align:right;">'r3(Ls(nr))'</td><td style="padding:0 4px; text-align:right; color:'kleurS(nr)';">'r2(Ns(nr))'</td><td style="padding:0 4px; color:'kleurS(nr)';">'if(Ns(nr) > 0; "trek"; if(Ns(nr) < 0; "druk"; "nulstaaf"))'</td><td style="padding:0 4px; text-align:right;">'if(Ns(nr) < 0; r2(λr(Ls(nr))); "—")'</td><td style="padding:0 4px; text-align:right;">'if(Ns(nr) < 0; r3(red(Ls(nr))); "—")'</td><td style="padding:0 4px; text-align:right;">'r2(NRd(nr))'</td><td style="padding:0 4px; text-align:right; font-weight:700; color:'kleur(UCm(nr))';">'r2(UCm(nr))'</td></tr>
+                        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0 4px;">'nr'</td><td style="padding:0 4px;">'si(nr)'–'sj(nr)'</td><td style="padding:0 4px;">'srtn(nr)'</td><td style="padding:0 4px; text-align:right;">'r3(Ls(nr))'</td><td style="padding:0 4px; text-align:right; color:'kleurS(nr)';">'r2(Ns(nr))'</td><td style="padding:0 4px; color:'kleurS(nr)';">'if(Ns(nr) > 0; "trek"; if(Ns(nr) < 0; "druk"; "nulstaaf"))'</td><td style="padding:0 4px; text-align:right;">'if(Ns(nr) < 0; r2(λr(Ls(nr))); "—")'</td><td style="padding:0 4px; text-align:right;">'if(Ns(nr) < 0; r3(red(Ls(nr))); "—")'</td><td style="padding:0 4px; text-align:right;">'if(bopen(nr) ≡ 1; "niet getoetst"; r2(NRd(nr)))'</td><td style="padding:0 4px; text-align:right; font-weight:700; color:'kleur(if(bopen(nr) ≡ 1; 2; UCm(nr)))';">'if(bopen(nr) ≡ 1; "—"; r2(UCm(nr)))'</td></tr>
                     #else
                         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0 4px;">'nr'</td><td style="padding:0 4px;">'si(nr)'–'sj(nr)'</td><td style="padding:0 4px;">'srtn(nr)'</td><td style="padding:0 4px; text-align:right;">'r3(Ls(nr))'</td><td style="padding:0 4px; text-align:right; color:'kleurS(nr)';">'r2(Ns(nr))'</td><td style="padding:0 4px; color:'kleurS(nr)';">'if(Ns(nr) > 0; "trek"; if(Ns(nr) < 0; "druk"; "nulstaaf"))'</td></tr>
                     #end if
                 #end if
             #loop
             '</table>
-            'N positief bij trek. 'if(toets ≡ 1; "Kniklengte gelijk aan de staaflengte (aan de veilige kant); bruto doorsnede, zonder de verzwakking door gaten en de excentriciteit van de aansluiting."; "")'<span class="alleen-scherm"></span>
+            'N positief bij trek. 'if(toets ≡ 1; "Kniklengte gelijk aan de staaflengte (aan de veilige kant); "; "")''if(toets ≡ 1; if(bout ≡ 1; "trek over de netto doorsnede met de excentriciteit van de boutaansluiting (NEN-EN 1993-1-8, 3.10.3), druk over de bruto doorsnede."; "bruto doorsnede, zonder de verzwakking door gaten en de excentriciteit van de aansluiting."); "")'<span class="alleen-scherm"></span>
 
             # 4. Reacties en verplaatsingen
 
@@ -1619,42 +1715,50 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
 
                 # 5. Toets
 
-                #hide
-                N_Ed = abs(Ns(mUC))*kN
-                L_m = Ls(mUC)*m
-                #show
-                'Maatgevend is staaf 'mUC' ('si(mUC)'–'sj(mUC)''if(invoer_v ≡ 1; ", "; "")''srtn(mUC)'), op 'if(Ns(mUC) ≥ 0; "trek"; "druk")':
-                N_Ed'<span class="kolom-3"></span>'
-                L_m'<span class="alleen-scherm">, lengte van de staaf</span><span class="kolom-3"></span>'
-                #if Ns(mUC) ≥ 0
-                    #if staal ≡ 1
-                        N_t,Rd = A_s*f_y/1.0 to kN'<span class="alleen-scherm">, (6.6), γ<sub>M0</sub> = 1,0</span><span class="kolom-3"></span>'
-                    #else
-                        N_t,Rd = A_s*f_t,0,d to kN'<span class="alleen-scherm">, (6.1)</span><span class="kolom-3"></span>'
-                    #end if
-                    UC_max = N_Ed/N_t,Rd'<span class="kolom-3"></span>'
+                #if bo ≡ 1
+                    '<span style="color:#b45309">De staven op trek zijn niet getoetst: de boutaansluiting van het hoekstaal is niet volledig ingevuld ('if(nb_s ≡ 1; "d<sub>0</sub> en e<sub>2</sub>"; "d<sub>0</sub> en p<sub>1</sub>")').</span>
+                    '<b>Maatgevende UC = ∞</b><span style="color: red"> → <b>de staven voldoen niet</b>: de trek in de boutaansluiting is niet getoetst</span>
                 #else
-                    #if staal ≡ 1
-                        λ_k = L_m/(i_min*π)*sqrt(f_y/(210000 N/mm^2))'<span class="alleen-scherm">, λ̄ uit (6.50), L<sub>cr</sub> = L</span><span class="kolom-3"></span>'
-                        Φ = 0.5*(1 + α_k*(λ_k - 0.2) + λ_k^2)'<span class="alleen-scherm">, α = 'α_k'</span><span class="kolom-3"></span>'
-                        χ = min(1; 1/(Φ + sqrt(Φ^2 - λ_k^2)))'<span class="alleen-scherm">, (6.49)</span><span class="kolom-3"></span>'
-                        N_b,Rd = χ*A_s*f_y/1.0 to kN'<span class="alleen-scherm">, (6.47), γ<sub>M1</sub> = 1,0</span><span class="kolom-3"></span>'
-                        UC_max = N_Ed/N_b,Rd'<span class="kolom-3"></span>'
+                    #hide
+                    N_Ed = abs(Ns(mUC))*kN
+                    L_m = Ls(mUC)*m
+                    #show
+                    'Maatgevend is staaf 'mUC' ('si(mUC)'–'sj(mUC)''if(invoer_v ≡ 1; ", "; "")''srtn(mUC)'), op 'if(Ns(mUC) ≥ 0; "trek"; "druk")':
+                    N_Ed'<span class="kolom-3"></span>'
+                    L_m'<span class="alleen-scherm">, lengte van de staaf</span><span class="kolom-3"></span>'
+                    #if Ns(mUC) ≥ 0
+                        #if bout*ok_b ≡ 1
+                            N_pl,Rd = A_s*f_y/1.0 to kN'<span class="alleen-scherm">, (6.6), γ<sub>M0</sub> = 1,0</span><span class="kolom-3"></span>'
+                            N_t,Rd = min(N_pl,Rd; N_u,Rd)'<span class="alleen-scherm">, 6.2.3(2), N<sub>u,Rd</sub> uit NEN-EN 1993-1-8, 3.10.3</span><span class="kolom-3"></span>'
+                        #else if staal ≡ 1
+                            N_t,Rd = A_s*f_y/1.0 to kN'<span class="alleen-scherm">, (6.6), γ<sub>M0</sub> = 1,0</span><span class="kolom-3"></span>'
+                        #else
+                            N_t,Rd = A_s*f_t,0,d to kN'<span class="alleen-scherm">, (6.1)</span><span class="kolom-3"></span>'
+                        #end if
+                        UC_max = N_Ed/N_t,Rd'<span class="kolom-3"></span>'
                     #else
-                        λ_rel = L_m/(i_min*π)*sqrt(f_c,0,k/E_0,05)'<span class="alleen-scherm">, (6.21)</span><span class="kolom-3"></span>'
-                        k_knik = 0.5*(1 + β_c*(λ_rel - 0.3) + λ_rel^2)'<span class="alleen-scherm">, (6.27), β<sub>c</sub> = 'β_c'</span><span class="kolom-3"></span>'
-                        k_c = min(1; 1/(k_knik + sqrt(k_knik^2 - λ_rel^2)))'<span class="alleen-scherm">, (6.25)</span><span class="kolom-3"></span>'
-                        N_c,Rd = k_c*A_s*f_c,0,d to kN'<span class="alleen-scherm">, (6.23)</span><span class="kolom-3"></span>'
-                        UC_max = N_Ed/N_c,Rd'<span class="kolom-3"></span>'
+                        #if staal ≡ 1
+                            λ_k = L_m/(i_min*π)*sqrt(f_y/(210000 N/mm^2))'<span class="alleen-scherm">, λ̄ uit (6.50), L<sub>cr</sub> = L</span><span class="kolom-3"></span>'
+                            Φ = 0.5*(1 + α_k*(λ_k - 0.2) + λ_k^2)'<span class="alleen-scherm">, α = 'α_k'</span><span class="kolom-3"></span>'
+                            χ = min(1; 1/(Φ + sqrt(Φ^2 - λ_k^2)))'<span class="alleen-scherm">, (6.49)</span><span class="kolom-3"></span>'
+                            N_b,Rd = χ*A_s*f_y/1.0 to kN'<span class="alleen-scherm">, (6.47), γ<sub>M1</sub> = 1,0</span><span class="kolom-3"></span>'
+                            UC_max = N_Ed/N_b,Rd'<span class="kolom-3"></span>'
+                        #else
+                            λ_rel = L_m/(i_min*π)*sqrt(f_c,0,k/E_0,05)'<span class="alleen-scherm">, (6.21)</span><span class="kolom-3"></span>'
+                            k_knik = 0.5*(1 + β_c*(λ_rel - 0.3) + λ_rel^2)'<span class="alleen-scherm">, (6.27), β<sub>c</sub> = 'β_c'</span><span class="kolom-3"></span>'
+                            k_c = min(1; 1/(k_knik + sqrt(k_knik^2 - λ_rel^2)))'<span class="alleen-scherm">, (6.25)</span><span class="kolom-3"></span>'
+                            N_c,Rd = k_c*A_s*f_c,0,d to kN'<span class="alleen-scherm">, (6.23)</span><span class="kolom-3"></span>'
+                            UC_max = N_Ed/N_c,Rd'<span class="kolom-3"></span>'
+                        #end if
                     #end if
-                #end if
-                'Buiten dit blad: de verbindingen in de knopen, de netto doorsnede bij gaten, knik uit het vlak van het vakwerk, het eigen gewicht van de staven en de doorbuigingseis.
-                #if kl4 ≡ 1
-                    '<b>Maatgevende UC = 'r2(UC_v)'</b><span style="color: red">, maar de doorsnede valt bij druk in klasse 4 (tabel 5.2) → <b>de staven voldoen niet</b></span>
-                #else if UC_v ≤ 1.0
-                    '<b>Maatgevende UC = 'r2(UC_v)'</b><span style="color: green"> ≤ 1,0 → <b>de staven voldoen</b></span>
-                #else
-                    '<b>Maatgevende UC = 'r2(UC_v)'</b><span style="color: red"> > 1,0 → <b>de staven voldoen niet</b></span>
+                    'Buiten dit blad: de verbindingen in de knopen'if(bout ≡ 1; " (de bouten zelf: afschuiving en stuik)"; ", de netto doorsnede bij gaten")', knik uit het vlak van het vakwerk, het eigen gewicht van de staven en de doorbuigingseis.
+                    #if kl4 ≡ 1
+                        '<b>Maatgevende UC = 'r2(UC_v)'</b><span style="color: red">, maar de doorsnede valt bij druk in klasse 4 (tabel 5.2) → <b>de staven voldoen niet</b></span>
+                    #else if UC_v ≤ 1.0
+                        '<b>Maatgevende UC = 'r2(UC_v)'</b><span style="color: green"> ≤ 1,0 → <b>de staven voldoen</b></span>
+                    #else
+                        '<b>Maatgevende UC = 'r2(UC_v)'</b><span style="color: red"> > 1,0 → <b>de staven voldoen niet</b></span>
+                    #end if
                 #end if
             #else
                 '<i>Geen toets: dit blad geeft de krachtsverdeling, geen oordeel.</i>
@@ -1674,7 +1778,7 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
     L_c = ?*(m)', overspanning, of de lengte van de uitkraging<span class="kolom-3"></span>'
     q_c = ?*(kN/m)', verdeelde last<span class="kolom-3"></span>'
     F_c = ?*(kN)', puntlast<span class="kolom-3"></span>'
-    a_c = ?*(m)', plaats van de puntlast in geval 3, vanaf links<span class="alleen-scherm"> (0 = L/3)</span><span class="kolom-3"></span>'
+    a_c = ?*(m)', plaats van de puntlast in geval 3 en 15, vanaf links<span class="alleen-scherm"> (0 = L/3)</span><span class="kolom-3"></span>'
     E_c = ?*(N/mm^2)', elasticiteitsmodulus<span class="kolom-3"></span>'
     I_c = ?*(cm^4)', traagheidsmoment<span class="kolom-3"></span>'
     #hide
@@ -1701,7 +1805,7 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
             '<span class="alleen-scherm">Zonder E en I geen doorbuiging.</span>
         #end if
         #if a_c ≤ 0 m or a_c ≥ L_c
-            'Geval 3: de puntlast op a = L/3 = 'r3(ac)' m.<span class="alleen-scherm"></span>
+            'Geval 3 en 15: de puntlast op a = L/3 = 'r3(ac)' m.<span class="alleen-scherm"></span>
         #end if
 
         # 2. Standaardgevallen
@@ -1902,6 +2006,29 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
         alles_ok = alles_ok*ok_10
         #show
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:1px 4px; vertical-align:top;">10</td><td style="padding:1px 4px;"><svg viewbox="0 0 64 30" xmlns="http://www.w3.org/2000/svg" style="width:64px; height:30px;"><line x1="6" y1="18" x2="58" y2="18" style="stroke:#374151; stroke-width:2"/><rect x="2" y="10" width="4" height="16" style="fill:#9ca3af; stroke:#374151; stroke-width:0.8"/><rect x="58" y="10" width="4" height="16" style="fill:#9ca3af; stroke:#374151; stroke-width:0.8"/><polygon points="6,16 58,5 58,16" style="fill:rgba(4,120,87,0.25); stroke:#047857; stroke-width:0.8"/></svg><br><span style="font-size:0.9em;">driehoek, 0 links tot q rechts</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'r2(Mv_10)'<br><span style="color:#6b7280; font-size:0.9em;">0,02144·qL²</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'r2(Ms_10)'<br><span style="color:#6b7280; font-size:0.9em;">qL²/20</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'r2(Vm_10)'<br><span style="color:#6b7280; font-size:0.9em;">7qL/20</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'if(met_w ≡ 1; r2(Wm_10); "—")'<br><span style="color:#6b7280; font-size:0.9em;">0,001309·qL⁴/EI</span></td><td style="padding:1px 4px; text-align:center; vertical-align:top; font-weight:700; color:'if(ok_10 ≡ 1; "#047857"; "#b91c1c")';">'if(ok_10 ≡ 1; "✓"; "✗")'</td></tr>
+        #hide
+        'Geval 15: tweezijdig ingeklemd, puntlast F op a van links, b = L − a; c de kortste en d de langste van a en b.
+        'M_A = F·a·b²/L², M_B = F·a²·b/L², het grootste is F·a·b·d/L²; onder de last 2F·a²·b²/L³; de grootste reactie F·d²·(3c + d)/L³;
+        'w_max = 2F·d³·c²/(3EI·(3d + c)²), in het langste deel op 2dL/(3d + c) van het verre steunpunt.
+        cc = min(ac; Lc - ac)
+        dc = max(ac; Lc - ac)
+        R_15 = ligger(gC(2; 2); lC(2; ac; 0; Fc; 0; 0; 0; 0); EIc)
+        Mv_15 = fMv(R_15)
+        Mv_15f = 2*Fc*ac^2*(Lc - ac)^2/Lc^3
+        Mv_15ok = gelijk(Mv_15; Mv_15f; sM)
+        Ms_15 = fMs(R_15)
+        Ms_15f = Fc*ac*(Lc - ac)*dc/Lc^2
+        Ms_15ok = gelijk(Ms_15; Ms_15f; sM)
+        Vm_15 = fV(R_15)
+        Vm_15f = Fc*dc^2*(3*cc + dc)/Lc^3
+        Vm_15ok = gelijk(Vm_15; Vm_15f; sV)
+        Wm_15 = fW(R_15)
+        Wm_15f = 1000*(2*Fc*dc^3*cc^2/(3*EIc*(3*dc + cc)^2))
+        Wm_15ok = if(met_w ≡ 1; gelijk(Wm_15; Wm_15f; sW); 1)
+        ok_15 = Mv_15ok*Ms_15ok*Vm_15ok*Wm_15ok
+        alles_ok = alles_ok*ok_15
+        #show
+        '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:1px 4px; vertical-align:top;">15</td><td style="padding:1px 4px;"><svg viewbox="0 0 64 30" xmlns="http://www.w3.org/2000/svg" style="width:64px; height:30px;"><line x1="6" y1="18" x2="58" y2="18" style="stroke:#374151; stroke-width:2"/><rect x="2" y="10" width="4" height="16" style="fill:#9ca3af; stroke:#374151; stroke-width:0.8"/><rect x="58" y="10" width="4" height="16" style="fill:#9ca3af; stroke:#374151; stroke-width:0.8"/><line x1="23" y1="2" x2="23" y2="14" style="stroke:#047857; stroke-width:1.2"/><polygon points="23,17 20.5,12 25.5,12" style="fill:#047857"/></svg><br><span style="font-size:0.9em;">F op a van links</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'r2(Mv_15)'<br><span style="color:#6b7280; font-size:0.9em;">2F·a²·b²/L³</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'r2(Ms_15)'<br><span style="color:#6b7280; font-size:0.9em;">F·a·b·d/L²</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'r2(Vm_15)'<br><span style="color:#6b7280; font-size:0.9em;">F·d²·(3c + d)/L³</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'if(met_w ≡ 1; r2(Wm_15); "—")'<br><span style="color:#6b7280; font-size:0.9em;">2F·d³·c²/(3EI·(3d + c)²)</span></td><td style="padding:1px 4px; text-align:center; vertical-align:top; font-weight:700; color:'if(ok_15 ≡ 1; "#047857"; "#b91c1c")';">'if(ok_15 ≡ 1; "✓"; "✗")'</td></tr>
         '<tr style="border-bottom:1px solid #9ca3af; background:#f3f4f6;"><td colspan="7" style="padding:1px 4px; font-weight:700;">Uitkraging, links ingeklemd</td></tr>
         #hide
         R_11 = ligger(gC(2; 0); lC(1; 0; Lc; qc; qc; 0; 0; 0); EIc)
@@ -1972,7 +2099,7 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
         #show
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:1px 4px; vertical-align:top;">14</td><td style="padding:1px 4px;"><svg viewbox="0 0 64 30" xmlns="http://www.w3.org/2000/svg" style="width:64px; height:30px;"><line x1="6" y1="18" x2="58" y2="18" style="stroke:#374151; stroke-width:2"/><rect x="2" y="10" width="4" height="16" style="fill:#9ca3af; stroke:#374151; stroke-width:0.8"/><polygon points="6,16 58,5 58,16" style="fill:rgba(4,120,87,0.25); stroke:#047857; stroke-width:0.8"/></svg><br><span style="font-size:0.9em;">driehoek, 0 bij de inklemming tot q</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">—</td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'r2(Ms_14)'<br><span style="color:#6b7280; font-size:0.9em;">qL²/3</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'r2(Vm_14)'<br><span style="color:#6b7280; font-size:0.9em;">qL/2</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'if(met_w ≡ 1; r2(Wm_14); "—")'<br><span style="color:#6b7280; font-size:0.9em;">11qL⁴/(120EI)</span></td><td style="padding:1px 4px; text-align:center; vertical-align:top; font-weight:700; color:'if(ok_14 ≡ 1; "#047857"; "#b91c1c")';">'if(ok_14 ≡ 1; "✓"; "✗")'</td></tr>
         '</table>
-        'M<sub>veld</sub> met trek aan de onderzijde, M<sub>steun</sub> met trek aan de bovenzijde (bij een inklemming), beide als grootste waarde; V<sub>max</sub> is de grootste dwarskracht, gelijk aan de grootste oplegreactie; w<sub>max</sub> de grootste doorbuiging.<span class="alleen-scherm"> In de formules: a en b de afstanden van de puntlast tot de steunpunten, c de kleinste van beide.</span>
+        'M<sub>veld</sub> met trek aan de onderzijde, M<sub>steun</sub> met trek aan de bovenzijde (bij een inklemming), beide als grootste waarde; V<sub>max</sub> is de grootste dwarskracht, gelijk aan de grootste oplegreactie; w<sub>max</sub> de grootste doorbuiging.<span class="alleen-scherm"> In de formules: a en b de afstanden van de puntlast tot de steunpunten, c de kleinste en d de grootste van beide.</span>
         #if alles_ok ≡ 0
             '<span style="color:#b91c1c">Een formule wijkt meer dan 0,1 % af van de liggeroplosser (✗); de waarde van de oplosser geldt.</span>
         #end if
