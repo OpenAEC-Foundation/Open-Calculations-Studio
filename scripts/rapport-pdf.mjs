@@ -12,12 +12,16 @@
  * Gebruik:
  *   node scripts/rapport-pdf.mjs <projectbestand> <uit.pdf>
  *        [--bureau profiel.json] [--url http://localhost:3021] [--browser <pad>]
+ *        [--beginwaarden]
  *
  *   --bureau   een bureauprofiel (JSON in de vorm van BureauProfiel); komt in
  *              rapport.bureau, zodat huisstijl en voet van dat profiel gelden.
  *   --url      de dev-server; standaard http://localhost:3021.
  *   --browser  chrome.exe of msedge.exe; standaard de eerste die bestaat van
  *              Chrome en Edge op hun gewone installatieplek.
+ *   --beginwaarden  opent eerst elk blad een keer, zodat een parametrisch beeld
+ *              zijn beginwaarden invult. Nodig voor een proefproject dat alleen
+ *              templateId's heeft; een opgeslagen project heeft zijn invoer al.
  *
  * Vereist:
  *   • een draaiende dev-server: npm --prefix packages/desktop run dev. Het script
@@ -52,7 +56,7 @@ const BROWSERS = [
 ];
 const GEBRUIK =
   "gebruik: node scripts/rapport-pdf.mjs <projectbestand> <uit.pdf> " +
-  "[--bureau profiel.json] [--url http://localhost:3021] [--browser <pad>]";
+  "[--bureau profiel.json] [--url http://localhost:3021] [--browser <pad>] [--beginwaarden]";
 
 /** Een fout met een uitleg voor de gebruiker: gemeld zonder stacktrace. */
 class Stop extends Error {}
@@ -67,10 +71,11 @@ const meldingen = [];
 
 function leesArgumenten(argv) {
   const los = [];
-  const opties = { bureau: null, url: "http://localhost:3021", browser: null, help: false };
+  const opties = { bureau: null, url: "http://localhost:3021", browser: null, help: false, beginwaarden: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--help" || a === "-h") opties.help = true;
+    else if (a === "--beginwaarden") opties.beginwaarden = true;
     else if (a === "--bureau" || a === "--url" || a === "--browser") {
       const w = argv[++i];
       if (w === undefined || w.startsWith("--")) stop(`${a} verwacht een waarde.\n${GEBRUIK}`);
@@ -332,6 +337,19 @@ async function hoofd() {
     if (!geladenProject.rapport) stop("na het laden heeft het project geen rapport; heeft de dev-server de rapportstore al?");
     log(`project "${geladenProject.naam}" geladen: ${geladenProject.bladen} bladen` +
       (geladenProject.bureau ? `, bureau "${geladenProject.bureau}"` : ", bureau uit het live profiel"));
+
+    if (o.beginwaarden) {
+      // Een beeld vult zijn beginwaarden pas in als zijn blad actief is.
+      const gevuld = await evalueer(`(async () => {
+        const { useProjectStore } = window.__ocs;
+        for (const e of useProjectStore.getState().exemplaren) {
+          useProjectStore.getState().selecteer(e.id);
+          await new Promise((r) => setTimeout(r, 900));
+        }
+        return useProjectStore.getState().exemplaren.length;
+      })()`, "de bladen openen");
+      log(`${gevuld} bladen geopend voor de beginwaarden van hun beeld`);
+    }
 
     // Zelfde weg als "Rapport (PDF)" in de app: het afdrukvoorbeeld bouwt de
     // vellen, en een kopie daarvan gaat naar de printer (drukvellen.ts).

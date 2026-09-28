@@ -11,7 +11,8 @@
  * veld telt als 0 in de eenheid van het veld, net als een nieuw '?'-veld. Het
  * veld zelf blijft leeg. Dit script bewaakt dat op drie niveaus:
  *   1. een klein blad met velden met, zonder en met samengestelde eenheid;
- *   2. elk rekenblad: alle velden leeg rekent precies als alle velden 0;
+ *   2. elk rekenblad: alle velden leeg rekent precies als alle velden 0, en
+ *      de slotregel zegt dan nooit 'voldoet' (maar 'niet getoetst');
  *   3. de twee gemelde gevallen met realistische invoer.
  *
  * Draaien:  node scripts/check-lege-invoer.mjs
@@ -137,8 +138,20 @@ function projectScope() {
 }
 const SCOPE = projectScope();
 
+/**
+ * Bladen die bij lege invoer terecht 'voldoet' zeggen: hun belasting en maten
+ * zijn vaste voorbeeldwaarden, geen invoervelden.
+ */
+const VOORBEELD = new Set(["en1993.ts :: ec3Druk", "houtenKolom.ts :: houtenKolom"]);
+/** Een slotregel met een positief oordeel. */
+const voldoet = (tekst) =>
+  [...tekst.matchAll(/Maatgevende UC[^→]{0,40}→[^.]{0,120}/g)]
+    .map((m) => m[0])
+    .find((r) => /voldo(et|en)(?!s+niet)/.test(r) && !/niet getoetst|niet bepaald/.test(r));
+
 let bladen = 0;
 let afwijkend = 0;
+let onterecht = 0;
 for (const bestand of readdirSync(TPL_DIR).filter((f) => f.endsWith(".ts") && !GEEN_BLAD.has(f)).sort()) {
   const src = readFileSync(join(TPL_DIR, bestand), "utf8");
   for (const [, naam, tpl] of src.matchAll(/export const (\w+) = `([\s\S]*?)`;/g)) {
@@ -149,8 +162,11 @@ for (const bestand of readdirSync(TPL_DIR).filter((f) => f.endsWith(".ts") && !G
     const opNul = {}, opLeeg = {};
     for (const v of velden) { opNul[v] = "0"; opLeeg[v] = ""; }
     let d;
+    let oordeel;
     try {
-      d = verschil(doorreken(tpl, opNul, SCOPE), doorreken(tpl, opLeeg, SCOPE));
+      const leeg = doorreken(tpl, opLeeg, SCOPE);
+      d = verschil(doorreken(tpl, opNul, SCOPE), leeg);
+      oordeel = voldoet(leeg.tekst);
     } catch (e) {
       d = `gooit: ${String(e.message).slice(0, 120)}`;
     }
@@ -158,9 +174,14 @@ for (const bestand of readdirSync(TPL_DIR).filter((f) => f.endsWith(".ts") && !G
       afwijkend++;
       meld(false, `${bestand} :: ${naam}`, d);
     }
+    if (oordeel && !VOORBEELD.has(`${bestand} :: ${naam}`)) {
+      onterecht++;
+      meld(false, `${bestand} :: ${naam} zegt 'voldoet' bij lege invoer`, oordeel.slice(0, 120));
+    }
   }
 }
 meld(afwijkend === 0, `${bladen} rekenbladen met invoervelden: leeg en 0 geven dezelfde uitkomsten en tekst`);
+meld(onterecht === 0, `geen van de ${bladen} rekenbladen zegt 'voldoet' bij lege invoer`);
 
 // ── 3. De gemelde gevallen met realistische invoer ──────────────────────────
 console.log("\nGemelde gevallen — één veld leeg tussen ingevulde waarden:");

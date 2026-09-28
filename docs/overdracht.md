@@ -49,7 +49,7 @@ cd packages/desktop && npx tsc --noEmit -p .
 
 - Elke module heeft een eigen check met handberekeningen (als commentaar bij de verwachting) en vaak een onafhankelijke uitwerking in het script zelf. Verwachtingen alleen aanpassen met een handberekening die aantoont dat de nieuwe waarde juist is.
 - `check-renders.mjs` rekent elk blad met elke keuze uit de keuzelijsten; `check-designerkeuze.mjs` controleert blad↔beeld; `check-blad-bijwerken.mjs` het bijwerken.
-- Afdruk als PDF (dev-server `npm run dev --workspace=@openaec/calculations-studio`, poort 3021): `node scripts/rapport-pdf.mjs <project.json> <uit.pdf>`.
+- Afdruk als PDF (dev-server `npm run dev --workspace=@openaec/calculations-studio`, poort 3021): `node scripts/rapport-pdf.mjs <project.json> <uit.pdf>`. Voor een proefproject met alleen `templateId`'s: `--beginwaarden`, anders rekenen bladen met een beeld met lege invoer.
 - Werkwijze die fouten vond die de eigen checks misten: na het bouwen van een module rekent een tweede, onafhankelijke controle minstens twee gevallen met de hand na en zoekt gericht naar een onterecht 'voldoet'.
 
 ## 5. Bouwen en uitbrengen
