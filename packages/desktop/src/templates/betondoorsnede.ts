@@ -502,7 +502,7 @@ M_fr = ?*(kN*m)'<span class="kolom-4"></span>'
     # 7. Scheurwijdte (§7.3.4)
 
     #if N_fr ≡ 0 kN and M_fr ≡ 0 kN*m
-        '<i>Geen frequente belasting ingevuld (N<sub>fr</sub> = M<sub>fr</sub> = 0): de scheurwijdte is niet getoetst.</i>
+        '<i class="ook-afdruk">Geen frequente belasting ingevuld (N<sub>fr</sub> = M<sub>fr</sub> = 0): de scheurwijdte is niet getoetst.</i>
         #hide
         UC_w = 0
         #show

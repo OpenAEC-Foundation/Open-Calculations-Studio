@@ -538,7 +538,7 @@ a_N = if(vorm ≡ 2; 2; if(r_N ≤ 0.1; 1; if(r_N ≤ 0.7; 1 + (r_N - 0.1)/0.6*0
 UC_biax = 0
 #show
 #if N_Ed ≥ N_Rd,max or N_Ed ≤ N_Rd,min
-    '<i>Niet getoetst: de doorsnede voldoet al niet op de normaalkracht.</i>
+    '<i class="ook-afdruk">Niet getoetst: de doorsnede voldoet al niet op de normaalkracht.</i>
 #else if M_Ed,y ≡ 0 kN*m or M_Ed,z ≡ 0 kN*m
     '<i>Buiging om één as: geen scheve buiging.</i>
 #else

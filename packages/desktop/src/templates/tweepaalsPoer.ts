@@ -315,7 +315,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
         #if R_cd > 0 kN
             UC_paal = R_Ed/R_cd', draagvermogen van de paal, NEN 9997-1 (7.1)'
         #else
-            '<i>Het draagvermogen van de paal is niet getoetst (R<sub>cd</sub> = 0).</i>
+            '<i class="ook-afdruk">Het draagvermogen van de paal is niet getoetst (R<sub>cd</sub> = 0).</i>
         #end if
 
         # 5. Staafwerkmodel (§6.5)
@@ -554,7 +554,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
         UC_max = max(UC_paal; UC_trek; UC_kn,1; UC_kn,2; UC_dw; UC_ank; UC_rol; UC_V; UC_Vmax; UC_w)
         maatg = if(UC_max ≡ UC_paal; "paal"; if(UC_max ≡ UC_trek; "trekband"; if(UC_max ≡ UC_kn,1; "knoop onder de kolom"; if(UC_max ≡ UC_kn,2; "knoop boven de paal"; if(UC_max ≡ UC_dw; "dwarstrek, drukdiagonaal"; if(UC_max ≡ UC_ank; "verankering"; if(UC_max ≡ UC_rol; "ombuiging"; if(UC_max ≡ UC_V; "dwarskracht"; if(UC_max ≡ UC_Vmax; "dwarskracht, bovengrens"; "scheurwijdte")))))))))
         #show
-        '<i>Dwars op de paalrij heeft de poer geen stijfheid: een moment of de paalafwijking in die richting (tot 'M_dwars' kNm) gaat via koppelbalken of ingeklemde palen en is hier niet getoetst.</i>
+        '<i class="ook-afdruk">Dwars op de paalrij heeft de poer geen stijfheid: een moment of de paalafwijking in die richting (tot 'M_dwars' kNm) gaat via koppelbalken of ingeklemde palen en is hier niet getoetst.</i>
         '<table class="alleen-scherm" style="width:100%; border-collapse:collapse; font-size:0.95em;">
         '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:3px 8px;">Toets</th><th style="text-align:left; padding:3px 8px;">Norm</th><th style="text-align:right; padding:3px 8px;">UC</th><th style="text-align:left; padding:3px 8px;">Oordeel</th></tr>
         #if R_cd > 0 kN
@@ -796,7 +796,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
         #if R_cd > 0 kN
             UC_paal = R_Ed/R_cd', draagvermogen van de paal, NEN 9997-1 (7.1)'
         #else
-            '<i>Het draagvermogen van de paal is niet getoetst (R<sub>cd</sub> = 0).</i>
+            '<i class="ook-afdruk">Het draagvermogen van de paal is niet getoetst (R<sub>cd</sub> = 0).</i>
         #end if
 
         # 5. Staafwerkmodel (§6.5)

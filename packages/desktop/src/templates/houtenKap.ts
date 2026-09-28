@@ -348,7 +348,7 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     #else if puntlast ≡ 2
         '<i>Puntlast op een vaste plaats: F<sub>G</sub> telt bij het eigen gewicht, F<sub>Q</sub> als veranderlijke belasting van categorie H.</i><span class="alleen-scherm"></span>
     #else
-        '<i>Zonder puntlast is de geconcentreerde last Q<sub>k</sub> = 2 kN uit tabel NB.4 – 6.10 niet getoetst.</i>
+        '<i class="ook-afdruk">Zonder puntlast is de geconcentreerde last Q<sub>k</sub> = 2 kN uit tabel NB.4 – 6.10 niet getoetst.</i>
     #end if
     '<i>q<sub>k</sub> werkt volgens de tabel op ten hoogste 10 m²; hier op de hele spoor, dat ligt aan de veilige kant. Q<sub>k</sub>, q<sub>k</sub>, sneeuw en wind werken niet tegelijk (ψ<sub>0</sub> = 0).</i><span class="alleen-scherm"></span>
 

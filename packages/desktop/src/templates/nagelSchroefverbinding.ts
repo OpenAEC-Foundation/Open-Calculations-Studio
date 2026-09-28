@@ -908,7 +908,7 @@ kleur_ok(b) = if(b ≡ 1; "#047857"; "#b91c1c")
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de verbinding voldoet niet</b></span>
     #end if
 
-    '<i>Niet getoetst: verbindingsmiddelen in kops hout, blokschuif en de staalplaat zelf (bijlage A, §8.2.3(2)), de gatspeling onder 0,1d die een dikke staalplaat vraagt (§8.2.3(1)) en de factor 2/3 voor hout dat onder belasting droogt (§8.3.2(8)).</i>
+    '<i class="ook-afdruk">Niet getoetst: verbindingsmiddelen in kops hout, blokschuif en de staalplaat zelf (bijlage A, §8.2.3(2)), de gatspeling onder 0,1d die een dikke staalplaat vraagt (§8.2.3(1)) en de factor 2/3 voor hout dat onder belasting droogt (§8.3.2(8)).</i>
 #else
     #hide
     'EN 338 en EN 14080 per klasse: [klasse | f_c,0,k | f_c,90,k | f_v,k | f_t,0,k | γ_M (tabel 2.3) | gelamineerd]
@@ -1050,7 +1050,7 @@ kleur_ok(b) = if(b ≡ 1; "#047857"; "#b91c1c")
                 '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de verbinding voldoet niet</b></span>
             #end if
 
-            '<i>Niet getoetst: de verzwakte doorsnede van element 1, de oplegging onder de keep (de component N·sin β) en de borging van de schoor in de keep.</i>
+            '<i class="ook-afdruk">Niet getoetst: de verzwakte doorsnede van element 1, de oplegging onder de keep (de component N·sin β) en de borging van de schoor in de keep.</i>
         #end if
     #else if soort ≡ 3
         # 3. Pen-en-gat: geometrie en belasting
@@ -1234,7 +1234,7 @@ kleur_ok(b) = if(b ≡ 1; "#047857"; "#b91c1c")
                 '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de verbinding voldoet niet</b></span>
             #end if
 
-            '<i>Niet getoetst: de verzwakte doorsneden van element 1 bij het gat en van element 2 bij de borst, dwarskracht en trek samen, buiging van de toognagel en de afstanden van de toognagel tot de randen van de wangen.</i>
+            '<i class="ook-afdruk">Niet getoetst: de verzwakte doorsneden van element 1 bij het gat en van element 2 bij de borst, dwarskracht en trek samen, buiging van de toognagel en de afstanden van de toognagel tot de randen van de wangen.</i>
         #end if
     #else
         # 3. Zwaluwstaart: geometrie en belasting
@@ -1305,7 +1305,7 @@ kleur_ok(b) = if(b ≡ 1; "#047857"; "#b91c1c")
                 '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de verbinding voldoet niet</b></span>
             #end if
 
-            '<i>Niet getoetst: speling door krimp van de zwaluwstaart, een dwarskracht op de zwaluwstaart (toets die als pen-en-gat) en de verzwakte doorsnede van element 1.</i>
+            '<i class="ook-afdruk">Niet getoetst: speling door krimp van de zwaluwstaart, een dwarskracht op de zwaluwstaart (toets die als pen-en-gat) en de verzwakte doorsnede van element 1.</i>
         #end if
     #end if
 #end if

@@ -1350,7 +1350,7 @@ UC_max = max(UC_taps; UC_recht; UC_v)
   '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>tapse ligger voldoet niet</b></span>
 #end if
 
-'<i>Niet getoetst: kip (§6.3.3), doorbuiging (§7.2) en de oplegdruk (§6.1.5).</i>
+'<i class="ook-afdruk">Niet getoetst: kip (§6.3.3), doorbuiging (§7.2) en de oplegdruk (§6.1.5).</i>
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1790,6 +1790,6 @@ k_def
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>het beschot voldoet niet</b></span>
   #end if
 
-  '<i>Niet getoetst: afschuiving, de bevestiging van het beschot op de balken, trillingen (§7.3) en de balken zelf; de systeemsterkte k<sub>sys</sub> (§6.6) is niet toegepast. Bij een dak zijn sneeuw en de lijnlast van 2 kN/m uit tabel NB.4 – 6.10 niet meegenomen.</i>
+  '<i class="ook-afdruk">Niet getoetst: afschuiving, de bevestiging van het beschot op de balken, trillingen (§7.3) en de balken zelf; de systeemsterkte k<sub>sys</sub> (§6.6) is niet toegepast. Bij een dak zijn sneeuw en de lijnlast van 2 kN/m uit tabel NB.4 – 6.10 niet meegenomen.</i>
 #end if
 `;

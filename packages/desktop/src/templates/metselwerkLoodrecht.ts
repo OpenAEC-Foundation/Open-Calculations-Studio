@@ -314,9 +314,9 @@ b_s = 1000*mm
             #show
             UC_F = h_w/(30*t_w)', bruikbaarheid: h ≤ 30·t bij een wand die boven maar niet aan de einden is vastgehouden (bijlage F(2))'
         #else if steun ≡ 1
-            '<i>Bruikbaarheid: bijlage F geldt vanaf t = 100 mm (F(3)); niet getoetst.</i>
+            '<i class="ook-afdruk">Bruikbaarheid: bijlage F geldt vanaf t = 100 mm (F(3)); niet getoetst.</i>
         #else
-            '<i>Bruikbaarheid: de grenzen van bijlage F (figuren F.1 t/m F.3) zijn niet getoetst.</i>
+            '<i class="ook-afdruk">Bruikbaarheid: de grenzen van bijlage F (figuren F.1 t/m F.3) zijn niet getoetst.</i>
         #end if
 
         # 5. Samenvatting
@@ -597,7 +597,7 @@ b_s = 1000*mm
 
             V_Rd = f_vd*t_s*l_c to kN', (6.13)'
             UC_max = abs(V_Ed)/V_Rd', V<sub>Ed</sub> ≤ V<sub>Rd</sub> (6.12)'
-            '<i>Niet getoetst: het gedrukte deel op de verticale belasting en de verticale gevolgen van de schuifkracht (§6.2(5)), en de verbinding met kruisende wanden (§6.2(4)).</i>
+            '<i class="ook-afdruk">Niet getoetst: het gedrukte deel op de verticale belasting en de verticale gevolgen van de schuifkracht (§6.2(5)), en de verbinding met kruisende wanden (§6.2(4)).</i>
             #if UC_max ≤ 1.0
                 '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de wand voldoet op afschuiving</b></span>
             #else

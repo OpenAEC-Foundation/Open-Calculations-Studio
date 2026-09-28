@@ -190,7 +190,7 @@ geheid = hlookup(tab7c; paaltype; 1; 6)
     D_eq = D to m', equivalente middellijn'
     #if richting ≡ 0
         L_prop = ?*(m)', hoogte van de grondprop die wrijving op de binnenwand geeft<span class="alleen-scherm">; gemeten of aangenomen, ten hoogste ΔL; 0 zonder prop</span>'
-        '<i>Aanname aan de veilige kant: de wrijving op de binnenwand telt ten hoogste A<sub>i</sub>·q<sub>b;max</sub>, zodat onderrand en prop samen niet meer geven dan de volle doorsnede. 7.6.2.3(d) begrenst ruimer, op de draagkracht van de punt met een vaste prop.</i>
+        '<i class="ook-afdruk">Aanname aan de veilige kant: de wrijving op de binnenwand telt ten hoogste A<sub>i</sub>·q<sub>b;max</sub>, zodat onderrand en prop samen niet meer geven dan de volle doorsnede. 7.6.2.3(d) begrenst ruimer, op de draagkracht van de punt met een vaste prop.</i>
     #end if
     #hide
     s_p = 1
@@ -1314,8 +1314,8 @@ pw = max(8; min(40; D_eq/(1 m)*sch*1.5))
 
 '<hr/>
 #if richting ≡ 1
-    '<i>Niet getoetst: het omhoogkomen van de paalgroep met de grond (7.6.3.1(4), 2.4.7.4), cyclische belasting (7.6.3.1(9)), sterkte van de paal en de verbinding. Niet opgenomen: schachtwrijving in klei en leem (tabel 7.d, 0,5·α<sub>t</sub>), het eigen gewicht van de paal (7.6.3.3(h)), de correcties op q<sub>c</sub> (7.6.2.3(i) t/m (l)): die zitten in de invoer.</i>
+    '<i class="ook-afdruk">Niet getoetst: het omhoogkomen van de paalgroep met de grond (7.6.3.1(4), 2.4.7.4), cyclische belasting (7.6.3.1(9)), sterkte van de paal en de verbinding. Niet opgenomen: schachtwrijving in klei en leem (tabel 7.d, 0,5·α<sub>t</sub>), het eigen gewicht van de paal (7.6.3.3(h)), de correcties op q<sub>c</sub> (7.6.2.3(i) t/m (l)): die zitten in de invoer.</i>
 #else
-    '<i>Niet getoetst: zakking (7.6.4) en rotatie (2.4.9), ponsen onder de punt (7.6.2.1(11)), sterkte van de paal. Niet opgenomen: schachtwrijving in klei en veen (tabel 7.d), negatieve kleef in een paalgroep (7.3.2.2(e)), de correcties op q<sub>c</sub> (7.6.2.3(i) t/m (l)): die zitten in de invoer.</i>
+    '<i class="ook-afdruk">Niet getoetst: zakking (7.6.4) en rotatie (2.4.9), ponsen onder de punt (7.6.2.1(11)), sterkte van de paal. Niet opgenomen: schachtwrijving in klei en veen (tabel 7.d), negatieve kleef in een paalgroep (7.3.2.2(e)), de correcties op q<sub>c</sub> (7.6.2.3(i) t/m (l)): die zitten in de invoer.</i>
 #end if
 `;

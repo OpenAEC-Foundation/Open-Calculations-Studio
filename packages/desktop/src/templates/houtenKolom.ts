@@ -328,7 +328,7 @@ UC_max = max(UC_y; UC_z; UC_635; UC_V)
 @end
 
 '<hr/>
-'<i>Aannames:
+'<i class="ook-afdruk">Aannames:
 '<ul>
 '<li>k<sub>m</sub> = 0.7 voor rechthoekige doorsnede (§6.1.6(2)). Voor andere
 'profielen of gelijmd-gelamineerd hout: zie norm.</li>

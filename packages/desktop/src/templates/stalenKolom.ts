@@ -415,5 +415,5 @@ UC_662 = n_z + k_zy*M_Ed/M_b,Rd', (6.62)'
     #end if
 #end if
 
-'<i>Niet getoetst: eigen gewicht, buiging om de z-as, de verbindingen en de krachtsinleiding. Tweede-orde-effecten in het vlak lopen via L<sub>cr,y</sub> en de knikvorm.</i>
+'<i class="ook-afdruk">Niet getoetst: eigen gewicht, buiging om de z-as, de verbindingen en de krachtsinleiding. Tweede-orde-effecten in het vlak lopen via L<sub>cr,y</sub> en de knikvorm.</i>
 `;

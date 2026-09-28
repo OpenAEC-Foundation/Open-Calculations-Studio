@@ -221,7 +221,7 @@ N_t = max(0 kN; F_itEd - 0.9*G_k,eind) to kN', trekkracht in het anker, γ_G,inf
     #hide
     UC_anker = 0
     #show
-    '<i>Anker: niet getoetst, geen F<sub>a,Rd</sub> ingevuld.</i>
+    '<i class="ook-afdruk">Anker: niet getoetst, geen F<sub>a,Rd</sub> ingevuld.</i>
 #end if
 #if v_Rd > 0 kN/m
     #if F_ivEd ≤ v_Rd*b
@@ -233,7 +233,7 @@ N_t = max(0 kN; F_itEd - 0.9*G_k,eind) to kN', trekkracht in het anker, γ_G,inf
     #hide
     UC_glijden = 0
     #show
-    '<i>Glijden van de onderregel: niet getoetst, geen v<sub>Rd</sub> ingevuld.</i>
+    '<i class="ook-afdruk">Glijden van de onderregel: niet getoetst, geen v<sub>Rd</sub> ingevuld.</i>
 #end if
 τ_d = F_ivEd/(n_zijdig*L_ef*t_bepl) to N/mm^2', schuifspanning in de volle plaat'
 #if f_v,d > 0 N/mm^2
@@ -246,7 +246,7 @@ N_t = max(0 kN; F_itEd - 0.9*G_k,eind) to kN', trekkracht in het anker, γ_G,inf
     #hide
     UC_plaat = 0
     #show
-    '<i>Schuifspanning in de plaat: niet getoetst, geen f<sub>v,d</sub> ingevuld.</i>
+    '<i class="ook-afdruk">Schuifspanning in de plaat: niet getoetst, geen f<sub>v,d</sub> ingevuld.</i>
 #end if
 F_tot = F_itEd + max(F1; F2)', totale last op de gedrukte eindstijl: wind komt uit beide richtingen'
 
