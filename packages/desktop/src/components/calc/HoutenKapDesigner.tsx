@@ -176,10 +176,17 @@ export default function HoutenKapDesigner() {
     const wand = (x: number, z1: number) => (
       <rect x={X(x) - 7} y={Z(0) + 2} width={14} height={Math.max(8, (0 - z1) * s)} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} />
     );
-    // puntlast: horizontaal vanaf de voet
-    const xP = punt === 2 ? clamp(d("x_F"), 0, lh) : sys === 2 ? (lks >= lh - lks ? lks / 2 : (lks + lh) / 2)
+    // Puntlast, horizontaal vanaf de voet. Q_k bij een knieschot of hanenbalk
+    // op de plaats waar het blad mee rekent (x_Q: gezocht, maatgevend voor N+M);
+    // bij één veld, of een blad zonder x_Q, midden in het (langste) veld.
+    const xQblad = g.x_Q;
+    const xQ = punt === 1 && (sys === 2 || (sys === 3 && zhb > 0)) && xQblad !== undefined && Number.isFinite(xQblad)
+      ? clamp(xQblad, 0, lh) : undefined;
+    const xP = punt === 2 ? clamp(d("x_F"), 0, lh) : xQ !== undefined ? xQ : sys === 2 ? (lks >= lh - lks ? lks / 2 : (lks + lh) / 2)
       : sys === 3 && zhb > 0 ? ((zhb / Math.tan(ar)) >= lh - zhb / Math.tan(ar) ? zhb / Math.tan(ar) / 2 : (zhb / Math.tan(ar) + lh) / 2) : lh / 2;
     const pP: P = { x: X(xP), y: Z(xP * Math.tan(ar)) };
+    // Pijl van de puntlast: 70 px, korter als de last zo hoog op de spoor staat dat hij boven het beeld uit zou steken.
+    const lP = clamp(pP.y - 6, 30, 70);
     const xHb = zhb / Math.tan(ar);
     return (
       <div className="vd-canvas">
@@ -218,7 +225,7 @@ export default function HoutenKapDesigner() {
             {verticaleLast("kp", voetL, top, 8, lastL, SNEEUW)}
             {sys === 3 && verticaleLast("kp", top, voetR, 8, lastL, SNEEUW)}
             {windLast("kpw", voetL, top, 5, 22)}
-            {punt > 0 && <line x1={pP.x} y1={pP.y - 70} x2={pP.x} y2={pP.y - 8} className="vd-load" strokeWidth={2.6} markerEnd={loadMark("kp")} />}
+            {punt > 0 && <line x1={pP.x} y1={pP.y - lP} x2={pP.x} y2={pP.y - 8} className="vd-load" strokeWidth={2.6} markerEnd={loadMark("kp")} />}
             {/* maten */}
             <HDim k="kp" x0={X(0)} x1={X(lh)} y={Z(zBot) + 4} ext={Z(0) + 4} />
             <VDim k="kp" y0={Z(hNok)} y1={Z(0)} x={X(sys === 4 ? lh : 2 * lh) + 34} ext={X(sys === 4 ? lh : 2 * lh) + 10} />
@@ -234,8 +241,11 @@ export default function HoutenKapDesigner() {
           {sys === 3 && <Dim ctx={ctx} name="z_hb" value={zhb} x={X(lh) + 34} y={zhb > 0 ? (Z(zhb) + Z(0)) / 2 : Z(0) - 12} step={0.1} label="z" dec={2}
             title="hoogte van de trekband of hanenbalk boven de voet — klik om te wijzigen" />}
           <Force ctx={ctx} name="g_opb" value={d("g_opb")} x={X(lh * 0.35) - 30} y={Z(hNok * 0.35) - 58} unit="kN/m²" label="g" step={0.05} dec={2} />
-          {punt === 2 && <Force ctx={ctx} name="F_Q" value={d("F_Q")} x={pP.x + 40} y={pP.y - 66} unit="kN" label="F_Q" step={0.5} dec={1} />}
-          {punt === 1 && <Ro text="Q_k = 2 kN" x={pP.x + 40} y={pP.y - 66} kleur="#dc2626" title="onderhoudslast, midden in het (langste) veld" />}
+          {punt === 2 && <Force ctx={ctx} name="F_Q" value={d("F_Q")} x={pP.x + 40} y={pP.y - lP + 4} unit="kN" label="F_Q" step={0.5} dec={1} />}
+          {punt === 1 && <Ro text="Q_k = 2 kN" x={pP.x + 40} y={pP.y - lP + 4} kleur="#dc2626"
+            title={xQ !== undefined
+              ? `onderhoudslast op de ongunstigste plaats uit het blad: ${fmt(xQ, 2)} m horizontaal vanaf de voet (maatgevend voor N+M)`
+              : "onderhoudslast, midden in het veld"} />}
           <Ro text="wind" x={X(lh * 0.55) - 40} y={Z(hNok * 0.55) - 36} kleur={WIND} />
         </div>
       </div>
