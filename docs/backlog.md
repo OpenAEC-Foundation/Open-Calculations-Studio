@@ -4,6 +4,9 @@ Punten die bewust naar later zijn geschoven, met de reden erbij. Geen
 wensenlijst: alles hier is een besluit dat al genomen is, alleen nog niet
 uitgevoerd.
 
+Open punten in de rekenmodules zelf staan als issues met label `berekeningen`
+(#14 t/m #17); de stand van zaken staat in [overdracht.md](overdracht.md).
+
 ---
 
 ## 1. Gording en stalen gevelkolom rekenen hun eigen q_p — afgerond
