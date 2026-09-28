@@ -148,7 +148,7 @@ export const opdrijven = `"Opdrijven en drijvend lichaam — NEN 9997-1 (2.8) en
             '<i>NEN 9997-1 10.2(2) wijst voor opdrijven vergelijking (2.8) met tabel A.15 aan (1,0 op de waterdruk bij h<sub>d</sub>); de EQU-set legt 1,1 op de waterdruk en is strenger.</i><span class="alleen-scherm"></span>
         #end if
         #if n_tp > 0
-            '<i>Alleen het uittrekken van de palen; het omhoogkomen van een grondkluit met de palen (7.6.3.1(4)) is niet getoetst.</i>
+            '<i class="ook-afdruk">Alleen het uittrekken van de palen; het omhoogkomen van een grondkluit met de palen (7.6.3.1(4)) is niet getoetst.</i>
         #end if
         '<i>Niet getoetst: vloer en wanden onder de waterdruk (STR, 10.2 opmerking 1). Wandwrijving is niet meegeteld.</i><span class="alleen-scherm"></span>
 

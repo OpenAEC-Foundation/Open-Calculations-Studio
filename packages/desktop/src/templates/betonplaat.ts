@@ -390,7 +390,7 @@ f_ctm = 0.3*betonklasse^(2/3)*N/mm^2', tabel 3.1<span class="kolom-3"></span>'
             m_fr,yb', BGT frequent<span class="kolom-4"></span>'
         #else if constructiedeel ≡ 1
             #if draagwijze ≡ 2
-                '<i>l<sub>lang</sub>/l<sub>kort</sub> = 'ε_l' > 2: de plaat draagt in de korte richting (5.3.1(5)) en rekent als strook; de momenten bij de korte randen zijn niet getoetst.</i>
+                '<i class="ook-afdruk">l<sub>lang</sub>/l<sub>kort</sub> = 'ε_l' > 2: de plaat draagt in de korte richting (5.3.1(5)) en rekent als strook; de momenten bij de korte randen zijn niet getoetst.</i>
             #end if
             #hide
             r_x = if(draagwijze ≡ 1 or l_x ≤ l_y; 1; 0)
@@ -543,7 +543,7 @@ f_ctm = 0.3*betonklasse^(2/3)*N/mm^2', tabel 3.1<span class="kolom-3"></span>'
         f_ck_ = betonklasse
         #show
         #if a_s,req,ld ≤ 0 mm^2
-            '<i>Geen moment in het veld: de doorbuiging is niet getoetst.</i>
+            '<i class="ook-afdruk">Geen moment in het veld: de doorbuiging is niet getoetst.</i>
             #hide
             UC_ld = 0
             #show

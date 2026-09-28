@@ -768,7 +768,7 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>het profiel voldoet niet aan R 'eis_min'</b></span>
     #end if
 
-    '<i>Gelijkmatige staaltemperatuur over doorsnede en lengte, zonder vocht in de bekleding en zonder de afrondingen in de omtrek (veilige kant). Niet getoetst: dwarskracht, druk met buiging (§4.2.3.5) en de verbindingen.</i>
+    '<i class="ook-afdruk">Gelijkmatige staaltemperatuur over doorsnede en lengte, zonder vocht in de bekleding en zonder de afrondingen in de omtrek (veilige kant). Niet getoetst: dwarskracht, druk met buiging (§4.2.3.5) en de verbindingen.</i>
 #else if materiaal ≡ 2
     # 4. Bescherming en inbranding
 
@@ -944,7 +944,7 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de houten doorsnede voldoet niet aan R 'eis_min'</b></span>
     #end if
 
-    '<i>Methode met de gereduceerde doorsnede (§4.2.2) bij de standaardbrandkromme. De hoogtefactor k<sub>h</sub> is weggelaten (veilige kant). Niet getoetst: de verbindingen (hoofdstuk 6), druk loodrecht op de vezel (mag vervallen, §4.3.1(1)), de stabiliteitsverbanden (§4.3.5) en kip van een kolom met moment.</i>
+    '<i class="ook-afdruk">Methode met de gereduceerde doorsnede (§4.2.2) bij de standaardbrandkromme. De hoogtefactor k<sub>h</sub> is weggelaten (veilige kant). Niet getoetst: de verbindingen (hoofdstuk 6), druk loodrecht op de vezel (mag vervallen, §4.3.1(1)), de stabiliteitsverbanden (§4.3.5) en kip van een kolom met moment.</i>
 #else
     # 4. Benuttingsgraad en tabelwaarden
 
@@ -1104,6 +1104,6 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>het element voldoet niet aan R 'eis_min'</b></span>
     #end if
 
-    '<i>Tabelmethode van NEN-EN 1992-1-2 bij de standaardbrandkromme; de tabelwaarden zijn invoer en horen bij de gekozen tabel, de eis en de benuttingsgraad. Niet getoetst: de overige voorwaarden bij de tabellen voor balken en vloeren (onder meer herverdeling en de bovenwapening bij doorgaande elementen, §5.6.3 en §5.7.3), afspatten en de verankering van de wapening.</i>
+    '<i class="ook-afdruk">Tabelmethode van NEN-EN 1992-1-2 bij de standaardbrandkromme; de tabelwaarden zijn invoer en horen bij de gekozen tabel, de eis en de benuttingsgraad. Niet getoetst: de overige voorwaarden bij de tabellen voor balken en vloeren (onder meer herverdeling en de bovenwapening bij doorgaande elementen, §5.6.3 en §5.7.3), afspatten en de verankering van de wapening.</i>
 #end if
 `;

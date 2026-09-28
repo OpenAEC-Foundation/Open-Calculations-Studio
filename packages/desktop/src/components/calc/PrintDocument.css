@@ -515,10 +515,14 @@ html.afdrukmodus .print-loopvoet {
  * - Een leeg merkteken `<span class="alleen-scherm"></span>` haalt de hele
  *   regel weg: een formule of invoerveld (in de toelichting), een tekst of een
  *   kop.
+ * - Een prozaregel die helemaal cursief staat, is uitleg (de kern geeft hem
+ *   de klasse `calc-uitleg`) en valt ook weg; `<i class="ook-afdruk">` houdt
+ *   een cursieve regel op papier (niet getoetst, aannames).
  * De knopen blijven in de uitwerking; wat een beeld of een controle leest,
  * verandert niet. De tegenhanger `alleen-afdruk` staat in Preview.css.
  */
 .print-opmaak .print-blad .alleen-scherm,
+.print-opmaak .print-blad .calc-uitleg,
 .print-opmaak .print-blad :is(.calc-text, .calc-line, .calc-input-prompt, h1, h2, h3, h4, h5, h6):has(.alleen-scherm:empty),
 .print-opmaak .print-blad .calc-svg:has(> .alleen-scherm) {
   display: none !important;

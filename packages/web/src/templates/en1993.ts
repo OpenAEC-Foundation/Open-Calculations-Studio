@@ -1323,7 +1323,7 @@ export const ec3Onderflens = `# Onderflensbuiging onder een wiel- of hanglast �
 
 'Lokale buiging van de onderflens van een gewalst I- of H-profiel onder een wiellast of een opgehangen last bij de flensrand, zoals een looprail met een loopkat of een takel aan een balkklem.
 
-'<i>Aanname: elke flenshelft werkt als de flens van een equivalent T-stuk op trek (NEN-EN 1993-1-8 §6.2.4), met het wiel op de plaats van de bout. De flensrand ligt vrij, dus er zijn geen wrikkrachten: de flens vloeit langs de wortel van het lijf en draagt per flenshelft M<sub>pl,Rd</sub>/m (tabel 6.2, zonder wrikkrachten). ℓ<sub>eff</sub> volgt uit tabel 6.4 voor een niet-verstijfde kolomflens, m en e uit figuur 6.8. De langsspanning uit de buiging van de ligger verlaagt het plastisch moment met de factor 1 − (σ<sub>f,Ed</sub>/f<sub>yd</sub>)², aan de veilige kant. De eigen regeling voor kraanbanen (NEN-EN 1993-6) is niet overgenomen.</i>
+'<i class="ook-afdruk">Aanname: elke flenshelft werkt als de flens van een equivalent T-stuk op trek (NEN-EN 1993-1-8 §6.2.4), met het wiel op de plaats van de bout. De flensrand ligt vrij, dus er zijn geen wrikkrachten: de flens vloeit langs de wortel van het lijf en draagt per flenshelft M<sub>pl,Rd</sub>/m (tabel 6.2, zonder wrikkrachten). ℓ<sub>eff</sub> volgt uit tabel 6.4 voor een niet-verstijfde kolomflens, m en e uit figuur 6.8. De langsspanning uit de buiging van de ligger verlaagt het plastisch moment met de factor 1 − (σ<sub>f,Ed</sub>/f<sub>yd</sub>)², aan de veilige kant. De eigen regeling voor kraanbanen (NEN-EN 1993-6) is niet overgenomen.</i>
 
 ## Staalsoort
 

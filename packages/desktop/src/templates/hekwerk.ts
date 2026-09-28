@@ -375,7 +375,7 @@ zg_s = 0 mm
     #show
     'Tabel 5.2, uitstekend been onder druk: c/t = h/t = 'ht_L' tegen 14ε = '14*ε' → klasse <b>'klasse_s'</b>, dus elastisch (W<sub>el</sub>).
     #if hoek_steun ≡ 1
-        '<i>Aanname: de leuning of de vulling houdt het hoekstaal aan de bovenzijde zijdelings en tegen torderen vast (bijvoorbeeld een leuning die aan een wand of in een hoek is verankerd); het buigt dan om de as evenwijdig aan het andere been, zonder scheve buiging, kip of torsie.</i>
+        '<i class="ook-afdruk">Aanname: de leuning of de vulling houdt het hoekstaal aan de bovenzijde zijdelings en tegen torderen vast (bijvoorbeeld een leuning die aan een wand of in een hoek is verankerd); het buigt dan om de as evenwijdig aan het andere been, zonder scheve buiging, kip of torsie.</i>
     #else
         '<b style="color:#b91c1c">Niet zijdelings gehouden: het hoekstaal buigt scheef om zijn hoofdassen, de last grijpt buiten het dwarskrachtcentrum (de hiel) aan en geeft torsie, en voor de kip van een hoekprofiel geeft NEN-EN 1993-1-1 met de NB (bijlage NB.NB) geen M<sub>cr</sub>. Dat valt buiten dit blad: voldoet niet.</b> Kies een ander profiel of houd het hoekstaal zijdelings vast met de leuning of de vulling.
     #end if

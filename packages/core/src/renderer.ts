@@ -87,33 +87,75 @@ function coalesceSvg(nodes: EvaluatedNode[]): EvaluatedNode[] {
  * `<p>`, en daarin sluit de browser de cursief aan het eind van de eerste
  * regel: alleen die stond cursief, de rest van de alinea niet.
  */
-function openOpmaakNa(open: string[], html: string): string[] {
+interface OpenTag { tag: string; open: string }
+
+/** Aantal tekens waarboven een toelichting achter een formule uitleg is. */
+const LANGE_TOELICHTING = 60;
+
+function openOpmaakNa(open: OpenTag[], html: string): OpenTag[] {
   const stapel = [...open];
   for (const m of html.matchAll(/<(\/?)(i|b|em|strong)\b[^>]*>/gi)) {
     const tag = m[2].toLowerCase();
     if (m[1] === '') {
-      stapel.push(tag);
+      // De hele openingstag bewaren: een klasse (zoals `ook-afdruk`) moet op
+      // de volgende regels van de alinea mee.
+      stapel.push({ tag, open: m[0] });
     } else {
-      const k = stapel.lastIndexOf(tag);
+      let k = -1;
+      for (let j = stapel.length - 1; j >= 0; j--) if (stapel[j].tag === tag) { k = j; break; }
       if (k !== -1) stapel.splice(k, 1);
     }
   }
   return stapel;
 }
 
+/**
+ * Uitleg: een prozaregel die helemaal cursief staat. Dat is in de bladen de
+ * vorm voor toelichting die op het scherm helpt maar op papier alleen
+ * bladzijden kost; de afdruk laat zo'n regel weg (klasse `calc-uitleg`).
+ * Wat wel op papier moet (niet getoetst, een aanname), staat cursief met de
+ * klasse `ook-afdruk`, of niet cursief.
+ */
+function isUitleg(html: string): boolean {
+  const kaal = html
+    .replace(/<span class="alleen-scherm"><\/span>/g, '')
+    .replace(/<br\s*\/?>/gi, '');
+  let diepte = 0;
+  let cursief = false;
+  for (const deel of kaal.split(/(<[^>]+>)/)) {
+    if (deel === '') continue;
+    if (deel.startsWith('<')) {
+      if (/^<i\b/i.test(deel)) {
+        if (diepte === 0 && /\book-afdruk\b/.test(deel)) return false;
+        diepte++;
+        cursief = true;
+      } else if (/^<\/i>/i.test(deel)) {
+        diepte = Math.max(0, diepte - 1);
+      } else if (diepte === 0) {
+        return false;
+      }
+    } else if (diepte === 0 && deel.trim() !== '') {
+      return false;
+    }
+  }
+  return cursief;
+}
+
 export function render(nodes: EvaluatedNode[]): string {
   const coalesced = coalesceSvg(nodes);
   const parts: string[] = ['<div class="ifc-calc">'];
-  let open: string[] = [];
+  let open: OpenTag[] = [];
 
   for (const node of coalesced) {
     // Een prozaregel die binnen een doorlopende alinea valt: de nog openstaande
     // opmaak van de vorige regel ervoor zetten en aan het eind weer sluiten.
     if (node.type === 'text' && node.html && !node.inline) {
-      const voor = open.map((t) => `<${t}>`).join('');
+      const voor = open.map((t) => t.open).join('');
       open = openOpmaakNa(open, node.text);
-      const na = [...open].reverse().map((t) => `</${t}>`).join('');
-      parts.push(`<p class="calc-text">${voor}${node.text}${na}</p>`);
+      const na = [...open].reverse().map((t) => `</${t.tag}>`).join('');
+      const regel = `${voor}${node.text}${na}`;
+      const klasse = isUitleg(regel) ? 'calc-text calc-uitleg' : 'calc-text';
+      parts.push(`<p class="${klasse}">${regel}</p>`);
       continue;
     }
     if (!(node.type === 'text' && node.inline)) open = [];
@@ -126,7 +168,14 @@ export function render(nodes: EvaluatedNode[]): string {
       /^<div class="calc-(line|input-prompt)\b/.test(vorige) && /<\/div>\s*$/.test(vorige)
     ) {
       const inhoud = node.html ? node.text : escapeHtml(node.text);
-      parts[parts.length - 1] = vorige.replace(/<\/div>\s*$/, `<span class="calc-comment">${inhoud}</span></div>`);
+      // Een korte toelichting (", permanent", ", veld 1") hoort bij de formule;
+      // een lange is uitleg en blijft alleen op het scherm.
+      const zichtbaar = inhoud
+        .replace(/<span class="alleen-scherm">[\s\S]*?<\/span>/g, '')
+        .replace(/<[^>]+>/g, '')
+        .trim();
+      const klasse = zichtbaar.length > LANGE_TOELICHTING ? 'calc-comment calc-uitleg' : 'calc-comment';
+      parts[parts.length - 1] = vorige.replace(/<\/div>\s*$/, `<span class="${klasse}">${inhoud}</span></div>`);
       continue;
     }
     parts.push(renderNode(node));

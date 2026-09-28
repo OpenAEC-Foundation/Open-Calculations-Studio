@@ -929,5 +929,5 @@ UC_lt = 0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de verbinding voldoet niet</b></span>
     #end if
 #end if
-'<i>Nog niet getoetst: moment met trek onderin, normaalkracht in de ligger, verstijvingen of een kolomeinde bij de verbinding, trek en afschuiving samen in de lijflas, de lassen bij een plastisch scharnier in de verbinding (§6.2.3(5)), het liggerlijf op druk aan het eind van de console (§6.2.6.7(3)) en de rotatiecapaciteit (§6.4).</i>
+'<i class="ook-afdruk">Nog niet getoetst: moment met trek onderin, normaalkracht in de ligger, verstijvingen of een kolomeinde bij de verbinding, trek en afschuiving samen in de lijflas, de lassen bij een plastisch scharnier in de verbinding (§6.2.3(5)), het liggerlijf op druk aan het eind van de console (§6.2.6.7(3)) en de rotatiecapaciteit (§6.4).</i>
 `;
