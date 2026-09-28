@@ -266,7 +266,7 @@ N_cr,z'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
 Φ_z'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
 χ_z'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
 #if L_crz < L_cr
-    'Torsieknik over L<sub>cr</sub> om een as in de flens (a = h/2), kromme als om de z-as (6.3.1.4)<span class="alleen-scherm">: L<sub>cr,z</sub> < L<sub>cr</sub>, zoals bij een steun aan één flens</span>.
+    'Torsieknik over L<sub>cr</sub> om een as in de flens (a = h/2), kromme als om de z-as (6.3.1.4)<span class="alleen-scherm">: L<sub>cr,z</sub> < L<sub>cr</sub>, zoals bij een steun aan één flens</span>.<span class="alleen-scherm"></span>
     #hide
     a_T = h/2
     #show
@@ -308,12 +308,12 @@ C_2,q = if(lasthoogte ≡ 1; -0.45*h/(h - t_f); if(lasthoogte ≡ 2; 0; 0.45))
     '<b style="color:#b45309">L<sub>cr</sub>/h &lt; 5: de rekenregels van bijlage NB.NB gelden hier niet (NB.NB.1(2)); toets de gedrukte rand volgens NB.NB.4.2(3).</b>
 #end if
 #if kipgeval ≡ 1
-    'M<sub>cr</sub> volgens bijlage NB.NB, tabel NB.NB.1 geval 1 (eindmomenten, β = ψ = 'ψ')<span class="alleen-scherm">: C<sub>1</sub> = 1,75 − 1,05β + 0,3β² ≤ 2,3 en C<sub>2</sub> = 0; tussen twee gaffels is L<sub>kip</sub> = L<sub>cr</sub> (NB.NB.4.3(1)), de factor 1,4 − 0,8β geldt alleen naast een kipsteun</span>.
+    'M<sub>cr</sub> volgens bijlage NB.NB, tabel NB.NB.1 geval 1 (eindmomenten, β = ψ = 'ψ')<span class="alleen-scherm">: C<sub>1</sub> = 1,75 − 1,05β + 0,3β² ≤ 2,3 en C<sub>2</sub> = 0; tussen twee gaffels is L<sub>kip</sub> = L<sub>cr</sub> (NB.NB.4.3(1)), de factor 1,4 − 0,8β geldt alleen naast een kipsteun</span>.<span class="alleen-scherm"></span>
     L_kip = L_cr'<span class="alleen-scherm"></span>'
     C_1 = min(1.75 - 1.05*(ψ) + 0.3*(ψ)^2; 2.3)'<span class="alleen-scherm"></span>'
     C_2 = 0'<span class="alleen-scherm"></span>'
 #else if kipgeval ≡ 2
-    'M<sub>cr</sub> volgens bijlage NB.NB, tabel NB.NB.1 geval 2 (gelijkmatige last, 'if(lasthoogte ≡ 1; "op de gedrukte flens"; if(lasthoogte ≡ 2; "in het zwaartepunt"; "op de getrokken flens"))')<span class="alleen-scherm">: C<sub>1</sub> = 1,13; C<sub>2</sub> = −0,45 op de gedrukte flens (naar het buitenvlak geëxtrapoleerd), 0 in het zwaartepunt en +0,45 op de getrokken flens</span>.
+    'M<sub>cr</sub> volgens bijlage NB.NB, tabel NB.NB.1 geval 2 (gelijkmatige last, 'if(lasthoogte ≡ 1; "op de gedrukte flens"; if(lasthoogte ≡ 2; "in het zwaartepunt"; "op de getrokken flens"))')<span class="alleen-scherm">: C<sub>1</sub> = 1,13; C<sub>2</sub> = −0,45 op de gedrukte flens (naar het buitenvlak geëxtrapoleerd), 0 in het zwaartepunt en +0,45 op de getrokken flens</span>.<span class="alleen-scherm"></span>
     L_kip = L_cr'<span class="alleen-scherm"></span>'
     C_1 = 1.13'<span class="alleen-scherm"></span>'
     C_2 = C_2,q'<span class="alleen-scherm"></span>'
@@ -406,7 +406,9 @@ UC_662 = n_z + k_zy*M_Ed/M_b,Rd', (6.62)'
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Druk met buiging</td><td style="padding:4px 8px;">(6.61) / (6.62)</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(max(UC_661; UC_662))'">'UC_661' / 'UC_662'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(max(UC_661; UC_662))'">'oordeel(max(UC_661; UC_662))'</td></tr>
     '</table>
     UC_max = max(UC_V; UC_d; UC_N; UC_LT; UC_661; UC_662)'<span class="alleen-scherm"></span>'
-    #if f_klasse ≡ 4
+    #if isNaN(UC_max)
+        '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>niet getoetst: invoer onvolledig</b></span>
+    #else if f_klasse ≡ 4
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>de kolom voldoet niet</b>: de flens valt in klasse 4, en die valt buiten dit blad.</span>
     #else if UC_max ≤ 1.0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de kolom voldoet</b></span>

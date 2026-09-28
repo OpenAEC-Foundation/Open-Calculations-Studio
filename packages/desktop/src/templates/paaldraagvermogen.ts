@@ -1235,7 +1235,7 @@ pw = max(8; min(40; D_eq/(1 m)*sch*1.5))
     #else
         '<b style="color:#b91c1c">Het heiblok is te licht: ook zonder blijvende zakking haalt de energievergelijking (R<sub>c;cal</sub>)<sub>min</sub> niet. Kies een zwaarder blok of een grotere valhoogte.</b>
     #end if
-    '<i>Indicatief: de energievergelijking geeft de totale weerstand tijdens het heien, ook die van de lagen boven ΔL, en een heiformule toont de draagkracht niet aan. Daarvoor moet ze zijn bevestigd met statische proefbelastingen (7.6.2.5(2)), met ξ<sub>5</sub> en ξ<sub>6</sub> uit tabel A.11 en een modelfactor 1,10 of 1,20; stel de kalender vast met een heiproef op ten minste vijf palen (7.6.2.5(4)).</i>
+    '<i class="ook-afdruk">Indicatief: de energievergelijking geeft de totale weerstand tijdens het heien, ook die van de lagen boven ΔL, en een heiformule toont de draagkracht niet aan.<span class="alleen-scherm"> Daarvoor moet ze zijn bevestigd met statische proefbelastingen (7.6.2.5(2)), met ξ<sub>5</sub> en ξ<sub>6</sub> uit tabel A.11 en een modelfactor 1,10 of 1,20; stel de kalender vast met een heiproef op ten minste vijf palen (7.6.2.5(4)).</span></i>
 #end if
 
 #if kal ≡ 1

@@ -461,7 +461,7 @@ f_ctm = 0.3*betonklasse^(2/3)*N/mm^2', tabel 3.1<span class="kolom-3"></span>'
             K_ld = 1.2
             l_wand = 8.5 m
             #show
-            'BGT frequent: dezelfde verdeling met g<sub>fr</sub> en q<sub>fr</sub>.
+            'BGT frequent: dezelfde verdeling met g<sub>fr</sub> en q<sub>fr</sub>.<span class="alleen-scherm"></span>
         #end if
 
         # 5. Toetsing per wapeningslaag (§6.1, §9.3 en §7.3.4)
@@ -691,7 +691,7 @@ f_ctm = 0.3*betonklasse^(2/3)*N/mm^2', tabel 3.1<span class="kolom-3"></span>'
                 UC_N1d = σ_diag/σ_Rd,2', bovenste knoop, diagonaal (6.61)<span class="kolom-2"></span>'
                 σ_Rd,d = 0.6*ν_k*f_cd', drukdiagonaal met dwarstrek, gescheurde zone (6.5.2(2), (6.56))<span class="kolom-3"></span>'
                 UC_dd = σ_diag/σ_Rd,d', drukdiagonaal, aan de bovenste knoop waar zij het smalst is (6.5.2(2))'
-                '<i>Aan de kolomzijde gaat de diagonaal over in de gedrukte kolom en spreidt zij over de kolomdoorsnede: daar is alleen de knoop getoetst (UC<sub>N2</sub>, aanname).</i><span class="alleen-scherm"></span>
+                '<i class="ook-afdruk">Aan de kolomzijde gaat de diagonaal over in de gedrukte kolom en spreidt zij over de kolomdoorsnede: daar is alleen de knoop getoetst (UC<sub>N2</sub>, aanname).</i>
 
                 # 5. Beugels (J.3(2) en (3))
 
@@ -780,7 +780,7 @@ a_s,min,sfx = min(a_s,min1,sfx; a_s,min2,sfx)', NB<span class="kolom-4"></span>'
 UC_min,sfx = uc(a_s,min,sfx; a_s,sfx)', A<sub>s,min</sub>/A<sub>s</sub><span class="kolom-2"></span>'
 UC_s,sfx = sP/min(2*h_pl; 250 mm)', s/s<sub>max,platen</sub><span class="kolom-2"></span>'
 #if m_fr,sfx ≤ m_cr
-    '<i>m<sub>fr</sub> = 'm_fr,sfx$' kNm ≤ W·f<sub>ctm</sub> = 'm_cr' kNm: ongescheurd (7.1(2)), geen scheurwijdte.</i>
+    '<i class="ook-afdruk">m<sub>fr</sub> = 'm_fr,sfx$' kNm ≤ W·f<sub>ctm</sub> = 'm_cr' kNm: ongescheurd (7.1(2)), geen scheurwijdte.</i>
     #hide
     UC_w,sfx = 0
     #show

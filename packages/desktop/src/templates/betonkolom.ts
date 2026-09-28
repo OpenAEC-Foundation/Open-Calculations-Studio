@@ -321,7 +321,7 @@ ok_φ = 1
         #else if t7_y + t7_z ≡ 0
             '<i>φ<sub>ef</sub> = 0 doet er niet toe: ook met A = 0,7 (φ<sub>ef</sub> onbekend, 5.8.3.1(1)) is λ ≤ λ<sub>lim</sub> om beide assen.</i>
         #else
-            '<i>φ<sub>ef</sub> = 0 volgens 5.8.4(4): λ ≤ 75 en M<sub>02</sub>/N<sub>Ed</sub> ≥ h om beide assen, aangenomen dat φ(∞,t<sub>0</sub>) ≤ 2.</i>
+            '<i class="ook-afdruk">φ<sub>ef</sub> = 0 volgens 5.8.4(4): λ ≤ 75 en M<sub>02</sub>/N<sub>Ed</sub> ≥ h om beide assen, aangenomen dat φ(∞,t<sub>0</sub>) ≤ 2.</i>
         #end if
     #end if
 #else

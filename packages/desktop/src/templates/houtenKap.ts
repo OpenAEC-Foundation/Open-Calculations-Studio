@@ -856,7 +856,7 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     e_s = 0
     e_r = 1
     #show
-    'Partiële factoren bij CC'CC' (tabel NB.4 en NB.5 – A1.2(B)): 6.10a met γ<sub>G</sub> = 'γ_Ga', 6.10b met γ<sub>G</sub> = 'γ_G' en γ<sub>Q</sub> = 'γ_Q', gunstig 'γ_Gi'. ψ<sub>0</sub> = 0 voor dak, sneeuw en wind: één veranderlijke per combinatie.
+    'Partiële factoren bij CC'CC' (tabel NB.4 en NB.5 – A1.2(B)): 6.10a met γ<sub>G</sub> = 'γ_Ga', 6.10b met γ<sub>G</sub> = 'γ_G' en γ<sub>Q</sub> = 'γ_Q', gunstig 'γ_Gi'. ψ<sub>0</sub> = 0 voor dak, sneeuw en wind: één veranderlijke per combinatie.<span class="alleen-scherm"></span>
     '<i>Per combinatie de grootste waarden langs de spoor'if(systeem ≡ 3; " (beide sporen)"; "")': M en V in absolute waarde, N de grootste druk; de UC van normaalkracht met buiging (6.17)/(6.19) en knik (6.23)/(6.24), van kip (6.33)/(6.35), van afschuiving (6.13) en van de opleggingen.</i><span class="alleen-scherm"></span>
     '<table style="width:100%; border-collapse:collapse; font-size:0.85em; line-height:1.25;">
     '<tr style="border-bottom:1.5px solid #374151;"><th style="padding:1px 4px; text-align:left;">Combinatie</th><th style="padding:1px 4px; text-align:right;">k<sub>mod</sub></th><th style="padding:1px 4px; text-align:right;">M<sub>d</sub> (kNm)</th><th style="padding:1px 4px; text-align:right;">N<sub>d</sub> (kN)</th><th style="padding:1px 4px; text-align:right;">V<sub>d</sub> (kN)</th><th style="padding:1px 4px; text-align:right;">N+M</th><th style="padding:1px 4px; text-align:right;">kip</th><th style="padding:1px 4px; text-align:right;">V</th><th style="padding:1px 4px; text-align:right;">opl.</th></tr>
@@ -1012,6 +1012,7 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     #if puntlast ≡ 1
         #if n_sg ≡ 2
             '<i>Q<sub>k</sub> staat voor M en N op de plaats met het grootste veldmoment ('round(qF*cb*100)/100' m horizontaal vanaf de voet) en op de plaats met het grootste moment bij 'if(systeem ≡ 2; "het knieschot"; "de hanenbalk")' ('round(qS*cb*100)/100' m), beide gezocht langs de spoor, en direct onder en boven 'if(systeem ≡ 2; "het knieschot"; "de hanenbalk")'; de combinatie geeft het grootste van deze vier. Voor V en de opleggingen is γ<sub>Q</sub>·Q<sub>k</sub>/2 opgeteld, zoals met de last op het steunpunt.</i><span class="alleen-scherm"></span>
+            x_Q = round(qpos(j_nm)*cb*100)/100*m'<span class="alleen-scherm"></span><span class="alleen-afdruk"></span>'
         #else
             '<i>Q<sub>k</sub> staat voor M en N op de plaats met het grootste veldmoment, gezocht langs de 'if(zh ≡ 1; "hoekkeper"; "spoor")' ('round(qF*cb*100)/100' m horizontaal vanaf de voet). Voor V en de opleggingen is γ<sub>Q</sub>·Q<sub>k</sub>/2 opgeteld, zoals met de last op het steunpunt.</i><span class="alleen-scherm"></span>
         #end if
@@ -1091,7 +1092,7 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
             H_boven,d', horizontaal<span class="kolom-4"></span>'
         #end if
     #end if
-    '<i>Niet in dit blad getoetst: de verbinding met de muurplaat (spatkracht, verankering)'if(systeem ≡ 3; " en de trekband of hanenbalk zelf"; "")'.</i>
+    '<i class="ook-afdruk">Niet in dit blad getoetst: de verbinding met de muurplaat (spatkracht, verankering)'if(systeem ≡ 3; " en de trekband of hanenbalk zelf"; "")'.</i>
 
     # 5. Toetsing UGT
 
@@ -1113,7 +1114,7 @@ ok_inv = bool(a_deg > 0 and a_deg ≤ 75 and L_h > 0 and a_n > 0 and b_n > 0 and
     λ_rel,z', (6.22), ℓ<sub>z</sub> = l<sub>st</sub><span class="kolom-4"></span>'
     k_c,z', (6.26)<span class="kolom-4"></span>'
     #if d_s < 0
-        'Maatgevend: combinatie 'g_knm''if(systeem ≡ 3; if(d_r ≡ 1; ", linker spoor"; ", rechter spoor"); "")', de staaf als geheel: het grootste moment samen met de grootste drukkracht langs de 'if(zh ≡ 1; "hoekkeper"; "spoor")' (knik is een staaftoets):
+        'Maatgevend: combinatie 'g_knm''if(systeem ≡ 3; if(d_r ≡ 1; ", linker spoor"; ", rechter spoor"); "")', de staaf als geheel:<span class="alleen-scherm"> het grootste moment samen met de grootste drukkracht langs de 'if(zh ≡ 1; "hoekkeper"; "spoor")' (knik is een staaftoets):</span>
     #else
         'Maatgevend: combinatie 'g_knm''if(systeem ≡ 3; if(d_r ≡ 1; ", linker spoor"; ", rechter spoor"); "")', op 'round(d_s*100)/100' m langs de 'if(zh ≡ 1; "hoekkeper"; "spoor")' vanaf de voet:
     #end if

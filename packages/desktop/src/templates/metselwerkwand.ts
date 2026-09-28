@@ -209,186 +209,191 @@ M_1Ed = ?*(kN*m)', moment aan de kop'
 M_mEd = ?*(kN*m)', moment op halve hoogte'
 M_2Ed = ?*(kN*m)', moment aan de voet'
 
-# 4. Effectieve hoogte — §5.5.1.2
+#if l_w > 0 mm and h_w > 0 mm and t_w > 0 mm and f_k > 0 N/mm^2
+    # 4. Effectieve hoogte — §5.5.1.2
 
-#hide
-'Terugval op n = 2 zodra de gesteunde rand te ver weg staat.
-n_lim = if(n_rand ≡ 4; 30*t_w; 15*t_w)
-n_eff = if(n_rand ≡ 2; 2; if(L_v ≥ n_lim; 2; n_rand))
-N_min = max(abs(N_Ed); 0.001*kN)
-#show
-e_t0 = abs(M_1Ed)/N_min to mm', eerste-orde excentriciteit aan de kop (bepaalt of ρ_2 = 0,75 mag)'
-e_grens = 0.25*t_w', grens waarboven de inklemming vervalt (§5.5.1.2(11)(i))'
-#hide
-'Beton (optie 1-2) → 0,75; hout (optie 3-4) → 1,00. Een vloer aan één zijde met
-'een te korte oplegging (optie 5-6) klemt niet in → 1,00.
-rho_2 = if(ondersteuning ≤ 2; if(e_t0 > e_grens; 1.0; 0.75); 1.0)
-rho_3 = if(h_w ≤ 3.5*L_v; rho_2/(1 + (rho_2*h_w/(3*L_v))^2); max(1.5*L_v/h_w; 0.3))
-rho_4 = if(h_w ≤ 1.15*L_v; rho_2/(1 + (rho_2*h_w/L_v)^2); 0.5*L_v/h_w)
-rho_n = if(n_eff ≡ 3; rho_3; if(n_eff ≡ 4; rho_4; rho_2))
-'Idem met ρ₂ = 1,00 — voor de minimale-excentriciteitstoets vervalt de gunstige
-'inklemming boven/onder, maar de verticale randsteuning blijft staan.
-rho_3m = if(h_w ≤ 3.5*L_v; 1/(1 + (h_w/(3*L_v))^2); max(1.5*L_v/h_w; 0.3))
-rho_4m = if(h_w ≤ 1.15*L_v; 1/(1 + (h_w/L_v)^2); 0.5*L_v/h_w)
-rho_nm = if(n_eff ≡ 3; rho_3m; if(n_eff ≡ 4; rho_4m; 1.0))
-#show
-#if ondersteuning ≤ 2 and e_t0 > e_grens
-    '<i>e<sub>t</sub> > 0,25·t: de inklemming vervalt, ρ<sub>2</sub> = 1,00 (§5.5.1.2(11)(i)).</i>
-#end if
-#if ondersteuning ≡ 5
-    '<i>De betonvloer ligt aan één zijde op met minder dan ⅔·t: die klemt de wand niet in
-    '(§5.5.1.2(11)(i)), dus ρ<sub>2</sub> = 1,00.</i>
-#else if ondersteuning ≡ 6
-    '<span style="color: #b45309"><b>Let op:</b> een houten vloer aan één zijde telt pas als steun
-    'bij een oplegging van ten minste ⅔·t en 85 mm (§5.5.1.2(11)(ii)). Dit blad rekent met
-    'ρ<sub>2</sub> = 1,00 en gaat ervan uit dat de wandkop op een andere manier zijdelings is
-    'gesteund, bijvoorbeeld met muurankers.</span>
-#end if
-#if n_eff < n_rand
-    '<i>L<sub>v</sub> ≥ 'n_lim' mm (15·t bij n = 3, 30·t bij n = 4): de verticale rand telt niet mee, n = 2.</i>
-#end if
-n_eff', aantal gesteunde randen na toetsing van L_v'
-rho_2', ρ_2 (§5.5.1.2(11))'
-rho_n', ρ_n, bij n = 3 of 4 volgens (5.6)-(5.9) met l = L_v'
-h_ef = rho_n*h_w', effectieve hoogte (5.2)'
-t_ef = t_w', effectieve dikte — enkelvoudig blad'
-e_init = h_ef/450', initiële excentriciteit (§5.5.1.1(4))'
-
-# 5. Slankheid — §5.5.1.4
-
-lam = h_ef/t_ef', slankheid'
-UC_lam = lam/27
-#if lam ≤ 27
-    'λ = h<sub>ef</sub>/t<sub>ef</sub> = 'lam' ≤ 27 — u.c. = 'UC_lam'<span style="color: green"> → <b>voldoet</b></span>
-#else
-    'λ = h<sub>ef</sub>/t<sub>ef</sub> = 'lam' > 27 — u.c. = 'UC_lam'<span style="color: red"> → <b>voldoet niet</b></span>
-#end if
-
-# 6. Excentriciteit aan kop en voet — §6.1.2.2 (6.4)/(6.5)
-
-ratio_N = N_Ed/(l_w*t_w*f_d)', N_Ed/(ℓ·t·f_d); bij ten hoogste 0,1 wordt e_i begrensd op e_cap'
-#if ratio_N ≤ 0.1
-    e_cap = t_w/2 - N_Ed/(2*l_w*f_d) to mm', grens-excentriciteit; het afgekapte deel telt als ΔM op halve hoogte'
-#end if
-
-e_t = M_1Ed/N_min to mm', excentriciteit aan de kop'
-#if ratio_N > 0.1
-    e_it = max(abs(e_t) + e_init; 0.05*t_w)', excentriciteit kop (6.5)'
-#else
-    e_itf = max(abs(e_t) + e_init; 0.05*t_w)', excentriciteit kop vóór begrenzing (6.5)'
-    e_it = min(e_itf; e_cap)', maatgevende excentriciteit kop, begrensd op e_cap'
-    dM_t = (e_itf - e_it)*N_Ed to kN*m', restmoment kop'
-#end if
-Phi_it = max(1 - 2*e_it/t_w; 0)', reductiefactor kop (6.4), niet kleiner dan nul'
-N_Rdt = Phi_it*l_w*t_w*f_d to kN', capaciteit aan de kop (6.2)'
-
-e_b = M_2Ed/N_min to mm', excentriciteit aan de voet'
-#if ratio_N > 0.1
-    e_ib = max(abs(e_b) + e_init; 0.05*t_w)', excentriciteit voet (6.5)'
-#else
-    e_ibf = max(abs(e_b) + e_init; 0.05*t_w)', excentriciteit voet vóór begrenzing (6.5)'
-    e_ib = min(e_ibf; e_cap)', maatgevende excentriciteit voet, begrensd op e_cap'
-    dM_b = (e_ibf - e_ib)*N_Ed to kN*m', restmoment voet'
-#end if
-Phi_ib = max(1 - 2*e_ib/t_w; 0)', reductiefactor voet (6.4), niet kleiner dan nul'
-N_Rdb = Phi_ib*l_w*t_w*f_d to kN', capaciteit aan de voet (6.2)'
-
-# 7. Excentriciteit op halve hoogte — §6.1.2.2 + bijlage G
-
-#if ratio_N > 0.1
-    M_Edmc = abs(M_mEd)', maatgevend moment op halve hoogte'
-#else
-    M_Edmc = abs(M_mEd) + (dM_t + dM_b)/2', maatgevend moment op halve hoogte, met de restmomenten'
-#end if
-e_m = abs(M_Edmc)/N_min + e_init to mm', eerste-orde excentriciteit halve hoogte (6.7)'
-#if lam ≤ 27
-    e_k = 0*mm', kruip-excentriciteit, nul bij λ ≤ λ_c = 27 (NB bij 6.1.2.2(2))'
-#else
-    e_k = 0.002*phi_inf*lam*sqrt(t_w*e_m)', kruip-excentriciteit (6.8)'
-#end if
-e_mk = max(abs(e_m) + e_k; 0.05*t_ef)', totale excentriciteit halve hoogte (6.6)'
-A_1 = 1 - 2*e_mk/t_w', (G.2)'
-lam_F = (h_ef/t_ef)*sqrt(f_k/E_mw)', slankheidsparameter (G.4)'
-u_m = (lam_F - 0.063)/(0.73 - 1.17*e_mk/t_ef)', (G.3)'
-Phi_m = max(A_1*exp(-u_m^2/2); 0)', reductiefactor halve hoogte (G.1), niet kleiner dan nul'
-N_Rdm = Phi_m*l_w*t_w*f_d to kN', capaciteit op halve hoogte (6.2)'
-
-# 8. Toetsing — §6.1.2.1 (6.1)
-
-N_Rd = min(N_Rdt; N_Rdb; N_Rdm)', maatgevende capaciteit'
-#if N_Ed < 0 kN or N_Ed_max < 0 kN
-    '<span style="color: red"><b>Trek</b>: ongewapend metselwerk neemt geen trek op, en dit blad
-    'toetst alleen druk → <b>voldoet niet</b></span>
     #hide
-    UC_1 = 1/0
+    'Terugval op n = 2 zodra de gesteunde rand te ver weg staat.
+    n_lim = if(n_rand ≡ 4; 30*t_w; 15*t_w)
+    n_eff = if(n_rand ≡ 2; 2; if(L_v ≥ n_lim; 2; n_rand))
+    N_min = max(abs(N_Ed); 0.001*kN)
     #show
-#else if N_Rd > 0 kN
-    UC_1 = N_Ed/N_Rd
-    #if UC_1 ≤ 1.0
-        'UC = N<sub>Ed</sub>/N<sub>Rd</sub> = 'UC_1'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
-    #else
-        'UC = N<sub>Ed</sub>/N<sub>Rd</sub> = 'UC_1'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
-    #end if
-#else
-    '<span style="color: red">N<sub>Rd</sub> = 0: de resultante valt buiten de wanddoorsnede
-    '(e ≥ t/2), dus de wand kan deze belasting niet afdragen → <b>voldoet niet</b></span>
+    e_t0 = abs(M_1Ed)/N_min to mm', eerste-orde excentriciteit aan de kop (bepaalt of ρ_2 = 0,75 mag)'
+    e_grens = 0.25*t_w', grens waarboven de inklemming vervalt (§5.5.1.2(11)(i))'
     #hide
-    UC_1 = 1/0
+    'Beton (optie 1-2) → 0,75; hout (optie 3-4) → 1,00. Een vloer aan één zijde met
+    'een te korte oplegging (optie 5-6) klemt niet in → 1,00.
+    rho_2 = if(ondersteuning ≤ 2; if(e_t0 > e_grens; 1.0; 0.75); 1.0)
+    rho_3 = if(h_w ≤ 3.5*L_v; rho_2/(1 + (rho_2*h_w/(3*L_v))^2); max(1.5*L_v/h_w; 0.3))
+    rho_4 = if(h_w ≤ 1.15*L_v; rho_2/(1 + (rho_2*h_w/L_v)^2); 0.5*L_v/h_w)
+    rho_n = if(n_eff ≡ 3; rho_3; if(n_eff ≡ 4; rho_4; rho_2))
+    'Idem met ρ₂ = 1,00 — voor de minimale-excentriciteitstoets vervalt de gunstige
+    'inklemming boven/onder, maar de verticale randsteuning blijft staan.
+    rho_3m = if(h_w ≤ 3.5*L_v; 1/(1 + (h_w/(3*L_v))^2); max(1.5*L_v/h_w; 0.3))
+    rho_4m = if(h_w ≤ 1.15*L_v; 1/(1 + (h_w/L_v)^2); 0.5*L_v/h_w)
+    rho_nm = if(n_eff ≡ 3; rho_3m; if(n_eff ≡ 4; rho_4m; 1.0))
     #show
-#end if
+    #if ondersteuning ≤ 2 and e_t0 > e_grens
+        '<i>e<sub>t</sub> > 0,25·t: de inklemming vervalt, ρ<sub>2</sub> = 1,00 (§5.5.1.2(11)(i)).</i>
+    #end if
+    #if ondersteuning ≡ 5
+        '<i>De betonvloer ligt aan één zijde op met minder dan ⅔·t: die klemt de wand niet in
+        '(§5.5.1.2(11)(i)), dus ρ<sub>2</sub> = 1,00.</i>
+    #else if ondersteuning ≡ 6
+        '<span style="color: #b45309"><b>Let op:</b> een houten vloer aan één zijde telt pas als steun
+        'bij een oplegging van ten minste ⅔·t en 85 mm (§5.5.1.2(11)(ii)). Dit blad rekent met
+        'ρ<sub>2</sub> = 1,00 en gaat ervan uit dat de wandkop op een andere manier zijdelings is
+        'gesteund, bijvoorbeeld met muurankers.</span>
+    #end if
+    #if n_eff < n_rand
+        '<i>L<sub>v</sub> ≥ 'n_lim' mm (15·t bij n = 3, 30·t bij n = 4): de verticale rand telt niet mee, n = 2.</i>
+    #end if
+    n_eff', aantal gesteunde randen na toetsing van L_v'
+    rho_2', ρ_2 (§5.5.1.2(11))'
+    rho_n', ρ_n, bij n = 3 of 4 volgens (5.6)-(5.9) met l = L_v'
+    h_ef = rho_n*h_w', effectieve hoogte (5.2)'
+    t_ef = t_w', effectieve dikte — enkelvoudig blad'
+    e_init = h_ef/450', initiële excentriciteit (§5.5.1.1(4))'
 
-# 9. Minimale excentriciteit — NB bij 5.5.1.1(5)
+    # 5. Slankheid — §5.5.1.4
 
-'<i>Grootste normaalkracht, ρ<sub>2</sub> = 1,00 (een verticale randsteuning blijft meetellen) en een
-'constante eerste-orde excentriciteit van ten minste 10 mm en h<sub>ef</sub>/300. Dit is een toets op
-'capaciteit (NB bij 6.1.2.2(1)(ii)): de grens λ ≤ 27 staat in stap 5, hier telt daarboven alleen e<sub>k</sub>.</i>
-h_ef2 = rho_nm*h_w', effectieve hoogte met rho_2 = 1,00 (5.2)'
-e_m2 = max(10*mm; h_ef2/300)', constante minimale excentriciteit'
-
-#if UC_1 ≤ 1.0 or (rekenwijze ≡ 0 and N_Ed ≥ 0 kN)
-    lam_2 = h_ef2/t_ef', slankheid bij ρ_2 = 1,00'
-    #if lam_2 ≤ 27
-        e_k2 = 0*mm', kruip-excentriciteit bij h_ef2, nul bij λ ≤ λ_c = 27'
+    lam = h_ef/t_ef', slankheid'
+    UC_lam = lam/27
+    #if lam ≤ 27
+        'λ = h<sub>ef</sub>/t<sub>ef</sub> = 'lam' ≤ 27 — u.c. = 'UC_lam'<span style="color: green"> → <b>voldoet</b></span>
     #else
-        e_k2 = 0.002*phi_inf*lam_2*sqrt(t_w*e_m2)', kruip-excentriciteit bij h_ef2 (6.8)'
+        'λ = h<sub>ef</sub>/t<sub>ef</sub> = 'lam' > 27 — u.c. = 'UC_lam'<span style="color: red"> → <b>voldoet niet</b></span>
     #end if
-    e_mk2 = max(e_m2 + e_k2; 0.05*t_w)', (6.6)'
-    A_12 = 1 - 2*e_mk2/t_w', (G.2)'
-    lam_F2 = (h_ef2/t_ef)*sqrt(f_k/E_mw)', (G.4)'
-    u_2 = (lam_F2 - 0.063)/(0.73 - 1.17*e_mk2/t_w)', (G.3)'
-    Phi_m2 = max(A_12*exp(-u_2^2/2); 0)', (G.1), niet kleiner dan nul'
-    N_Rdm2 = Phi_m2*l_w*t_w*f_d to kN', (6.2)'
-    N_mx = max(N_Ed; N_Ed_max)', normaalkracht voor deze toets, ten minste N_Ed'
-    #if N_Ed_max < N_Ed
-        '<span style="color: #b45309"><b>Let op:</b> N<sub>Ed,max</sub> is kleiner dan N<sub>Ed</sub>; de toets rekent met N<sub>Ed</sub>.</span>
+
+    # 6. Excentriciteit aan kop en voet — §6.1.2.2 (6.4)/(6.5)
+
+    ratio_N = N_Ed/(l_w*t_w*f_d)', N_Ed/(ℓ·t·f_d); bij ten hoogste 0,1 wordt e_i begrensd op e_cap'
+    #if ratio_N ≤ 0.1
+        e_cap = t_w/2 - N_Ed/(2*l_w*f_d) to mm', grens-excentriciteit; het afgekapte deel telt als ΔM op halve hoogte'
     #end if
-    #if N_Rdm2 > 0 kN
-        UC_2 = N_mx/N_Rdm2
-        #if UC_2 ≤ 1.0
-            'UC = N<sub>mx</sub>/N<sub>Rd,m2</sub> = 'UC_2'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+
+    e_t = M_1Ed/N_min to mm', excentriciteit aan de kop'
+    #if ratio_N > 0.1
+        e_it = max(abs(e_t) + e_init; 0.05*t_w)', excentriciteit kop (6.5)'
+    #else
+        e_itf = max(abs(e_t) + e_init; 0.05*t_w)', excentriciteit kop vóór begrenzing (6.5)'
+        e_it = min(e_itf; e_cap)', maatgevende excentriciteit kop, begrensd op e_cap'
+        dM_t = (e_itf - e_it)*N_Ed to kN*m', restmoment kop'
+    #end if
+    Phi_it = max(1 - 2*e_it/t_w; 0)', reductiefactor kop (6.4), niet kleiner dan nul'
+    N_Rdt = Phi_it*l_w*t_w*f_d to kN', capaciteit aan de kop (6.2)'
+
+    e_b = M_2Ed/N_min to mm', excentriciteit aan de voet'
+    #if ratio_N > 0.1
+        e_ib = max(abs(e_b) + e_init; 0.05*t_w)', excentriciteit voet (6.5)'
+    #else
+        e_ibf = max(abs(e_b) + e_init; 0.05*t_w)', excentriciteit voet vóór begrenzing (6.5)'
+        e_ib = min(e_ibf; e_cap)', maatgevende excentriciteit voet, begrensd op e_cap'
+        dM_b = (e_ibf - e_ib)*N_Ed to kN*m', restmoment voet'
+    #end if
+    Phi_ib = max(1 - 2*e_ib/t_w; 0)', reductiefactor voet (6.4), niet kleiner dan nul'
+    N_Rdb = Phi_ib*l_w*t_w*f_d to kN', capaciteit aan de voet (6.2)'
+
+    # 7. Excentriciteit op halve hoogte — §6.1.2.2 + bijlage G
+
+    #if ratio_N > 0.1
+        M_Edmc = abs(M_mEd)', maatgevend moment op halve hoogte'
+    #else
+        M_Edmc = abs(M_mEd) + (dM_t + dM_b)/2', maatgevend moment op halve hoogte, met de restmomenten'
+    #end if
+    e_m = abs(M_Edmc)/N_min + e_init to mm', eerste-orde excentriciteit halve hoogte (6.7)'
+    #if lam ≤ 27
+        e_k = 0*mm', kruip-excentriciteit, nul bij λ ≤ λ_c = 27 (NB bij 6.1.2.2(2))'
+    #else
+        e_k = 0.002*phi_inf*lam*sqrt(t_w*e_m)', kruip-excentriciteit (6.8)'
+    #end if
+    e_mk = max(abs(e_m) + e_k; 0.05*t_ef)', totale excentriciteit halve hoogte (6.6)'
+    A_1 = 1 - 2*e_mk/t_w', (G.2)'
+    lam_F = (h_ef/t_ef)*sqrt(f_k/E_mw)', slankheidsparameter (G.4)'
+    u_m = (lam_F - 0.063)/(0.73 - 1.17*e_mk/t_ef)', (G.3)'
+    Phi_m = max(A_1*exp(-u_m^2/2); 0)', reductiefactor halve hoogte (G.1), niet kleiner dan nul'
+    N_Rdm = Phi_m*l_w*t_w*f_d to kN', capaciteit op halve hoogte (6.2)'
+
+    # 8. Toetsing — §6.1.2.1 (6.1)
+
+    N_Rd = min(N_Rdt; N_Rdb; N_Rdm)', maatgevende capaciteit'
+    #if N_Ed < 0 kN or N_Ed_max < 0 kN
+        '<span style="color: red"><b>Trek</b>: ongewapend metselwerk neemt geen trek op, en dit blad
+        'toetst alleen druk → <b>voldoet niet</b></span>
+        #hide
+        UC_1 = 1/0
+        #show
+    #else if N_Rd > 0 kN
+        UC_1 = N_Ed/N_Rd
+        #if UC_1 ≤ 1.0
+            'UC = N<sub>Ed</sub>/N<sub>Rd</sub> = 'UC_1'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
         #else
-            'UC = N<sub>mx</sub>/N<sub>Rd,m2</sub> = 'UC_2'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+            'UC = N<sub>Ed</sub>/N<sub>Rd</sub> = 'UC_1'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
         #end if
     #else
-        '<span style="color: red">N<sub>Rd,m2</sub> = 0: de minimale excentriciteit reikt tot buiten
-        'de wanddoorsnede → <b>voldoet niet</b></span>
+        '<span style="color: red">N<sub>Rd</sub> = 0: de resultante valt buiten de wanddoorsnede
+        '(e ≥ t/2), dus de wand kan deze belasting niet afdragen → <b>voldoet niet</b></span>
         #hide
-        UC_2 = 1/0
+        UC_1 = 1/0
         #show
     #end if
-#else
-    'Niet uitgevoerd: de wand voldoet al niet op de eerste toets.
-    #hide
-    UC_2 = 0
-    #show
-#end if
 
-# 10. Samenvatting
+    # 9. Minimale excentriciteit — NB bij 5.5.1.1(5)
 
-UC_max = max(UC_lam; UC_1; UC_2)
-#if UC_max ≤ 1.0
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1.0 → <b>Dragende metselwerkwand voldoet</b></span>
+    '<i>Grootste normaalkracht, ρ<sub>2</sub> = 1,00 (een verticale randsteuning blijft meetellen) en een
+    'constante eerste-orde excentriciteit van ten minste 10 mm en h<sub>ef</sub>/300. Dit is een toets op
+    'capaciteit (NB bij 6.1.2.2(1)(ii)): de grens λ ≤ 27 staat in stap 5, hier telt daarboven alleen e<sub>k</sub>.</i>
+    h_ef2 = rho_nm*h_w', effectieve hoogte met rho_2 = 1,00 (5.2)'
+    e_m2 = max(10*mm; h_ef2/300)', constante minimale excentriciteit'
+
+    #if UC_1 ≤ 1.0 or (rekenwijze ≡ 0 and N_Ed ≥ 0 kN)
+        lam_2 = h_ef2/t_ef', slankheid bij ρ_2 = 1,00'
+        #if lam_2 ≤ 27
+            e_k2 = 0*mm', kruip-excentriciteit bij h_ef2, nul bij λ ≤ λ_c = 27'
+        #else
+            e_k2 = 0.002*phi_inf*lam_2*sqrt(t_w*e_m2)', kruip-excentriciteit bij h_ef2 (6.8)'
+        #end if
+        e_mk2 = max(e_m2 + e_k2; 0.05*t_w)', (6.6)'
+        A_12 = 1 - 2*e_mk2/t_w', (G.2)'
+        lam_F2 = (h_ef2/t_ef)*sqrt(f_k/E_mw)', (G.4)'
+        u_2 = (lam_F2 - 0.063)/(0.73 - 1.17*e_mk2/t_w)', (G.3)'
+        Phi_m2 = max(A_12*exp(-u_2^2/2); 0)', (G.1), niet kleiner dan nul'
+        N_Rdm2 = Phi_m2*l_w*t_w*f_d to kN', (6.2)'
+        N_mx = max(N_Ed; N_Ed_max)', normaalkracht voor deze toets, ten minste N_Ed'
+        #if N_Ed_max < N_Ed
+            '<span style="color: #b45309"><b>Let op:</b> N<sub>Ed,max</sub> is kleiner dan N<sub>Ed</sub>; de toets rekent met N<sub>Ed</sub>.</span>
+        #end if
+        #if N_Rdm2 > 0 kN
+            UC_2 = N_mx/N_Rdm2
+            #if UC_2 ≤ 1.0
+                'UC = N<sub>mx</sub>/N<sub>Rd,m2</sub> = 'UC_2'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+            #else
+                'UC = N<sub>mx</sub>/N<sub>Rd,m2</sub> = 'UC_2'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+            #end if
+        #else
+            '<span style="color: red">N<sub>Rd,m2</sub> = 0: de minimale excentriciteit reikt tot buiten
+            'de wanddoorsnede → <b>voldoet niet</b></span>
+            #hide
+            UC_2 = 1/0
+            #show
+        #end if
+    #else
+        'Niet uitgevoerd: de wand voldoet al niet op de eerste toets.
+        #hide
+        UC_2 = 0
+        #show
+    #end if
+
+    # 10. Samenvatting
+
+    UC_max = max(UC_lam; UC_1; UC_2)
+    #if UC_max ≤ 1.0
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1.0 → <b>Dragende metselwerkwand voldoet</b></span>
+    #else
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1.0 → <b>Dragende metselwerkwand voldoet niet</b></span>
+    #end if
 #else
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1.0 → <b>Dragende metselwerkwand voldoet niet</b></span>
+    '<b style="color:#b91c1c">De invoer is onvolledig: lengte, hoogte en dikte van de wand en de druksterkte f<sub>k</sub> groter dan 0.</b>
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>de wand is niet getoetst: invoer onvolledig</b></span>
 #end if
 `;

@@ -460,7 +460,7 @@ b_s = 1000*mm
     #else
         '<span style="color: red">Geen ankercapaciteit of geen ankers: de bladen zijn niet gekoppeld.</span>
     #end if
-    '<i>Niet getoetst: de afdracht van een gesteund blad naar de vloer, en de ankers langs openingen en randen.</i><span class="alleen-scherm"></span>
+    '<i class="ook-afdruk">Niet getoetst: de afdracht van een gesteund blad naar de vloer, en de ankers langs openingen en randen.</i>
 
     # 4. Samenvatting
 
@@ -490,7 +490,7 @@ b_s = 1000*mm
     q_k = ?*(kN/m^2)', op het maaiveld<span class="alleen-scherm">, karakteristiek</span><span class="kolom-3"></span>'
     N_Ed,max = ?*(kN)', per m, zwaarste uitwerking<span class="alleen-scherm"> op halve hoogte van de aanvulling</span><span class="kolom-2"></span>'
     N_Ed,min = ?*(kN)', per m, minst zware uitwerking<span class="alleen-scherm"> op halve hoogte van de aanvulling</span><span class="kolom-2"></span>'
-    '<i>Uitgangspunten (§4.5(1)): de vloer boven de kelder werkt als schijf en neemt de krachten uit de gronddruk op; geen geconcentreerde last groter dan 15 kN binnen 1,5 m van de wand; het maaiveld stijgt niet op; geen waterdruk op de wand; geen glijvlak, bijvoorbeeld door een waterkerende laag, zonder maatregelen om de schuifkrachten op te nemen.</i>
+    '<i class="ook-afdruk">Uitgangspunten (§4.5(1)): de vloer boven de kelder werkt als schijf en neemt de krachten uit de gronddruk op; geen geconcentreerde last groter dan 15 kN binnen 1,5 m van de wand; het maaiveld stijgt niet op; geen waterdruk op de wand; geen glijvlak, bijvoorbeeld door een waterkerende laag, zonder maatregelen om de schuifkrachten op te nemen.</i>
 
     #hide
     ok_3 = if(t_k > 0 mm and h_k > 0 mm and h_e ≥ 0 mm and b_c > 0 mm and ρ_e ≥ 0 kN/m^3 and N_Ed,max ≥ 0 kN; 1; 0)

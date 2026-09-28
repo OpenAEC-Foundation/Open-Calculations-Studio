@@ -156,6 +156,17 @@ k_mod', wind is kortdurend (Tabel 3.1); γ_M = 1,30 voor gezaagd hout (Tabel 2.3
 f_c0d = f_c0k*k_mod/γ_M', rekenwaarde druksterkte ∥'
 f_c90d = f_c90k*k_c90*k_mod/γ_M', rekenwaarde druksterkte ⊥, met k_c,90 = 1,25'
 
+#hide
+'Zonder deze maten rekent de schijf niet: een veld dat leeg is of op nul staat,
+'gaf verderop NaN of een oneindige sterkte in plaats van een uitkomst.
+ok_inv = bool(F_f_Rd > 0 kN and s_verb > 0 mm and t_bepl > 0 mm and t_stijl > 0 mm and b_stijl > 0 mm and t_regel > 0 mm and b_regel > 0 mm and b > 0 mm and h > 0 mm and bi > 0 mm)
+'De toetsing hieronder staat zonder inspringen: de takken _ref en _nb horen op
+'de eerste kolom (scripts/check-rekenwijze.mjs).
+#show
+#if ok_inv ≡ 0
+    '<b style="color:#b91c1c">De invoer is onvolledig: de sterkte en de h.o.h.-afstand van de verbindingsmiddelen, de dikte van de beplating, de maten van stijl en regel, en de lengte en hoogte van de wand en de plaatbreedte groter dan 0.</b>
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>de schijf is niet getoetst: invoer onvolledig</b></span>
+#else
 # 6. Opneembare horizontale belasting — methode A (§9.2.4.2)
 
 b_o = h/2', (9.22)'
@@ -267,7 +278,7 @@ A_c90,nb = (t_stijl + min(30 mm; t_stijl; (hoh - t_stijl)/2))*min(b_stijl; b_reg
     #hide
     UC_druk90 = 0
     #show
-    '<i>Stijl doorlopend: de stijl draagt direct af, druk ⊥ op de regel is niet van toepassing.</i>
+    '<i class="ook-afdruk">Stijl doorlopend: de stijl draagt direct af, druk ⊥ op de regel is niet van toepassing.</i>
 #end if
 
 # 8. Detaillering
@@ -365,12 +376,13 @@ volledig = bool(F_a,Rd > 0 kN)*bool(v_Rd > 0 kN/m)*bool(f_v,d > 0 N/mm^2)*(1 - o
 #else
     '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ≤ 1,0, maar <b>de schijf is niet volledig getoetst</b>: anker, glijden of plaat zonder ingevulde capaciteit apart aantonen.</span>
 #end if
+#end if
 
 '<hr/>
-'<i>Aandachtspunten:</i>
+'<i class="ook-afdruk">Aandachtspunten:</i>
 #if rekenwijze ≡ 1
-    '<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Aan de veilige kant vereenvoudigd: F<sub>f,Rd</sub> zonder de verhoging 1,2 van 9.2.4.2(5), plooi met de h.o.h.-afstand in plaats van de dagmaat, hoogstens 150 mm h.o.h. ook bij schroeven, en druk ⊥ zonder de uitbreiding van het contactvlak (§6.1.5(1)).</li><li>Dubbelzijdig met verschillende platen of verbindingen: de zwakste zijde telt maar voor 75 % of 50 % (9.2.4.2(7)); vul dan enkelzijdig in en tel zelf op.</li><li>Op de tussenstijlen hoogstens tweemaal de afstand langs de plaatranden, en niet meer dan 300 mm (9.2.4.2(12) en 10.8.2(1)).</li><li>Niet getoetst: de kleinste afstand van de verbindingsmiddelen; die hoort bij de berekening van F<sub>f,Rd</sub> (Tabel 8.2 ×0,85; gips NB bij 8.3.1.5(6)).</li></ul>
+    '<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Aan de veilige kant vereenvoudigd: F<sub>f,Rd</sub> zonder de verhoging 1,2 van 9.2.4.2(5), plooi met de h.o.h.-afstand in plaats van de dagmaat, hoogstens 150 mm h.o.h. ook bij schroeven, en druk ⊥ zonder de uitbreiding van het contactvlak (§6.1.5(1)).</li><li class="alleen-scherm">Dubbelzijdig met verschillende platen of verbindingen: de zwakste zijde telt maar voor 75 % of 50 % (9.2.4.2(7)); vul dan enkelzijdig in en tel zelf op.</li><li>Op de tussenstijlen hoogstens tweemaal de afstand langs de plaatranden, en niet meer dan 300 mm (9.2.4.2(12) en 10.8.2(1)).</li><li>Niet getoetst: de kleinste afstand van de verbindingsmiddelen; die hoort bij de berekening van F<sub>f,Rd</sub> (Tabel 8.2 ×0,85; gips NB bij 8.3.1.5(6)).</li></ul>
 #else
-    '<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Dubbelzijdig met verschillende platen of verbindingen: de zwakste zijde telt maar voor 75 % of 50 % (9.2.4.2(7)); vul dan enkelzijdig in en tel zelf op.</li><li>Op de tussenstijlen hoogstens tweemaal de afstand langs de plaatranden, en niet meer dan 300 mm (9.2.4.2(12) en 10.8.2(1)).</li><li>Niet getoetst: de kleinste afstand van de verbindingsmiddelen; die hoort bij de berekening van F<sub>f,Rd</sub> (Tabel 8.2 ×0,85; gips NB bij 8.3.1.5(6)).</li></ul>
+    '<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li class="alleen-scherm">Dubbelzijdig met verschillende platen of verbindingen: de zwakste zijde telt maar voor 75 % of 50 % (9.2.4.2(7)); vul dan enkelzijdig in en tel zelf op.</li><li>Op de tussenstijlen hoogstens tweemaal de afstand langs de plaatranden, en niet meer dan 300 mm (9.2.4.2(12) en 10.8.2(1)).</li><li>Niet getoetst: de kleinste afstand van de verbindingsmiddelen; die hoort bij de berekening van F<sub>f,Rd</sub> (Tabel 8.2 ×0,85; gips NB bij 8.3.1.5(6)).</li></ul>
 #end if
 `;

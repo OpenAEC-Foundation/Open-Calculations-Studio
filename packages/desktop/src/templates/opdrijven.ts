@@ -150,7 +150,7 @@ export const opdrijven = `"Opdrijven en drijvend lichaam — NEN 9997-1 (2.8) en
         #if n_tp > 0
             '<i class="ook-afdruk">Alleen het uittrekken van de palen; het omhoogkomen van een grondkluit met de palen (7.6.3.1(4)) is niet getoetst.</i>
         #end if
-        '<i>Niet getoetst: vloer en wanden onder de waterdruk (STR, 10.2 opmerking 1). Wandwrijving is niet meegeteld.</i><span class="alleen-scherm"></span>
+        '<i class="ook-afdruk">Niet getoetst: vloer en wanden onder de waterdruk (STR, 10.2 opmerking 1). Wandwrijving is niet meegeteld.</i>
 
         UC_max = UC_upl'<span class="alleen-scherm"></span>'
         #if UC_max ≤ 1.0

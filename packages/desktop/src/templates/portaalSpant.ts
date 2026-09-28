@@ -712,7 +712,7 @@ g_dak = ?*(kN/m^2)', dakopbouw per m² dakvlak, zonder het spant zelf<span class
           Met (5.2): α_cr = (H_Ed/V_Ed)·(h/δ_H,Ed), de zijdelingse verplaatsing uit de oplosser = 1
           Uit de knikberekening van het hele raamwerk = 2
         @end
-        'Gevolgklasse CC'CC', factoren uit NEN-EN 1990 tabel 'if(CC ≡ 2; "NB.4"; "NB.5")' — A1.2(B), 6.10a en 6.10b<span class="alleen-scherm">; bij wind ook de permanente last gunstig met 0,9</span>.
+        'Gevolgklasse CC'CC', factoren uit NEN-EN 1990 tabel 'if(CC ≡ 2; "NB.4"; "NB.5")' — A1.2(B), 6.10a en 6.10b<span class="alleen-scherm">; bij wind ook de permanente last gunstig met 0,9</span>.<span class="alleen-scherm"></span>
         #hide
         γ_G = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))
         γ_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))

@@ -780,7 +780,7 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
             'Het plastisch weerstandsmoment geldt alleen voor een homogene doorsnede (alle delen n = 1, een gat n = −1); bij een samengestelde doorsnede hangt het af van de sterkte van elk materiaal en valt het buiten dit blad.
         #end if
 
-        '<i>Geen toets: dit blad geeft de grootheden van de doorsnede, geen oordeel.</i>
+        '<i class="ook-afdruk">Geen toets: dit blad geeft de grootheden van de doorsnede, geen oordeel.</i>
     #end if
 #else if taak ≡ 2
     # 1. Vakwerk
@@ -1689,7 +1689,7 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
             #loop
             '<tr style="border-top:1.5px solid #374151;"><td style="padding:0 6px;">Σ</td><td></td><td style="padding:0 6px; text-align:right;">'r2(ΣRx)'</td><td style="padding:0 6px; text-align:right;">'r2(ΣRy)'</td></tr>
             '</table>
-            'Reacties op het vakwerk: R<sub>x</sub> naar rechts en R<sub>y</sub> omhoog positief. Evenwicht: ΣF<sub>h</sub> + ΣR<sub>x</sub> = 'r2(ΣFh)' + ('r2(ΣRx)') = 'r2(ΣFh + ΣRx)' kN en ΣR<sub>y</sub> − ΣF<sub>v</sub> = 'r2(ΣRy)' − 'r2(ΣFv)' = 'r2(ΣRy - ΣFv)' kN.
+            '<span class="alleen-scherm">Reacties op het vakwerk: R<sub>x</sub> naar rechts en R<sub>y</sub> omhoog positief. </span>Evenwicht: ΣF<sub>h</sub> + ΣR<sub>x</sub> = 'r2(ΣFh)' + ('r2(ΣRx)') = 'r2(ΣFh + ΣRx)' kN en ΣR<sub>y</sub> − ΣF<sub>v</sub> = 'r2(ΣRy)' − 'r2(ΣFv)' = 'r2(ΣRy - ΣFv)' kN.
             #if met_u ≡ 1
                 #hide
                 umax = 0
@@ -1707,7 +1707,7 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
                     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0 6px;">'k'</td><td style="padding:0 6px; text-align:right;">'r3(kx(k))'</td><td style="padding:0 6px; text-align:right;">'r3(ky(k))'</td><td style="padding:0 6px; text-align:right;">'r2(1000*UU.(k; 2))'</td><td style="padding:0 6px; text-align:right;">'r2(1000*UU.(k; 3))'</td></tr>
                 #loop
                 '</table>
-                'Verplaatsingen bij deze lasten, u<sub>x</sub> naar rechts en u<sub>y</sub> omhoog positief, met EA = 'r1(EA_st)' kN'if(staaf_s ≡ 4; " (E<sub>0,mean</sub>, zonder kruip)"; "")'; alleen de rek van de staven, de verbindingen zijn niet meegenomen. De grootste verplaatsing is 'r2(1000*umax)' mm, in knoop 'kU'.
+                'Verplaatsingen bij deze lasten<span class="alleen-scherm">, u<sub>x</sub> naar rechts en u<sub>y</sub> omhoog positief</span>, met EA = 'r1(EA_st)' kN'if(staaf_s ≡ 4; " (E<sub>0,mean</sub>, zonder kruip)"; "")'; alleen de rek van de staven, de verbindingen zijn niet meegenomen. De grootste verplaatsing is 'r2(1000*umax)' mm, in knoop 'kU'.
             #else
                 'Zonder EA geen verplaatsingen; de krachten van een statisch bepaald vakwerk hangen niet van EA af.
             #end if
@@ -1761,13 +1761,13 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
                     #end if
                 #end if
             #else
-                '<i>Geen toets: dit blad geeft de krachtsverdeling, geen oordeel.</i>
+                '<i class="ook-afdruk">Geen toets: dit blad geeft de krachtsverdeling, geen oordeel.</i>
             #end if
         #else
             #if toets ≡ 1
                 '<b>Maatgevende UC = ∞</b><span style="color: red"> → <b>de staven voldoen niet</b>: het vakwerk is beweeglijk</span>
             #else
-                '<i>Geen toets: dit blad geeft de krachtsverdeling, geen oordeel.</i>
+                '<i class="ook-afdruk">Geen toets: dit blad geeft de krachtsverdeling, geen oordeel.</i>
             #end if
         #end if
     #end if
@@ -2099,12 +2099,12 @@ hl(p; j) = hlookup(hoekstalen; p; 1; j)
         #show
         '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:1px 4px; vertical-align:top;">14</td><td style="padding:1px 4px;"><svg viewbox="0 0 64 30" xmlns="http://www.w3.org/2000/svg" style="width:64px; height:30px;"><line x1="6" y1="18" x2="58" y2="18" style="stroke:#374151; stroke-width:2"/><rect x="2" y="10" width="4" height="16" style="fill:#9ca3af; stroke:#374151; stroke-width:0.8"/><polygon points="6,16 58,5 58,16" style="fill:rgba(4,120,87,0.25); stroke:#047857; stroke-width:0.8"/></svg><br><span style="font-size:0.9em;">driehoek, 0 bij de inklemming tot q</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">—</td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'r2(Ms_14)'<br><span style="color:#6b7280; font-size:0.9em;">qL²/3</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'r2(Vm_14)'<br><span style="color:#6b7280; font-size:0.9em;">qL/2</span></td><td style="padding:1px 4px; text-align:right; vertical-align:top;">'if(met_w ≡ 1; r2(Wm_14); "—")'<br><span style="color:#6b7280; font-size:0.9em;">11qL⁴/(120EI)</span></td><td style="padding:1px 4px; text-align:center; vertical-align:top; font-weight:700; color:'if(ok_14 ≡ 1; "#047857"; "#b91c1c")';">'if(ok_14 ≡ 1; "✓"; "✗")'</td></tr>
         '</table>
-        'M<sub>veld</sub> met trek aan de onderzijde, M<sub>steun</sub> met trek aan de bovenzijde (bij een inklemming), beide als grootste waarde; V<sub>max</sub> is de grootste dwarskracht, gelijk aan de grootste oplegreactie; w<sub>max</sub> de grootste doorbuiging.<span class="alleen-scherm"> In de formules: a en b de afstanden van de puntlast tot de steunpunten, c de kleinste en d de grootste van beide.</span>
+        'M<sub>veld</sub> met trek aan de onderzijde, M<sub>steun</sub> met trek aan de bovenzijde (bij een inklemming), beide als grootste waarde; V<sub>max</sub> is de grootste dwarskracht, gelijk aan de grootste oplegreactie; w<sub>max</sub> de grootste doorbuiging.<span class="alleen-scherm"> In de formules: a en b de afstanden van de puntlast tot de steunpunten, c de kleinste en d de grootste van beide.</span><span class="alleen-scherm"></span>
         #if alles_ok ≡ 0
             '<span style="color:#b91c1c">Een formule wijkt meer dan 0,1 % af van de liggeroplosser (✗); de waarde van de oplosser geldt.</span>
         #end if
 
-        '<i>Geen toets: dit blad geeft de snedekrachten en doorbuigingen van de standaardgevallen, geen oordeel.</i>
+        '<i class="ook-afdruk">Geen toets: dit blad geeft de snedekrachten en doorbuigingen van de standaardgevallen, geen oordeel.</i>
     #end if
 #end if
 `;

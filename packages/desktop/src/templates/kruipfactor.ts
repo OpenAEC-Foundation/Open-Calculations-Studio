@@ -151,7 +151,7 @@ E_c,eff = E_cm/(1 + φ_t)', effectieve E-modulus onder blijvende belasting (§7.
 #if rekenwijze ≡ 1
     #if φ_t,nb > φ_t + 0.005
         '<b>Let op:</b> volgens bijlage B is φ(t;t<sub>0</sub>) = 'φ_t,nb', hoger dan de waarde hierboven.
-        'De referentie-uitwerking gebruikt de cementcorrectie (B<span>.</span>9) niet in (B<span>.</span>5).
+        'De referentie-uitwerking gebruikt de cementcorrectie (B<span>.</span>9) niet in (B<span>.</span>5).<span class="alleen-scherm"></span>
     #end if
 #end if
 `;

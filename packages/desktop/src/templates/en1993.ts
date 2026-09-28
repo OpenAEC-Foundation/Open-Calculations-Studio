@@ -40,7 +40,7 @@ S355 — f_y=355, f_u=490 = 355
 S450 — f_y=440, f_u=550 = 440
 @end
 
-Vloeigrens (tabel 3.1):
+'Vloeigrens (tabel 3.1):<span class="alleen-scherm"></span>
 
 f_y = staalsoort * 1 N/mm^2
 
@@ -59,15 +59,15 @@ f_u = 550 N/mm^2
 
 ## Elastische constanten (art. 3.2.6)
 
-Elasticiteitsmodulus:
+'Elasticiteitsmodulus:<span class="alleen-scherm"></span>
 
 E = 210000 N/mm^2
 
-Schuifmodulus:
+'Schuifmodulus:<span class="alleen-scherm"></span>
 
 G = 81000 N/mm^2
 
-Poisson-verhouding:
+'Poisson-verhouding:<span class="alleen-scherm"></span>
 
 nu = 0.3
 
@@ -79,7 +79,7 @@ gamma_M2 = 1.25
 
 ## Rekenwaarden
 
-Rekenwaarde vloeigrens:
+'Rekenwaarde vloeigrens:<span class="alleen-scherm"></span>
 
 f_yd = f_y / gamma_M0 to N/mm^2
 
@@ -223,11 +223,11 @@ gamma_M2 = 1.25
 
 ## Doorsnede
 
-Bruto oppervlak:
+'Bruto oppervlak:<span class="alleen-scherm"></span>
 
 A = 5381 mm^2
 
-Netto oppervlak (met aftrek boutgaten):
+'Netto oppervlak (met aftrek boutgaten):<span class="alleen-scherm"></span>
 
 A_net = 4800 mm^2
 
@@ -280,7 +280,7 @@ Klasse 3 = 3
 Klasse 4 (effectief oppervlak) = 4
 @end
 
-Bruto oppervlak:
+'Bruto oppervlak:<span class="alleen-scherm"></span>
 
 A = 5381 mm^2
 
@@ -335,11 +335,11 @@ Klasse 2 — plastisch (W_pl) = 2
 Klasse 3 — elastisch (W_el) = 3
 @end
 
-Plastisch weerstandsmoment (y-as):
+'Plastisch weerstandsmoment (y-as):<span class="alleen-scherm"></span>
 
 W_ply = 628400 mm^3
 
-Elastisch weerstandsmoment (y-as):
+'Elastisch weerstandsmoment (y-as):<span class="alleen-scherm"></span>
 
 W_ely = 557300 mm^3
 
@@ -348,18 +348,18 @@ W_ely = 557300 mm^3
 L = 6000 mm
 q_d = 20 kN/m
 
-Maatgevend moment (veldmoment, gelijkmatig verdeeld):
+'Maatgevend moment (veldmoment, gelijkmatig verdeeld):<span class="alleen-scherm"></span>
 
 M_Ed = q_d * L^2 / 8 to kN*m
 
 ## Buigweerstand (formule 6.13 / 6.14)
 
 #if dwarsdoorsnede_klasse < 3
-Klasse 1 of 2 - plastische buigweerstand (formule 6.13):
+'Klasse 1 of 2 - plastische buigweerstand (formule 6.13):<span class="alleen-scherm"></span>
 
 M_cRd = W_ply * f_y / gamma_M0 to kN*m
 #else
-Klasse 3 - elastische buigweerstand (formule 6.14):
+'Klasse 3 - elastische buigweerstand (formule 6.14):<span class="alleen-scherm"></span>
 
 M_cRd = W_ely * f_y / gamma_M0 to kN*m
 #end if
@@ -416,7 +416,7 @@ f_y = fy_80 * 1 N/mm^2
 #show
 #end if
 
-Profieloppervlak:
+'Profieloppervlak:<span class="alleen-scherm"></span>
 
 A = 5381 mm^2
 
@@ -659,7 +659,7 @@ W_y', W_pl,y bij klasse 1 en 2, W_el,y bij klasse 3 (6.3.2.1(3))'
 
 ## Systeem
 
-Kiplengte (lengte tussen de gaffels):
+'Kiplengte (lengte tussen de gaffels):<span class="alleen-scherm"></span>
 
 L_cr = 4000 mm
 
@@ -684,7 +684,7 @@ C_2 = if(C1_factor == 1.13; 0.45; if(C1_factor == 1.35; 0.55; 0))
 z_g = if(aangrijping == -1; -(h - t_f) / 2; aangrijping * h / 2)
 #show
 #if C_2 > 0
-'Ligger met gaffels: C<sub>1</sub> = 'C_1' en C<sub>2</sub> = 'C_2'; de last grijpt aan op z<sub>g</sub> = 'z_g' mm van het dwarskrachtcentrum, positief naar de gedrukte flens; op de getrokken flens in het zwaartepunt van die flens (NB.NB.4.3(1)).
+'Ligger met gaffels: C<sub>1</sub> = 'C_1' en C<sub>2</sub> = 'C_2'; de last grijpt aan op z<sub>g</sub> = 'z_g' mm van het dwarskrachtcentrum<span class="alleen-scherm">, positief naar de gedrukte flens; op de getrokken flens in het zwaartepunt van die flens (NB.NB.4.3(1))</span>.
 #else
 'Ligger met gaffels, constant moment zonder dwarsbelasting: C<sub>1</sub> = 'C_1' en C<sub>2</sub>·z<sub>g</sub> = 0.
 #end if
@@ -796,18 +796,18 @@ f_y = fy_80 * 1 N/mm^2
 #show
 #end if
 
-Traagheidsstralen:
+'Traagheidsstralen:<span class="alleen-scherm"></span>
 
 i_y = sqrt(I_y / A) to mm
 i_z = sqrt(I_z / A) to mm
 
 ## Systeem
 
-Kniklengte om sterke as (y-y):
+'Kniklengte om sterke as (y-y):<span class="alleen-scherm"></span>
 
 L_cry = 6000 mm
 
-Kniklengte om zwakke as (z-z):
+'Kniklengte om zwakke as (z-z):<span class="alleen-scherm"></span>
 
 L_crz = 6000 mm
 
@@ -855,7 +855,7 @@ A_eff = A - 4 * (1 - rho_f) * c_f * t_f to mm^2
 A_eff = A - (1 - rho_w) * c_w * t_w - 4 * (1 - rho_f) * c_f * t_f to mm^2
 #end if
 #else
-'Klasse 1, 2 of 3: het bruto oppervlak telt.
+'<i>Klasse 1, 2 of 3: het bruto oppervlak telt.</i>
 #hide
 A_eff = A
 #show
@@ -950,7 +950,7 @@ E = 210000 N/mm^2
 
 ## Profielgegevens
 
-Traagheidsmoment (sterke as):
+'Traagheidsmoment (sterke as):<span class="alleen-scherm"></span>
 
 I_y = 83560000 mm^4
 
@@ -1162,7 +1162,7 @@ C_1 = 1.13
 C_2 = 0.45
 z_g = if(aangrijping == -1; -(h_p - t_f) / 2; aangrijping * h_p / 2)
 #show
-'Gelijkmatige last, gaffels aan de einden, geen kipsteunen: C<sub>1</sub> = 1,13 en C<sub>2</sub> = 0,45 (tabel NB.NB.1, geval 2); de last grijpt aan op z<sub>g</sub> = 'z_g' mm van het dwarskrachtcentrum, positief naar de gedrukte flens; op de onderflens in het zwaartepunt van die flens (NB.NB.4.3(1)).
+'Gelijkmatige last, gaffels aan de einden, geen kipsteunen: C<sub>1</sub> = 1,13 en C<sub>2</sub> = 0,45 (tabel NB.NB.1, geval 2); de last grijpt aan op z<sub>g</sub> = 'z_g' mm van het dwarskrachtcentrum<span class="alleen-scherm">, positief naar de gedrukte flens; op de onderflens in het zwaartepunt van die flens (NB.NB.4.3(1))</span>.
 
 M_cr = C_1 * pi^2 * E * I_z / L^2 * (sqrt(I_w / I_z + L^2 * G * I_t / (pi^2 * E * I_z) + (C_2 * z_g)^2) - C_2 * z_g) to kN*m
 
@@ -1176,7 +1176,7 @@ chi_LT = min(1; 1 / lambda_LT^2; 1 / (Phi_LT + sqrt(Phi_LT^2 - 0.75 * lambda_LT^
 N_v = floor(n_st) + 1
 #show
 L_st = L / N_v to mm', afstand tussen de kipsteunen'
-'Per veld: L<sub>kip</sub> = (1,4 − 0,8·β)·L<sub>st</sub>, tussen 1,0 en 1,4·L<sub>st</sub>; C<sub>1</sub> = 1,75 − 1,05·β + 0,3·β² ≤ 2,3 en C<sub>2</sub> = 0 (NB.NB.4.3, tabel NB.NB.1 geval 1), met β de verhouding van de eindmomenten van het veld. De kleinste χ<sub>LT</sub> geldt (NB.NB.2); de ligger is symmetrisch.
+'<i>Per veld: L<sub>kip</sub> = (1,4 − 0,8·β)·L<sub>st</sub>, tussen 1,0 en 1,4·L<sub>st</sub>; C<sub>1</sub> = 1,75 − 1,05·β + 0,3·β² ≤ 2,3 en C<sub>2</sub> = 0 (NB.NB.4.3, tabel NB.NB.1 geval 1), met β de verhouding van de eindmomenten van het veld. De kleinste χ<sub>LT</sub> geldt (NB.NB.2); de ligger is symmetrisch.</i>
 #hide
 Mcr(Lk; C1) = C1 * pi^2 * E * I_z / Lk^2 * sqrt(I_w / I_z + Lk^2 * G * I_t / (pi^2 * E * I_z))
 chi_lt(lam) = min(1; 1 / lam^2; 1 / (0.5 * (1 + alpha_LT * (lam - 0.4) + 0.75 * lam^2) + sqrt((0.5 * (1 + alpha_LT * (lam - 0.4) + 0.75 * lam^2))^2 - 0.75 * lam^2)))
@@ -1321,7 +1321,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
  */
 export const ec3Onderflens = `# Onderflensbuiging onder een wiel- of hanglast — EN 1993-1-8 §6.2.4 (T-stuk)
 
-'Lokale buiging van de onderflens van een gewalst I- of H-profiel onder een wiellast of een opgehangen last bij de flensrand, zoals een looprail met een loopkat of een takel aan een balkklem.
+'<i>Lokale buiging van de onderflens van een gewalst I- of H-profiel onder een wiellast of een opgehangen last bij de flensrand, zoals een looprail met een loopkat of een takel aan een balkklem.</i>
 
 '<i class="ook-afdruk">Aanname: elke flenshelft werkt als de flens van een equivalent T-stuk op trek (NEN-EN 1993-1-8 §6.2.4), met het wiel op de plaats van de bout. De flensrand ligt vrij, dus er zijn geen wrikkrachten: de flens vloeit langs de wortel van het lijf en draagt per flenshelft M<sub>pl,Rd</sub>/m (tabel 6.2, zonder wrikkrachten). ℓ<sub>eff</sub> volgt uit tabel 6.4 voor een niet-verstijfde kolomflens, m en e uit figuur 6.8. De langsspanning uit de buiging van de ligger verlaagt het plastisch moment met de factor 1 − (σ<sub>f,Ed</sub>/f<sub>yd</sub>)², aan de veilige kant. De eigen regeling voor kraanbanen (NEN-EN 1993-6) is niet overgenomen.</i>
 
@@ -1396,7 +1396,7 @@ e_1 = 80 mm', afstand van het voorste wiel tot het liggereinde'
 
 ## 1. Maten van het T-stuk (figuur 6.8)
 
-m_f = (b_p - t_w) / 2 - 0.8 * r - n_w to mm', van de last tot 0,8·r uit het lijf'
+m_f = (b_p - t_w) / 2 - 0.8 * r - n_w to mm'<span class="alleen-scherm">, van de last tot 0,8·r uit het lijf</span>'
 e_f = n_w to mm', van de last tot de flensrand'
 
 #if m_f ≤ 0 mm
@@ -1415,7 +1415,7 @@ l_nc = min(4 * m_f + 1.25 * e_f; 2 * m_f + 0.625 * e_f + e_1) to mm', niet-ronde
 l_eff = min(l_cp; l_nc) to mm', bezwijkvorm 1: ℓ_eff,nc, ten hoogste ℓ_eff,cp'
 
 #if wielen == 2
-'Twee wielen als groep: elk wiel is een buitenste rij van de groep (tabel 6.4, rij als deel van een groep); aan de kant van een onverstijfd liggereinde met e<sub>1</sub>, aan de andere kant zonder.
+'<i>Twee wielen als groep: elk wiel is een buitenste rij van de groep (tabel 6.4, rij als deel van een groep); aan de kant van een onverstijfd liggereinde met e<sub>1</sub>, aan de andere kant zonder.</i>
 #if plaats == 1
 l_cpg = 2 * (pi * m_f + p_w) to mm', ronde patronen, de groep'
 l_ncg = 2 * (2 * m_f + 0.625 * e_f + 0.5 * p_w) to mm', niet-ronde patronen, de groep'
@@ -1429,7 +1429,7 @@ l_effg = min(l_cpg; l_ncg) to mm', Σℓ_eff van de groep'
 ## 3. Weerstand van de flens (tabel 6.2, zonder wrikkrachten)
 
 k_sigma = 1 - (sigma_fEd / (f_y / gamma_M0))^2', vermindering voor de langsspanning (aanname, aan de veilige kant)'
-M_plRd = 0.25 * l_eff * t_f^2 * f_y / gamma_M0 to kN*m', plastisch moment van de flens over ℓ_eff'
+M_plRd = 0.25 * l_eff * t_f^2 * f_y / gamma_M0 to kN*m'<span class="alleen-scherm">, plastisch moment van de flens over ℓ_eff</span>'
 F_fRd = max(k_sigma; 0) * M_plRd / m_f to kN', weerstand van één flenshelft onder één wiel'
 
 #if wielen == 2

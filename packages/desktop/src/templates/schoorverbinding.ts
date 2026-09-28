@@ -301,9 +301,9 @@ F_b,m = if(n_b ≥ 3; min(F_b,L,i; F_b,p,i; grens); F_b,n) to kN
 #show
 #if cap ≡ 1
     F_b,cap', 1,5·f<sub>u</sub>·d·t/γ<sub>M2</sub> met de dunste plaat, §3.6.1(10); sluitringen onder kop en moer, bij 8.8 en 10.9 gehard (§3.6.1(11))'
-    'Stuik per bout: de kleinste van been, plaat en F<sub>b,cap</sub>.
+    '<i>Stuik per bout: de kleinste van been, plaat en F<sub>b,cap</sub>.</i>
 #else
-    'Stuik per bout: de kleinste van been en plaat.
+    '<i>Stuik per bout: de kleinste van been en plaat.</i>
 #end if
 #if n_b ≡ 1
     F_b,1', de bout<span class="kolom-3"></span>'

@@ -182,7 +182,7 @@ d_eff = (d_y + d_z)/2', (6.32)'
     u_1 = c_1 + c_2 + pi*d_eff', figuur 6.15'
 #end if
 #if plaats > 1
-'<i>Niet in dit blad: de wapening loodrecht op de vrije rand binnen b<sub>e</sub> (9.4.2, figuur 9.9) en de randwapening (9.3.1.4).</i><span class="alleen-scherm"></span>
+'<i class="ook-afdruk">Niet in dit blad: de wapening loodrecht op de vrije rand binnen b<sub>e</sub> (9.4.2, figuur 9.9) en de randwapening (9.3.1.4).</i>
 #end if
 
 # 5. Factor β (§6.4.3)

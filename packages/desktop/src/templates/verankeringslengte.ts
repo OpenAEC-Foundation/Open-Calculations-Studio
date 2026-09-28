@@ -193,7 +193,7 @@ l_bd', gehanteerde verankeringslengte'
 '<tr><td style="padding:2px 12px 2px 0"><b>l<sub>bd</sub></b></td><td style="text-align:right"><b>'l_bd'</b></td></tr>
 '</table>
 
-'<hr/>
+'<hr class="alleen-scherm"/>
 '<i>Aandachtspunten:</i>
-'<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>c<sub>d</sub> is de ingevoerde dekking; bij kleine staafafstanden de kleinste waarde uit figuur 8.3 invullen (halve tussenafstand, zijdekking, dekking).</li><li>α<sub>3</sub> en α<sub>5</sub> staan op 1,0: dwarswapening en dwarsdruk zijn niet in rekening gebracht; dat ligt aan de veilige kant.</li></ul>
+'<ul class="alleen-scherm" style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>c<sub>d</sub> is de ingevoerde dekking; bij kleine staafafstanden de kleinste waarde uit figuur 8.3 invullen (halve tussenafstand, zijdekking, dekking).</li><li>α<sub>3</sub> en α<sub>5</sub> staan op 1,0: dwarswapening en dwarsdruk zijn niet in rekening gebracht; dat ligt aan de veilige kant.</li></ul>
 `;

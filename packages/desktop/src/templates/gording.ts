@@ -214,6 +214,17 @@ vm_ruw = 0.19*(z0_ruw/0.05)^0.07*log(verh)*cprob_ruw*vb0_ruw
     q_wind = q_wind_hand', extreme stuwdruk q_p, zelf ingevuld'
 #end if
 
+#hide
+'Zonder overspanning of dakvlak valt er niets te rekenen: een leeg veld of een
+'nul gaf verderop een foutmelding in plaats van een uitkomst.
+ok_inv = bool(L_dag > 0 mm and l_h > 0 mm)
+'De toetsing hieronder staat zonder inspringen: de takken _ref en _nb horen op
+'de eerste kolom (scripts/check-rekenwijze.mjs).
+#show
+#if ok_inv ≡ 0
+    '<b style="color:#b91c1c">De invoer is onvolledig: de horizontale projectie van het dakvlak en de dagmaat van de gording groter dan 0.</b>
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>de gording is niet getoetst: invoer onvolledig</b></span>
+#else
 # 5. Belastingsgeval 1 — Permanent
 
 P_gy = P_gk*cos_α
@@ -302,7 +313,7 @@ V_sz = q_sz*L_th/2 to kN
 
 # 8. Belastingsgeval 4 — Wind
 
-'Wind werkt loodrecht op het dakvlak (⊥, sterke as).
+'Wind werkt loodrecht op het dakvlak (⊥, sterke as).<span class="alleen-scherm"></span>
 #if dakType ≡ 1
     C_pe = -0.70', plat dak, zuiging'
 #else if α_deg ≤ 60
@@ -335,7 +346,7 @@ V_w_dr = 0*kN
 '<h6>Opwaarts</h6>
 A_ref = hoh*L_th to m^2', belaste oppervlakte voor c_pe'
 #if c_pe_zuig ≥ 0
-    '<i>c<sub>pe</sub> bij zuiging is niet negatief ingevuld: opwaarts werkt dan alleen c<sub>pi</sub>. Controleer de zone.</i>
+    '<i class="ook-afdruk">c<sub>pe</sub> bij zuiging is niet negatief ingevuld: opwaarts werkt dan alleen c<sub>pi</sub>. Controleer de zone.</i>
 #end if
 C_pi_op = 0.20', ongunstigste c_pi bij zuiging, §7.2.9(6)'
 P_w_op = (c_pe_zuig - C_pi_op)*q_wind', netto zuiging op het dakvlak'
@@ -348,7 +359,7 @@ V_w_op = q_w_op*L_th/2 to kN
 
 # 9. Toetsing BGT — doorbuiging (§7.2)
 
-'w<sub>fin</sub> = (1 + k<sub>def</sub>)·u<sub>g</sub> + u<sub>var,leidend</sub>, met ψ<sub>2</sub> = 0 voor dak, sneeuw en wind.
+'w<sub>fin</sub> = (1 + k<sub>def</sub>)·u<sub>g</sub> + u<sub>var,leidend</sub>, met ψ<sub>2</sub> = 0 voor dak, sneeuw en wind.<span class="alleen-scherm"></span>
 
 @select controleer "Controleer doorbuiging"
   Ja = 1
@@ -533,7 +544,7 @@ n_611 = if(rekenwijze ≡ 1; n_comb_ref; n_611_nb)
 n_612 = if(rekenwijze ≡ 1; n_comb_ref; n_612_nb)
 n_τ = imax(tau_0; tau_1; tau_2; tau_3; tau_4; tau_5; tau_6; tau_7)
 #show
-'Partiële factoren bij CC'CC' (NEN-EN 1990 NB, tabel NB.4/NB.5): 6.10b met γ<sub>G</sub> = 'γ_G' en γ<sub>Q</sub> = 'γ_Q'; gunstig γ<sub>G,inf</sub> = 'γ_G_inf'.
+'Partiële factoren bij CC'CC' (NEN-EN 1990 NB, tabel NB.4/NB.5): 6.10b met γ<sub>G</sub> = 'γ_G' en γ<sub>Q</sub> = 'γ_Q'; gunstig γ<sub>G,inf</sub> = 'γ_G_inf'.<span class="alleen-scherm"></span>
 #if rekenwijze ≡ 0
     'Met ψ<sub>0</sub> = 0 voor dak, sneeuw en wind blijft van 6.10a 'γ_G_a'·G over, in de duurklasse blijvend.
 #end if
@@ -662,7 +673,7 @@ UC_c90 = σ_c,90,d/(k_c,90*f_c,90,d)
 
 '<h6>10.5 Opwaartse wind — kip van de onderrand §6.3.3 en verankering</h6>
 #if My_5 < 0*kN*m
-    'Combinatie 5 drukt de onderrand, die niet door het dakbeschot wordt gesteund.
+    'Combinatie 5 drukt de onderrand, die niet door het dakbeschot wordt gesteund.<span class="alleen-scherm"></span>
     l_ef = 0.9*L_th - 0.5*h_g', tabel 6.1: gelijkmatige last op de getrokken rand'
     σ_m,crit = 0.78*b_g^2*E_005/(h_g*l_ef) to N/mm^2', (6.32)'
     λ_rel,m = sqrt(f_mk/σ_m,crit)', (6.30)'
@@ -700,12 +711,13 @@ UC_max = max(UC_611; UC_612; UC_afsch; UC_c90; UC_kip; UC_wy; UC_wz; UC_w_op)
 #else
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1.0 → <b>Gording voldoet niet</b></span>
 #end if
+#end if
 
 '<hr/>
 #if q_par > 0*(kN/m)
-    '<i>De ∥-last is gelijk over de gordingen verdeeld; muurplaat en nokgording nemen samen q<sub>∥</sub> = 'q_par' kN/m op. Dat moet bij die onderdelen apart worden aangetoond.</i>
+    '<i class="ook-afdruk">De ∥-last is gelijk over de gordingen verdeeld; muurplaat en nokgording nemen samen q<sub>∥</sub> = 'q_par' kN/m op. Dat moet bij die onderdelen apart worden aangetoond.</i>
 #else
-    '<i>De ∥-last is gelijk over de gordingen verdeeld; muurplaat en nokgording nemen er niets van op.</i>
+    '<i class="ook-afdruk">De ∥-last is gelijk over de gordingen verdeeld; muurplaat en nokgording nemen er niets van op.</i>
 #end if
-'<i>Het dakbeschot telt mee in k<sub>r</sub> en als zijdelingse steun van de bovenrand.</i>
+'<i class="ook-afdruk">Het dakbeschot telt mee in k<sub>r</sub> en als zijdelingse steun van de bovenrand.</i>
 `;

@@ -313,9 +313,9 @@ n_t = 1
     ok_geo = if(n_bots ≡ 0 and ok_33 ≡ 1 and ok_hor ≡ 1 and ok_ext ≡ 1 and ok_tkp ≡ 1; 1; 0)
     #show
     #if n_r ≡ 1
-        'Eén boutrij, op y = 'y_1' mm; drukpunt op y<sub>c</sub> = 'y_c' mm (y vanaf de bovenkant van de ligger, naar beneden positief). Kopplaat 'b_p' mm breed.
+        'Eén boutrij, op y = 'y_1' mm; drukpunt op y<sub>c</sub> = 'y_c' mm<span class="alleen-scherm"> (y vanaf de bovenkant van de ligger, naar beneden positief)</span>. Kopplaat 'b_p' mm breed.
     #else
-        'Boutrijen: 'n_r', rij 1 op y = 'y_1' mm, rij 2 op 'y_2' mm en daarna om de 'p_kp' mm; drukpunt op y<sub>c</sub> = 'y_c' mm (y vanaf de bovenkant van de ligger, naar beneden positief). Kopplaat 'b_p' mm breed.
+        'Boutrijen: 'n_r', rij 1 op y = 'y_1' mm, rij 2 op 'y_2' mm en daarna om de 'p_kp' mm; drukpunt op y<sub>c</sub> = 'y_c' mm<span class="alleen-scherm"> (y vanaf de bovenkant van de ligger, naar beneden positief)</span>. Kopplaat 'b_p' mm breed.
     #end if
     #if n_boutrijen > 8
         '<b style="color:#b45309">Ten hoogste 8 boutrijen: gerekend met de bovenste 8.</b>

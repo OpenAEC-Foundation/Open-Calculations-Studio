@@ -681,7 +681,7 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
     c_a(θ) = if(θ < 600; 425 + 0.773*θ - 0.00169*θ^2 + 0.00000222*θ^3; if(θ < 735; 666 + 13002/(738 - θ); if(θ < 900; 545 + 17820/(θ - 731); 650)))
     #show
     #if bekleed ≡ 0
-        'Onbekleed (4.25) met k<sub>sh</sub> (4.26a); ḣ<sub>net</sub> volgens NEN-EN 1991-1-2 (3.1) t/m (3.3) met α<sub>c</sub> = 25 W/m²K, ε<sub>m</sub> = 0,7, ε<sub>f</sub> = 1,0 en Φ = 1; c<sub>a</sub>(θ) volgens §3.4.1.2, ρ<sub>a</sub> = 7850 kg/m³; ISO 834-kromme (3.4) van NEN-EN 1991-1-2; stap Δt = 5 s (§4.2.5.1).
+        '<i>Onbekleed (4.25) met k<sub>sh</sub> (4.26a); ḣ<sub>net</sub> volgens NEN-EN 1991-1-2 (3.1) t/m (3.3) met α<sub>c</sub> = 25 W/m²K, ε<sub>m</sub> = 0,7, ε<sub>f</sub> = 1,0 en Φ = 1; c<sub>a</sub>(θ) volgens §3.4.1.2, ρ<sub>a</sub> = 7850 kg/m³; ISO 834-kromme (3.4) van NEN-EN 1991-1-2; stap Δt = 5 s (§4.2.5.1).</i>
         #hide
         A_m = if(verhitting ≡ 3; 2*h + 3*b - 2*t_w; 2*h + 4*b - 2*t_w)
         A_b = if(verhitting ≡ 3; 2*h + b; 2*(h + b))
@@ -695,7 +695,7 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         dθ(θ; t) = K_m/(c_a(θ)*7850)*(25*(θ_g(t) - θ) + 0.7*5.67e-8*((θ_g(t) + 273)^4 - (θ + 273)^4))*Δt
         #show
     #else
-        'Bekleed (4.27) met φ (4.28); c<sub>a</sub>(θ) volgens §3.4.1.2, ρ<sub>a</sub> = 7850 kg/m³; ISO 834-kromme (3.4) van NEN-EN 1991-1-2; stap Δt = 30 s (§4.2.5.2); vocht in de bekleding verwaarloosd.
+        '<i>Bekleed (4.27) met φ (4.28); c<sub>a</sub>(θ) volgens §3.4.1.2, ρ<sub>a</sub> = 7850 kg/m³; ISO 834-kromme (3.4) van NEN-EN 1991-1-2; stap Δt = 30 s (§4.2.5.2); vocht in de bekleding verwaarloosd.</i>
         #hide
         A_p = if(beklvorm ≡ 1; if(verhitting ≡ 3; 2*h + b; 2*(h + b)); if(verhitting ≡ 3; 2*h + 3*b - 2*t_w; 2*h + 4*b - 2*t_w))
         #show
@@ -985,18 +985,18 @@ export const brandwerendheid = `"Brandwerendheid — staal, hout of beton volgen
         μ_kol = if(μ_fi ≤ 0.2; 0.2; if(μ_fi ≤ 0.5; 0.5; 0.7))
         #show
         #if heeft_μ ≡ 0
-            '<i>De tabelkolom volgt uit μ<sub>fi</sub>: vul onder 3 de belasting bij brand en N<sub>Rd</sub> in.</i>
+            '<i class="ook-afdruk">De tabelkolom volgt uit μ<sub>fi</sub>: vul onder 3 de belasting bij brand en N<sub>Rd</sub> in.</i>
         #else if μ_fi > 0.7
             '<b style="color:#b91c1c">μ<sub>fi</sub> = 'μ_fi' > 0,7 ligt buiten tabel 5.2a: methode A is hier niet toe te passen.</b>
         #else if zijde_b ≡ 2
             'Lees in tabel 5.2a bij R 'eis_min' de kolom af voor een kolom die aan één zijde is verhit.
         #else
-            'Lees in tabel 5.2a bij R 'eis_min' de kolom μ<sub>fi</sub> = 'μ_kol' af, de eerste kolom van de tabel die niet kleiner is dan de berekende μ<sub>fi</sub>.
+            'Lees in tabel 5.2a bij R 'eis_min' de kolom μ<sub>fi</sub> = 'μ_kol' af<span class="alleen-scherm">, de eerste kolom van de tabel die niet kleiner is dan de berekende μ<sub>fi</sub></span>.
         #end if
         b_min = ?*(mm)', b<sub>min</sub> uit de tabel<span class="kolom-2"></span>'
         a_min = ?*(mm)', a uit de tabel<span class="kolom-2"></span>'
     #else if element_b ≤ 3
-        'Lees in tabel 'if(element_b ≡ 2; "5.5"; "5.6")' bij R 'eis_min' een combinatie b<sub>min</sub>/a af met b<sub>min</sub> ≤ b. Bij één laag wapening vraagt de tabel voor de hoekstaven een grotere zijdelingse asafstand a<sub>sd</sub> (opmerking bij de tabel).
+        'Lees in tabel 'if(element_b ≡ 2; "5.5"; "5.6")' bij R 'eis_min' een combinatie b<sub>min</sub>/a af met b<sub>min</sub> ≤ b.<span class="alleen-scherm"> Bij één laag wapening vraagt de tabel voor de hoekstaven een grotere zijdelingse asafstand a<sub>sd</sub> (opmerking bij de tabel).</span>
         b_min = ?*(mm)', b<sub>min</sub> uit de tabel<span class="kolom-2"></span>'
         a_min = ?*(mm)', a uit de tabel<span class="kolom-2"></span>'
     #else

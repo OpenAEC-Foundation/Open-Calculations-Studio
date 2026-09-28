@@ -278,7 +278,7 @@ y_gw = if(grondwater == 1; 265; if(grondwater == 2; 180; 80))
  */
 export const en1997Paaldraagvermogen = `# Axiaal Draagvermogen Paalfundering — NEN 9997-1 §7
 
-'Dit normblad rekent niet zelf. Het draagvermogen op druk volgens art. 7.6.2.3 (Koppejan, tabel 7.c, tabel A.10 en γ<sub>t</sub>, met negatieve kleef volgens 7.3.2.2) staat in de module <b>Paaldraagvermogen</b>; voeg die in via de catalogus.
+'Dit normblad rekent niet zelf. Het draagvermogen op druk volgens art. 7.6.2.3 (Koppejan, tabel 7.c, tabel A.10 en γ<sub>t</sub>, met negatieve kleef volgens 7.3.2.2) staat in de module <b>Paaldraagvermogen</b><span class="alleen-scherm">; voeg die in via de catalogus</span>.
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────

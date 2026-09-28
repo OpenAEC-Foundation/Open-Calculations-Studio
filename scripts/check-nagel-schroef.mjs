@@ -864,7 +864,7 @@ const MELDINGEN_AMBACHT = [
   [6, "oordeel trek zonder toognagel", /voldoet niet: trek zonder toognagel/],
   [7, "maten van pen-en-gat passen niet", /De maten passen niet/],
   [10, "zwaluwstaart zonder uitwaaiering", /Vul een hals, een breedere einde/],
-  [2, "aanname voor het voorhout, geen normregel", /ten hoogste 8·t\s*v\s*: een gebruikelijke aanname, de norm geeft hiervoor geen regel/],
+  [2, "aanname voor het voorhout, geen normregel", /ten hoogste 8·t\s*v\s*: een gebruikelijke aanname\s*, de norm geeft hiervoor geen regel/],
 ];
 for (const [nr, naam, patroon] of MELDINGEN_AMBACHT) {
   const v = AMBACHT[nr - 1].invoer;

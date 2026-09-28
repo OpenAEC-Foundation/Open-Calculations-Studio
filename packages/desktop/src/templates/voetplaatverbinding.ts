@@ -165,7 +165,7 @@ fub_tab = if(kwaliteit ≡ 4.6; 400; if(kwaliteit ≡ 5.6; 500; if(kwaliteit ≡
 ok_tp = 1
 #show
 #if flush ≡ 1
-    '<i>De plaat is gelijk met het profiel (d<sub>p</sub> ≤ h); deze kolomvoet geldt als scharnierend.</i>
+    '<i class="ook-afdruk">De plaat is gelijk met het profiel (d<sub>p</sub> ≤ h); deze kolomvoet geldt als scharnierend.</i>
 #end if
 'Voetplaat 'd_pl' × 'b_pl' × 't_p' mm met 'n_a' ankers M'd_anker' – 'kwaliteit'; de buitenste ankers staan op x = 'x_max' mm en y = 'y_max' mm van het hart.
 #if t_p ≤ 40 mm
@@ -466,7 +466,7 @@ ok_kegel = 1
         '<b style="color:#b45309">Er ligt een rand dichtbij: de kegelbreuk is hier zonder randeffect gerekend. Toets de kegelbreuk met de werkelijke randafstanden en de randbreuk apart (EN 1992-4 §7.2.1.4 en §7.2.2.5).</b>
     #end if
 #else
-    '<i>Geen trek in de ankers: de kegelbreuk is niet maatgevend.</i>
+    '<i class="ook-afdruk">Geen trek in de ankers: de kegelbreuk is niet maatgevend.</i>
 #end if
 
 # 9. Afschuiving (§6.2.2)
@@ -486,7 +486,7 @@ N_c,Ed = max(N_Ed; 0 kN)', drukkracht, bij trek nul'
     α_bc = 0.44 - 0.0003*fyb_tab', (6.2)'
     F_2,vb,Rd = α_bc*f_ub*A_s/γ_M2 to kN', (6.2)'
 #else
-    '<i>Ankers 10.9: f<sub>yb</sub> > 640 N/mm², dus niet op afschuiving (§3.3(1), (6.2)); alleen de wrijving telt.</i>
+    '<i class="ook-afdruk">Ankers 10.9: f<sub>yb</sub> > 640 N/mm², dus niet op afschuiving (§3.3(1), (6.2)); alleen de wrijving telt.</i>
     #hide
     F_2,vb,Rd = 0 kN
     #show
@@ -545,7 +545,7 @@ UC_tv = 0
     F_v,a = max(abs(V_Ed) - F_f,Rd; 0 kN)/n_v to kN', afschuiving per anker, na de wrijving'
     UC_tv = F_v,a/F_vb,Rd + F_t,a/(1.4*F_t,Rd)
 #else
-    '<i>Geen anker krijgt tegelijk trek en afschuiving.</i>
+    '<i class="ook-afdruk">Geen anker krijgt tegelijk trek en afschuiving.</i>
 #end if
 
 # 11. Hoeklassen kolom–voetplaat (§4.5.3.2)
@@ -614,6 +614,6 @@ UC_max', grootste van de toetsen hieronder'
 #end if
 
 '<hr/>
-'<i>Aandachtspunten:</i>
+'<i class="ook-afdruk">Aandachtspunten:</i>
 '<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Niet getoetst: het uittrekken van de ankerplaat, het splijten van het beton, onder dwarskracht de randbreuk en het uitbreken aan de achterzijde van de ankers (EN 1992-4), en de stijfheid van de kolomvoet (§6.3).</li><li>Bij een rand dichtbij: geen spreiding (k<sub>j</sub> = 1) en de kegelbreuk apart toetsen.</li><li>De dwarskracht werkt in de richting van d<sub>p</sub>; de stuik is met de randafstanden van de buitenste ankers gerekend.</li><li>De trekweerstand van de ankers geldt voor schroefdraad volgens EN 1090; anders factor 0,85 (§3.6.1(3)).</li></ul>
 `;
