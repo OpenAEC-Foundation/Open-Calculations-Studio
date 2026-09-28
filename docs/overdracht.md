@@ -1,6 +1,6 @@
 # Overdracht — stand van de rekenmodules
 
-Stand: 28-09-2026, versie 0.1.8, branch `verbeter/berekeningen`.
+Stand: 28-09-2026, versie 0.1.9, branch `verbeter/berekeningen`.
 Dit document is het startpunt voor wie verder bouwt aan de rekenmodules: hoe
 het in elkaar zit, welke afspraken gelden, hoe je controleert en wat er nog
 open staat. De open punten staan ook als issues op GitHub (label
