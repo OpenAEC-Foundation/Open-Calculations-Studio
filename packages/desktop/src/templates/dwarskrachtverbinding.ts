@@ -213,10 +213,10 @@ d_w', recht lijfdeel<span class="alleen-afdruk"></span><span class="kolom-3"></s
     e_2', rand kopplaat<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     e_2,c', rand kolomflens<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     #if z_kp < t_fb
-        '<i>z<sub>kp</sub> &lt; t<sub>f</sub>: gerekend met de plaat tegen de bovenflens (veilige kant voor rotatie en laslengte).</i>
+        '<i class="ook-afdruk">z<sub>kp</sub> &lt; t<sub>f</sub>: gerekend met de plaat tegen de bovenflens (veilige kant voor rotatie en laslengte).</i>
     #end if
     #if hartlijn ≡ 1
-        '<i>Versprongen getekend; gerekend met w = 'p_2' mm en e<sub>2</sub> = 'e_2' mm in elke rij.</i>
+        '<i class="ook-afdruk">Versprongen getekend; gerekend met w = 'p_2' mm en e<sub>2</sub> = 'e_2' mm in elke rij.</i>
     #end if
     #hide
     e_min = 1.2*d_0

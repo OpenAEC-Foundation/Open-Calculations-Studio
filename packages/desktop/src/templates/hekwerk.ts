@@ -175,9 +175,12 @@ a_st = ?*(m)', hart-op-hartafstand van de staanders<span class="kolom-2"></span>
     #show
 #end if
 #hide
-x_e = max(a_e/a_st; 0.01)
+x_e = if(a_st > 0 m; max(a_e/a_st; 0.01); 1)
 a_max = max(a_st; a_e) to m
 #show
+#if h_leu ≤ 0 m or a_st ≤ 0 m
+    '<b style="color:#b91c1c">Invoer onvolledig: vul de hoogte van de leuning en de afstand van de staanders in.</b>
+#end if
 #if doorgaand ≡ 1
     #hide
     'Doorgaande leuning met de liggeroplosser, in eenheden van a: het eindveld x_e, de andere velden 1, over twee, drie en vier velden. Lijnlast 1 over de hele lengte; de puntlast met de invloedslijn van elk steunpunt (Müller-Breslau): de doorbuigingslijn met dat steunpunt weggenomen en een eenheidslast op zijn plaats, gedeeld door de doorbuiging daar.
@@ -407,7 +410,7 @@ zg_s = 0 mm
     E_s = E_st
     #show
     'Tabel 5.2, koker met c = h − 3t: wanden langs de last c/t = 'cw_s' → klasse 'klw_s', gedrukte wand c/t = 'cf_s' → klasse 'klf_s'; doorsnede in klasse <b>'klasse_s'</b>.
-    '<span class="alleen-scherm"><i>Aanname: hoeken met een buitenstraal van 2t en een binnenstraal van t.</i></span>
+    '<i class="ook-afdruk">Aanname: hoeken met een buitenstraal van 2t en een binnenstraal van t.</i>
 #else if vorm_s ≡ 5
     @select iprofiel "Profiel van de staander"
       HEA 100 = 1
@@ -502,7 +505,11 @@ zg_s = 0 mm
         #hide
         ε_g = aangrijping*zg_s/h_leu*sqrt(E_st*I_zs/(G_st*I_ts))
         #show
-        k_g = sqrt(1 + (2.05*ε_g)^2) - 2.05*ε_g', invloed van het aangrijpingspunt'if(aangrijping ≡ 1; ", de last op de voorzijde"; ", de last in het hart")'<span class="kolom-3"></span>'
+        #if aangrijping ≡ 1
+            k_g = sqrt(1 + (2.05*ε_g)^2) - 2.05*ε_g', invloed van het aangrijpingspunt, de last op de voorzijde<span class="kolom-3"></span>'
+        #else
+            k_g = sqrt(1 + (2.05*ε_g)^2) - 2.05*ε_g', invloed van het aangrijpingspunt, de last in het hart<span class="kolom-3"></span>'
+        #end if
         M_cr = k_g*4.013/h_leu*sqrt(E_st*I_zs*G_st*I_ts) to kN*m', uitkraging met de last aan het einde<span class="kolom-3"></span>'
         λ_LT = sqrt(W_s*f_y/M_cr)'<span class="kolom-3"></span>'
         #hide
@@ -522,7 +529,11 @@ zg_s = 0 mm
     kh_s = kh(d_s/(1 mm))
     #show
     f_m,d = k_mod*kh_s*f_m,k/γ_M to N/mm^2', met k_h (§3.2(3) of §3.3(3))<span class="kolom-3"></span>'
-    l_ef,s = 0.8*h_leu + aangrijping*2*d_s to mm', tabel 6.1: 0,8·h'if(aangrijping ≡ 1; ", plus 2·d voor de last op de voorzijde"; "")'<span class="kolom-3"></span>'
+    #if aangrijping ≡ 1
+        l_ef,s = 0.8*h_leu + aangrijping*2*d_s to mm', tabel 6.1: 0,8·h, plus 2·d voor de last op de voorzijde<span class="kolom-3"></span>'
+    #else
+        l_ef,s = 0.8*h_leu + aangrijping*2*d_s to mm', tabel 6.1: 0,8·h<span class="kolom-3"></span>'
+    #end if
     σ_m,crit = 0.78*b_s^2*E_0,05/(d_s*l_ef,s) to N/mm^2', (6.32)<span class="kolom-3"></span>'
     λ_rel,m = sqrt(f_m,k/σ_m,crit)', (6.30)<span class="kolom-3"></span>'
     k_crit = kcrit(λ_rel,m)', (6.34)<span class="kolom-3"></span>'
@@ -537,7 +548,8 @@ UC_s = max(UC_M,s; UC_V,s)', staander<span class="kolom-3"></span>'
 
 # 5. Leuning
 
-M_h,Ed = γ_Q*max(q_k*a_max^2/8; F_k*a_max/4) to kN*m', horizontaal, a_max = 'a_max' m<span class="kolom-4"></span>'
+a_max', langste veld<span class="kolom-4"></span>'
+M_h,Ed = γ_Q*max(q_k*a_max^2/8; F_k*a_max/4) to kN*m', horizontaal<span class="kolom-4"></span>'
 V_h,Ed = γ_Q*max(kV_q*q_k*a_st; k_F*F_k) to kN'<span class="kolom-4"></span>'
 M_v,Ed = γ_Q*F_k,v*a_max/4 to kN*m', verticaal<span class="kolom-4"></span>'
 V_v,Ed = γ_Q*k_F*F_k,v to kN'<span class="kolom-4"></span>'
@@ -750,7 +762,9 @@ kl4 = bool((vorm_s ≤ 5 and klasse_s ≡ 4) or (vorm_l ≤ 2 and (klasse_lh ≡
 '</table>
 
 UC_max = max(UC_s; UC_l; UC_w,h; UC_w,v; UC_a)'<span class="alleen-scherm"></span>'
-#if kl4 ≡ 1
+#if h_leu ≤ 0 m or a_st ≤ 0 m
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>het hekwerk is niet getoetst: invoer onvolledig</b></span>
+#else if kl4 ≡ 1
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>het hekwerk voldoet niet</b>: een doorsnede valt in klasse 4, en die valt buiten dit blad.</span>
 #else if buiten_s ≡ 1
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>het hekwerk voldoet niet</b>: een hoekstaal dat niet zijdelings wordt gehouden valt buiten dit blad.</span>

@@ -335,7 +335,7 @@ N_cr,z = pi^2*E*I_z/L_cr,z^2 to kN
 ρ_w = if(c_w/t_w ≤ 42*ε; 1; min(1; (λ_p,w - 0.22)/λ_p,w^2))
 #show
 #if ρ_w < 1
-    '<i>Bij zuivere druk valt het lijf in klasse 4 (c/t > 42ε): effectieve breedte volgens NEN-EN 1993-1-5 §4.4 met ψ = 1 en k<sub>σ</sub> = 4. χ blijft bepaald met het bruto oppervlak; dat ligt aan de veilige kant.</i>
+    '<i class="ook-afdruk">Bij zuivere druk valt het lijf in klasse 4 (c/t > 42ε): effectieve breedte volgens NEN-EN 1993-1-5 §4.4 met ψ = 1 en k<sub>σ</sub> = 4. χ blijft bepaald met het bruto oppervlak; dat ligt aan de veilige kant.</i>
     λ_p,w', plaatslankheid van het lijf'
     ρ_w', reductiefactor van het lijf (§4.4(2))'
     A_eff = A - (1 - ρ_w)*c_w*t_w to cm^2', effectief oppervlak bij zuivere druk'
@@ -553,7 +553,9 @@ UC_max', grootste van de toetsen hieronder'
 '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">Doorbuiging</td><td style="padding:4px 8px;">§7.2</td><td style="padding:4px 8px; text-align:right; white-space:nowrap; color:'kleur(UC_δ)'">'UC_δ'</td><td style="padding:4px 8px; white-space:nowrap; color:'kleur(UC_δ)'">'oordeel(UC_δ)'</td></tr>
 '</table>
 
-#if klasse ≡ 4
+#if isNaN(UC_max)
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>niet getoetst: invoer onvolledig</b></span>
+#else if klasse ≡ 4
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>de kolom voldoet niet</b>: de doorsnede valt in klasse 4, en die valt buiten deze module.</span>
 #else if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de kolom voldoet</b></span>
@@ -562,6 +564,6 @@ UC_max', grootste van de toetsen hieronder'
 #end if
 
 '<hr/>
-'<i>Uitgangspunten:</i>
+'<i class="ook-afdruk">Uitgangspunten:</i>
 '<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Gaffels aan beide einden; eigen gewicht, excentriciteit van N en het tweede-orde-effect van de doorbuiging niet meegenomen.</li><li>De regels steunen de buitenflens alleen als ze aan een vast punt zijn gekoppeld, zoals een windverband.</li><li>Steun van de regels aan de getrokken flens en de factor f uit 6.3.2.3(2) verwaarloosd; beide aan de veilige kant.</li><li>Wind gelijkmatig over de hoogte, met q<sub>p</sub> op de gebouwhoogte; bij een dominante opening (7.2.9(5)) de netto wind zelf invullen.</li><li>Verbindingen en regels niet getoetst.</li></ul>
 `;

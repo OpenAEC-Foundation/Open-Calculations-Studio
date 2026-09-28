@@ -197,7 +197,7 @@ KL = ["C12/15"; "C16/20"; "C20/25"; "C25/30"; "C30/37"; "C35/45"; "C40/50"; "C45
     'Milieuklasse 'mk_naam' in constructieklasse S'S_kl':
     c_min,dur', tabel 4.4N (NB), betonstaal'
     #if aantasting ≥ 1 and aantasting ≤ 7
-        '<i>Tabel 4.4N geeft geen c<sub>min,dur</sub> voor vorst en dooi (XF) of chemische aantasting (XA): volgens 4.4.1.2(12) volstaat in het algemeen een dekking volgens 4.4; die klassen stellen eisen aan de betonsamenstelling (EN 206).</i>
+        '<i class="ook-afdruk">Tabel 4.4N geeft geen c<sub>min,dur</sub> voor vorst en dooi (XF) of chemische aantasting (XA): volgens 4.4.1.2(12) volstaat in het algemeen een dekking volgens 4.4; die klassen stellen eisen aan de betonsamenstelling (EN 206).</i>
     #else if aantasting ≥ 8
         '<i>Afslijting (4.4.1.2(13)): de toeslag k<sub>1</sub>, k<sub>2</sub> of k<sub>3</sub> voor XM1, XM2 en XM3 is volgens de NB 0 mm.</i>
     #end if
@@ -309,7 +309,7 @@ KL = ["C12/15"; "C16/20"; "C20/25"; "C25/30"; "C30/37"; "C35/45"; "C40/50"; "C45
             UC_Φn = 0
             #show
         #end if
-        '<i>Een grotere dekking kan nodig zijn voor de brandwerendheid (4.4.1.2(1), EN 1992-1-2); die staat hier niet in.</i><span class="alleen-scherm"></span>
+        '<i class="ook-afdruk">Een grotere dekking kan nodig zijn voor de brandwerendheid (4.4.1.2(1), EN 1992-1-2); die staat hier niet in.</i>
 
         # 5. Samenvatting
 
@@ -525,7 +525,7 @@ KL = ["C12/15"; "C16/20"; "C20/25"; "C25/30"; "C30/37"; "C35/45"; "C40/50"; "C45
         #else
             #if toepassing ≤ 2
                 #if kz_eigen ≡ 0
-                    '<i>Geen eigen keuze: getoetst wordt de lichtste passende keuze.</i>
+                    '<i class="ook-afdruk">Geen eigen keuze: getoetst wordt de lichtste passende keuze.</i>
                 #end if
                 ds_g', Ø<span class="kolom-2"></span>'
                 s_g', h.o.h.<span class="kolom-2"></span>'
@@ -547,7 +547,7 @@ KL = ["C12/15"; "C16/20"; "C20/25"; "C25/30"; "C30/37"; "C35/45"; "C40/50"; "C45
                 #show
             #else
                 #if kz_eigen ≡ 0
-                    '<i>Geen eigen keuze: getoetst wordt de lichtste passende keuze.</i>
+                    '<i class="ook-afdruk">Geen eigen keuze: getoetst wordt de lichtste passende keuze.</i>
                 #end if
                 n_g', aantal staven<span class="kolom-2"></span>'
                 ds_g', Ø<span class="kolom-2"></span>'

@@ -277,14 +277,14 @@ ok_las = if(aansluiting ≡ 0; 0; 1)
         #hide
         ok_bs = 1
         #show
-        '<i>Strip met één rij bouten: geen blokschuif; de netto doorsnede (6.7) gaat voor, het uitscheuren vóór de bouten zit in de stuiktoets (tabel 3.4) van het boutblad.</i>
+        '<i class="ook-afdruk">Strip met één rij bouten: geen blokschuif<span class="alleen-scherm">; de netto doorsnede (6.7) gaat voor, het uitscheuren vóór de bouten zit in de stuiktoets (tabel 3.4) van het boutblad</span>.</i>
     #else if e_1 ≤ 0 mm
         #hide
         ok_bs = 0
         #show
         '<b style="color:#b91c1c">Blokschuif (EN 1993-1-8 §3.10.2) niet getoetst: vul e<sub>1</sub> in.</b>
     #else
-        '<b>Blokschuif</b> — centrisch (3.9), gaten op e<sub>2</sub> van beide randen; A<sub>nt</sub> van het blok tussen de buitenste rijen of van de twee randstroken, de kleinste.
+        '<b>Blokschuif</b> — centrisch (3.9)<span class="alleen-scherm">, gaten op e<sub>2</sub> van beide randen; A<sub>nt</sub> van het blok tussen de buitenste rijen of van de twee randstroken, de kleinste</span>.
         #hide
         'Bij drie of meer bouten gerekend met drie: meer bouten geven een grotere A_nv.
         n_b = min(aansluiting; 3)
@@ -302,7 +302,7 @@ ok_las = if(aansluiting ≡ 0; 0; 1)
     #show
     '<b style="color:#b91c1c">Blokschuif (EN 1993-1-8 §3.10.2) niet getoetst: vul e<sub>1</sub> in.</b>
 #else
-    '<b>Blokschuif</b> — één rij bouten in één been, excentrisch (3.10); scheurt in trek naar de vrije rand van het been.
+    '<b>Blokschuif</b> — één rij bouten in één been, excentrisch (3.10)<span class="alleen-scherm">; scheurt in trek naar de vrije rand van het been</span>.
     #hide
     'Bij drie of meer bouten gerekend met drie: meer bouten geven een grotere A_nv.
     n_b = min(aansluiting; 3)
@@ -335,7 +335,7 @@ ok_druk = 1
 UC_c = 0
 #show
 #if verbandtype ≡ 1
-    '<i>X-kruis of tegengestelde diagonalen: de gedrukte diagonaal mag slap worden, dus geen druktoets.</i>
+    '<i class="ook-afdruk">X-kruis of tegengestelde diagonalen: de gedrukte diagonaal mag slap worden, dus geen druktoets.</i>
 #else if soort ≡ 1
     #hide
     ok_druk = 0
@@ -486,6 +486,6 @@ UC_max', grootste van de toetsen hieronder'
 #end if
 
 '<hr/>
-'<i>Aandachtspunten en vereenvoudigingen:</i>
+'<i class="ook-afdruk">Aandachtspunten en vereenvoudigingen:</i>
 '<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>De bouten zelf (afschuiving en stuik) zijn niet getoetst; daarvoor is er een apart rekenblad voor bouten. De knoopplaat is nergens getoetst.</li><li>De kolommen, de regels en de fundering krijgen de verticale component F<sub>v,Ed</sub>; die zijn hier niet getoetst.</li><li>De scheefstand is voor één bouwlaag gerekend, met de hoogte van het vak voor α<sub>h</sub>. Stabiliseert het verband meer lagen, vul dan de totale verticale belasting in.</li><li>De verplaatsing telt alleen de verlenging van de diagonaal. Met slappe kolomvoeten of verbindingen met speling wordt ze groter.</li><li>Een hoekprofiel dat aan één been is aangesloten, is onder druk gerekend met de effectieve slankheid van BB.1.2; die geldt als de aansluitingen de verdraaiing van de uiteinden voldoende beperken.</li></ul>
 `;

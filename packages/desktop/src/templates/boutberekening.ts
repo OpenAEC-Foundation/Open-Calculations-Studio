@@ -240,7 +240,7 @@ F_t,Ed = ?*(kN)', trekkracht op de bout — 0 = geen toetsing'
         #loop
     #loop
     '</svg>'
-    '<span class="alleen-scherm">Kruis: zwaartepunt van de bouten; rood: de kracht van de plaat op elke bout; geel: de maatgevende bout'if(boutgroep ≡ 2; "; D: het draaipunt"; "")'.</span>
+    '<span class="alleen-scherm">Kruis: zwaartepunt van de bouten; rood: de kracht van de plaat op elke bout; geel: de maatgevende bout'if(boutgroep ≡ 2; "; D: het draaipunt"; "")'.</span><span class="alleen-scherm"></span>
     #if groepfout ≡ 1
         '<b style="color:#b91c1c">De bouten liggen alle in één punt'if(boutgroep ≡ 2; " (het draaipunt)"; "")': ze kunnen het moment niet opnemen.</b>
     #end if
@@ -248,12 +248,17 @@ F_t,Ed = ?*(kN)', trekkracht op de bout — 0 = geen toetsing'
     #hide
     Σr_2 = r2_s*mm^2
     #show
-    Σr_2'<span class="alleen-scherm">, om 'if(boutgroep ≡ 2; "het draaipunt"; "het zwaartepunt")'</span>'
+    #if boutgroep ≡ 2
+        Σr_2'<span class="alleen-scherm">, om het draaipunt</span>'
+    #else
+        Σr_2'<span class="alleen-scherm">, om het zwaartepunt</span>'
+    #end if
     #if boutgroep ≡ 2
         M_D = Md_*kN*mm to kN*m', moment om het draaipunt'
         R_d', kracht op het draaipunt'
     #end if
-    F_v,Ed = F_gr*kN', maatgevende bout ('i_m'; 'k_m'), gaat als afschuifkracht door de toetsen'
+    'Maatgevende bout ('i_m'; 'k_m'):
+    F_v,Ed = F_gr*kN', gaat als afschuifkracht door de toetsen'
     '<i>Kies bij de positie in de krachtsrichting en loodrecht daarop die van de maatgevende bout, meestal een hoekbout (eindbout en randbout). Staat zijn kracht schuin op de randen, neem dan voor e<sub>1</sub> en e<sub>2</sub> de kleinste afstanden: aan de veilige kant.</i><span class="alleen-scherm"></span>
 #end if
 
@@ -367,7 +372,7 @@ d_m,ref = sw_*mm
 B_p,Rd,ref = 0.6*pi*d_m,ref*t_p*f_u/γ_M2 to kN
 B_p,Rd = if(rekenwijze ≡ 1; B_p,Rd,ref; B_p,Rd,nb)
 #show
-'B<sub>p,Rd</sub> = 0,6·π·d<sub>m</sub>·t<sub>p</sub>·f<sub>u</sub>/γ<sub>M2</sub>, met t<sub>p</sub> = t en d<sub>m</sub> = 'd_m' mm (gemiddelde van sleutelwijdte en maat over de hoeken).
+'B<sub>p,Rd</sub> = 0,6·π·d<sub>m</sub>·t<sub>p</sub>·f<sub>u</sub>/γ<sub>M2</sub>, met t<sub>p</sub> = t en d<sub>m</sub> = 'd_m' mm<span class="alleen-scherm"> (gemiddelde van sleutelwijdte en maat over de hoeken)</span>.
 #if rekenwijze ≡ 1
     'Rekenwijze referentie-uitwerking: d<sub>m</sub> = sleutelwijdte = 'd_m,ref' mm. Dat geeft 'B_p,Rd' kN in plaats van 'B_p,Rd,nb' kN.
 #end if
@@ -457,9 +462,9 @@ belast = (F_v,Ed + F_t,Ed)/(1*kN)
 '</table>
 
 '<hr/>
-'<i>Aandachtspunten:
+'<i class="ook-afdruk">Aandachtspunten:
 '<ul>
-'<li><b>§3.6.1(10)</b> geldt alleen bij een enkele overlap met één boutrij (keuze Verbindingsvorm); dan zijn sluitringen onder kop én moer vereist.</li>
+'<li class="alleen-scherm"><b>§3.6.1(10)</b> geldt alleen bij een enkele overlap met één boutrij (keuze Verbindingsvorm); dan zijn sluitringen onder kop én moer vereist.</li>
 '<li>Horen bij de verbinding en staan hier niet in: lange verbindingen (§3.8), vulplaten (§3.6.1(12)), blokschuif (§3.10.2) en hefboomwerking (§3.11). Voer F<sub>t,Ed</sub> in inclusief hefboomkracht.</li>
 '<li>F<sub>v,Rd</sub> geldt per afschuifvlak voor een stempelverbinding (categorie A); slipvaste verbindingen (§3.9) staan hier niet in.</li>
 '<li>t is de <b>dunste</b> plaat; voor het doorponsen is t<sub>p</sub> hier gelijk aan t genomen.</li>

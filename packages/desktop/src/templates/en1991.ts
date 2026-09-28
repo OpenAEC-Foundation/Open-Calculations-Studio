@@ -1040,7 +1040,7 @@ Zones D en E, zonder die factor = 2
     #loop
     '</table>
     #if a4_st ≡ 1
-        '<i>A.4, gekozen lezing: binnen het invloedsgebied (x &lt; 2r) rekent elke strook met de grootste van z<sub>e</sub> en z<sub>n</sub> = 'round(zn_st; 2)' m; bij x ≥ 2r houdt elke strook zijn eigen z<sub>e</sub>.</i>
+        '<i class="ook-afdruk">A.4, gekozen lezing: binnen het invloedsgebied (x &lt; 2r) rekent elke strook met de grootste van z<sub>e</sub> en z<sub>n</sub> = 'round(zn_st; 2)' m; bij x ≥ 2r houdt elke strook zijn eigen z<sub>e</sub>.</i>
     #end if
     F_wind = F_som*kN', horizontale kracht op het gebouw, de som over de stroken<span class="kolom-3"></span>'
     M_wind = M_som*kN*m', kantelend moment op maaiveld<span class="kolom-3"></span>'

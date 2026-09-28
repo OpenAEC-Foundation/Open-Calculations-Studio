@@ -309,7 +309,7 @@ N_Ed = ?*(kN)', normaalkracht (druk)'
     #show
     γ_Q', bij de gevolgklasse uit de projectgegevens (tabel NB.4 of NB.5 van NEN-EN 1990)'
     q_z_Ed = γ_Q*w_k*b_gevel to kN/m', rekenwaarde van de windlast op de stijl'
-    '<i>De kiptoets (§10) neemt aan dat de gedrukte rand over de kiplengte vrij is; steunt de gevelbekleding die rand bij winddruk, dan ligt dat aan de veilige kant.</i><span class="alleen-scherm"></span>
+    '<i class="ook-afdruk">De kiptoets (§10) neemt aan dat de gedrukte rand over de kiplengte vrij is; steunt de gevelbekleding die rand bij winddruk, dan ligt dat aan de veilige kant.</i><span class="alleen-scherm"></span>
 #else
 M_yA_Ed = ?*(kN*m)', moment bovenzijde A'
 M_yB_Ed = ?*(kN*m)', moment onderzijde B'
@@ -317,6 +317,17 @@ q_z_Ed = ?*(kN/m)', verdeelde dwarslast'
 #end if
 #end if
 
+#hide
+'Zonder kolomlengte rekent de houten kolom niet: een leeg veld of een nul gaf
+'overal NaN in plaats van een uitkomst.
+ok_inv = if(hout ≡ 1; bool(L > 0 mm); 1)
+'De toetsing hieronder staat zonder inspringen: de takken _ref en _nb horen op
+'de eerste kolom (scripts/check-rekenwijze.mjs).
+#show
+#if ok_inv ≡ 0
+    '<b style="color:#b91c1c">De invoer is onvolledig: de kolomlengte groter dan 0.</b>
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>'if(kolomsoort ≡ 2; "de gevelstijl"; if(kolomsoort ≡ 3; "de stempel"; "de kolom"))' is niet getoetst: invoer onvolledig</b></span>
+#else
 #if hout ≡ 1
 # 5. Snedekrachten en spanningen
 
@@ -503,5 +514,6 @@ UC_max = UC_st
     #else
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1.0 → <b>Kolom voldoet niet</b></span>
     #end if
+#end if
 #end if
 `;

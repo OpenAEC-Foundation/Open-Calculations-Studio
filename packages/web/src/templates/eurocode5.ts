@@ -68,13 +68,13 @@ gamma_M = hlookup(materialen; sterkteklasse; 1; 3)
 k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
 #show
 
-Karakteristieke buigsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+'Karakteristieke buigsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):<span class="alleen-scherm"></span>
 
 f_mk
 gamma_M
 k_mod
 
-Rekenwaarde buigsterkte (art. 2.4.1, formule 2.14):
+'Rekenwaarde buigsterkte (art. 2.4.1, formule 2.14):<span class="alleen-scherm"></span>
 
 f_md = k_mod * f_mk / gamma_M to N/mm^2
 
@@ -83,11 +83,11 @@ f_md = k_mod * f_mk / gamma_M to N/mm^2
 b = 70 mm
 h = 200 mm
 
-Weerstandsmoment:
+'Weerstandsmoment:<span class="alleen-scherm"></span>
 
 W_y = b * h^2 / 6 to mm^3
 
-Traagheidsmoment:
+'Traagheidsmoment:<span class="alleen-scherm"></span>
 
 I_y = b * h^3 / 12 to mm^4
 
@@ -96,17 +96,17 @@ I_y = b * h^3 / 12 to mm^4
 L = 3000 mm
 q_d = 5.0 kN/m
 
-Maatgevend moment (gelijkmatig verdeelde belasting):
+'Maatgevend moment (gelijkmatig verdeelde belasting):<span class="alleen-scherm"></span>
 
 M_Ed = q_d * L^2 / 8 to kN*m
 
 ## Toetsing buiging (art. 6.1.6, formule 6.11)
 
-Buigspanning:
+'Buigspanning:<span class="alleen-scherm"></span>
 
 sigma_md = M_Ed / W_y to N/mm^2
 
-Unity check:
+'Unity check:<span class="alleen-scherm"></span>
 
 UC_buiging = sigma_md / f_md
 
@@ -159,13 +159,13 @@ gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
 k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
 #show
 
-Karakteristieke afschuifsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+'Karakteristieke afschuifsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):<span class="alleen-scherm"></span>
 
 f_vk
 gamma_M
 k_mod
 
-Rekenwaarde afschuifsterkte (formule 2.14):
+'Rekenwaarde afschuifsterkte (formule 2.14):<span class="alleen-scherm"></span>
 
 f_vd = k_mod * f_vk / gamma_M to N/mm^2
 
@@ -174,11 +174,11 @@ f_vd = k_mod * f_vk / gamma_M to N/mm^2
 b = 70 mm
 h = 200 mm
 
-Scheurfactor k_cr voor een ligger met een prismatische doorsnede (NB art. 6.1.7(2)):
+'Scheurfactor k_cr voor een ligger met een prismatische doorsnede (NB art. 6.1.7(2)):<span class="alleen-scherm"></span>
 
 k_cr = 1.0
 
-Effectieve breedte (formule 6.13a):
+'Effectieve breedte (formule 6.13a):<span class="alleen-scherm"></span>
 
 b_ef = k_cr * b to mm
 
@@ -187,17 +187,17 @@ b_ef = k_cr * b to mm
 L = 3000 mm
 q_d = 5.0 kN/m
 
-Maatgevende dwarskracht:
+'Maatgevende dwarskracht:<span class="alleen-scherm"></span>
 
 V_Ed = q_d * L / 2 to kN
 
 ## Toetsing afschuiving (art. 6.1.7, formule 6.13)
 
-Schuifspanning (rechthoekige doorsnede):
+'Schuifspanning (rechthoekige doorsnede):<span class="alleen-scherm"></span>
 
 tau_d = 3/2 * V_Ed / (b_ef * h) to N/mm^2
 
-Unity check:
+'Unity check:<span class="alleen-scherm"></span>
 
 UC_afschuiving = tau_d / f_vd
 
@@ -250,13 +250,13 @@ gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
 k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
 #show
 
-Karakteristieke druksterkte evenwijdig, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+'Karakteristieke druksterkte evenwijdig, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):<span class="alleen-scherm"></span>
 
 f_c0k
 gamma_M
 k_mod
 
-Rekenwaarde druksterkte (formule 2.14):
+'Rekenwaarde druksterkte (formule 2.14):<span class="alleen-scherm"></span>
 
 f_c0d = k_mod * f_c0k / gamma_M to N/mm^2
 
@@ -265,7 +265,7 @@ f_c0d = k_mod * f_c0k / gamma_M to N/mm^2
 b = 100 mm
 h = 100 mm
 
-Oppervlakte:
+'Oppervlakte:<span class="alleen-scherm"></span>
 
 A = b * h to mm^2
 
@@ -275,11 +275,11 @@ N_Ed = 50 kN
 
 ## Toetsing druk evenwijdig (art. 6.1.4, formule 6.2)
 
-Drukspanning:
+'Drukspanning:<span class="alleen-scherm"></span>
 
 sigma_c0d = N_Ed / A to N/mm^2
 
-Unity check:
+'Unity check:<span class="alleen-scherm"></span>
 
 UC_druk = sigma_c0d / f_c0d
 
@@ -333,23 +333,23 @@ gelamineerd = hlookup(materialen; sterkteklasse; 1; 9)
 k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
 #show
 
-Karakteristieke druksterkte loodrecht, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+'Karakteristieke druksterkte loodrecht, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):<span class="alleen-scherm"></span>
 
 f_c90k
 gamma_M
 k_mod
 
-Rekenwaarde druksterkte loodrecht (formule 2.14):
+'Rekenwaarde druksterkte loodrecht (formule 2.14):<span class="alleen-scherm"></span>
 
 f_c90d = k_mod * f_c90k / gamma_M to N/mm^2
 
 ## Geometrie oplegging
 
-Breedte ligger:
+'Breedte ligger:<span class="alleen-scherm"></span>
 
 b = 70 mm
 
-Opleggingslengte (werkelijke contactlengte):
+'Opleggingslengte (werkelijke contactlengte):<span class="alleen-scherm"></span>
 
 L_opl = 100 mm
 
@@ -370,31 +370,31 @@ k_c90_gelam = if(steunpunttype ≡ 1; if(L_opl ≤ 400 mm; 1.75; 1.0); if(steunp
 k_c90 = if(gelamineerd ≡ 1; k_c90_gelam; k_c90_massief)
 #show
 
-Factor k_c90 (art. 6.1.5(3) en (4)):
+'Factor k_c90 (art. 6.1.5(3) en (4)):<span class="alleen-scherm"></span>
 
 k_c90
 
-Effectieve contactlengte (art. 6.1.5(1)):
+'Effectieve contactlengte (art. 6.1.5(1)):<span class="alleen-scherm"></span>
 
 L_ef = L_opl + zijden * min(30 mm; L_opl) to mm
 
-Effectief contactoppervlak (formule 6.4):
+'Effectief contactoppervlak (formule 6.4):<span class="alleen-scherm"></span>
 
 A_ef = b * L_ef to mm^2
 
 ## Belasting
 
-Oplegreactie:
+'Oplegreactie:<span class="alleen-scherm"></span>
 
 F_c90d = 15 kN
 
 ## Toetsing druk loodrecht (art. 6.1.5, formule 6.3)
 
-Drukspanning loodrecht (formule 6.4):
+'Drukspanning loodrecht (formule 6.4):<span class="alleen-scherm"></span>
 
 sigma_c90d = F_c90d / A_ef to N/mm^2
 
-Unity check:
+'Unity check:<span class="alleen-scherm"></span>
 
 UC_c90 = sigma_c90d / (k_c90 * f_c90d)
 
@@ -449,18 +449,18 @@ k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2
 beta_c = if(hlookup(materialen; sterkteklasse; 1; 9) ≡ 1; 0.1; 0.2)
 #show
 
-Karakteristieke druksterkte evenwijdig en E_005 (EN 338 / EN 14080), partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+'Karakteristieke druksterkte evenwijdig en E_005 (EN 338 / EN 14080), partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):<span class="alleen-scherm"></span>
 
 f_c0k
 E_005
 gamma_M
 k_mod
 
-Rekenwaarde druksterkte:
+'Rekenwaarde druksterkte:<span class="alleen-scherm"></span>
 
 f_c0d = k_mod * f_c0k / gamma_M to N/mm^2
 
-Factor beta_c (formule 6.29): 0,2 massief, 0,1 gelamineerd:
+'Factor beta_c (formule 6.29): 0,2 massief, 0,1 gelamineerd:<span class="alleen-scherm"></span>
 
 beta_c
 
@@ -473,25 +473,25 @@ A = b * h to mm^2
 
 ## Systeem
 
-Kniklengte:
+'Kniklengte:<span class="alleen-scherm"></span>
 
 L_k = 3000 mm
 
 ## Knikberekening (art. 6.3.2)
 
-Slankheid om de zwakke as (kleinste afmeting van de doorsnede):
+'Slankheid om de zwakke as (kleinste afmeting van de doorsnede):<span class="alleen-scherm"></span>
 
 lambda_z = L_k / (min(b; h) / sqrt(12))
 
-Relatieve slankheid (formule 6.22):
+'Relatieve slankheid (formule 6.22):<span class="alleen-scherm"></span>
 
 lambda_relz = lambda_z / pi * sqrt(f_c0k / E_005)
 
-Factor k_z (formule 6.28):
+'Factor k_z (formule 6.28):<span class="alleen-scherm"></span>
 
 k_z = 0.5 * (1 + beta_c * (lambda_relz - 0.3) + lambda_relz^2)
 
-Knikfactor k_cz (formule 6.26, ten hoogste 1 volgens art. 6.3.2(2)):
+'Knikfactor k_cz (formule 6.26, ten hoogste 1 volgens art. 6.3.2(2)):<span class="alleen-scherm"></span>
 
 k_cz = min(1; 1 / (k_z + sqrt(k_z^2 - lambda_relz^2)))
 
@@ -501,11 +501,11 @@ N_Ed = 80 kN
 
 ## Toetsing knik (art. 6.3.2, formule 6.23 vereenvoudigd)
 
-Drukspanning:
+'Drukspanning:<span class="alleen-scherm"></span>
 
 sigma_c0d = N_Ed / A to N/mm^2
 
-Unity check knik:
+'Unity check knik:<span class="alleen-scherm"></span>
 
 UC_knik = sigma_c0d / (k_cz * f_c0d)
 
@@ -579,7 +579,7 @@ psi_w3 = if(toepassing ≡ 3; 1; psi_1)
 grens_bij = if(toepassing ≡ 2; 1/500; if(toepassing ≡ 3; 1/250; 0.003))
 #show
 
-'Gemiddelde elasticiteitsmodulus (EN 338 / EN 14080), kruipfactor (tabel 3.2) en quasi-blijvende factor (NEN-EN 1990 tabel NB.2 — A1.1):
+'Gemiddelde elasticiteitsmodulus (EN 338 / EN 14080), kruipfactor (tabel 3.2) en quasi-blijvende factor (NEN-EN 1990 tabel NB.2 — A1.1):<span class="alleen-scherm"></span>
 
 E_mean
 k_def
@@ -590,55 +590,55 @@ psi_2
 b = 70 mm
 h = 200 mm
 
-Traagheidsmoment:
+'Traagheidsmoment:<span class="alleen-scherm"></span>
 
 I_y = b * h^3 / 12 to mm^4
 
 ## Systeem en belasting
 
-Overspanning:
+'Overspanning:<span class="alleen-scherm"></span>
 
 L = 4000 mm
 
-Blijvende belasting (karakteristiek):
+'Blijvende belasting (karakteristiek):<span class="alleen-scherm"></span>
 
 g_k = 1.0 kN/m
 
-Veranderlijke belasting (karakteristiek):
+'Veranderlijke belasting (karakteristiek):<span class="alleen-scherm"></span>
 
 q_k = 2.5 kN/m
 
 ## Ogenblikkelijke doorbuiging (w_inst)
 
-Doorbuiging onder blijvende belasting:
+'Doorbuiging onder blijvende belasting:<span class="alleen-scherm"></span>
 
 w_inst_G = 5 * g_k * L^4 / (384 * E_mean * I_y) to mm
 
-Doorbuiging onder veranderlijke belasting:
+'Doorbuiging onder veranderlijke belasting:<span class="alleen-scherm"></span>
 
 w_inst_Q = 5 * q_k * L^4 / (384 * E_mean * I_y) to mm
 
 ## Uiteindelijke doorbuiging met kruip (formule 2.3-2.4)
 
-Uiteindelijke doorbuiging onder G (formule 2.3):
+'Uiteindelijke doorbuiging onder G (formule 2.3):<span class="alleen-scherm"></span>
 
 w_fin_G = w_inst_G * (1 + k_def) to mm
 
-Uiteindelijke doorbuiging onder Q (formule 2.4):
+'Uiteindelijke doorbuiging onder Q (formule 2.4):<span class="alleen-scherm"></span>
 
 w_fin_Q = w_inst_Q * (1 + psi_2 * k_def) to mm
 
-Totale uiteindelijke doorbuiging:
+'Totale uiteindelijke doorbuiging:<span class="alleen-scherm"></span>
 
 w_fin = w_fin_G + w_fin_Q to mm
 
-Netto doorbuiging (formule 7.2, zonder zeeg):
+'Netto doorbuiging (formule 7.2, zonder zeeg):<span class="alleen-scherm"></span>
 
 w_netfin = w_fin to mm
 
 ## Bijkomende doorbuiging (NB bij NEN-EN 1990, A1.4.3(2) en (3))
 
-'Kruipdeel onder de quasi-blijvende combinatie (w<sub>2</sub>) en deel door de veranderlijke belasting (w<sub>3</sub>, met ψ = ψ<sub>1</sub> frequent of 1,0 karakteristiek):
+'Kruipdeel onder de quasi-blijvende combinatie (w<sub>2</sub>) en deel door de veranderlijke belasting (w<sub>3</sub>, met ψ = ψ<sub>1</sub> frequent of 1,0 karakteristiek):<span class="alleen-scherm"></span>
 
 psi_w3
 
@@ -650,11 +650,11 @@ w_bij = w_2 + w_3 to mm
 
 ## Grenswaarden (NB 7.2(2): NB bij NEN-EN 1990, A1.4.3)
 
-'Grenswaarde w<sub>bij</sub> (A1.4.3(3)):
+'Grenswaarde w<sub>bij</sub> (A1.4.3(3)):<span class="alleen-scherm"></span>
 
 w_bij_lim = grens_bij * L to mm
 
-'Grenswaarde w<sub>net,fin</sub> als het uiterlijk van belang is (L/250, A1.4.3(4)):
+'Grenswaarde w<sub>net,fin</sub> als het uiterlijk van belang is (L/250, A1.4.3(4)):<span class="alleen-scherm"></span>
 
 w_netfin_lim = L / 250 to mm
 
@@ -734,7 +734,7 @@ k_mod_G = hlookup(kmod_tabel; 1; 1; if(klimaatklasse ≡ 3; 3; 2))
 k_def = if(klimaatklasse ≡ 1; 0.60; if(klimaatklasse ≡ 2; 0.80; 2.00))
 #show
 
-Karakteristieke waarden (EN 338 / EN 14080), partiele factor (tabel 2.3 NB), modificatiefactoren blijvend en veranderlijk (tabel 3.1) en kruipfactor (tabel 3.2):
+'Karakteristieke waarden (EN 338 / EN 14080), partiele factor (tabel 2.3 NB), modificatiefactoren blijvend en veranderlijk (tabel 3.1) en kruipfactor (tabel 3.2):<span class="alleen-scherm"></span>
 
 f_mk
 f_vk
@@ -751,11 +751,11 @@ k_def
 b = 70 mm
 h = 200 mm
 
-Weerstandsmoment:
+'Weerstandsmoment:<span class="alleen-scherm"></span>
 
 W_y = b * h^2 / 6 to mm^3
 
-Traagheidsmomenten:
+'Traagheidsmomenten:<span class="alleen-scherm"></span>
 
 I_y = b * h^3 / 12 to mm^4
 
@@ -763,11 +763,11 @@ I_z = h * b^3 / 12 to mm^4
 
 ## Systeem
 
-Overspanning:
+'Overspanning:<span class="alleen-scherm"></span>
 
 L = 4000 mm
 
-Opleggingslengte:
+'Opleggingslengte:<span class="alleen-scherm"></span>
 
 L_opl = 100 mm
 
@@ -778,7 +778,7 @@ Minstens 30 mm voorbij de oplegging = 2
 
 ## Belasting
 
-Karakteristieke lijnlasten, blijvend en veranderlijk:
+'Karakteristieke lijnlasten, blijvend en veranderlijk:<span class="alleen-scherm"></span>
 
 g_k = 1.5 kN/m
 q_k = 2.0 kN/m
@@ -817,7 +817,7 @@ gamma_Gb = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))
 gamma_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))
 #show
 
-'Belastingfactoren (NEN-EN 1990 tabel NB.4 en NB.5 — A1.2(B), gevolgklasse CC{{CC}}) en combinatiefactoren (tabel NB.2 — A1.1):
+'Belastingfactoren (NEN-EN 1990 tabel NB.4 en NB.5 — A1.2(B), gevolgklasse CC{{CC}}) en combinatiefactoren (tabel NB.2 — A1.1):<span class="alleen-scherm"></span>
 
 gamma_Ga
 gamma_Gb
@@ -825,7 +825,7 @@ gamma_Q
 psi_0
 psi_2
 
-Rekenwaarde lijnlast (formule 6.10a en 6.10b; alleen blijvende belasting met k_mod blijvend, art. 3.1.3(2)):
+'Rekenwaarde lijnlast (formule 6.10a en 6.10b; alleen blijvende belasting met k_mod blijvend, art. 3.1.3(2)):<span class="alleen-scherm"></span>
 
 q_da = gamma_Ga * g_k + gamma_Q * psi_0 * q_k to kN/m
 
@@ -852,15 +852,15 @@ f_c90d = k_mod * f_c90k / gamma_M to N/mm^2
 
 ## Snedekrachten
 
-Maatgevend moment:
+'Maatgevend moment:<span class="alleen-scherm"></span>
 
 M_Ed = q_d * L^2 / 8 to kN*m
 
-Maatgevende dwarskracht:
+'Maatgevende dwarskracht:<span class="alleen-scherm"></span>
 
 V_Ed = q_d * L / 2 to kN
 
-Oplegreactie:
+'Oplegreactie:<span class="alleen-scherm"></span>
 
 F_opl = V_Ed to kN
 
@@ -882,7 +882,7 @@ UC_buiging = sigma_md / f_md
 
 ## 2. Afschuiving (art. 6.1.7, formule 6.13)
 
-Scheurfactor k_cr voor een ligger met een prismatische doorsnede (NB art. 6.1.7(2)):
+'Scheurfactor k_cr voor een ligger met een prismatische doorsnede (NB art. 6.1.7(2)):<span class="alleen-scherm"></span>
 
 k_cr = 1.0
 
@@ -906,11 +906,11 @@ UC_afschuiving = tau_d / f_vd
 k_c90 = if(gelamineerd ≡ 1; if(L_opl ≤ 400 mm; 1.75; 1.0); 1.5)
 #show
 
-Factor k_c90 bij een discrete oplegging (art. 6.1.5(4)):
+'Factor k_c90 bij een discrete oplegging (art. 6.1.5(4)):<span class="alleen-scherm"></span>
 
 k_c90
 
-Effectieve contactlengte (art. 6.1.5(1)):
+'Effectieve contactlengte (art. 6.1.5(1)):<span class="alleen-scherm"></span>
 
 L_ef = L_opl + zijden * min(30 mm; L_opl) to mm
 
@@ -930,25 +930,25 @@ UC_c90 = sigma_c90d / (k_c90 * f_c90d)
 
 ## 4. Kipstabiliteit (art. 6.3.3, formule 6.33)
 
-Kiplengte (tabel 6.1), gelijkmatige belasting op de drukrand:
+'Kiplengte (tabel 6.1), gelijkmatige belasting op de drukrand:<span class="alleen-scherm"></span>
 
 l_ef = 0.9 * L + 2 * h to mm
 
 #if gelamineerd ≡ 1
-  Kritische buigspanning (formule 6.31), G_005 volgens EN 14080:
+  'Kritische buigspanning (formule 6.31), G_005 volgens EN 14080:<span class="alleen-scherm"></span>
   G_005 = 540 N/mm^2
   I_tor = h * b^3 / 3 * (1 - 0.63 * b / h) to mm^4
   sigma_mcrit = pi * sqrt(E_005 * I_z * G_005 * I_tor) / (l_ef * W_y) to N/mm^2
 #else
-  Kritische buigspanning voor massief naaldhout (formule 6.32):
+  'Kritische buigspanning voor massief naaldhout (formule 6.32):<span class="alleen-scherm"></span>
   sigma_mcrit = 0.78 * b^2 / (h * l_ef) * E_005 to N/mm^2
 #end if
 
-Relatieve slankheid bij buiging (formule 6.30):
+'Relatieve slankheid bij buiging (formule 6.30):<span class="alleen-scherm"></span>
 
 lambda_relm = sqrt(f_mk / sigma_mcrit)
 
-Kipfactor k_crit (formule 6.34):
+'Kipfactor k_crit (formule 6.34):<span class="alleen-scherm"></span>
 
 #if lambda_relm ≤ 0.75
   k_crit = 1.0
@@ -970,24 +970,24 @@ UC_kip = sigma_md / (k_crit * f_md)
 
 ## 5. Doorbuiging (art. 7.2 / art. 2.2.3)
 
-Ogenblikkelijke doorbuiging onder de karakteristieke lasten:
+'Ogenblikkelijke doorbuiging onder de karakteristieke lasten:<span class="alleen-scherm"></span>
 
 w_inst_G = 5 * g_k * L^4 / (384 * E_mean * I_y) to mm
 w_inst_Q = 5 * q_k * L^4 / (384 * E_mean * I_y) to mm
 
-Uiteindelijke doorbuiging met kruip (formule 2.3, 2.4):
+'Uiteindelijke doorbuiging met kruip (formule 2.3, 2.4):<span class="alleen-scherm"></span>
 
 w_fin_G = w_inst_G * (1 + k_def) to mm
 w_fin_Q = w_inst_Q * (1 + psi_2 * k_def) to mm
 w_netfin = w_fin_G + w_fin_Q to mm
 
-'Bijkomende doorbuiging w<sub>2</sub> + w<sub>3</sub> (NB bij NEN-EN 1990, A1.4.3(2) en (3)), met ψ = ψ<sub>1</sub> frequent of 1,0 karakteristiek:
+'Bijkomende doorbuiging w<sub>2</sub> + w<sub>3</sub> (NB bij NEN-EN 1990, A1.4.3(2) en (3)), met ψ = ψ<sub>1</sub> frequent of 1,0 karakteristiek:<span class="alleen-scherm"></span>
 
 psi_w3
 
 w_bij = k_def * (w_inst_G + psi_2 * w_inst_Q) + psi_w3 * w_inst_Q to mm
 
-'Grenswaarden (NB 7.2(2): NB bij NEN-EN 1990, A1.4.3(3) en (4)):
+'Grenswaarden (NB 7.2(2): NB bij NEN-EN 1990, A1.4.3(3) en (4)):<span class="alleen-scherm"></span>
 
 w_bij_lim = grens_bij * L to mm
 
@@ -1132,13 +1132,13 @@ gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
 k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
 #show
 
-Karakteristieke afschuifsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+'Karakteristieke afschuifsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):<span class="alleen-scherm"></span>
 
 f_vk
 gamma_M
 k_mod
 
-Rekenwaarde afschuifsterkte (formule 2.14):
+'Rekenwaarde afschuifsterkte (formule 2.14):<span class="alleen-scherm"></span>
 
 f_vd = k_mod * f_vk / gamma_M to N/mm^2
 
@@ -1150,16 +1150,16 @@ Rond = 2
 @end
 
 #if vorm ≡ 2
-  Diameter:
+  'Diameter:<span class="alleen-scherm"></span>
   d = 150 mm
-  Wringweerstandsmoment van een massieve ronde doorsnede:
+  'Wringweerstandsmoment van een massieve ronde doorsnede:<span class="alleen-scherm"></span>
   W_tor = pi * d^3 / 16 to mm^3
-  Vormfactor voor een ronde doorsnede (formule 6.15):
+  'Vormfactor voor een ronde doorsnede (formule 6.15):<span class="alleen-scherm"></span>
   k_shape = 1.2
 #else
   b = 100 mm
   h = 200 mm
-  Grootste en kleinste afmeting van de doorsnede:
+  'Grootste en kleinste afmeting van de doorsnede:<span class="alleen-scherm"></span>
   h_1 = max(b; h) to mm
   b_1 = min(b; h) to mm
   #hide
@@ -1168,30 +1168,30 @@ Rond = 2
   k_It = (1 - 192/(pi^5*r_tor) * (tanh(pi*r_tor/2) + tanh(3*pi*r_tor/2)/3^5 + tanh(5*pi*r_tor/2)/5^5)) / 3
   k_tau = 1 - 8/pi^2 * (1/cosh(pi*r_tor/2) + 1/(3^2*cosh(3*pi*r_tor/2)) + 1/(5^2*cosh(5*pi*r_tor/2)))
   #show
-  'Factor α voor de grootste schuifspanning bij wringing van een rechthoek (Saint-Venant, τ<sub>tor</sub> = T/(α·h·b²)); 0,208 bij een vierkant, 0,246 bij h/b = 2 en 1/3 bij een dunne strook:
+  'Factor α voor de grootste schuifspanning bij wringing van een rechthoek (Saint-Venant, τ<sub>tor</sub> = T/(α·h·b²)); 0,208 bij een vierkant, 0,246 bij h/b = 2 en 1/3 bij een dunne strook:<span class="alleen-scherm"></span>
   alpha_tor = k_It / k_tau
   W_tor = alpha_tor * h_1 * b_1^2 to mm^3
-  Vormfactor voor een rechthoekige doorsnede (formule 6.15):
+  'Vormfactor voor een rechthoekige doorsnede (formule 6.15):<span class="alleen-scherm"></span>
   k_shape = min(1 + 0.15 * h_1 / b_1; 2.0)
 #end if
 
 ## Belasting
 
-Rekenwaarde van het wringend moment:
+'Rekenwaarde van het wringend moment:<span class="alleen-scherm"></span>
 
 T_Ed = 1.0 kN*m
 
 ## Toetsing wringing (art. 6.1.8, formule 6.14)
 
-Schuifspanning door wringing:
+'Schuifspanning door wringing:<span class="alleen-scherm"></span>
 
 tau_tord = T_Ed / W_tor to N/mm^2
 
-Unity check:
+'Unity check:<span class="alleen-scherm"></span>
 
 UC_wringing = tau_tord / (k_shape * f_vd)
 
-'<i>Wringing en dwarskracht samen: EN 1995-1-1 geeft daarvoor geen interactieregel; toets de afschuiving (§6.1.7) apart.</i><span class="alleen-scherm"></span>
+'<i class="ook-afdruk">Wringing en dwarskracht samen: EN 1995-1-1 geeft daarvoor geen interactieregel; toets de afschuiving (§6.1.7) apart.</i>
 
 #if UC_wringing ≤ 1
   '<b>Maatgevende UC = 'UC_wringing'</b><span style="color: green"> ≤ 1,0 → <b>wringing voldoet</b></span>
@@ -1246,7 +1246,7 @@ gamma_M = hlookup(materialen; sterkteklasse; 1; 8)
 k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
 #show
 
-Karakteristieke sterkten (EN 338 / EN 14080), partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+'Karakteristieke sterkten (EN 338 / EN 14080), partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):<span class="alleen-scherm"></span>
 
 f_mk
 f_vk
@@ -1255,7 +1255,7 @@ f_t90k
 gamma_M
 k_mod
 
-Rekenwaarden (art. 2.4.1, formule 2.14):
+'Rekenwaarden (art. 2.4.1, formule 2.14):<span class="alleen-scherm"></span>
 
 f_md = k_mod * f_mk / gamma_M to N/mm^2
 
@@ -1267,17 +1267,17 @@ f_t90d = k_mod * f_t90k / gamma_M to N/mm^2
 
 ## Geometrie
 
-Ligger op twee steunpunten met een rechte en een tapse rand (figuur 6.8). Breedte, hoogte bij het lage einde en hoogte bij het hoge einde:
+'Ligger op twee steunpunten met een rechte en een tapse rand (figuur 6.8). Breedte, hoogte bij het lage einde en hoogte bij het hoge einde:<span class="alleen-scherm"></span>
 
 b = 140 mm
 h_0 = 300 mm
 h_1 = 600 mm
 
-Overspanning:
+'Overspanning:<span class="alleen-scherm"></span>
 
 L = 8000 mm
 
-Helling van de tapse rand ten opzichte van de vezelrichting:
+'Helling van de tapse rand ten opzichte van de vezelrichting:<span class="alleen-scherm"></span>
 
 tan_alpha = (h_1 - h_0) / L
 
@@ -1296,7 +1296,7 @@ q_d = 6.0 kN/m
 
 ## Plaats van de grootste buigspanning
 
-'Bij een gelijkmatig verdeelde belasting ligt de grootste spanning niet in het midden maar op x = L·h<sub>0</sub>/(h<sub>0</sub> + h<sub>1</sub>), gemeten vanaf het lage einde:
+'Bij een gelijkmatig verdeelde belasting ligt de grootste spanning niet in het midden maar op x = L·h<sub>0</sub>/(h<sub>0</sub> + h<sub>1</sub>), gemeten vanaf het lage einde:<span class="alleen-scherm"></span>
 
 x_m = L * h_0 / (h_0 + h_1) to mm
 
@@ -1306,35 +1306,35 @@ M_Ed = q_d * x_m * (L - x_m) / 2 to kN*m
 
 ## Toetsing buigspanning (art. 6.4.2, formule 6.37 en 6.38)
 
-Buigspanning aan de rechte en aan de tapse rand (formule 6.37):
+'Buigspanning aan de rechte en aan de tapse rand (formule 6.37):<span class="alleen-scherm"></span>
 
 sigma_m0d = 6 * M_Ed / (b * h_x^2) to N/mm^2
 
 sigma_mad = sigma_m0d to N/mm^2
 
 #if tapserand ≡ 1
-  Factor k_m,α bij druk langs de tapse rand (formule 6.40):
+  'Factor k_m,α bij druk langs de tapse rand (formule 6.40):<span class="alleen-scherm"></span>
   k_malpha = 1 / sqrt(1 + (f_md / (1.5 * f_vd) * tan_alpha)^2 + (f_md / f_c90d * tan_alpha^2)^2)
 #else
-  Factor k_m,α bij trek langs de tapse rand (formule 6.39):
+  'Factor k_m,α bij trek langs de tapse rand (formule 6.39):<span class="alleen-scherm"></span>
   k_malpha = 1 / sqrt(1 + (f_md / (0.75 * f_vd) * tan_alpha)^2 + (f_md / f_t90d * tan_alpha^2)^2)
 #end if
 
-Unity check aan de tapse rand (formule 6.38):
+'Unity check aan de tapse rand (formule 6.38):<span class="alleen-scherm"></span>
 
 UC_taps = sigma_mad / (k_malpha * f_md)
 
-Unity check aan de rechte rand (formule 6.11):
+'Unity check aan de rechte rand (formule 6.11):<span class="alleen-scherm"></span>
 
 UC_recht = sigma_m0d / f_md
 
 ## Toetsing afschuiving bij het lage einde (art. 6.1.7, formule 6.13)
 
-'De dwarskracht is bij de opleggingen het grootst en de hoogte bij het lage einde het kleinst: daar is de schuifspanning maatgevend.
+'De dwarskracht is bij de opleggingen het grootst en de hoogte bij het lage einde het kleinst: daar is de schuifspanning maatgevend.<span class="alleen-scherm"></span>
 
 V_Ed = q_d * L / 2 to kN
 
-Scheurfactor k_cr voor een ligger met een rechthoekige doorsnede (NB art. 6.1.7(2)):
+'Scheurfactor k_cr voor een ligger met een rechthoekige doorsnede (NB art. 6.1.7(2)):<span class="alleen-scherm"></span>
 
 k_cr = 1.0
 
@@ -1396,24 +1396,24 @@ gelamineerd = hlookup(materialen; sterkteklasse; 1; 9)
 k_mod = hlookup(kmod_tabel; belastingduurklasse; 1; if(klimaatklasse ≡ 3; 3; 2))
 #show
 
-Karakteristieke afschuifsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):
+'Karakteristieke afschuifsterkte, partiele factor (tabel 2.3 NB) en modificatiefactor (tabel 3.1):<span class="alleen-scherm"></span>
 
 f_vk
 gamma_M
 k_mod
 
-Rekenwaarde afschuifsterkte (formule 2.14):
+'Rekenwaarde afschuifsterkte (formule 2.14):<span class="alleen-scherm"></span>
 
 f_vd = k_mod * f_vk / gamma_M to N/mm^2
 
 ## Doorsnede en uitkeping (figuur 6.11)
 
-Breedte en volle hoogte van de ligger:
+'Breedte en volle hoogte van de ligger:<span class="alleen-scherm"></span>
 
 b = 100 mm
 h = 250 mm
 
-Resterende hoogte ter plaatse van de uitkeping:
+'Resterende hoogte ter plaatse van de uitkeping:<span class="alleen-scherm"></span>
 
 h_ef = 175 mm
 
@@ -1423,21 +1423,21 @@ Aan de zijde tegenover de oplegging (figuur 6.11b) = 2
 @end
 
 #if zijde ≡ 1
-  Afstand van de werklijn van de oplegreactie tot de hoek van de uitkeping:
+  'Afstand van de werklijn van de oplegreactie tot de hoek van de uitkeping:<span class="alleen-scherm"></span>
   x = 60 mm
-  Helling i van een afgeschuinde uitkeping (figuur 6.11a); 0 bij een haakse uitkeping:
+  'Helling i van een afgeschuinde uitkeping (figuur 6.11a); 0 bij een haakse uitkeping:<span class="alleen-scherm"></span>
   i_uk = 0
 #end if
 
-Scheurfactor k_cr voor een ligger met een prismatische doorsnede (NB art. 6.1.7(2)):
+'Scheurfactor k_cr voor een ligger met een prismatische doorsnede (NB art. 6.1.7(2)):<span class="alleen-scherm"></span>
 
 k_cr = 1.0
 
-Effectieve breedte (formule 6.13a):
+'Effectieve breedte (formule 6.13a):<span class="alleen-scherm"></span>
 
 b_ef = k_cr * b to mm
 
-Verhouding van de resterende en de volle hoogte:
+'Verhouding van de resterende en de volle hoogte:<span class="alleen-scherm"></span>
 
 alpha = h_ef / h
 
@@ -1447,28 +1447,28 @@ alpha = h_ef / h
   #hide
   k_n = if(gelamineerd ≡ 1; 6.5; 5.0)
   #show
-  Factor k_n (formule 6.63): 5 voor massief hout, 6,5 voor gelijmd gelamineerd hout:
+  'Factor k_n (formule 6.63): 5 voor massief hout, 6,5 voor gelijmd gelamineerd hout:<span class="alleen-scherm"></span>
   k_n
-  Reductiefactor (formule 6.62), met h in mm en ten hoogste 1:
+  'Reductiefactor (formule 6.62), met h in mm en ten hoogste 1:<span class="alleen-scherm"></span>
   k_v = min(1; k_n * (1 + 1.1 * i_uk^1.5 / sqrt(h/mm)) / (sqrt(h/mm) * (sqrt(alpha * (1 - alpha)) + 0.8 * x / h * sqrt(1/alpha - alpha^2))))
 #else
-  Uitkeping aan de zijde tegenover de oplegging (formule 6.61):
+  'Uitkeping aan de zijde tegenover de oplegging (formule 6.61):<span class="alleen-scherm"></span>
   k_v = 1.0
 #end if
 
 ## Belasting
 
-Dwarskracht bij de oplegging (rekenwaarde):
+'Dwarskracht bij de oplegging (rekenwaarde):<span class="alleen-scherm"></span>
 
 V_Ed = 12 kN
 
 ## Toetsing afschuiving bij de uitkeping (art. 6.5.2, formule 6.60)
 
-Schuifspanning over de resterende hoogte:
+'Schuifspanning over de resterende hoogte:<span class="alleen-scherm"></span>
 
 tau_d = 1.5 * V_Ed / (b_ef * h_ef) to N/mm^2
 
-Unity check:
+'Unity check:<span class="alleen-scherm"></span>
 
 UC_uitkeping = tau_d / (k_v * f_vd)
 
@@ -1560,11 +1560,11 @@ gamma_M = hlookup(kdef_tabel; materiaal; 1; 5)
 
 ## Beschot en overspanning
 
-Dikte van het beschot:
+'Dikte van het beschot:<span class="alleen-scherm"></span>
 
 t = 22 mm
 
-Hart-op-hartafstand van de balken of sporen, de overspanning van het beschot:
+'Hart-op-hartafstand van de balken of sporen, de overspanning van het beschot:<span class="alleen-scherm"></span>
 
 L = 600 mm
 
@@ -1577,7 +1577,7 @@ Vier of meer velden = 4
 
 '<i>Een stoot van planken of platen boven een balk onderbreekt de doorgaande werking. Liggen er stoten boven de balken, ook verspringend, dan is één veld de veilige keuze.</i><span class="alleen-scherm"></span>
 
-'Verdeelbreedte b<sub>v</sub>: de breedte van het beschot die de puntlast Q<sub>k</sub> draagt:
+'Verdeelbreedte b<sub>v</sub>: de breedte van het beschot die de puntlast Q<sub>k</sub> draagt:<span class="alleen-scherm"></span>
 
 b_v = 300 mm
 
@@ -1606,7 +1606,7 @@ b_m = 1000 mm
   f_mk = hlookup(hout; sterkteklasse; 1; 2)*N/mm^2
   E_mean = hlookup(hout; sterkteklasse; 1; 3)*N/mm^2
   #show
-  'Hoogtefactor voor massief hout met de plankdikte als hoogte bij buiging (art. 3.2(3), formule 3.1):
+  'Hoogtefactor voor massief hout met de plankdikte als hoogte bij buiging (art. 3.2(3), formule 3.1):<span class="alleen-scherm"></span>
   k_h = min((150 mm / t)^0.2; 1.3)
 #else
   #hide
@@ -1617,7 +1617,7 @@ b_m = 1000 mm
   k_h = 1.0
 #end if
 
-'Karakteristieke buigsterkte en elasticiteitsmodulus, partiële factor (tabel 2.3), modificatiefactoren blijvend en veranderlijk (tabel 3.1) en kruipfactor (tabel 3.2):
+'Karakteristieke buigsterkte en elasticiteitsmodulus, partiële factor (tabel 2.3), modificatiefactoren blijvend en veranderlijk (tabel 3.1) en kruipfactor (tabel 3.2):<span class="alleen-scherm"></span>
 
 f_mk
 E_mean
@@ -1630,14 +1630,14 @@ k_def
   '<b style="color:#b91c1c">Dit plaatmateriaal mag in klimaatklasse 'klimaatklasse' niet worden toegepast (tabel 3.1 en 3.2).</b>
   '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>het beschot voldoet niet: dit materiaal is in deze klimaatklasse niet toegestaan</b></span>
 #else
-  Rekenwaarden buigsterkte, alleen blijvende belasting en met de veranderlijke belasting (art. 2.4.1, formule 2.14):
+  'Rekenwaarden buigsterkte, alleen blijvende belasting en met de veranderlijke belasting (art. 2.4.1, formule 2.14):<span class="alleen-scherm"></span>
 
   f_md_G = k_mod_G * k_h * f_mk / gamma_M to N/mm^2
   f_md_Q = k_mod_Q * k_h * f_mk / gamma_M to N/mm^2
 
   ## Belasting
 
-  'Blijvende belasting: het eigen gewicht van het beschot en de afwerking (karakteristiek):
+  'Blijvende belasting: het eigen gewicht van het beschot en de afwerking (karakteristiek):<span class="alleen-scherm"></span>
 
   g_k = 0.25 kN/m^2
 
@@ -1677,7 +1677,7 @@ k_def
   gamma_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))
   #show
 
-  'Gelijkmatig verdeelde en geconcentreerde gebruiksbelasting van de categorie:
+  'Gelijkmatig verdeelde en geconcentreerde gebruiksbelasting van de categorie:<span class="alleen-scherm"></span>
 
   q_k
   Q_k
@@ -1686,7 +1686,7 @@ k_def
     '<i>Dak: q<sub>k</sub> = 1,0 kN/m² geldt bij een helling onder 15°; bij een steiler dak is q<sub>k</sub> kleiner (tabel NB.4 – 6.10) en ligt het blad aan de veilige kant.</i><span class="alleen-scherm"></span>
   #end if
 
-  'Belastingfactoren (NEN-EN 1990 tabel NB.4 en NB.5 — A1.2(B), gevolgklasse CC{{CC}}) en combinatiefactoren (tabel NB.2 — A1.1):
+  'Belastingfactoren (NEN-EN 1990 tabel NB.4 en NB.5 — A1.2(B), gevolgklasse CC{{CC}}) en combinatiefactoren (tabel NB.2 — A1.1):<span class="alleen-scherm"></span>
 
   gamma_Ga
   gamma_Gb
@@ -1695,14 +1695,14 @@ k_def
 
   ## Buiging onder q_k (art. 6.1.6, formule 6.11)
 
-  'Karakteristieke momenten in een strook van 1 m breedte, in het veld en boven een steunpunt; g<sub>k</sub> op alle velden, q<sub>k</sub> op de ongunstigste velden (NEN-EN 1991-1-1, 6.2.1(1)):
+  'Karakteristieke momenten in een strook van 1 m breedte, in het veld en boven een steunpunt; g<sub>k</sub> op alle velden, q<sub>k</sub> op de ongunstigste velden (NEN-EN 1991-1-1, 6.2.1(1)):<span class="alleen-scherm"></span>
 
   M_gf = k_gf * g_k * b_m * L^2 to kN*m
   M_gs = k_gs * g_k * b_m * L^2 to kN*m
   M_qf = k_qf * q_k * b_m * L^2 to kN*m
   M_qs = k_qs * q_k * b_m * L^2 to kN*m
 
-  'Rekenwaarden (formule 6.10a en 6.10b, en alleen blijvende belasting met k<sub>mod</sub> blijvend, art. 3.1.3(2)), per combinatie het grootste van veld en steunpunt:
+  'Rekenwaarden (formule 6.10a en 6.10b, en alleen blijvende belasting met k<sub>mod</sub> blijvend, art. 3.1.3(2)), per combinatie het grootste van veld en steunpunt:<span class="alleen-scherm"></span>
 
   M_da = max(gamma_Ga * M_gf + gamma_Q * psi_0 * M_qf; gamma_Ga * M_gs + gamma_Q * psi_0 * M_qs) to kN*m
   M_db = max(gamma_Gb * M_gf + gamma_Q * M_qf; gamma_Gb * M_gs + gamma_Q * M_qs) to kN*m
@@ -1717,7 +1717,7 @@ k_def
 
   ## Buiging onder de puntlast Q_k (art. 6.1.6, formule 6.11)
 
-  'De strook met de verdeelbreedte b<sub>v</sub> draagt Q<sub>k</sub> op de ongunstigste plaats en zijn deel van g<sub>k</sub>. Het grootste veldmoment van g en van Q vallen niet op dezelfde plaats: opgeteld zijn ze een veilige bovengrens.
+  'De strook met de verdeelbreedte b<sub>v</sub> draagt Q<sub>k</sub> op de ongunstigste plaats en zijn deel van g<sub>k</sub>. Het grootste veldmoment van g en van Q vallen niet op dezelfde plaats: opgeteld zijn ze een veilige bovengrens.<span class="alleen-scherm"></span>
 
   M_gfv = k_gf * g_k * b_v * L^2 to kN*m
   M_gsv = k_gs * g_k * b_v * L^2 to kN*m
@@ -1737,7 +1737,7 @@ k_def
 
   ## Doorbuiging (art. 7.2, NB bij NEN-EN 1990 A1.4.3)
 
-  'Ogenblikkelijke doorbuiging met de coëfficiënten k·w·L⁴/EI en k·F·L³/EI; de doorbuiging onder g<sub>k</sub> is per strookbreedte gelijk:
+  'Ogenblikkelijke doorbuiging met de coëfficiënten k·w·L⁴/EI en k·F·L³/EI; de doorbuiging onder g<sub>k</sub> is per strookbreedte gelijk:<span class="alleen-scherm"></span>
 
   I_m = b_m * t^3 / 12 to mm^4
   I_v = b_v * t^3 / 12 to mm^4
@@ -1746,7 +1746,7 @@ k_def
   w_q = k_wq * q_k * b_m * L^4 / (E_mean * I_m) to mm
   w_Q = k_wQ * Q_k * L^3 / (E_mean * I_v) to mm
 
-  'Kruipdeel onder de quasi-blijvende combinatie (w<sub>2</sub>) en deel door de veranderlijke belasting (w<sub>3</sub>, met ψ<sub>1</sub> frequent of 1,0 karakteristiek); uiteindelijke doorbuiging met formule 2.3 en 2.4:
+  'Kruipdeel onder de quasi-blijvende combinatie (w<sub>2</sub>) en deel door de veranderlijke belasting (w<sub>3</sub>, met ψ<sub>1</sub> frequent of 1,0 karakteristiek); uiteindelijke doorbuiging met formule 2.3 en 2.4:<span class="alleen-scherm"></span>
 
   psi_2
   psi_w3
@@ -1757,7 +1757,7 @@ k_def
   w_bij_Q = k_def * (w_G + psi_2 * w_Q) + psi_w3 * w_Q to mm
   w_fin_Q = w_G * (1 + k_def) + w_Q * (1 + psi_2 * k_def) to mm
 
-  'Grenswaarden (NB 7.2(2): NB bij NEN-EN 1990, A1.4.3(3) en (4)), met de hart-op-hartafstand als overspanning:
+  'Grenswaarden (NB 7.2(2): NB bij NEN-EN 1990, A1.4.3(3) en (4)), met de hart-op-hartafstand als overspanning:<span class="alleen-scherm"></span>
 
   w_bij_lim = grens_bij * L to mm
   w_fin_lim = L / 250 to mm

@@ -153,10 +153,12 @@ t_st = 0 mm
     τ_d = τ_max/k_cr to N/mm^2', met b_ef = k_cr·b (6.13a)'
     UC_max = τ_d/f_vd
 #else
-    '<i>Geen materiaaltoets: alleen de schuifspanning.</i>
+    '<i class="ook-afdruk">Geen materiaaltoets: alleen de schuifspanning.</i>
 #end if
 #if materiaal ≥ 1
-    #if t_st > 80 mm
+    #if isNaN(UC_max)
+        '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>niet getoetst: invoer onvolledig</b></span>
+    #else if t_st > 80 mm
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>voldoet niet</b>: t > 80 mm ligt buiten tabel 3.1 van NEN-EN 1993-1-1 (f<sub>y</sub> uit de productnorm, NB bij 3.2.1(1))</span>
     #else if UC_max ≤ 1.0
         '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b></span>
@@ -244,7 +246,9 @@ p_V = v_1/v_totaal*100', aandeel van de dwarskracht in %'
 @end
 v_toel = grensfactor*L to mm
 UC_max = v_totaal/v_toel
-#if UC_max ≤ 1.0
+#if isNaN(UC_max)
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>niet getoetst: invoer onvolledig</b></span>
+#else if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: v ≤ v<sub>toel</sub></span>
 #else
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: v > v<sub>toel</sub></span>
@@ -376,24 +380,31 @@ P_E = π^2*E*I_min/l_k^2 to kN', kritieke knikkracht; theoretische bovengrens, g
 # 5. Toetsing
 
 N_Ed = ?*(kN)', drukkracht, rekenwaarde'
-#if materiaal ≤ 3
-    λ_rel = sqrt(A*f_y/P_E)', (6.50)'
-    Φ = 0.5*(1 + α_imp*(λ_rel - 0.2) + λ_rel^2)
-    χ = min(1; 1/(Φ + sqrt(Φ^2 - λ_rel^2)))', (6.49)'
-    N_bRd = χ*A*f_y/γ_M1 to kN', NEN-EN 1993-1-1 (6.47)'
+#if A > 0 mm^2
+    #if materiaal ≤ 3
+        λ_rel = sqrt(A*f_y/P_E)', (6.50)'
+        Φ = 0.5*(1 + α_imp*(λ_rel - 0.2) + λ_rel^2)
+        χ = min(1; 1/(Φ + sqrt(Φ^2 - λ_rel^2)))', (6.49)'
+        N_bRd = χ*A*f_y/γ_M1 to kN', NEN-EN 1993-1-1 (6.47)'
+    #else
+        λ_rel = λ/π*sqrt(f_c0k/E)', (6.21)'
+        k = 0.5*(1 + β_c*(λ_rel - 0.3) + λ_rel^2)', (6.27)'
+        k_c = min(1; 1/(k + sqrt(k^2 - λ_rel^2)))', (6.25)'
+        N_bRd = k_c*A*f_c0d to kN', NEN-EN 1995-1-1 (6.23)'
+    #end if
+    UC_max = N_Ed/N_bRd
+    #if isNaN(UC_max)
+        '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>niet getoetst: invoer onvolledig</b></span>
+    #else if t_st > 80 mm
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>voldoet niet</b>: t > 80 mm ligt buiten tabel 3.1 van NEN-EN 1993-1-1 (f<sub>y</sub> uit de productnorm, NB bij 3.2.1(1))</span>
+    #else if UC_max ≤ 1.0
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: knik</span>
+    #else
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: knik</span>
+    #end if
 #else
-    λ_rel = λ/π*sqrt(f_c0k/E)', (6.21)'
-    k = 0.5*(1 + β_c*(λ_rel - 0.3) + λ_rel^2)', (6.27)'
-    k_c = min(1; 1/(k + sqrt(k^2 - λ_rel^2)))', (6.25)'
-    N_bRd = k_c*A*f_c0d to kN', NEN-EN 1995-1-1 (6.23)'
-#end if
-UC_max = N_Ed/N_bRd
-#if t_st > 80 mm
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>voldoet niet</b>: t > 80 mm ligt buiten tabel 3.1 van NEN-EN 1993-1-1 (f<sub>y</sub> uit de productnorm, NB bij 3.2.1(1))</span>
-#else if UC_max ≤ 1.0
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: knik</span>
-#else
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: knik</span>
+    '<span style="color: red">Vul de maten van de doorsnede in.</span>
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>niet getoetst: invoer onvolledig</b></span>
 #end if
 
 @svg
@@ -498,7 +509,9 @@ v_overstek = grensfactor*2*a to mm', overstek: ℓ_rep = 2a'
 UC_veld = abs(a_1)/v_veld
 UC_overstek = abs(a_C)/v_overstek
 UC_max = max(UC_veld; UC_overstek)
-#if UC_max ≤ 1.0
+#if isNaN(UC_max)
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>niet getoetst: invoer onvolledig</b></span>
+#else if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: doorbuiging</span>
 #else
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: doorbuiging</span>
@@ -586,8 +599,10 @@ L = ?*(m)', overspanning of kraaglengte'
     c_1', eerste eigenwaarde'
     f = c_1^2/(2*π)*sqrt(E*I/(m_bar*L^4)) to Hz', Hfd. 8, formule 164'
 #end if
-#if f ≤ 8 Hz
-    '<i>Houten woningvloer: bij f ≤ 8 Hz vraagt NEN-EN 1995-1-1 §7.3.3 een nader onderzoek.</i>
+#if E ≤ 0 N/mm^2 or I ≤ 0 mm^4 or L ≤ 0 mm
+    '<span style="color: red">Vul E, I en L in.</span>
+#else if f ≤ 8 Hz
+    '<i class="ook-afdruk">Houten woningvloer: bij f ≤ 8 Hz vraagt NEN-EN 1995-1-1 §7.3.3 een nader onderzoek.</i>
 #end if
 `;
 
@@ -647,7 +662,9 @@ F = ?*(kN)', puntlast midden op de onderrand (BGT)'
     v_toel = grensfactor*L to mm
     UC_max = δ_totaal/v_toel
 #end if
-#if UC_max ≤ 1.0
+#if isNaN(UC_max)
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>niet getoetst: invoer onvolledig</b></span>
+#else if UC_max ≤ 1.0
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: doorbuiging vakwerk</span>
 #else
     '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: doorbuiging vakwerk</span>

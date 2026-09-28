@@ -828,11 +828,11 @@ r_xP2 = if(s2 ≡ 1; r_tot; r_L1 + r_L2/2)
     '</svg>'
 #end if
 #loop
-'M aan de trekzijde (kNm), V positief boven de as (kN), u omlaag positief (mm); elke lijn op een eigen schaal, de lasten karakteristiek.
+'M aan de trekzijde (kNm), V positief boven de as (kN), u omlaag positief (mm); elke lijn op een eigen schaal, de lasten karakteristiek.<span class="alleen-scherm"></span>
 
 # 5. Combinaties
 
-'Gevolgklasse CC'CC', factoren uit NEN-EN 1990 tabel 'if(CC ≡ 2; "NB.4"; "NB.5")'; per UGT-combinatie telt de ongunstigste van 6.10a en 6.10b<span class="alleen-scherm"> (NB bij tabel A1.2(B)). De ψ-factoren horen bij de belastingcategorie uit §3</span>.
+'Gevolgklasse CC'CC', factoren uit NEN-EN 1990 tabel 'if(CC ≡ 2; "NB.4"; "NB.5")'; per UGT-combinatie telt de ongunstigste van 6.10a en 6.10b<span class="alleen-scherm"> (NB bij tabel A1.2(B)). De ψ-factoren horen bij de belastingcategorie uit §3</span>.<span class="alleen-scherm"></span>
 #hide
 γ_G = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))
 γ_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))
@@ -1075,7 +1075,7 @@ pv2 = bool(u_var,2 > u_q,k,2)
 #show
 
 '<h6>5.2 Combinatietabel</h6>
-'Factor per belastinggeval; vet de ongunstigste van 6.10a en 6.10b; u in het punt uit 5.1; bij de puntlast de maxima van BG1 en BG4 (BG5) opgeteld, een veilige bovengrens<span class="alleen-scherm">. In de BGT telt de puntlast mee in plaats van de verdeelde last als die de grootste zakking geeft (norm-stand)</span>.
+'Factor per belastinggeval; vet de ongunstigste van 6.10a en 6.10b; u in het punt uit 5.1; bij de puntlast de maxima van BG1 en BG4 (BG5) opgeteld, een veilige bovengrens<span class="alleen-scherm">. In de BGT telt de puntlast mee in plaats van de verdeelde last als die de grootste zakking geeft (norm-stand)</span>.<span class="alleen-scherm"></span>
 #if s23 ≥ 1
     '<table style="width:100%; border-collapse:collapse; font-size:0.85em; line-height:1.25;">
     '<tr style="border-bottom:1.5px solid #374151;">
@@ -1451,7 +1451,7 @@ svg_mv = vy2 + o_Vn*v_s + 24
 
 # 6. Toetsing BGT — doorbuiging (§7.2)
 
-'w<sub>inst</sub> (6.14b), w<sub>kruip</sub> = k<sub>def</sub>·w<sub>qp</sub> (6.16b), w<sub>fin</sub> = w<sub>inst</sub> + w<sub>kruip</sub> (7.2), w<sub>bij</sub> = w<sub>fin</sub> − u<sub>g,k</sub> (NB bij EN 1990, A1.4)<span class="alleen-scherm">. w<sub>inst</sub> komt uit de karakteristieke combinatie, de kruip uit de quasi-blijvende. De permanente last kruipt volledig, de veranderlijke alleen voor het quasi-blijvende deel ψ<sub>2</sub>; w<sub>fin</sub> is dus gelijk aan (1 + k<sub>def</sub>)·u<sub>g</sub> + (1 + ψ<sub>2</sub>·k<sub>def</sub>)·u<sub>var</sub>. De bijkomende doorbuiging is wat na het aanbrengen van de afwerking nog bij komt: de eindstand min de momentane zakking onder de permanente last. Beide worden getoetst: de eindstand aan de grens voor w<sub>fin</sub>, de bijkomende aan 0,003 × L of, bij een brosse afwerking, 0,002 × L</span>.
+'w<sub>inst</sub> (6.14b), w<sub>kruip</sub> = k<sub>def</sub>·w<sub>qp</sub> (6.16b), w<sub>fin</sub> = w<sub>inst</sub> + w<sub>kruip</sub> (7.2), w<sub>bij</sub> = w<sub>fin</sub> − u<sub>g,k</sub> (NB bij EN 1990, A1.4)<span class="alleen-scherm">. w<sub>inst</sub> komt uit de karakteristieke combinatie, de kruip uit de quasi-blijvende. De permanente last kruipt volledig, de veranderlijke alleen voor het quasi-blijvende deel ψ<sub>2</sub>; w<sub>fin</sub> is dus gelijk aan (1 + k<sub>def</sub>)·u<sub>g</sub> + (1 + ψ<sub>2</sub>·k<sub>def</sub>)·u<sub>var</sub>. De bijkomende doorbuiging is wat na het aanbrengen van de afwerking nog bij komt: de eindstand min de momentane zakking onder de permanente last. Beide worden getoetst: de eindstand aan de grens voor w<sub>fin</sub>, de bijkomende aan 0,003 × L of, bij een brosse afwerking, 0,002 × L</span>.<span class="alleen-scherm"></span>
 
 @select controleer "Controleer doorbuiging"
   Ja = 1
@@ -1628,7 +1628,7 @@ svg_mv = vy2 + o_Vn*v_s + 24
 
 # 7. Toetsing BGT — trillingen (§7.3.3)
 
-'Eigenfrequentie (7.5), stijfheid (7.3), responssnelheid (7.4); (7.3) en (7.4) alleen bij f<sub>1</sub> > 8 Hz, anders nader onderzoek (§7.3.3(1))<span class="alleen-scherm">. Het blad toetst f<sub>1</sub> > 8 Hz daarom als eigen voorwaarde, met UC = 8 Hz/f<sub>1</sub>: ligt f<sub>1</sub> niet boven de 8 Hz, dan is de trilling niet aangetoond</span>.
+'Eigenfrequentie (7.5), stijfheid (7.3), responssnelheid (7.4); (7.3) en (7.4) alleen bij f<sub>1</sub> > 8 Hz, anders nader onderzoek (§7.3.3(1))<span class="alleen-scherm">. Het blad toetst f<sub>1</sub> > 8 Hz daarom als eigen voorwaarde, met UC = 8 Hz/f<sub>1</sub>: ligt f<sub>1</sub> niet boven de 8 Hz, dan is de trilling niet aangetoond</span>.<span class="alleen-scherm"></span>
 
 @select controleer_trilling "Controleer trilling"
   Ja = 1
@@ -1647,89 +1647,104 @@ tril_aan = controleer_trilling*(1 - ond)
     ζ = ?'<span class="alleen-scherm">, dempingsratio (§7.3.1: 0,01 zonder afwerklaag)</span><span class="kolom-4"></span>'
     a_tril = ?*(mm/kN)'<span class="alleen-scherm">, grenswaarde stijfheid (NB)</span><span class="kolom-4"></span>'
     b_tril = ?'<span class="alleen-scherm">, parameter bij de snelheidseis (figuur 7.2)</span><span class="kolom-4"></span>'
-    '<h6>7.1 Stijfheden en eigenfrequentie (7.5)<span class="alleen-scherm"></span></h6>
-    '<i>Per meter vloerbreedte: (EI)<sub>l</sub> in de overspanningsrichting, dus de balken, en (EI)<sub>b</sub> dwars daarop, het beschot (§7.3.3). De eigenfrequentie (7.5) hangt af van (EI)<sub>l</sub>, het aantal eigenmodi (7.7) van de verhouding (EI)<sub>l</sub>/(EI)<sub>b</sub>. De trillende massa is alleen het permanente gewicht (§7.3.3): de vloer trilt in de staat waarin hij normaal wordt gebruikt.</i><span class="alleen-scherm"></span>
-    I_beschot = 1 m*t_vloer^3/12 to m^4'<span class="alleen-scherm"></span>'
-    EI_l = E_mean*I_y/hoh to N*m^2/m', balken, in de overspanningsrichting<span class="alleen-scherm"></span>'
-    EI_b = E_beschot*I_beschot/(1 m) to N*m^2/m', beschot, dwars op de balken<span class="alleen-scherm"></span>'
-    m_opp = (G_k + g_balk/hoh)/(9.81 m/s^2) to kg/m^2', trillende massa<span class="alleen-scherm"></span>'
-    #if schema ≡ 3
-        L_tril = max(L_th; L_veld2)', langste veld<span class="alleen-scherm"></span>'
-    #else
-        L_tril = L_th', overspanning<span class="alleen-scherm"></span>'
-    #end if
-    EI_l'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
-    EI_b'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
-    m_opp'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
-    L_tril'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
-    f_1 = π/(2*L_tril^2)*sqrt(EI_l/m_opp) to Hz'<span class="alleen-scherm"></span>'
     #hide
-    'Ligt f_1 niet boven de 8 Hz, dan gelden (7.3) en (7.4) niet: niet aangetoond.
-    tril_na = bool(f_1 ≤ 8 Hz)
+    'Zonder deze maten rekent de trillingstoets niet: een veld dat leeg is of op
+    'nul staat, gaf hieronder een foutmelding in plaats van een uitkomst.
+    ok_tril = bool(L_th > 0 mm and hoh > 0 mm and I_y > 0 mm^4 and t_vloer > 0 mm and E_beschot > 0 N/mm^2 and b_vloer > 0 m and ζ > 0 and a_tril > 0 mm/kN and b_tril > 0)
+    tril_onv = 1 - ok_tril
     #show
-    f_1', (7.5)<span class="alleen-afdruk"></span>'
-    #if tril_na ≡ 0
-        '<span class="alleen-scherm">f<sub>1</sub> = 'f_1'</span><span class="oordeel" style="color: green"> > 8 Hz → (7.3) en (7.4) gelden</span>
+    #if ok_tril ≡ 0
+        '<b style="color:#b91c1c">De invoer voor de trillingstoets is onvolledig: overspanning, h.o.h., profiel, dikte en E van het beschot, breedte van het vloerveld, ζ, a en b groter dan 0.</b>
+        #hide
+        UC_trilling = 0
+        tril_na = 0
+        UC_tril_av = 0
+        #show
     #else
-        '<span class="alleen-scherm">f<sub>1</sub> = 'f_1'</span><span class="oordeel" style="color: red"> ≤ 8 Hz → <b>niet aangetoond</b>: (7.3) en (7.4) gelden niet, nader onderzoek volgens §7.3.3(1)</span>
-    #end if
+        '<h6>7.1 Stijfheden en eigenfrequentie (7.5)<span class="alleen-scherm"></span></h6>
+        '<i>Per meter vloerbreedte: (EI)<sub>l</sub> in de overspanningsrichting, dus de balken, en (EI)<sub>b</sub> dwars daarop, het beschot (§7.3.3). De eigenfrequentie (7.5) hangt af van (EI)<sub>l</sub>, het aantal eigenmodi (7.7) van de verhouding (EI)<sub>l</sub>/(EI)<sub>b</sub>. De trillende massa is alleen het permanente gewicht (§7.3.3): de vloer trilt in de staat waarin hij normaal wordt gebruikt.</i><span class="alleen-scherm"></span>
+        I_beschot = 1 m*t_vloer^3/12 to m^4'<span class="alleen-scherm"></span>'
+        EI_l = E_mean*I_y/hoh to N*m^2/m', balken, in de overspanningsrichting<span class="alleen-scherm"></span>'
+        EI_b = E_beschot*I_beschot/(1 m) to N*m^2/m', beschot, dwars op de balken<span class="alleen-scherm"></span>'
+        m_opp = (G_k + g_balk/hoh)/(9.81 m/s^2) to kg/m^2', trillende massa<span class="alleen-scherm"></span>'
+        #if schema ≡ 3
+            L_tril = max(L_th; L_veld2)', langste veld<span class="alleen-scherm"></span>'
+        #else
+            L_tril = L_th', overspanning<span class="alleen-scherm"></span>'
+        #end if
+        EI_l'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        EI_b'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        m_opp'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        L_tril'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
+        f_1 = π/(2*L_tril^2)*sqrt(EI_l/m_opp) to Hz'<span class="alleen-scherm"></span>'
+        #hide
+        'Ligt f_1 niet boven de 8 Hz, dan gelden (7.3) en (7.4) niet: niet aangetoond.
+        tril_na = bool(f_1 ≤ 8 Hz)
+        #show
+        f_1', (7.5)<span class="alleen-afdruk"></span>'
+        #if tril_na ≡ 0
+            '<span class="alleen-scherm">f<sub>1</sub> = 'f_1'</span><span class="oordeel" style="color: green"> > 8 Hz → (7.3) en (7.4) gelden</span>
+        #else
+            '<span class="alleen-scherm">f<sub>1</sub> = 'f_1'</span><span class="oordeel" style="color: red"> ≤ 8 Hz → <b>niet aangetoond</b>: (7.3) en (7.4) gelden niet, nader onderzoek volgens §7.3.3(1)</span>
+        #end if
 
-    '<h6>7.2 Criterium 1 — stijfheid onder 1 kN (formule 7.3)<span class="alleen-scherm"></span></h6>
-    '<i>De puntlast spreidt over meerdere balken; k<sub>r</sub> uit §3 geeft het deel dat op de zwaarst belaste balk komt.</i><span class="alleen-scherm"></span>
-    F_tril = 1 kN*k_r to kN', puntlast op één balk<span class="alleen-scherm"></span>'
-    #if s3 ≡ 1
-        '<i>De eenheidslast staat midden in het langste veld. Het andere veld houdt de ligger boven de tussenoplegging in: het steunmoment uit de drie-momentenvergelijking verkleint de zakking.</i><span class="alleen-scherm"></span>
-        M_B,tril = 3*F_tril*L_tril^2/(16*(L_th + L_veld2)) to kN*m', steunmoment onder de eenheidslast<span class="alleen-scherm"></span>'
-        w_1kN = F_tril*L_tril^3/(48*E_mean*I_y) - M_B,tril*L_tril^2/(16*E_mean*I_y) to mm'<span class="alleen-scherm"></span>'
-    #else
-        w_1kN = F_tril*L_tril^3/(48*E_mean*I_y) to mm'<span class="alleen-scherm"></span>'
-    #end if
-    w_per_kN = w_1kN/(1 kN) to mm/kN'<span class="alleen-scherm"></span>'
-    '<span class="alleen-afdruk"></span>
-    #if s3 ≡ 1
-        F_tril'<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
-        M_B,tril'<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
-        w_per_kN'<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
-    #else
-        F_tril'<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
-        w_per_kN'<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
-    #end if
-    UC_tril_a = w_per_kN/a_tril'<span class="alleen-scherm"></span>'
-    #if UC_tril_a ≤ 1.0
-        '<span class="alleen-scherm">UC<sub>w/F</sub> = 'UC_tril_a'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>stijfheid voldoet</b></span><span class="alleen-scherm"></span>
-    #else
-        '<span class="alleen-scherm">UC<sub>w/F</sub> = 'UC_tril_a'</span><span class="oordeel" style="color: red"> > 1.0 → <b>stijfheid voldoet niet</b></span><span class="alleen-scherm"></span>
-    #end if
+        '<h6>7.2 Criterium 1 — stijfheid onder 1 kN (formule 7.3)<span class="alleen-scherm"></span></h6>
+        '<i>De puntlast spreidt over meerdere balken; k<sub>r</sub> uit §3 geeft het deel dat op de zwaarst belaste balk komt.</i><span class="alleen-scherm"></span>
+        F_tril = 1 kN*k_r to kN', puntlast op één balk<span class="alleen-scherm"></span>'
+        #if s3 ≡ 1
+            '<i>De eenheidslast staat midden in het langste veld. Het andere veld houdt de ligger boven de tussenoplegging in: het steunmoment uit de drie-momentenvergelijking verkleint de zakking.</i><span class="alleen-scherm"></span>
+            M_B,tril = 3*F_tril*L_tril^2/(16*(L_th + L_veld2)) to kN*m', steunmoment onder de eenheidslast<span class="alleen-scherm"></span>'
+            w_1kN = F_tril*L_tril^3/(48*E_mean*I_y) - M_B,tril*L_tril^2/(16*E_mean*I_y) to mm'<span class="alleen-scherm"></span>'
+        #else
+            w_1kN = F_tril*L_tril^3/(48*E_mean*I_y) to mm'<span class="alleen-scherm"></span>'
+        #end if
+        w_per_kN = w_1kN/(1 kN) to mm/kN'<span class="alleen-scherm"></span>'
+        '<span class="alleen-afdruk"></span>
+        #if s3 ≡ 1
+            F_tril'<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+            M_B,tril'<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+            w_per_kN'<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+        #else
+            F_tril'<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
+            w_per_kN'<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
+        #end if
+        UC_tril_a = w_per_kN/a_tril'<span class="alleen-scherm"></span>'
+        #if UC_tril_a ≤ 1.0
+            '<span class="alleen-scherm">UC<sub>w/F</sub> = 'UC_tril_a'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>stijfheid voldoet</b></span><span class="alleen-scherm"></span>
+        #else
+            '<span class="alleen-scherm">UC<sub>w/F</sub> = 'UC_tril_a'</span><span class="oordeel" style="color: red"> > 1.0 → <b>stijfheid voldoet niet</b></span><span class="alleen-scherm"></span>
+        #end if
 
-    '<h6>7.3 Criterium 2 — responssnelheid (formules 7.4, 7.6, 7.7)<span class="alleen-scherm"></span></h6>
-    '<i>Aantal eigenmodi onder 40 Hz (formule 7.7). Bij een zeer stijve vloer ligt f<sub>1</sub> al boven 40 Hz; dan is er geen enkele eigenmode onder de 40 Hz en wordt de term onder de wortel op nul afgekapt.</i><span class="alleen-scherm"></span>
-    n_40_arg = max(0; (40 Hz/f_1)^2 - 1)'<span class="alleen-scherm"></span>'
-    n_40 = (n_40_arg*(b_vloer/L_tril)^4*EI_l/EI_b)^0.25', formule 7.7<span class="alleen-scherm"></span>'
-    v_resp = 4*(0.4 + 0.6*n_40)/(m_opp*b_vloer*L_tril + 200 kg) to m/(N*s^2)', formule 7.6<span class="alleen-scherm"></span>'
-    v_lim = b_tril^(f_1*ζ/(1 Hz) - 1)*1 m/(N*s^2)', formule 7.4<span class="alleen-scherm"></span>'
-    '<span class="alleen-afdruk"></span>
-    n_40', (7.7)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
-    v_resp', (7.6)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
-    v_lim', (7.4)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
-    UC_tril_v = v_resp/v_lim'<span class="alleen-scherm"></span>'
-    #if UC_tril_v ≤ 1.0
-        '<span class="alleen-scherm">UC<sub>v</sub> = 'UC_tril_v'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>responssnelheid voldoet</b></span><span class="alleen-scherm"></span>
-    #else
-        '<span class="alleen-scherm">UC<sub>v</sub> = 'UC_tril_v'</span><span class="oordeel" style="color: red"> > 1.0 → <b>responssnelheid voldoet niet</b></span><span class="alleen-scherm"></span>
-    #end if
+        '<h6>7.3 Criterium 2 — responssnelheid (formules 7.4, 7.6, 7.7)<span class="alleen-scherm"></span></h6>
+        '<i>Aantal eigenmodi onder 40 Hz (formule 7.7). Bij een zeer stijve vloer ligt f<sub>1</sub> al boven 40 Hz; dan is er geen enkele eigenmode onder de 40 Hz en wordt de term onder de wortel op nul afgekapt.</i><span class="alleen-scherm"></span>
+        n_40_arg = max(0; (40 Hz/f_1)^2 - 1)'<span class="alleen-scherm"></span>'
+        n_40 = (n_40_arg*(b_vloer/L_tril)^4*EI_l/EI_b)^0.25', formule 7.7<span class="alleen-scherm"></span>'
+        v_resp = 4*(0.4 + 0.6*n_40)/(m_opp*b_vloer*L_tril + 200 kg) to m/(N*s^2)', formule 7.6<span class="alleen-scherm"></span>'
+        v_lim = b_tril^(f_1*ζ/(1 Hz) - 1)*1 m/(N*s^2)', formule 7.4<span class="alleen-scherm"></span>'
+        '<span class="alleen-afdruk"></span>
+        n_40', (7.7)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+        v_resp', (7.6)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+        v_lim', (7.4)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+        UC_tril_v = v_resp/v_lim'<span class="alleen-scherm"></span>'
+        #if UC_tril_v ≤ 1.0
+            '<span class="alleen-scherm">UC<sub>v</sub> = 'UC_tril_v'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>responssnelheid voldoet</b></span><span class="alleen-scherm"></span>
+        #else
+            '<span class="alleen-scherm">UC<sub>v</sub> = 'UC_tril_v'</span><span class="oordeel" style="color: red"> > 1.0 → <b>responssnelheid voldoet niet</b></span><span class="alleen-scherm"></span>
+        #end if
 
-    '<span class="alleen-afdruk"></span>
-    UC_f1 = 8 Hz/f_1'<span class="alleen-scherm">, voorwaarde f<sub>1</sub> > 8 Hz</span><span class="alleen-scherm"></span>'
-    UC_trilling = max(UC_tril_a; UC_tril_v; UC_f1)'<span class="alleen-scherm">: stijfheid (w<sub>per,kN</sub>/a<sub>tril</sub>), responssnelheid (v<sub>resp</sub>/v<sub>lim</sub>) en f<sub>1</sub> > 8 Hz (8 Hz/f<sub>1</sub>)</span>'
-    #hide
-    UC_tril_av = max(UC_tril_a; UC_tril_v)
-    #show
-    #if tril_na ≡ 1
-        '<span class="alleen-scherm">UC<sub>trilling</sub> = 'UC_trilling'</span><span class="oordeel" style="color: red"> → <b>trillingen niet aangetoond</b> (f<sub>1</sub> ≤ 8 Hz, §7.3.3(1))</span>
-    #else if UC_trilling ≤ 1.0
-        '<span class="alleen-scherm">UC<sub>trilling</sub> = 'UC_trilling'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>trillingen voldoen</b></span>
-    #else
-        '<span class="alleen-scherm">UC<sub>trilling</sub> = 'UC_trilling'</span><span class="oordeel" style="color: red"> > 1.0 → <b>trillingen voldoen niet</b></span>
+        '<span class="alleen-afdruk"></span>
+        UC_f1 = 8 Hz/f_1'<span class="alleen-scherm">, voorwaarde f<sub>1</sub> > 8 Hz</span><span class="alleen-scherm"></span>'
+        UC_trilling = max(UC_tril_a; UC_tril_v; UC_f1)'<span class="alleen-scherm">: stijfheid (w<sub>per,kN</sub>/a<sub>tril</sub>), responssnelheid (v<sub>resp</sub>/v<sub>lim</sub>) en f<sub>1</sub> > 8 Hz (8 Hz/f<sub>1</sub>)</span>'
+        #hide
+        UC_tril_av = max(UC_tril_a; UC_tril_v)
+        #show
+        #if tril_na ≡ 1
+            '<span class="alleen-scherm">UC<sub>trilling</sub> = 'UC_trilling'</span><span class="oordeel" style="color: red"> → <b>trillingen niet aangetoond</b> (f<sub>1</sub> ≤ 8 Hz, §7.3.3(1))</span>
+        #else if UC_trilling ≤ 1.0
+            '<span class="alleen-scherm">UC<sub>trilling</sub> = 'UC_trilling'</span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>trillingen voldoen</b></span>
+        #else
+            '<span class="alleen-scherm">UC<sub>trilling</sub> = 'UC_trilling'</span><span class="oordeel" style="color: red"> > 1.0 → <b>trillingen voldoen niet</b></span>
+        #end if
     #end if
 #else if controleer_trilling ≡ 1
     'Trilling wordt niet getoetst: bij een onderslag niet van toepassing. De toets hoort bij de balklaag die op de onderslag rust.
@@ -1737,6 +1752,7 @@ tril_aan = controleer_trilling*(1 - ond)
     #hide
     tril_na = 0
     UC_tril_av = 0
+    tril_onv = 0
     #show
 #else
     'Trilling wordt niet getoetst (Controleer trilling = Nee).
@@ -1744,6 +1760,7 @@ tril_aan = controleer_trilling*(1 - ond)
     #hide
     tril_na = 0
     UC_tril_av = 0
+    tril_onv = 0
     #show
 #end if
 
@@ -1966,7 +1983,7 @@ kl_kip = if(UC_kip > 1; 1; if(UC_kip > 0.9; 2; 3))
 kl_G = if(UC_G > 1; 1; if(UC_G > 0.9; 2; 3))
 kl_door = if(UC_doorbuiging > 1; 1; if(UC_doorbuiging > 0.9; 2; 3))
 kl_bij = if(UC_bij > 1; 1; if(UC_bij > 0.9; 2; 3))
-kl_tril = if(UC_trilling > 1; 1; if(UC_trilling > 0.9; 2; 3))
+kl_tril = if(tril_onv ≡ 1; 1; if(UC_trilling > 1; 1; if(UC_trilling > 0.9; 2; 3)))
 c_1 = "#b91c1c"
 c_2 = "#b45309"
 c_3 = "#047857"
@@ -1985,7 +2002,7 @@ oordeel_kip = if(UC_kip ≤ 1; "voldoet"; "voldoet niet")
 oordeel_G = if(UC_G ≤ 1; "voldoet"; "voldoet niet")
 oordeel_door = if(UC_doorbuiging ≤ 1; "voldoet"; "voldoet niet")
 oordeel_bij = if(UC_bij ≤ 1; "voldoet"; "voldoet niet")
-oordeel_tril = if(tril_na ≡ 1; "niet aangetoond: f₁ ≤ 8 Hz"; if(UC_trilling ≤ 1; "voldoet"; "voldoet niet"))
+oordeel_tril = if(tril_onv ≡ 1; "invoer onvolledig"; if(tril_na ≡ 1; "niet aangetoond: f₁ ≤ 8 Hz"; if(UC_trilling ≤ 1; "voldoet"; "voldoet niet")))
 #show
 
 '<table class="alleen-scherm" style="width:100%; border-collapse:collapse; font-size:0.95em;">
@@ -2061,7 +2078,9 @@ UC_max'<span class="alleen-afdruk"></span>'
 'f_1 ≤ 8 Hz niet afgekeurd maar niet aangetoond: er is een nader onderzoek nodig.
 UC_rest = max(UC_doorbuiging; UC_bij; UC_buiging; UC_afsch; UC_c90; UC_kip; UC_G; UC_tril_av)
 #show
-#if tril_na*bool(UC_rest ≤ 1) ≡ 1
+#if tril_onv ≡ 1
+    '<span class="alleen-scherm"><b>Maatgevende UC</b></span><span class="oordeel" style="color: red"> niet bepaald → <b>Balklaag niet getoetst: invoer onvolledig</b></span>
+#else if tril_na*bool(UC_rest ≤ 1) ≡ 1
     '<span class="alleen-scherm"><b>Maatgevende UC = 'UC_max'</b></span><span class="oordeel" style="color: red"> → <b>Balklaag niet aangetoond</b>: f<sub>1</sub> ≤ 8 Hz, nader onderzoek naar de trillingen (§7.3.3(1))</span>
 #else if UC_max ≤ 1.0
     '<span class="alleen-scherm"><b>Maatgevende UC = 'UC_max'</b></span><span class="oordeel" style="color: green"> ≤ 1.0 → <b>Balklaag voldoet</b></span>

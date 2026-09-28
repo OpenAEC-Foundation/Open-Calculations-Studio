@@ -76,35 +76,40 @@ i_r', regenintensiteit uit tabel NB.1 (7.2(4)) [m³/s]/m²'
 
 Q_h = A_afv*i_r', regenwaterdebiet [m³/s]'
 
-# 3. Waterhoogte boven de onderzijde van de noodafvoer — (7.4)
+#if n_sp > 0 and b_sp > 0 mm and h_sp > 0 mm
+    # 3. Waterhoogte boven de onderzijde van de noodafvoer — (7.4)
 
-#hide
-'Breedte van één spuwer in meters — de formule is empirisch en rekent in SI.
-b_m = b_sp/(1000*mm)
-#show
-b_m', breedte van één spuwer [m]'
-d_nd = 0.7*(Q_h/(b_m*n_sp))^(2/3)*1000*mm', waterhoogte boven de onderzijde van de spuwer (7.4), in m omgerekend naar mm'
+    #hide
+    'Breedte van één spuwer in meters — de formule is empirisch en rekent in SI.
+    b_m = b_sp/(1000*mm)
+    #show
+    b_m', breedte van één spuwer [m]'
+    d_nd = 0.7*(Q_h/(b_m*n_sp))^(2/3)*1000*mm', waterhoogte boven de onderzijde van de spuwer (7.4), in m omgerekend naar mm'
 
-# 4. Waterstand en regenwaterbelasting — (7.8)
+    # 4. Waterstand en regenwaterbelasting — (7.8)
 
-d_hw = d_nd + h_nd', waterhoogte t.p.v. de spuwer'
-q_rw = 10*kN/m^3*d_hw to kN/m^2', regenwaterbelasting t.p.v. de spuwer, γ_w = 10 kN/m³ (7.2(1), NB)'
+    d_hw = d_nd + h_nd', waterhoogte t.p.v. de spuwer'
+    q_rw = 10*kN/m^3*d_hw to kN/m^2', regenwaterbelasting t.p.v. de spuwer, γ_w = 10 kN/m³ (7.2(1), NB)'
 
-# 5. Minimale spuwerhoogte — §7.3(3)
+    # 5. Minimale spuwerhoogte — §7.3(3)
 
-h_min = 30*mm + d_hw - h_nd', minimaal benodigde spuwerhoogte: 30 mm vrije hoogte boven de waterstand (§7.3(3))'
-UC = h_min/h_sp
-#if UC ≤ 1.0
-    'u.c. = h<sub>min</sub>/h = 'UC'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+    h_min = 30*mm + d_hw - h_nd', minimaal benodigde spuwerhoogte: 30 mm vrije hoogte boven de waterstand (§7.3(3))'
+    UC = h_min/h_sp
+    #if UC ≤ 1.0
+        'u.c. = h<sub>min</sub>/h = 'UC'<span style="color: green"> ≤ 1.0 → <b>voldoet</b></span>
+    #else
+        'u.c. = h<sub>min</sub>/h = 'UC'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
+    #end if
+
+    # 6. Samenvatting
+
+    #if UC ≤ 1.0
+        '<b>Maatgevende UC = 'UC'</b><span style="color: green"> ≤ 1.0 → <b>Spuwer voldoet</b></span>
+    #else
+        '<b>Maatgevende UC = 'UC'</b><span style="color: red"> > 1.0 → <b>Spuwer voldoet niet</b></span>
+    #end if
 #else
-    'u.c. = h<sub>min</sub>/h = 'UC'<span style="color: red"> > 1.0 → <b>voldoet niet</b></span>
-#end if
-
-# 6. Samenvatting
-
-#if UC ≤ 1.0
-    '<b>Maatgevende UC = 'UC'</b><span style="color: green"> ≤ 1.0 → <b>Spuwer voldoet</b></span>
-#else
-    '<b>Maatgevende UC = 'UC'</b><span style="color: red"> > 1.0 → <b>Spuwer voldoet niet</b></span>
+    '<b style="color:#b91c1c">De invoer is onvolledig: aantal, breedte en hoogte van de spuwer groter dan 0.</b>
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>de spuwer is niet getoetst: invoer onvolledig</b></span>
 #end if
 `;

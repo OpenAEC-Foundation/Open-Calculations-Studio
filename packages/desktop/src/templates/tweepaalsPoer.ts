@@ -509,7 +509,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
         s_t,max = if(R_Ed > 0.5*V_Rd,max; min(0.75*d; 500 mm); 500 mm)
         ok_det = 1
         #show
-        '<i>Beugels: s ≤ 's_l,max' mm (9.2.2(6), NB) en s<sub>t</sub> ≤ 's_t,max' mm (9.2.2(8), NB); het opgebogen einde ten minste 'l_v,nodig' mm boven de ombuiging.</i>
+        '<i class="ook-afdruk">Beugels: s ≤ 's_l,max' mm (9.2.2(6), NB) en s<sub>t</sub> ≤ 's_t,max' mm (9.2.2(8), NB); het opgebogen einde ten minste 'l_v,nodig' mm boven de ombuiging.</i>
         #if d_langs < 8 mm
             #hide
             ok_det = 0
@@ -1136,7 +1136,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
         #hide
         ok_det = 1
         #show
-        '<i>Het opgebogen einde ten minste 'l_v,nodig' mm boven de ombuiging.</i>
+        '<i class="ook-afdruk">Het opgebogen einde ten minste 'l_v,nodig' mm boven de ombuiging.</i>
         #if d_langs < 8 mm
             #hide
             ok_det = 0
@@ -1168,7 +1168,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
         UC_max = max(UC_paal; UC_trek; UC_kn,1; UC_kn,2; UC_ank; UC_rol; UC_V; UC_Vmax; UC_pons,k; UC_pons,p; UC_pons,0; UC_w)
         maatg = if(UC_max ≡ UC_paal; "paal"; if(UC_max ≡ UC_trek; "trekband"; if(UC_max ≡ UC_kn,1; "knoop onder de kolom"; if(UC_max ≡ UC_kn,2; "knoop boven de paal"; if(UC_max ≡ UC_ank; "verankering"; if(UC_max ≡ UC_rol; "ombuiging"; if(UC_max ≡ UC_V; "dwarskracht"; if(UC_max ≡ UC_Vmax; "dwarskracht, bovengrens"; if(UC_max ≡ UC_pons,k; "pons rond de kolom"; if(UC_max ≡ UC_pons,p; "pons rond de paal"; if(UC_max ≡ UC_pons,0; "pons langs kolom of paal"; "scheurwijdte")))))))))))
         #show
-        '<i>Niet getoetst: de dwarstrek in de drukdiagonalen (6.5.3(3)), een trekpaal, de bovenwapening, de verankering van de paalwapening en huidwapening (7.3.3(3)).</i><span class="alleen-scherm"></span>
+        '<i class="ook-afdruk">Niet getoetst: de dwarstrek in de drukdiagonalen (6.5.3(3)), een trekpaal, de bovenwapening, de verankering van de paalwapening en huidwapening (7.3.3(3)).</i>
         '<table class="alleen-scherm" style="width:100%; border-collapse:collapse; font-size:0.95em;">
         '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:3px 8px;">Toets</th><th style="text-align:left; padding:3px 8px;">Norm</th><th style="text-align:right; padding:3px 8px;">UC</th><th style="text-align:left; padding:3px 8px;">Oordeel</th></tr>
         #if R_cd > 0 kN
@@ -1377,7 +1377,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
             G_stb,d = γ_G,stb*G_k to kN', de poer en de grond recht erboven<span class="kolom-2"></span>'
             UC_upl = V_dst,d/G_stb,d', evenwicht, V<sub>dst;d</sub> ≤ G<sub>stb;d</sub> (2.8)'
             ΔG_k = max(V_dst,d - G_stb,d; 0 kN)/γ_G,stb', extra ballast nodig<span class="alleen-scherm"> om te voldoen (karakteristiek)</span>'
-            '<i>Alleen de grond recht boven de poer telt mee; een grondkegel en wrijving langs de zijkant niet (veilige kant).</i><span class="alleen-scherm"></span>
+            '<i class="ook-afdruk">Alleen de grond recht boven de poer telt mee; een grondkegel en wrijving langs de zijkant niet (veilige kant).</i>
 
             # 6. Buiging bovenin (§6.1, §9.8.2.1(3))
 
@@ -1701,7 +1701,7 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
             #hide
             ok_det = 1
             #show
-            '<i>Staafafstand ten hoogste 's_max' mm: 2h en ≤ 250 mm bij een geconcentreerde belasting (9.3.1.1(3), NB).</i>
+            '<i class="ook-afdruk">Staafafstand ten hoogste 's_max' mm: 2h en ≤ 250 mm bij een geconcentreerde belasting (9.3.1.1(3), NB).</i>
             #if φ_s < 8 mm
                 #hide
                 ok_det = 0
@@ -1743,9 +1743,9 @@ oordeel(u) = if(u ≤ 1; "voldoet"; "voldoet niet")
             #end if
             #show
             #if belasting_staal ≡ 2
-                '<i>Niet getoetst: de verankering van de kolomwapening in de poer en van de bovenwapening, en de onderwapening.</i><span class="alleen-scherm"></span>
+                '<i class="ook-afdruk">Niet getoetst: de verankering van de kolomwapening in de poer en van de bovenwapening, en de onderwapening.</i>
             #else
-                '<i>Niet getoetst: de zakking (6.6), de algehele stabiliteit, de scheurwijdte en trek in het bovenvlak (9.8.2.1(3)).</i><span class="alleen-scherm"></span>
+                '<i class="ook-afdruk">Niet getoetst: de zakking (6.6), de algehele stabiliteit, de scheurwijdte en trek in het bovenvlak (9.8.2.1(3)).</i>
             #end if
             '<table class="alleen-scherm" style="width:100%; border-collapse:collapse; font-size:0.95em;">
             '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:3px 8px;">Toets</th><th style="text-align:left; padding:3px 8px;">Norm</th><th style="text-align:right; padding:3px 8px;">UC</th><th style="text-align:left; padding:3px 8px;">Oordeel</th></tr>

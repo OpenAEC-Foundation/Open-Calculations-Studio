@@ -239,6 +239,8 @@ K_ser,A = ?*(N/mm)', verschuivingsmodulus per verbindingsmiddel, voor de verplaa
     F_A,ke = F_A,e + min(F_ax,A/4; p_ax,A*F_A,e) to N
     F_A,kf = F_A,f + min(F_ax,A/4; p_ax,A*F_A,f) to N
     F_v,Rk,A = min(F_A,a; F_A,b; F_A,kc; F_A,kd; F_A,ke; F_A,kf) to N
+    'Met een plaatdikte, diameter of stuiksterkte van nul rekent geen mechanisme.
+    ok_vA = bool(t_A > 0 mm and d_A > 0 mm and f_h,1A > 0 N/mm^2)
     #show
     '<table style="border-collapse:collapse; font-size:0.95em; margin:4px 0;">
     '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:3px 8px;">Mechanisme (N)</th><th style="padding:3px 8px;">(a)</th><th style="padding:3px 8px;">(b)</th><th style="padding:3px 8px;">(c)</th><th style="padding:3px 8px;">(d)</th><th style="padding:3px 8px;">(e)</th><th style="padding:3px 8px;">(f)</th></tr>
@@ -247,7 +249,11 @@ K_ser,A = ?*(N/mm)', verschuivingsmodulus per verbindingsmiddel, voor de verplaa
     '</table>
     F_v,Rk,A', het kleinste van de zes mechanismen'
     k_mod,vA = sqrt(k_mod*k_mod,A)', verbinding van hout met plaat (2.6)'
-    F_f,Rd,A = k_mod,vA*F_v,Rk,A/γ_M,v to kN', rekenwaarde per verbindingsmiddel'
+    #if ok_vA ≡ 1
+        F_f,Rd,A = k_mod,vA*F_v,Rk,A/γ_M,v to kN', rekenwaarde per verbindingsmiddel'
+    #else
+        F_f,Rd,A = 0 kN', invoer onvolledig'
+    #end if
 #else
     F_f,Rd,A = ?*(kN)', rekenwaarde per verbindingsmiddel volgens hoofdstuk 8, zonder de factor 1,2'
 #end if
@@ -389,6 +395,8 @@ K_ser,B = ?*(N/mm)', verschuivingsmodulus per verbindingsmiddel, voor de verplaa
     F_B,ke = F_B,e + min(F_ax,B/4; p_ax,B*F_B,e) to N
     F_B,kf = F_B,f + min(F_ax,B/4; p_ax,B*F_B,f) to N
     F_v,Rk,B = min(F_B,a; F_B,b; F_B,kc; F_B,kd; F_B,ke; F_B,kf) to N
+    'Met een plaatdikte, diameter of stuiksterkte van nul rekent geen mechanisme.
+    ok_vB = bool(t_B > 0 mm and d_B > 0 mm and f_h,1B > 0 N/mm^2)
     #show
     '<table style="border-collapse:collapse; font-size:0.95em; margin:4px 0;">
     '<tr style="border-bottom:2px solid #374151;"><th style="text-align:left; padding:3px 8px;">Mechanisme (N)</th><th style="padding:3px 8px;">(a)</th><th style="padding:3px 8px;">(b)</th><th style="padding:3px 8px;">(c)</th><th style="padding:3px 8px;">(d)</th><th style="padding:3px 8px;">(e)</th><th style="padding:3px 8px;">(f)</th></tr>
@@ -397,7 +405,11 @@ K_ser,B = ?*(N/mm)', verschuivingsmodulus per verbindingsmiddel, voor de verplaa
     '</table>
     F_v,Rk,B', het kleinste van de zes mechanismen'
     k_mod,vB = sqrt(k_mod*k_mod,B)', verbinding van hout met plaat (2.6)'
-    F_f,Rd,B = k_mod,vB*F_v,Rk,B/γ_M,v to kN', rekenwaarde per verbindingsmiddel'
+    #if ok_vB ≡ 1
+        F_f,Rd,B = k_mod,vB*F_v,Rk,B/γ_M,v to kN', rekenwaarde per verbindingsmiddel'
+    #else
+        F_f,Rd,B = 0 kN', invoer onvolledig'
+    #end if
 #else
     F_f,Rd,B = ?*(kN)', rekenwaarde per verbindingsmiddel volgens hoofdstuk 8, zonder de factor 1,2'
 #end if
@@ -692,618 +704,633 @@ f_zwak', platen aan beide zijden (§9.2.4.2(7)): aandeel van de zwakste zijde, 1
     '<span style="color:#b45309">Wand 6: het restpaneel is smaller dan h/4 en telt niet mee. Zet het anker op de stijl aan het eind van het laatste meetellende paneel, of veranker het restpaneel apart (§9.2.4.2(10), fig. 9.6).</span>
 #end if
 
-# 7. Verdeling van de horizontale belasting
-
-'<i>Naar rato van de sterkte in het wandvlak (9.20). Het torsiemoment nemen alleen de evenwijdige
-'wanden op, aan de veilige kant; per wand telt het grootste torsiedeel van de last op B/2 ± e<sub>F</sub>,
-'en alleen als het iets toevoegt.</i>
-
 #hide
-R_tot = R_1 + R_2 + R_3 + R_4 + R_5 + R_6 to kN
-x_c = (R_1*x_1 + R_2*x_2 + R_3*x_3 + R_4*x_4 + R_5*x_5 + R_6*x_6)/max(R_tot; 0.001 kN)
-I_R = R_1*(x_1 - x_c)^2 + R_2*(x_2 - x_c)^2 + R_3*(x_3 - x_c)^2 + R_4*(x_4 - x_c)^2 + R_5*(x_5 - x_c)^2 + R_6*(x_6 - x_c)^2 to kN*m^2
-UC_totaal = F_v,Ed/max(R_tot; 0.001 kN)
+'Zonder deze maten valt er niets te verdelen of te toetsen: een veld dat leeg is
+'of op nul staat, gaf verderop NaN of een foutmelding in plaats van een uitkomst.
+'Een beplating telt alleen mee als een wand hem gebruikt.
+nodig_A = max(bool(zijden_1 ≠ 2)*bool(zijden_1 ≠ 5); bool(n_wanden ≥ 2)*bool(zijden_2 ≠ 2)*bool(zijden_2 ≠ 5); bool(n_wanden ≥ 3)*bool(zijden_3 ≠ 2)*bool(zijden_3 ≠ 5); bool(n_wanden ≥ 4)*bool(zijden_4 ≠ 2)*bool(zijden_4 ≠ 5); bool(n_wanden ≥ 5)*bool(zijden_5 ≠ 2)*bool(zijden_5 ≠ 5); bool(n_wanden ≥ 6)*bool(zijden_6 ≠ 2)*bool(zijden_6 ≠ 5))
+nodig_B = max(bool(zijden_1 ≠ 1)*bool(zijden_1 ≠ 4); bool(n_wanden ≥ 2)*bool(zijden_2 ≠ 1)*bool(zijden_2 ≠ 4); bool(n_wanden ≥ 3)*bool(zijden_3 ≠ 1)*bool(zijden_3 ≠ 4); bool(n_wanden ≥ 4)*bool(zijden_4 ≠ 1)*bool(zijden_4 ≠ 4); bool(n_wanden ≥ 5)*bool(zijden_5 ≠ 1)*bool(zijden_5 ≠ 4); bool(n_wanden ≥ 6)*bool(zijden_6 ≠ 1)*bool(zijden_6 ≠ 4))
+ok_pl(t; b; s; d; bron) = bool(t > 0 mm and b > 0 mm and s > 0 mm)*if(bron ≡ 1; bool(d > 0 mm); 1)
+ok_L = bool(L_1 > 0 mm)*bool(n_wanden < 2 or L_2 > 0 mm)*bool(n_wanden < 3 or L_3 > 0 mm)*bool(n_wanden < 4 or L_4 > 0 mm)*bool(n_wanden < 5 or L_5 > 0 mm)*bool(n_wanden < 6 or L_6 > 0 mm)
+ok_inv = bool(b_st > 0 mm and h_st > 0 mm and hoh > 0 mm and n_eind > 0 and h_w > 0 mm)*ok_L*if(nodig_A ≡ 1; ok_pl(t_A; b_pl,A; s_A; d_A; bron_A); 1)*if(nodig_B ≡ 1; ok_pl(t_B; b_pl,B; s_B; d_B; bron_B); 1)
 #show
-R_tot', som van de sterkten van de wanden (9.20)'
-x_c', sterktecentrum: Σ R_i·x_i / R_tot'
-e_t,a = B_gevel/2 + abs(e_F) - x_c', last op B/2 + e_F, ten opzichte van het sterktecentrum'
-e_t,b = B_gevel/2 - abs(e_F) - x_c', last op B/2 − e_F'
-M_t,a = F_v,Ed*e_t,a to kN*m
-M_t,b = F_v,Ed*e_t,b to kN*m
-I_R', Σ R_i·(x_i − x_c)²; torsiedeel van wand i: M_t·R_i·(x_i − x_c)/I_R'
-#if I_R < 0.001 kN*m^2
-    #if max(abs(M_t,a); abs(M_t,b)) > 0.01 kN*m
-        '<b style="color:#b91c1c">De wanden in deze richting liggen in één lijn en kunnen het torsiemoment niet opnemen; dat moet via de wanden in de andere richting.</b>
+#if ok_inv ≡ 0
+    '<b style="color:#b91c1c">De invoer is onvolledig: stijlmaten, h.o.h., aantal stijlen aan het wandeinde en wandhoogte groter dan 0, de lengte van elke wand groter dan 0, en voor elke gebruikte beplating de plaatdikte, plaatbreedte, afstand langs de plaatranden en, als de sterkte berekend wordt, de diameter van het verbindingsmiddel groter dan 0.</b>
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>de wanden zijn niet getoetst: invoer onvolledig</b></span>
+#else
+    # 7. Verdeling van de horizontale belasting
+
+    '<i>Naar rato van de sterkte in het wandvlak (9.20). Het torsiemoment nemen alleen de evenwijdige
+    'wanden op, aan de veilige kant; per wand telt het grootste torsiedeel van de last op B/2 ± e<sub>F</sub>,
+    'en alleen als het iets toevoegt.</i>
+
+    #hide
+    R_tot = R_1 + R_2 + R_3 + R_4 + R_5 + R_6 to kN
+    x_c = (R_1*x_1 + R_2*x_2 + R_3*x_3 + R_4*x_4 + R_5*x_5 + R_6*x_6)/max(R_tot; 0.001 kN)
+    I_R = R_1*(x_1 - x_c)^2 + R_2*(x_2 - x_c)^2 + R_3*(x_3 - x_c)^2 + R_4*(x_4 - x_c)^2 + R_5*(x_5 - x_c)^2 + R_6*(x_6 - x_c)^2 to kN*m^2
+    UC_totaal = F_v,Ed/max(R_tot; 0.001 kN)
+    #show
+    R_tot', som van de sterkten van de wanden (9.20)'
+    x_c', sterktecentrum: Σ R_i·x_i / R_tot'
+    e_t,a = B_gevel/2 + abs(e_F) - x_c', last op B/2 + e_F, ten opzichte van het sterktecentrum'
+    e_t,b = B_gevel/2 - abs(e_F) - x_c', last op B/2 − e_F'
+    M_t,a = F_v,Ed*e_t,a to kN*m
+    M_t,b = F_v,Ed*e_t,b to kN*m
+    I_R', Σ R_i·(x_i − x_c)²; torsiedeel van wand i: M_t·R_i·(x_i − x_c)/I_R'
+    #if I_R < 0.001 kN*m^2
+        #if max(abs(M_t,a); abs(M_t,b)) > 0.01 kN*m
+            '<b style="color:#b91c1c">De wanden in deze richting liggen in één lijn en kunnen het torsiemoment niet opnemen; dat moet via de wanden in de andere richting.</b>
+        #end if
     #end if
-#end if
-#hide
-ΔF_1 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_1*(x_1 - x_c)/I_R; M_t,b*R_1*(x_1 - x_c)/I_R); 0 kN)
-F_1 = F_v,Ed*R_1/max(R_tot; 0.001 kN) + max(0 kN; ΔF_1) to kN
-zt_1 = if(zijden_1 ≡ 1; "A"; if(zijden_1 ≡ 2; "B"; if(zijden_1 ≡ 3; "A + B"; if(zijden_1 ≡ 4; "2× A"; "2× B"))))
-ΔF_2 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_2*(x_2 - x_c)/I_R; M_t,b*R_2*(x_2 - x_c)/I_R); 0 kN)
-F_2 = F_v,Ed*R_2/max(R_tot; 0.001 kN) + max(0 kN; ΔF_2) to kN
-zt_2 = if(zijden_2 ≡ 1; "A"; if(zijden_2 ≡ 2; "B"; if(zijden_2 ≡ 3; "A + B"; if(zijden_2 ≡ 4; "2× A"; "2× B"))))
-ΔF_3 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_3*(x_3 - x_c)/I_R; M_t,b*R_3*(x_3 - x_c)/I_R); 0 kN)
-F_3 = F_v,Ed*R_3/max(R_tot; 0.001 kN) + max(0 kN; ΔF_3) to kN
-zt_3 = if(zijden_3 ≡ 1; "A"; if(zijden_3 ≡ 2; "B"; if(zijden_3 ≡ 3; "A + B"; if(zijden_3 ≡ 4; "2× A"; "2× B"))))
-ΔF_4 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_4*(x_4 - x_c)/I_R; M_t,b*R_4*(x_4 - x_c)/I_R); 0 kN)
-F_4 = F_v,Ed*R_4/max(R_tot; 0.001 kN) + max(0 kN; ΔF_4) to kN
-zt_4 = if(zijden_4 ≡ 1; "A"; if(zijden_4 ≡ 2; "B"; if(zijden_4 ≡ 3; "A + B"; if(zijden_4 ≡ 4; "2× A"; "2× B"))))
-ΔF_5 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_5*(x_5 - x_c)/I_R; M_t,b*R_5*(x_5 - x_c)/I_R); 0 kN)
-F_5 = F_v,Ed*R_5/max(R_tot; 0.001 kN) + max(0 kN; ΔF_5) to kN
-zt_5 = if(zijden_5 ≡ 1; "A"; if(zijden_5 ≡ 2; "B"; if(zijden_5 ≡ 3; "A + B"; if(zijden_5 ≡ 4; "2× A"; "2× B"))))
-ΔF_6 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_6*(x_6 - x_c)/I_R; M_t,b*R_6*(x_6 - x_c)/I_R); 0 kN)
-F_6 = F_v,Ed*R_6/max(R_tot; 0.001 kN) + max(0 kN; ΔF_6) to kN
-zt_6 = if(zijden_6 ≡ 1; "A"; if(zijden_6 ≡ 2; "B"; if(zijden_6 ≡ 3; "A + B"; if(zijden_6 ≡ 4; "2× A"; "2× B"))))
-#show
+    #hide
+    ΔF_1 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_1*(x_1 - x_c)/I_R; M_t,b*R_1*(x_1 - x_c)/I_R); 0 kN)
+    F_1 = F_v,Ed*R_1/max(R_tot; 0.001 kN) + max(0 kN; ΔF_1) to kN
+    zt_1 = if(zijden_1 ≡ 1; "A"; if(zijden_1 ≡ 2; "B"; if(zijden_1 ≡ 3; "A + B"; if(zijden_1 ≡ 4; "2× A"; "2× B"))))
+    ΔF_2 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_2*(x_2 - x_c)/I_R; M_t,b*R_2*(x_2 - x_c)/I_R); 0 kN)
+    F_2 = F_v,Ed*R_2/max(R_tot; 0.001 kN) + max(0 kN; ΔF_2) to kN
+    zt_2 = if(zijden_2 ≡ 1; "A"; if(zijden_2 ≡ 2; "B"; if(zijden_2 ≡ 3; "A + B"; if(zijden_2 ≡ 4; "2× A"; "2× B"))))
+    ΔF_3 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_3*(x_3 - x_c)/I_R; M_t,b*R_3*(x_3 - x_c)/I_R); 0 kN)
+    F_3 = F_v,Ed*R_3/max(R_tot; 0.001 kN) + max(0 kN; ΔF_3) to kN
+    zt_3 = if(zijden_3 ≡ 1; "A"; if(zijden_3 ≡ 2; "B"; if(zijden_3 ≡ 3; "A + B"; if(zijden_3 ≡ 4; "2× A"; "2× B"))))
+    ΔF_4 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_4*(x_4 - x_c)/I_R; M_t,b*R_4*(x_4 - x_c)/I_R); 0 kN)
+    F_4 = F_v,Ed*R_4/max(R_tot; 0.001 kN) + max(0 kN; ΔF_4) to kN
+    zt_4 = if(zijden_4 ≡ 1; "A"; if(zijden_4 ≡ 2; "B"; if(zijden_4 ≡ 3; "A + B"; if(zijden_4 ≡ 4; "2× A"; "2× B"))))
+    ΔF_5 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_5*(x_5 - x_c)/I_R; M_t,b*R_5*(x_5 - x_c)/I_R); 0 kN)
+    F_5 = F_v,Ed*R_5/max(R_tot; 0.001 kN) + max(0 kN; ΔF_5) to kN
+    zt_5 = if(zijden_5 ≡ 1; "A"; if(zijden_5 ≡ 2; "B"; if(zijden_5 ≡ 3; "A + B"; if(zijden_5 ≡ 4; "2× A"; "2× B"))))
+    ΔF_6 = if(I_R > 0.001 kN*m^2; max(M_t,a*R_6*(x_6 - x_c)/I_R; M_t,b*R_6*(x_6 - x_c)/I_R); 0 kN)
+    F_6 = F_v,Ed*R_6/max(R_tot; 0.001 kN) + max(0 kN; ΔF_6) to kN
+    zt_6 = if(zijden_6 ≡ 1; "A"; if(zijden_6 ≡ 2; "B"; if(zijden_6 ≡ 3; "A + B"; if(zijden_6 ≡ 4; "2× A"; "2× B"))))
+    #show
 
-'<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
-'<tr style="border-bottom:2px solid #374151;">
-'<th style="text-align:left; padding:4px 8px;">Wand</th>
-'<th style="text-align:right; padding:4px 8px;">L (mm)</th>
-'<th style="text-align:left; padding:4px 8px;">Beplating</th>
-'<th style="text-align:right; padding:4px 8px;">x (m)</th>
-'<th style="text-align:right; padding:4px 8px;">F<sub>v,Rd</sub> (kN)</th>
-'<th style="text-align:right; padding:4px 8px;">ΔF torsie (kN)</th>
-'<th style="text-align:right; padding:4px 8px;">F<sub>v,Ed</sub> (kN)</th></tr>
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">1</td><td style="padding:4px 8px; text-align:right;">'L_1'</td><td style="padding:4px 8px;">'zt_1'</td><td style="padding:4px 8px; text-align:right;">'x_1'</td><td style="padding:4px 8px; text-align:right;">'R_1'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_1)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_1'</td></tr>
-#if n_wanden ≥ 2
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">2</td><td style="padding:4px 8px; text-align:right;">'L_2'</td><td style="padding:4px 8px;">'zt_2'</td><td style="padding:4px 8px; text-align:right;">'x_2'</td><td style="padding:4px 8px; text-align:right;">'R_2'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_2)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_2'</td></tr>
-#end if
-#if n_wanden ≥ 3
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">3</td><td style="padding:4px 8px; text-align:right;">'L_3'</td><td style="padding:4px 8px;">'zt_3'</td><td style="padding:4px 8px; text-align:right;">'x_3'</td><td style="padding:4px 8px; text-align:right;">'R_3'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_3)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_3'</td></tr>
-#end if
-#if n_wanden ≥ 4
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">4</td><td style="padding:4px 8px; text-align:right;">'L_4'</td><td style="padding:4px 8px;">'zt_4'</td><td style="padding:4px 8px; text-align:right;">'x_4'</td><td style="padding:4px 8px; text-align:right;">'R_4'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_4)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_4'</td></tr>
-#end if
-#if n_wanden ≥ 5
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">5</td><td style="padding:4px 8px; text-align:right;">'L_5'</td><td style="padding:4px 8px;">'zt_5'</td><td style="padding:4px 8px; text-align:right;">'x_5'</td><td style="padding:4px 8px; text-align:right;">'R_5'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_5)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_5'</td></tr>
-#end if
-#if n_wanden ≥ 6
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">6</td><td style="padding:4px 8px; text-align:right;">'L_6'</td><td style="padding:4px 8px;">'zt_6'</td><td style="padding:4px 8px; text-align:right;">'x_6'</td><td style="padding:4px 8px; text-align:right;">'R_6'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_6)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_6'</td></tr>
-#end if
-'</table>
+    '<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
+    '<tr style="border-bottom:2px solid #374151;">
+    '<th style="text-align:left; padding:4px 8px;">Wand</th>
+    '<th style="text-align:right; padding:4px 8px;">L (mm)</th>
+    '<th style="text-align:left; padding:4px 8px;">Beplating</th>
+    '<th style="text-align:right; padding:4px 8px;">x (m)</th>
+    '<th style="text-align:right; padding:4px 8px;">F<sub>v,Rd</sub> (kN)</th>
+    '<th style="text-align:right; padding:4px 8px;">ΔF torsie (kN)</th>
+    '<th style="text-align:right; padding:4px 8px;">F<sub>v,Ed</sub> (kN)</th></tr>
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">1</td><td style="padding:4px 8px; text-align:right;">'L_1'</td><td style="padding:4px 8px;">'zt_1'</td><td style="padding:4px 8px; text-align:right;">'x_1'</td><td style="padding:4px 8px; text-align:right;">'R_1'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_1)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_1'</td></tr>
+    #if n_wanden ≥ 2
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">2</td><td style="padding:4px 8px; text-align:right;">'L_2'</td><td style="padding:4px 8px;">'zt_2'</td><td style="padding:4px 8px; text-align:right;">'x_2'</td><td style="padding:4px 8px; text-align:right;">'R_2'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_2)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_2'</td></tr>
+    #end if
+    #if n_wanden ≥ 3
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">3</td><td style="padding:4px 8px; text-align:right;">'L_3'</td><td style="padding:4px 8px;">'zt_3'</td><td style="padding:4px 8px; text-align:right;">'x_3'</td><td style="padding:4px 8px; text-align:right;">'R_3'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_3)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_3'</td></tr>
+    #end if
+    #if n_wanden ≥ 4
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">4</td><td style="padding:4px 8px; text-align:right;">'L_4'</td><td style="padding:4px 8px;">'zt_4'</td><td style="padding:4px 8px; text-align:right;">'x_4'</td><td style="padding:4px 8px; text-align:right;">'R_4'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_4)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_4'</td></tr>
+    #end if
+    #if n_wanden ≥ 5
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">5</td><td style="padding:4px 8px; text-align:right;">'L_5'</td><td style="padding:4px 8px;">'zt_5'</td><td style="padding:4px 8px; text-align:right;">'x_5'</td><td style="padding:4px 8px; text-align:right;">'R_5'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_5)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_5'</td></tr>
+    #end if
+    #if n_wanden ≥ 6
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">6</td><td style="padding:4px 8px; text-align:right;">'L_6'</td><td style="padding:4px 8px;">'zt_6'</td><td style="padding:4px 8px; text-align:right;">'x_6'</td><td style="padding:4px 8px; text-align:right;">'R_6'</td><td style="padding:4px 8px; text-align:right;">'max(0 kN; ΔF_6)'</td><td style="padding:4px 8px; text-align:right; font-weight:700;">'F_6'</td></tr>
+    #end if
+    '</table>
 
-# 8. Toetsing per wand
+    # 8. Toetsing per wand
 
-'<i>Uit het aandeel F van een wand volgen de trek- en drukkracht aan de wandeinden (9.23). Het anker
-'en de eindstijl zijn aan beide einden gelijk: de wind kan van twee kanten komen.</i>
+    '<i>Uit het aandeel F van een wand volgen de trek- en drukkracht aan de wandeinden (9.23). Het anker
+    'en de eindstijl zijn aan beide einden gelijk: de wind kan van twee kanten komen.</i>
 
-'<h6>8.1 Eindstijl</h6>
-a_eind = hoh/2', invloedsbreedte van de eindstijl'
-#hide
-A_eind = n_eind*b_st*h_st
-W_eind = n_eind*b_st*h_st^2/6
-β_c = 0.2
-#show
-λ_rel,y = h_w/(h_st/sqrt(12))/π*sqrt(f_c,0,k/E_0,05)', uit het wandvlak, kniklengte = wandhoogte (6.21)'
-#hide
-k_y = 0.5*(1 + β_c*(λ_rel,y - 0.3) + λ_rel,y^2)
-'In het wandvlak houdt de beplating de stijl vast; kniklengte = de afstand
-'tussen de verbindingsmiddelen.
-λ_z = max(s_A; s_B)/(n_eind*b_st/sqrt(12))
-λ_rel,z = λ_z/π*sqrt(f_c,0,k/E_0,05)
-k_z = 0.5*(1 + β_c*(λ_rel,z - 0.3) + λ_rel,z^2)
-#show
-k_c,y = min(1; 1/(k_y + sqrt(k_y^2 - λ_rel,y^2)))', (6.25) met (6.27), β_c = 0,2 (6.29)'
-k_c,z = min(1; 1/(k_z + sqrt(k_z^2 - λ_rel,z^2)))', in het wandvlak, kniklengte = afstand van de verbindingsmiddelen (6.26)'
-k_m = 0.7', rechthoekige doorsnede (§6.1.6(2))'
-A_ef = h_st*(n_eind*b_st + 30 mm)', contactvlak op de onderregel: +30 mm aan de binnenzijde (§6.1.5(1))'
-k_c,90 = 1.25', naaldhout op een doorgaande ondersteuning (§6.1.5(3))'
-u_max = h_w/300', verplaatsing per bouwlaag (NB bij NEN-EN 1990, A1.4.3)'
+    '<h6>8.1 Eindstijl</h6>
+    a_eind = hoh/2', invloedsbreedte van de eindstijl'
+    #hide
+    A_eind = n_eind*b_st*h_st
+    W_eind = n_eind*b_st*h_st^2/6
+    β_c = 0.2
+    #show
+    λ_rel,y = h_w/(h_st/sqrt(12))/π*sqrt(f_c,0,k/E_0,05)', uit het wandvlak, kniklengte = wandhoogte (6.21)'
+    #hide
+    k_y = 0.5*(1 + β_c*(λ_rel,y - 0.3) + λ_rel,y^2)
+    'In het wandvlak houdt de beplating de stijl vast; kniklengte = de afstand
+    'tussen de verbindingsmiddelen.
+    λ_z = max(s_A; s_B)/(n_eind*b_st/sqrt(12))
+    λ_rel,z = λ_z/π*sqrt(f_c,0,k/E_0,05)
+    k_z = 0.5*(1 + β_c*(λ_rel,z - 0.3) + λ_rel,z^2)
+    #show
+    k_c,y = min(1; 1/(k_y + sqrt(k_y^2 - λ_rel,y^2)))', (6.25) met (6.27), β_c = 0,2 (6.29)'
+    k_c,z = min(1; 1/(k_z + sqrt(k_z^2 - λ_rel,z^2)))', in het wandvlak, kniklengte = afstand van de verbindingsmiddelen (6.26)'
+    k_m = 0.7', rechthoekige doorsnede (§6.1.6(2))'
+    A_ef = h_st*(n_eind*b_st + 30 mm)', contactvlak op de onderregel: +30 mm aan de binnenzijde (§6.1.5(1))'
+    k_c,90 = 1.25', naaldhout op een doorgaande ondersteuning (§6.1.5(3))'
+    u_max = h_w/300', verplaatsing per bouwlaag (NB bij NEN-EN 1990, A1.4.3)'
 
-'<h6>8.2 Rekenregels</h6>
-'<ul style="margin:2px 0 0 0; padding-left:1.3em;"><li>Hefboom (9.23): L<sub>ef</sub> = Σ b<sub>i</sub>·c<sub>i</sub> van de meetellende panelen, gedeeld door c<sub>i</sub> van het volle paneel; bij platen aan twee zijden de kleinste. F<sub>t</sub> = F·h/L<sub>ef</sub>.</li><li>Anker: N<sub>t</sub> = F<sub>t</sub> − γ<sub>G,inf</sub>·G<sub>k</sub>·a<sub>eind</sub> ≥ 0. Alleen de last op de eindstijl zelf ontlast het anker; de last op de tussenstijlen gaat rechtstreeks naar de onderregel (methode A, §9.2.4.2(1) en (8)).</li><li>Eindstijl: N<sub>c</sub> = F<sub>t</sub> + (γ<sub>G</sub>·G<sub>k</sub> + γ<sub>Q</sub>·ψ<sub>0</sub>·Q<sub>k</sub>)·(a<sub>eind</sub> + a<sub>op</sub>) en M<sub>w</sub> = γ<sub>Q</sub>·|w<sub>k</sub>|·(a<sub>eind</sub> + a<sub>op</sub>)·h²/8, getoetst met (6.23)/(6.24); onderregel N<sub>c</sub>/(A<sub>ef</sub>·k<sub>c,90</sub>·f<sub>c,90,d</sub>) (6.3).</li><li>Glijden: F<sub>v,Ed</sub>/(v<sub>Rd</sub>·L). Plaat: τ = F·a<sub>zijde</sub>/(L<sub>ef</sub>·t) ≤ f<sub>v,d</sub> (NB bij 9.2.4.2(15)), met a<sub>zijde</sub> het aandeel van een zijde naar rato van de meegetelde sterkte.</li><li>Verplaatsing bij F/γ<sub>Q</sub> (6.14b), een ingenieursmodel: per paneel slip 2·F<sub>p</sub>·s·(b + h)/(K<sub>ser</sub>·b²) plus afschuiving F<sub>p</sub>·h/(G·t·b), het grootste van het volle en het restpaneel; daarbij ankerslip u<sub>a</sub>·h/L<sub>ef</sub> en de rek van de eindstijlen.</li></ul>
+    '<h6>8.2 Rekenregels<span class="alleen-scherm"></span></h6>
+    '<ul class="alleen-scherm" style="margin:2px 0 0 0; padding-left:1.3em;"><li>Hefboom (9.23): L<sub>ef</sub> = Σ b<sub>i</sub>·c<sub>i</sub> van de meetellende panelen, gedeeld door c<sub>i</sub> van het volle paneel; bij platen aan twee zijden de kleinste. F<sub>t</sub> = F·h/L<sub>ef</sub>.</li><li>Anker: N<sub>t</sub> = F<sub>t</sub> − γ<sub>G,inf</sub>·G<sub>k</sub>·a<sub>eind</sub> ≥ 0. Alleen de last op de eindstijl zelf ontlast het anker; de last op de tussenstijlen gaat rechtstreeks naar de onderregel (methode A, §9.2.4.2(1) en (8)).</li><li>Eindstijl: N<sub>c</sub> = F<sub>t</sub> + (γ<sub>G</sub>·G<sub>k</sub> + γ<sub>Q</sub>·ψ<sub>0</sub>·Q<sub>k</sub>)·(a<sub>eind</sub> + a<sub>op</sub>) en M<sub>w</sub> = γ<sub>Q</sub>·|w<sub>k</sub>|·(a<sub>eind</sub> + a<sub>op</sub>)·h²/8, getoetst met (6.23)/(6.24); onderregel N<sub>c</sub>/(A<sub>ef</sub>·k<sub>c,90</sub>·f<sub>c,90,d</sub>) (6.3).</li><li>Glijden: F<sub>v,Ed</sub>/(v<sub>Rd</sub>·L). Plaat: τ = F·a<sub>zijde</sub>/(L<sub>ef</sub>·t) ≤ f<sub>v,d</sub> (NB bij 9.2.4.2(15)), met a<sub>zijde</sub> het aandeel van een zijde naar rato van de meegetelde sterkte.</li><li>Verplaatsing bij F/γ<sub>Q</sub> (6.14b), een ingenieursmodel: per paneel slip 2·F<sub>p</sub>·s·(b + h)/(K<sub>ser</sub>·b²) plus afschuiving F<sub>p</sub>·h/(G·t·b), het grootste van het volle en het restpaneel; daarbij ankerslip u<sub>a</sub>·h/L<sub>ef</sub> en de rek van de eindstijlen.</li></ul>
 
-#hide
-UC_st(N; M) = max(N/A_eind/(k_c,y*f_c,0,d) + M/W_eind/f_m,d; N/A_eind/(k_c,z*f_c,0,d) + k_m*M/W_eind/f_m,d)
-'De schuifkracht van een wand met platen aan twee zijden verdeelt zich naar
-'rato van de meegetelde sterkte per zijde.
-C_A(L) = if(R_A(L) ≥ R_B(L); R_A(L); f_zwak*R_A(L))
-C_B(L) = if(R_B(L) > R_A(L); R_B(L); f_zwak*R_B(L))
-a_A(L; z) = if(z ≡ 1; 1; if(z ≡ 2; 0; if(z ≡ 3; C_A(L)/max(C_A(L) + C_B(L); 0.001 kN); if(z ≡ 4; 0.5; 0))))
-a_B(L; z) = if(z ≡ 1; 0; if(z ≡ 2; 1; if(z ≡ 3; C_B(L)/max(C_A(L) + C_B(L); 0.001 kN); if(z ≡ 4; 0; 0.5))))
-'Een zijde zonder aandeel telt niet mee. Een plaat die in deze klimaatklasse
-'niet is toegestaan heeft geen sterkte; draagt hij toch, dan wordt de toets
-'hier onvoldoende.
-τ_A(F; L; z) = if(a_A(L; z) > 0; F*a_A(L; z)/(max(L_eA(L); 1 mm)*t_A)/max(f_v,d,A; 0.001 N/mm^2); 0)
-τ_B(F; L; z) = if(a_B(L; z) > 0; F*a_B(L; z)/(max(L_eB(L); 1 mm)*t_B)/max(f_v,d,B; 0.001 N/mm^2); 0)
-UC_pl(F; L; z) = max(τ_A(F; L; z); τ_B(F; L; z))
-'Verplaatsing per zijde met het aandeel van die zijde; zonder K_ser of G van
-'een zijde die meedraagt is ze niet bepaald. Per paneel met de schuifstroom
-'q = F·a·R_p(b)/(R·b): het volle paneel en het restpaneel, het grootste telt.
-'Bij platen breder dan h/2 kan een smal restpaneel meer verplaatsen.
-bekend_A = bool(K_A > 0 N/mm)*bool(G_pl,A > 0 N/mm^2)
-bekend_B = bool(K_B > 0 N/mm)*bool(G_pl,B > 0 N/mm^2)
-onbekend(L; z) = max(bool(a_A(L; z) > 0)*(1 - bekend_A); bool(a_B(L; z) > 0)*(1 - bekend_B))
-b_rA(L) = L - floor(L/b_pl,A)*b_pl,A
-b_rB(L) = L - floor(L/b_pl,B)*b_pl,B
-q_A(F; L; z; b) = F*a_A(L; z)*R_pA(b)/(max(R_A(L); 0.001 kN)*max(b; 1 mm))
-q_B(F; L; z; b) = F*a_B(L; z)*R_pB(b)/(max(R_B(L); 0.001 kN)*max(b; 1 mm))
-u_pA(q; b) = q*(2*s_A*(b + h_w)/(max(K_A; 0.001 N/mm)*max(b; 1 mm)) + h_w/(max(G_pl,A; 0.001 N/mm^2)*t_A))
-u_pB(q; b) = q*(2*s_B*(b + h_w)/(max(K_B; 0.001 N/mm)*max(b; 1 mm)) + h_w/(max(G_pl,B; 0.001 N/mm^2)*t_B))
-v_A(F; L; z) = if(a_A(L; z) > 0; max(u_pA(q_A(F; L; z; b_eA(L)); b_eA(L)); u_pA(q_A(F; L; z; b_rA(L)); b_rA(L))); 0 mm)
-v_B(F; L; z) = if(a_B(L; z) > 0; max(u_pB(q_B(F; L; z; b_eB(L)); b_eB(L)); u_pB(q_B(F; L; z; b_rB(L)); b_rB(L))); 0 mm)
-u_w(F; L; z) = max(v_A(F; L; z); v_B(F; L; z)) + (u_a + 2*F*h_w^2/(max(L_ef(L; z); 1 mm)*E_0,mean*A_eind))*h_w/max(L_ef(L; z); 1 mm)
-N_t,1 = 0 kN
-N_c,1 = 0 kN
-F_t,1 = 0 kN
-M_w,1 = 0 kN*m
-L_ef,1 = 0 mm
-u_1 = 0 mm
-UC_r,1 = 0
-UC_a,1 = 0
-UC_st,1 = 0
-UC_c90,1 = 0
-UC_gl,1 = 0
-UC_pl,1 = 0
-UC_u,1 = 0
-UC_w,1 = 0
-onb_1 = 0
-N_t,2 = 0 kN
-N_c,2 = 0 kN
-F_t,2 = 0 kN
-M_w,2 = 0 kN*m
-L_ef,2 = 0 mm
-u_2 = 0 mm
-UC_r,2 = 0
-UC_a,2 = 0
-UC_st,2 = 0
-UC_c90,2 = 0
-UC_gl,2 = 0
-UC_pl,2 = 0
-UC_u,2 = 0
-UC_w,2 = 0
-onb_2 = 0
-N_t,3 = 0 kN
-N_c,3 = 0 kN
-F_t,3 = 0 kN
-M_w,3 = 0 kN*m
-L_ef,3 = 0 mm
-u_3 = 0 mm
-UC_r,3 = 0
-UC_a,3 = 0
-UC_st,3 = 0
-UC_c90,3 = 0
-UC_gl,3 = 0
-UC_pl,3 = 0
-UC_u,3 = 0
-UC_w,3 = 0
-onb_3 = 0
-N_t,4 = 0 kN
-N_c,4 = 0 kN
-F_t,4 = 0 kN
-M_w,4 = 0 kN*m
-L_ef,4 = 0 mm
-u_4 = 0 mm
-UC_r,4 = 0
-UC_a,4 = 0
-UC_st,4 = 0
-UC_c90,4 = 0
-UC_gl,4 = 0
-UC_pl,4 = 0
-UC_u,4 = 0
-UC_w,4 = 0
-onb_4 = 0
-N_t,5 = 0 kN
-N_c,5 = 0 kN
-F_t,5 = 0 kN
-M_w,5 = 0 kN*m
-L_ef,5 = 0 mm
-u_5 = 0 mm
-UC_r,5 = 0
-UC_a,5 = 0
-UC_st,5 = 0
-UC_c90,5 = 0
-UC_gl,5 = 0
-UC_pl,5 = 0
-UC_u,5 = 0
-UC_w,5 = 0
-onb_5 = 0
-N_t,6 = 0 kN
-N_c,6 = 0 kN
-F_t,6 = 0 kN
-M_w,6 = 0 kN*m
-L_ef,6 = 0 mm
-u_6 = 0 mm
-UC_r,6 = 0
-UC_a,6 = 0
-UC_st,6 = 0
-UC_c90,6 = 0
-UC_gl,6 = 0
-UC_pl,6 = 0
-UC_u,6 = 0
-UC_w,6 = 0
-onb_6 = 0
-UC_r,1 = F_1/max(R_1; 0.001 kN)
-L_ef,1 = L_ef(L_1; zijden_1) to mm
-F_t,1 = F_1*h_w/max(L_ef,1; 1 mm) to kN
-N_t,1 = max(0 kN; F_t,1 - γ_G,inf*G_k,1*a_eind) to kN
-UC_a,1 = N_t,1/max(F_a,Rd; 0.001 kN)
-N_c,1 = F_t,1 + (γ_G*G_k,1 + γ_Q*ψ_0*Q_k,1)*(a_eind + a_op,1) to kN
-M_w,1 = γ_Q*abs(w_k,1)*(a_eind + a_op,1)*h_w^2/8 to kN*m
-UC_st,1 = UC_st(N_c,1; M_w,1)
-UC_c90,1 = N_c,1/(A_ef*k_c,90*f_c,90,d)
-UC_gl,1 = F_1/(max(v_Rd; 0.001 kN/m)*max(L_1; 1 mm))
-UC_pl,1 = UC_pl(F_1; L_1; zijden_1)
-onb_1 = onbekend(L_1; zijden_1)
-u_1 = if(onb_1 ≡ 1; 0 mm; u_w(F_1/γ_Q; L_1; zijden_1)) to mm
-UC_u,1 = u_1/u_max
-UC_w,1 = max(UC_r,1; UC_a,1; UC_st,1; UC_c90,1; UC_gl,1; UC_pl,1; UC_u,1)
-#if n_wanden ≥ 2
-    UC_r,2 = F_2/max(R_2; 0.001 kN)
-    L_ef,2 = L_ef(L_2; zijden_2) to mm
-    F_t,2 = F_2*h_w/max(L_ef,2; 1 mm) to kN
-    N_t,2 = max(0 kN; F_t,2 - γ_G,inf*G_k,2*a_eind) to kN
-    UC_a,2 = N_t,2/max(F_a,Rd; 0.001 kN)
-    N_c,2 = F_t,2 + (γ_G*G_k,2 + γ_Q*ψ_0*Q_k,2)*(a_eind + a_op,2) to kN
-    M_w,2 = γ_Q*abs(w_k,2)*(a_eind + a_op,2)*h_w^2/8 to kN*m
-    UC_st,2 = UC_st(N_c,2; M_w,2)
-    UC_c90,2 = N_c,2/(A_ef*k_c,90*f_c,90,d)
-    UC_gl,2 = F_2/(max(v_Rd; 0.001 kN/m)*max(L_2; 1 mm))
-    UC_pl,2 = UC_pl(F_2; L_2; zijden_2)
-    onb_2 = onbekend(L_2; zijden_2)
-    u_2 = if(onb_2 ≡ 1; 0 mm; u_w(F_2/γ_Q; L_2; zijden_2)) to mm
-    UC_u,2 = u_2/u_max
-    UC_w,2 = max(UC_r,2; UC_a,2; UC_st,2; UC_c90,2; UC_gl,2; UC_pl,2; UC_u,2)
-#end if
-#if n_wanden ≥ 3
-    UC_r,3 = F_3/max(R_3; 0.001 kN)
-    L_ef,3 = L_ef(L_3; zijden_3) to mm
-    F_t,3 = F_3*h_w/max(L_ef,3; 1 mm) to kN
-    N_t,3 = max(0 kN; F_t,3 - γ_G,inf*G_k,3*a_eind) to kN
-    UC_a,3 = N_t,3/max(F_a,Rd; 0.001 kN)
-    N_c,3 = F_t,3 + (γ_G*G_k,3 + γ_Q*ψ_0*Q_k,3)*(a_eind + a_op,3) to kN
-    M_w,3 = γ_Q*abs(w_k,3)*(a_eind + a_op,3)*h_w^2/8 to kN*m
-    UC_st,3 = UC_st(N_c,3; M_w,3)
-    UC_c90,3 = N_c,3/(A_ef*k_c,90*f_c,90,d)
-    UC_gl,3 = F_3/(max(v_Rd; 0.001 kN/m)*max(L_3; 1 mm))
-    UC_pl,3 = UC_pl(F_3; L_3; zijden_3)
-    onb_3 = onbekend(L_3; zijden_3)
-    u_3 = if(onb_3 ≡ 1; 0 mm; u_w(F_3/γ_Q; L_3; zijden_3)) to mm
-    UC_u,3 = u_3/u_max
-    UC_w,3 = max(UC_r,3; UC_a,3; UC_st,3; UC_c90,3; UC_gl,3; UC_pl,3; UC_u,3)
-#end if
-#if n_wanden ≥ 4
-    UC_r,4 = F_4/max(R_4; 0.001 kN)
-    L_ef,4 = L_ef(L_4; zijden_4) to mm
-    F_t,4 = F_4*h_w/max(L_ef,4; 1 mm) to kN
-    N_t,4 = max(0 kN; F_t,4 - γ_G,inf*G_k,4*a_eind) to kN
-    UC_a,4 = N_t,4/max(F_a,Rd; 0.001 kN)
-    N_c,4 = F_t,4 + (γ_G*G_k,4 + γ_Q*ψ_0*Q_k,4)*(a_eind + a_op,4) to kN
-    M_w,4 = γ_Q*abs(w_k,4)*(a_eind + a_op,4)*h_w^2/8 to kN*m
-    UC_st,4 = UC_st(N_c,4; M_w,4)
-    UC_c90,4 = N_c,4/(A_ef*k_c,90*f_c,90,d)
-    UC_gl,4 = F_4/(max(v_Rd; 0.001 kN/m)*max(L_4; 1 mm))
-    UC_pl,4 = UC_pl(F_4; L_4; zijden_4)
-    onb_4 = onbekend(L_4; zijden_4)
-    u_4 = if(onb_4 ≡ 1; 0 mm; u_w(F_4/γ_Q; L_4; zijden_4)) to mm
-    UC_u,4 = u_4/u_max
-    UC_w,4 = max(UC_r,4; UC_a,4; UC_st,4; UC_c90,4; UC_gl,4; UC_pl,4; UC_u,4)
-#end if
-#if n_wanden ≥ 5
-    UC_r,5 = F_5/max(R_5; 0.001 kN)
-    L_ef,5 = L_ef(L_5; zijden_5) to mm
-    F_t,5 = F_5*h_w/max(L_ef,5; 1 mm) to kN
-    N_t,5 = max(0 kN; F_t,5 - γ_G,inf*G_k,5*a_eind) to kN
-    UC_a,5 = N_t,5/max(F_a,Rd; 0.001 kN)
-    N_c,5 = F_t,5 + (γ_G*G_k,5 + γ_Q*ψ_0*Q_k,5)*(a_eind + a_op,5) to kN
-    M_w,5 = γ_Q*abs(w_k,5)*(a_eind + a_op,5)*h_w^2/8 to kN*m
-    UC_st,5 = UC_st(N_c,5; M_w,5)
-    UC_c90,5 = N_c,5/(A_ef*k_c,90*f_c,90,d)
-    UC_gl,5 = F_5/(max(v_Rd; 0.001 kN/m)*max(L_5; 1 mm))
-    UC_pl,5 = UC_pl(F_5; L_5; zijden_5)
-    onb_5 = onbekend(L_5; zijden_5)
-    u_5 = if(onb_5 ≡ 1; 0 mm; u_w(F_5/γ_Q; L_5; zijden_5)) to mm
-    UC_u,5 = u_5/u_max
-    UC_w,5 = max(UC_r,5; UC_a,5; UC_st,5; UC_c90,5; UC_gl,5; UC_pl,5; UC_u,5)
-#end if
-#if n_wanden ≥ 6
-    UC_r,6 = F_6/max(R_6; 0.001 kN)
-    L_ef,6 = L_ef(L_6; zijden_6) to mm
-    F_t,6 = F_6*h_w/max(L_ef,6; 1 mm) to kN
-    N_t,6 = max(0 kN; F_t,6 - γ_G,inf*G_k,6*a_eind) to kN
-    UC_a,6 = N_t,6/max(F_a,Rd; 0.001 kN)
-    N_c,6 = F_t,6 + (γ_G*G_k,6 + γ_Q*ψ_0*Q_k,6)*(a_eind + a_op,6) to kN
-    M_w,6 = γ_Q*abs(w_k,6)*(a_eind + a_op,6)*h_w^2/8 to kN*m
-    UC_st,6 = UC_st(N_c,6; M_w,6)
-    UC_c90,6 = N_c,6/(A_ef*k_c,90*f_c,90,d)
-    UC_gl,6 = F_6/(max(v_Rd; 0.001 kN/m)*max(L_6; 1 mm))
-    UC_pl,6 = UC_pl(F_6; L_6; zijden_6)
-    onb_6 = onbekend(L_6; zijden_6)
-    u_6 = if(onb_6 ≡ 1; 0 mm; u_w(F_6/γ_Q; L_6; zijden_6)) to mm
-    UC_u,6 = u_6/u_max
-    UC_w,6 = max(UC_r,6; UC_a,6; UC_st,6; UC_c90,6; UC_gl,6; UC_pl,6; UC_u,6)
-#end if
-onb_tot = max(onb_1; onb_2; onb_3; onb_4; onb_5; onb_6)
-#show
+    #hide
+    UC_st(N; M) = max(N/A_eind/(k_c,y*f_c,0,d) + M/W_eind/f_m,d; N/A_eind/(k_c,z*f_c,0,d) + k_m*M/W_eind/f_m,d)
+    'De schuifkracht van een wand met platen aan twee zijden verdeelt zich naar
+    'rato van de meegetelde sterkte per zijde.
+    C_A(L) = if(R_A(L) ≥ R_B(L); R_A(L); f_zwak*R_A(L))
+    C_B(L) = if(R_B(L) > R_A(L); R_B(L); f_zwak*R_B(L))
+    a_A(L; z) = if(z ≡ 1; 1; if(z ≡ 2; 0; if(z ≡ 3; C_A(L)/max(C_A(L) + C_B(L); 0.001 kN); if(z ≡ 4; 0.5; 0))))
+    a_B(L; z) = if(z ≡ 1; 0; if(z ≡ 2; 1; if(z ≡ 3; C_B(L)/max(C_A(L) + C_B(L); 0.001 kN); if(z ≡ 4; 0; 0.5))))
+    'Een zijde zonder aandeel telt niet mee. Een plaat die in deze klimaatklasse
+    'niet is toegestaan heeft geen sterkte; draagt hij toch, dan wordt de toets
+    'hier onvoldoende.
+    τ_A(F; L; z) = if(a_A(L; z) > 0; F*a_A(L; z)/(max(L_eA(L); 1 mm)*t_A)/max(f_v,d,A; 0.001 N/mm^2); 0)
+    τ_B(F; L; z) = if(a_B(L; z) > 0; F*a_B(L; z)/(max(L_eB(L); 1 mm)*t_B)/max(f_v,d,B; 0.001 N/mm^2); 0)
+    UC_pl(F; L; z) = max(τ_A(F; L; z); τ_B(F; L; z))
+    'Verplaatsing per zijde met het aandeel van die zijde; zonder K_ser of G van
+    'een zijde die meedraagt is ze niet bepaald. Per paneel met de schuifstroom
+    'q = F·a·R_p(b)/(R·b): het volle paneel en het restpaneel, het grootste telt.
+    'Bij platen breder dan h/2 kan een smal restpaneel meer verplaatsen.
+    bekend_A = bool(K_A > 0 N/mm)*bool(G_pl,A > 0 N/mm^2)
+    bekend_B = bool(K_B > 0 N/mm)*bool(G_pl,B > 0 N/mm^2)
+    onbekend(L; z) = max(bool(a_A(L; z) > 0)*(1 - bekend_A); bool(a_B(L; z) > 0)*(1 - bekend_B))
+    b_rA(L) = L - floor(L/b_pl,A)*b_pl,A
+    b_rB(L) = L - floor(L/b_pl,B)*b_pl,B
+    q_A(F; L; z; b) = F*a_A(L; z)*R_pA(b)/(max(R_A(L); 0.001 kN)*max(b; 1 mm))
+    q_B(F; L; z; b) = F*a_B(L; z)*R_pB(b)/(max(R_B(L); 0.001 kN)*max(b; 1 mm))
+    u_pA(q; b) = q*(2*s_A*(b + h_w)/(max(K_A; 0.001 N/mm)*max(b; 1 mm)) + h_w/(max(G_pl,A; 0.001 N/mm^2)*t_A))
+    u_pB(q; b) = q*(2*s_B*(b + h_w)/(max(K_B; 0.001 N/mm)*max(b; 1 mm)) + h_w/(max(G_pl,B; 0.001 N/mm^2)*t_B))
+    v_A(F; L; z) = if(a_A(L; z) > 0; max(u_pA(q_A(F; L; z; b_eA(L)); b_eA(L)); u_pA(q_A(F; L; z; b_rA(L)); b_rA(L))); 0 mm)
+    v_B(F; L; z) = if(a_B(L; z) > 0; max(u_pB(q_B(F; L; z; b_eB(L)); b_eB(L)); u_pB(q_B(F; L; z; b_rB(L)); b_rB(L))); 0 mm)
+    u_w(F; L; z) = max(v_A(F; L; z); v_B(F; L; z)) + (u_a + 2*F*h_w^2/(max(L_ef(L; z); 1 mm)*E_0,mean*A_eind))*h_w/max(L_ef(L; z); 1 mm)
+    N_t,1 = 0 kN
+    N_c,1 = 0 kN
+    F_t,1 = 0 kN
+    M_w,1 = 0 kN*m
+    L_ef,1 = 0 mm
+    u_1 = 0 mm
+    UC_r,1 = 0
+    UC_a,1 = 0
+    UC_st,1 = 0
+    UC_c90,1 = 0
+    UC_gl,1 = 0
+    UC_pl,1 = 0
+    UC_u,1 = 0
+    UC_w,1 = 0
+    onb_1 = 0
+    N_t,2 = 0 kN
+    N_c,2 = 0 kN
+    F_t,2 = 0 kN
+    M_w,2 = 0 kN*m
+    L_ef,2 = 0 mm
+    u_2 = 0 mm
+    UC_r,2 = 0
+    UC_a,2 = 0
+    UC_st,2 = 0
+    UC_c90,2 = 0
+    UC_gl,2 = 0
+    UC_pl,2 = 0
+    UC_u,2 = 0
+    UC_w,2 = 0
+    onb_2 = 0
+    N_t,3 = 0 kN
+    N_c,3 = 0 kN
+    F_t,3 = 0 kN
+    M_w,3 = 0 kN*m
+    L_ef,3 = 0 mm
+    u_3 = 0 mm
+    UC_r,3 = 0
+    UC_a,3 = 0
+    UC_st,3 = 0
+    UC_c90,3 = 0
+    UC_gl,3 = 0
+    UC_pl,3 = 0
+    UC_u,3 = 0
+    UC_w,3 = 0
+    onb_3 = 0
+    N_t,4 = 0 kN
+    N_c,4 = 0 kN
+    F_t,4 = 0 kN
+    M_w,4 = 0 kN*m
+    L_ef,4 = 0 mm
+    u_4 = 0 mm
+    UC_r,4 = 0
+    UC_a,4 = 0
+    UC_st,4 = 0
+    UC_c90,4 = 0
+    UC_gl,4 = 0
+    UC_pl,4 = 0
+    UC_u,4 = 0
+    UC_w,4 = 0
+    onb_4 = 0
+    N_t,5 = 0 kN
+    N_c,5 = 0 kN
+    F_t,5 = 0 kN
+    M_w,5 = 0 kN*m
+    L_ef,5 = 0 mm
+    u_5 = 0 mm
+    UC_r,5 = 0
+    UC_a,5 = 0
+    UC_st,5 = 0
+    UC_c90,5 = 0
+    UC_gl,5 = 0
+    UC_pl,5 = 0
+    UC_u,5 = 0
+    UC_w,5 = 0
+    onb_5 = 0
+    N_t,6 = 0 kN
+    N_c,6 = 0 kN
+    F_t,6 = 0 kN
+    M_w,6 = 0 kN*m
+    L_ef,6 = 0 mm
+    u_6 = 0 mm
+    UC_r,6 = 0
+    UC_a,6 = 0
+    UC_st,6 = 0
+    UC_c90,6 = 0
+    UC_gl,6 = 0
+    UC_pl,6 = 0
+    UC_u,6 = 0
+    UC_w,6 = 0
+    onb_6 = 0
+    UC_r,1 = F_1/max(R_1; 0.001 kN)
+    L_ef,1 = L_ef(L_1; zijden_1) to mm
+    F_t,1 = F_1*h_w/max(L_ef,1; 1 mm) to kN
+    N_t,1 = max(0 kN; F_t,1 - γ_G,inf*G_k,1*a_eind) to kN
+    UC_a,1 = N_t,1/max(F_a,Rd; 0.001 kN)
+    N_c,1 = F_t,1 + (γ_G*G_k,1 + γ_Q*ψ_0*Q_k,1)*(a_eind + a_op,1) to kN
+    M_w,1 = γ_Q*abs(w_k,1)*(a_eind + a_op,1)*h_w^2/8 to kN*m
+    UC_st,1 = UC_st(N_c,1; M_w,1)
+    UC_c90,1 = N_c,1/(A_ef*k_c,90*f_c,90,d)
+    UC_gl,1 = F_1/(max(v_Rd; 0.001 kN/m)*max(L_1; 1 mm))
+    UC_pl,1 = UC_pl(F_1; L_1; zijden_1)
+    onb_1 = onbekend(L_1; zijden_1)
+    u_1 = if(onb_1 ≡ 1; 0 mm; u_w(F_1/γ_Q; L_1; zijden_1)) to mm
+    UC_u,1 = u_1/u_max
+    UC_w,1 = max(UC_r,1; UC_a,1; UC_st,1; UC_c90,1; UC_gl,1; UC_pl,1; UC_u,1)
+    #if n_wanden ≥ 2
+        UC_r,2 = F_2/max(R_2; 0.001 kN)
+        L_ef,2 = L_ef(L_2; zijden_2) to mm
+        F_t,2 = F_2*h_w/max(L_ef,2; 1 mm) to kN
+        N_t,2 = max(0 kN; F_t,2 - γ_G,inf*G_k,2*a_eind) to kN
+        UC_a,2 = N_t,2/max(F_a,Rd; 0.001 kN)
+        N_c,2 = F_t,2 + (γ_G*G_k,2 + γ_Q*ψ_0*Q_k,2)*(a_eind + a_op,2) to kN
+        M_w,2 = γ_Q*abs(w_k,2)*(a_eind + a_op,2)*h_w^2/8 to kN*m
+        UC_st,2 = UC_st(N_c,2; M_w,2)
+        UC_c90,2 = N_c,2/(A_ef*k_c,90*f_c,90,d)
+        UC_gl,2 = F_2/(max(v_Rd; 0.001 kN/m)*max(L_2; 1 mm))
+        UC_pl,2 = UC_pl(F_2; L_2; zijden_2)
+        onb_2 = onbekend(L_2; zijden_2)
+        u_2 = if(onb_2 ≡ 1; 0 mm; u_w(F_2/γ_Q; L_2; zijden_2)) to mm
+        UC_u,2 = u_2/u_max
+        UC_w,2 = max(UC_r,2; UC_a,2; UC_st,2; UC_c90,2; UC_gl,2; UC_pl,2; UC_u,2)
+    #end if
+    #if n_wanden ≥ 3
+        UC_r,3 = F_3/max(R_3; 0.001 kN)
+        L_ef,3 = L_ef(L_3; zijden_3) to mm
+        F_t,3 = F_3*h_w/max(L_ef,3; 1 mm) to kN
+        N_t,3 = max(0 kN; F_t,3 - γ_G,inf*G_k,3*a_eind) to kN
+        UC_a,3 = N_t,3/max(F_a,Rd; 0.001 kN)
+        N_c,3 = F_t,3 + (γ_G*G_k,3 + γ_Q*ψ_0*Q_k,3)*(a_eind + a_op,3) to kN
+        M_w,3 = γ_Q*abs(w_k,3)*(a_eind + a_op,3)*h_w^2/8 to kN*m
+        UC_st,3 = UC_st(N_c,3; M_w,3)
+        UC_c90,3 = N_c,3/(A_ef*k_c,90*f_c,90,d)
+        UC_gl,3 = F_3/(max(v_Rd; 0.001 kN/m)*max(L_3; 1 mm))
+        UC_pl,3 = UC_pl(F_3; L_3; zijden_3)
+        onb_3 = onbekend(L_3; zijden_3)
+        u_3 = if(onb_3 ≡ 1; 0 mm; u_w(F_3/γ_Q; L_3; zijden_3)) to mm
+        UC_u,3 = u_3/u_max
+        UC_w,3 = max(UC_r,3; UC_a,3; UC_st,3; UC_c90,3; UC_gl,3; UC_pl,3; UC_u,3)
+    #end if
+    #if n_wanden ≥ 4
+        UC_r,4 = F_4/max(R_4; 0.001 kN)
+        L_ef,4 = L_ef(L_4; zijden_4) to mm
+        F_t,4 = F_4*h_w/max(L_ef,4; 1 mm) to kN
+        N_t,4 = max(0 kN; F_t,4 - γ_G,inf*G_k,4*a_eind) to kN
+        UC_a,4 = N_t,4/max(F_a,Rd; 0.001 kN)
+        N_c,4 = F_t,4 + (γ_G*G_k,4 + γ_Q*ψ_0*Q_k,4)*(a_eind + a_op,4) to kN
+        M_w,4 = γ_Q*abs(w_k,4)*(a_eind + a_op,4)*h_w^2/8 to kN*m
+        UC_st,4 = UC_st(N_c,4; M_w,4)
+        UC_c90,4 = N_c,4/(A_ef*k_c,90*f_c,90,d)
+        UC_gl,4 = F_4/(max(v_Rd; 0.001 kN/m)*max(L_4; 1 mm))
+        UC_pl,4 = UC_pl(F_4; L_4; zijden_4)
+        onb_4 = onbekend(L_4; zijden_4)
+        u_4 = if(onb_4 ≡ 1; 0 mm; u_w(F_4/γ_Q; L_4; zijden_4)) to mm
+        UC_u,4 = u_4/u_max
+        UC_w,4 = max(UC_r,4; UC_a,4; UC_st,4; UC_c90,4; UC_gl,4; UC_pl,4; UC_u,4)
+    #end if
+    #if n_wanden ≥ 5
+        UC_r,5 = F_5/max(R_5; 0.001 kN)
+        L_ef,5 = L_ef(L_5; zijden_5) to mm
+        F_t,5 = F_5*h_w/max(L_ef,5; 1 mm) to kN
+        N_t,5 = max(0 kN; F_t,5 - γ_G,inf*G_k,5*a_eind) to kN
+        UC_a,5 = N_t,5/max(F_a,Rd; 0.001 kN)
+        N_c,5 = F_t,5 + (γ_G*G_k,5 + γ_Q*ψ_0*Q_k,5)*(a_eind + a_op,5) to kN
+        M_w,5 = γ_Q*abs(w_k,5)*(a_eind + a_op,5)*h_w^2/8 to kN*m
+        UC_st,5 = UC_st(N_c,5; M_w,5)
+        UC_c90,5 = N_c,5/(A_ef*k_c,90*f_c,90,d)
+        UC_gl,5 = F_5/(max(v_Rd; 0.001 kN/m)*max(L_5; 1 mm))
+        UC_pl,5 = UC_pl(F_5; L_5; zijden_5)
+        onb_5 = onbekend(L_5; zijden_5)
+        u_5 = if(onb_5 ≡ 1; 0 mm; u_w(F_5/γ_Q; L_5; zijden_5)) to mm
+        UC_u,5 = u_5/u_max
+        UC_w,5 = max(UC_r,5; UC_a,5; UC_st,5; UC_c90,5; UC_gl,5; UC_pl,5; UC_u,5)
+    #end if
+    #if n_wanden ≥ 6
+        UC_r,6 = F_6/max(R_6; 0.001 kN)
+        L_ef,6 = L_ef(L_6; zijden_6) to mm
+        F_t,6 = F_6*h_w/max(L_ef,6; 1 mm) to kN
+        N_t,6 = max(0 kN; F_t,6 - γ_G,inf*G_k,6*a_eind) to kN
+        UC_a,6 = N_t,6/max(F_a,Rd; 0.001 kN)
+        N_c,6 = F_t,6 + (γ_G*G_k,6 + γ_Q*ψ_0*Q_k,6)*(a_eind + a_op,6) to kN
+        M_w,6 = γ_Q*abs(w_k,6)*(a_eind + a_op,6)*h_w^2/8 to kN*m
+        UC_st,6 = UC_st(N_c,6; M_w,6)
+        UC_c90,6 = N_c,6/(A_ef*k_c,90*f_c,90,d)
+        UC_gl,6 = F_6/(max(v_Rd; 0.001 kN/m)*max(L_6; 1 mm))
+        UC_pl,6 = UC_pl(F_6; L_6; zijden_6)
+        onb_6 = onbekend(L_6; zijden_6)
+        u_6 = if(onb_6 ≡ 1; 0 mm; u_w(F_6/γ_Q; L_6; zijden_6)) to mm
+        UC_u,6 = u_6/u_max
+        UC_w,6 = max(UC_r,6; UC_a,6; UC_st,6; UC_c90,6; UC_gl,6; UC_pl,6; UC_u,6)
+    #end if
+    onb_tot = max(onb_1; onb_2; onb_3; onb_4; onb_5; onb_6)
+    #show
 
-'<h6>8.3 Krachten en verplaatsing per wand</h6>
-'<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
-'<tr style="border-bottom:2px solid #374151;">
-'<th style="text-align:left; padding:4px 8px;">Wand</th>
-'<th style="text-align:right; padding:4px 8px;">L<sub>ef</sub> (mm)</th>
-'<th style="text-align:right; padding:4px 8px;">F<sub>t</sub> (kN)</th>
-'<th style="text-align:right; padding:4px 8px;">N<sub>t</sub> anker (kN)</th>
-'<th style="text-align:right; padding:4px 8px;">N<sub>c</sub> eindstijl (kN)</th>
-'<th style="text-align:right; padding:4px 8px;">M<sub>w</sub> (kNm)</th>
-'<th style="text-align:right; padding:4px 8px;">u (mm)</th></tr>
-#if onb_1 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">1</td><td style="padding:4px 8px; text-align:right;">'L_ef,1'</td><td style="padding:4px 8px; text-align:right;">'F_t,1'</td><td style="padding:4px 8px; text-align:right;">'N_t,1'</td><td style="padding:4px 8px; text-align:right;">'N_c,1'</td><td style="padding:4px 8px; text-align:right;">'M_w,1'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">1</td><td style="padding:4px 8px; text-align:right;">'L_ef,1'</td><td style="padding:4px 8px; text-align:right;">'F_t,1'</td><td style="padding:4px 8px; text-align:right;">'N_t,1'</td><td style="padding:4px 8px; text-align:right;">'N_c,1'</td><td style="padding:4px 8px; text-align:right;">'M_w,1'</td><td style="padding:4px 8px; text-align:right;">'u_1'</td></tr>
-#end if
-#if n_wanden ≥ 2
-#if onb_2 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">2</td><td style="padding:4px 8px; text-align:right;">'L_ef,2'</td><td style="padding:4px 8px; text-align:right;">'F_t,2'</td><td style="padding:4px 8px; text-align:right;">'N_t,2'</td><td style="padding:4px 8px; text-align:right;">'N_c,2'</td><td style="padding:4px 8px; text-align:right;">'M_w,2'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">2</td><td style="padding:4px 8px; text-align:right;">'L_ef,2'</td><td style="padding:4px 8px; text-align:right;">'F_t,2'</td><td style="padding:4px 8px; text-align:right;">'N_t,2'</td><td style="padding:4px 8px; text-align:right;">'N_c,2'</td><td style="padding:4px 8px; text-align:right;">'M_w,2'</td><td style="padding:4px 8px; text-align:right;">'u_2'</td></tr>
-#end if
-#end if
-#if n_wanden ≥ 3
-#if onb_3 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">3</td><td style="padding:4px 8px; text-align:right;">'L_ef,3'</td><td style="padding:4px 8px; text-align:right;">'F_t,3'</td><td style="padding:4px 8px; text-align:right;">'N_t,3'</td><td style="padding:4px 8px; text-align:right;">'N_c,3'</td><td style="padding:4px 8px; text-align:right;">'M_w,3'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">3</td><td style="padding:4px 8px; text-align:right;">'L_ef,3'</td><td style="padding:4px 8px; text-align:right;">'F_t,3'</td><td style="padding:4px 8px; text-align:right;">'N_t,3'</td><td style="padding:4px 8px; text-align:right;">'N_c,3'</td><td style="padding:4px 8px; text-align:right;">'M_w,3'</td><td style="padding:4px 8px; text-align:right;">'u_3'</td></tr>
-#end if
-#end if
-#if n_wanden ≥ 4
-#if onb_4 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">4</td><td style="padding:4px 8px; text-align:right;">'L_ef,4'</td><td style="padding:4px 8px; text-align:right;">'F_t,4'</td><td style="padding:4px 8px; text-align:right;">'N_t,4'</td><td style="padding:4px 8px; text-align:right;">'N_c,4'</td><td style="padding:4px 8px; text-align:right;">'M_w,4'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">4</td><td style="padding:4px 8px; text-align:right;">'L_ef,4'</td><td style="padding:4px 8px; text-align:right;">'F_t,4'</td><td style="padding:4px 8px; text-align:right;">'N_t,4'</td><td style="padding:4px 8px; text-align:right;">'N_c,4'</td><td style="padding:4px 8px; text-align:right;">'M_w,4'</td><td style="padding:4px 8px; text-align:right;">'u_4'</td></tr>
-#end if
-#end if
-#if n_wanden ≥ 5
-#if onb_5 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">5</td><td style="padding:4px 8px; text-align:right;">'L_ef,5'</td><td style="padding:4px 8px; text-align:right;">'F_t,5'</td><td style="padding:4px 8px; text-align:right;">'N_t,5'</td><td style="padding:4px 8px; text-align:right;">'N_c,5'</td><td style="padding:4px 8px; text-align:right;">'M_w,5'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">5</td><td style="padding:4px 8px; text-align:right;">'L_ef,5'</td><td style="padding:4px 8px; text-align:right;">'F_t,5'</td><td style="padding:4px 8px; text-align:right;">'N_t,5'</td><td style="padding:4px 8px; text-align:right;">'N_c,5'</td><td style="padding:4px 8px; text-align:right;">'M_w,5'</td><td style="padding:4px 8px; text-align:right;">'u_5'</td></tr>
-#end if
-#end if
-#if n_wanden ≥ 6
-#if onb_6 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">6</td><td style="padding:4px 8px; text-align:right;">'L_ef,6'</td><td style="padding:4px 8px; text-align:right;">'F_t,6'</td><td style="padding:4px 8px; text-align:right;">'N_t,6'</td><td style="padding:4px 8px; text-align:right;">'N_c,6'</td><td style="padding:4px 8px; text-align:right;">'M_w,6'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">6</td><td style="padding:4px 8px; text-align:right;">'L_ef,6'</td><td style="padding:4px 8px; text-align:right;">'F_t,6'</td><td style="padding:4px 8px; text-align:right;">'N_t,6'</td><td style="padding:4px 8px; text-align:right;">'N_c,6'</td><td style="padding:4px 8px; text-align:right;">'M_w,6'</td><td style="padding:4px 8px; text-align:right;">'u_6'</td></tr>
-#end if
-#end if
-'</table>
-#if onb_tot ≡ 1
-    '<i>n.b.: verplaatsing niet bepaald; vul voor de beplating van die wand G en, bij gipsplaat, K<sub>ser</sub> in.</i>
-#end if
-
-# 9. Overzicht en maatgevende wand
-
-#hide
-px_lo = min(0; x_1/(1 m); x_2/(1 m); x_3/(1 m); x_4/(1 m); x_5/(1 m); x_6/(1 m))
-px_hi = max(B_gevel/(1 m); x_1/(1 m); x_2/(1 m); x_3/(1 m); x_4/(1 m); x_5/(1 m); x_6/(1 m))
-px_s = 360/max(px_hi - px_lo; 0.001)
-py_s = 110/max(L_1/(1 mm); L_2/(1 mm); L_3/(1 mm); L_4/(1 mm); L_5/(1 mm); L_6/(1 mm); 1)
-X_1 = 60 + (x_1/(1 m) - px_lo)*px_s
-Lp_1 = max(2; L_1/(1 mm)*py_s)
-X_2 = 60 + (x_2/(1 m) - px_lo)*px_s
-Lp_2 = max(2; L_2/(1 mm)*py_s)
-X_3 = 60 + (x_3/(1 m) - px_lo)*px_s
-Lp_3 = max(2; L_3/(1 mm)*py_s)
-X_4 = 60 + (x_4/(1 m) - px_lo)*px_s
-Lp_4 = max(2; L_4/(1 mm)*py_s)
-X_5 = 60 + (x_5/(1 m) - px_lo)*px_s
-Lp_5 = max(2; L_5/(1 mm)*py_s)
-X_6 = 60 + (x_6/(1 m) - px_lo)*px_s
-Lp_6 = max(2; L_6/(1 mm)*py_s)
-X_F = 60 + ((B_gevel/2 + abs(e_F))/(1 m) - px_lo)*px_s
-X_F2 = 60 + ((B_gevel/2 - abs(e_F))/(1 m) - px_lo)*px_s
-'Zonder invoer (de eerste tel na het invoegen) is er nog geen sterktecentrum.
-x_cs = if(isNaN(x_c); 0 m; x_c)
-X_C = 60 + (x_cs/(1 m) - px_lo)*px_s
-X_0 = 60 + (0 - px_lo)*px_s
-X_B = 60 + (B_gevel/(1 m) - px_lo)*px_s
-#show
-
-'<i>Plattegrond op schaal, met de kleur van de maatgevende unity check per wand en zijn aandeel in
-'de belasting.</i>
-
-'<svg viewbox="0 0 480 250" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:260px;">
-'  <!-- de gevel die de wind vangt -->
-'  <line x1="'X_0'" y1="196" x2="'X_B'" y2="196" style="stroke:#374151; stroke-width:2.2"/>
-'  <text x="'X_B'" y="190" text-anchor="end" style="fill:#374151">gevel</text>
-'  <!-- sterktecentrum -->
-'  <line x1="'X_C'" y1="22" x2="'X_C'" y2="188" style="stroke:#6B7280; stroke-width:1; stroke-dasharray:5 4"/>
-'  <text x="'X_C + 4'" y="30" style="fill:#6B7280">sterktecentrum</text>
-'  <rect x="'X_1 - 4'" y="'100 - Lp_1/2'" width="8" height="'Lp_1'" style="fill:'kleur(UC_w,1)'; stroke:#374151; stroke-width:0.8"/>
-'  <text x="'X_1'" y="'100 - Lp_1/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">1</text>
-'  <text x="'X_1'" y="'100 + Lp_1/2 + 14'" text-anchor="middle" style="fill:#374151">'F_1' kN</text>
-#if n_wanden ≥ 2
-'  <rect x="'X_2 - 4'" y="'100 - Lp_2/2'" width="8" height="'Lp_2'" style="fill:'kleur(UC_w,2)'; stroke:#374151; stroke-width:0.8"/>
-'  <text x="'X_2'" y="'100 - Lp_2/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">2</text>
-'  <text x="'X_2'" y="'100 + Lp_2/2 + 14'" text-anchor="middle" style="fill:#374151">'F_2' kN</text>
-#end if
-#if n_wanden ≥ 3
-'  <rect x="'X_3 - 4'" y="'100 - Lp_3/2'" width="8" height="'Lp_3'" style="fill:'kleur(UC_w,3)'; stroke:#374151; stroke-width:0.8"/>
-'  <text x="'X_3'" y="'100 - Lp_3/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">3</text>
-'  <text x="'X_3'" y="'100 + Lp_3/2 + 14'" text-anchor="middle" style="fill:#374151">'F_3' kN</text>
-#end if
-#if n_wanden ≥ 4
-'  <rect x="'X_4 - 4'" y="'100 - Lp_4/2'" width="8" height="'Lp_4'" style="fill:'kleur(UC_w,4)'; stroke:#374151; stroke-width:0.8"/>
-'  <text x="'X_4'" y="'100 - Lp_4/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">4</text>
-'  <text x="'X_4'" y="'100 + Lp_4/2 + 14'" text-anchor="middle" style="fill:#374151">'F_4' kN</text>
-#end if
-#if n_wanden ≥ 5
-'  <rect x="'X_5 - 4'" y="'100 - Lp_5/2'" width="8" height="'Lp_5'" style="fill:'kleur(UC_w,5)'; stroke:#374151; stroke-width:0.8"/>
-'  <text x="'X_5'" y="'100 - Lp_5/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">5</text>
-'  <text x="'X_5'" y="'100 + Lp_5/2 + 14'" text-anchor="middle" style="fill:#374151">'F_5' kN</text>
-#end if
-#if n_wanden ≥ 6
-'  <rect x="'X_6 - 4'" y="'100 - Lp_6/2'" width="8" height="'Lp_6'" style="fill:'kleur(UC_w,6)'; stroke:#374151; stroke-width:0.8"/>
-'  <text x="'X_6'" y="'100 - Lp_6/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">6</text>
-'  <text x="'X_6'" y="'100 + Lp_6/2 + 14'" text-anchor="middle" style="fill:#374151">'F_6' kN</text>
-#end if
-'  <!-- de horizontale belasting op B/2 ± e_F -->
-#if abs(e_F) > 0.001 m
-'  <line x1="'X_F2'" y1="244" x2="'X_F2'" y2="206" style="stroke:#B91C1C; stroke-width:1.2; stroke-dasharray:4 3"/>
-'  <polygon points="'X_F2',200 'X_F2 - 5',211 'X_F2 + 5',211" style="fill:none; stroke:#B91C1C; stroke-width:1"/>
-#end if
-'  <line x1="'X_F'" y1="244" x2="'X_F'" y2="206" style="stroke:#B91C1C; stroke-width:2"/>
-'  <polygon points="'X_F',200 'X_F - 6',212 'X_F + 6',212" style="fill:#B91C1C"/>
-'  <text x="'X_F + 8'" y="236" style="fill:#B91C1C; font-weight:700">F<tspan baseline-shift="sub" font-size="8">v,Ed</tspan> = 'F_v,Ed' kN</text>
-'</svg>'
-
-#hide
-gebruikt_A = max(bool(n_wanden ≥ 1)*bool(zijden_1 ≠ 2)*bool(zijden_1 ≠ 5); bool(n_wanden ≥ 2)*bool(zijden_2 ≠ 2)*bool(zijden_2 ≠ 5); bool(n_wanden ≥ 3)*bool(zijden_3 ≠ 2)*bool(zijden_3 ≠ 5); bool(n_wanden ≥ 4)*bool(zijden_4 ≠ 2)*bool(zijden_4 ≠ 5); bool(n_wanden ≥ 5)*bool(zijden_5 ≠ 2)*bool(zijden_5 ≠ 5); bool(n_wanden ≥ 6)*bool(zijden_6 ≠ 2)*bool(zijden_6 ≠ 5))
-gebruikt_B = max(bool(n_wanden ≥ 1)*bool(zijden_1 ≠ 1)*bool(zijden_1 ≠ 4); bool(n_wanden ≥ 2)*bool(zijden_2 ≠ 1)*bool(zijden_2 ≠ 4); bool(n_wanden ≥ 3)*bool(zijden_3 ≠ 1)*bool(zijden_3 ≠ 4); bool(n_wanden ≥ 4)*bool(zijden_4 ≠ 1)*bool(zijden_4 ≠ 4); bool(n_wanden ≥ 5)*bool(zijden_5 ≠ 1)*bool(zijden_5 ≠ 4); bool(n_wanden ≥ 6)*bool(zijden_6 ≠ 1)*bool(zijden_6 ≠ 4))
-'De detailleringsregels zijn grenzen, geen sterktetoetsen: ze tellen als
-'voldoet of voldoet niet en niet mee in de maatgevende unity check.
-ok_A = if(gebruikt_A ≡ 0; 1; bool(UC_s,A ≤ 1)*bool(UC_pen,A ≤ 1)*bool(UC_plooi,A ≤ 1)*bool(UC_dikte,A ≤ 1)*bool(k_mod,A > 0))
-ok_B = if(gebruikt_B ≡ 0; 1; bool(UC_s,B ≤ 1)*bool(UC_pen,B ≤ 1)*bool(UC_plooi,B ≤ 1)*bool(UC_dikte,B ≤ 1)*bool(k_mod,B > 0))
-'Een wand zonder sterkte krijgt geen aandeel; hebben alle wanden samen geen
-'sterkte (R_tot = 0), dan beslist UC_totaal. Anders is die nooit maatgevend.
-UC_max = max(UC_w,1; UC_w,2; UC_w,3; UC_w,4; UC_w,5; UC_w,6; UC_totaal)
-voldoet = bool(UC_max ≤ 1)*ok_A*ok_B
-j_m = if(UC_w,1 ≡ UC_max; 1; if(UC_w,2 ≡ UC_max; 2; if(UC_w,3 ≡ UC_max; 3; if(UC_w,4 ≡ UC_max; 4; if(UC_w,5 ≡ UC_max; 5; if(UC_w,6 ≡ UC_max; 6; 1))))))
-L_m = if(j_m ≡ 1; L_1; if(j_m ≡ 2; L_2; if(j_m ≡ 3; L_3; if(j_m ≡ 4; L_4; if(j_m ≡ 5; L_5; L_6)))))
-F_m = if(j_m ≡ 1; F_1; if(j_m ≡ 2; F_2; if(j_m ≡ 3; F_3; if(j_m ≡ 4; F_4; if(j_m ≡ 5; F_5; F_6)))))
-R_m = if(j_m ≡ 1; R_1; if(j_m ≡ 2; R_2; if(j_m ≡ 3; R_3; if(j_m ≡ 4; R_4; if(j_m ≡ 5; R_5; R_6)))))
-z_m = if(j_m ≡ 1; zijden_1; if(j_m ≡ 2; zijden_2; if(j_m ≡ 3; zijden_3; if(j_m ≡ 4; zijden_4; if(j_m ≡ 5; zijden_5; zijden_6)))))
-N_t,m = if(j_m ≡ 1; N_t,1; if(j_m ≡ 2; N_t,2; if(j_m ≡ 3; N_t,3; if(j_m ≡ 4; N_t,4; if(j_m ≡ 5; N_t,5; N_t,6)))))
-N_c,m = if(j_m ≡ 1; N_c,1; if(j_m ≡ 2; N_c,2; if(j_m ≡ 3; N_c,3; if(j_m ≡ 4; N_c,4; if(j_m ≡ 5; N_c,5; N_c,6)))))
-'Aanzicht op schaal: panelen, stijlen, en de krachten aan de wandeinden.
-L_mr = max(L_m/(1 mm); 1)
-h_r = max(h_w/(1 mm); 1)
-se = min(360/L_mr; 150/h_r)
-ex0 = 60 + (360 - L_mr*se)/2
-ex1 = ex0 + L_mr*se
-ey0 = 40
-ey1 = ey0 + h_r*se
-bpl_m = max(if(z_m ≡ 2; b_pl,B; if(z_m ≡ 5; b_pl,B; b_pl,A))/(1 mm); 1)
-np_m = floor(L_mr/bpl_m)
-rest_m = L_mr - np_m*bpl_m
-vul_rest = if(rest_m ≥ h_r/4; "#F5E6C8"; "#E5E7EB")
-hoh_r = max(hoh/(1 mm); 1)
-nst_m = floor(L_mr/hoh_r)
-svgH_m = ey1 + 70
-#show
-
-'<i>Wand 'j_m' is maatgevend: aanzicht van de beplating op schaal met de krachten uit figuur 9.5. Een
-'grijs restpaneel is smaller dan h/4 en telt niet mee.</i>
-
-'<svg viewbox="0 0 480 'svgH_m'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'svgH_m + 10'px;">
-#if np_m ≥ 1
-    #for i = 0 : np_m - 1
-    '  <rect x="'ex0 + i*bpl_m*se'" y="'ey0'" width="'bpl_m*se'" height="'h_r*se'" style="fill:#F5E6C8; stroke:#8B6F47; stroke-width:1"/>
-    #loop
-#end if
-#if rest_m > 1
-    '  <rect x="'ex0 + np_m*bpl_m*se'" y="'ey0'" width="'rest_m*se'" height="'h_r*se'" style="fill:'vul_rest'; stroke:#8B6F47; stroke-width:1"/>
-#end if
-#for i = 0 : nst_m
-'  <line x1="'ex0 + i*hoh_r*se'" y1="'ey0'" x2="'ex0 + i*hoh_r*se'" y2="'ey1'" style="stroke:#8B6F47; stroke-width:0.8; stroke-dasharray:3 3"/>
-#loop
-'  <rect x="'ex0'" y="'ey0'" width="'L_mr*se'" height="'h_r*se'" style="fill:none; stroke:#374151; stroke-width:1.6"/>
-'  <rect x="'ex0 - 3'" y="'ey0'" width="6" height="'h_r*se'" style="fill:#B45309"/>
-'  <rect x="'ex1 - 3'" y="'ey0'" width="6" height="'h_r*se'" style="fill:#B45309"/>
-'  <!-- horizontale kracht bovenin, van rechts -->
-'  <line x1="'ex1 + 46'" y1="'ey0'" x2="'ex1 + 10'" y2="'ey0'" style="stroke:#B91C1C; stroke-width:2"/>
-'  <polygon points="'ex1 + 4','ey0' 'ex1 + 14','ey0 - 5' 'ex1 + 14','ey0 + 5'" style="fill:#B91C1C"/>
-'  <text x="'ex1 + 4'" y="'ey0 - 10'" style="fill:#B91C1C; font-weight:700">F = 'F_m' kN</text>
-'  <!-- druk op de eindstijl links, anker rechts -->
-'  <line x1="'ex0'" y1="'ey1 + 42'" x2="'ex0'" y2="'ey1 + 10'" style="stroke:#1E40AF; stroke-width:2"/>
-'  <polygon points="'ex0','ey1 + 4' 'ex0 - 5','ey1 + 14' 'ex0 + 5','ey1 + 14'" style="fill:#1E40AF"/>
-'  <text x="'ex0 + 6'" y="'ey1 + 36'" style="fill:#1E40AF; font-weight:700">N<tspan baseline-shift="sub" font-size="8">c</tspan> = 'N_c,m' kN</text>
-'  <line x1="'ex1'" y1="'ey1 + 4'" x2="'ex1'" y2="'ey1 + 36'" style="stroke:#B45309; stroke-width:2"/>
-'  <polygon points="'ex1','ey1 + 42' 'ex1 - 5','ey1 + 32' 'ex1 + 5','ey1 + 32'" style="fill:#B45309"/>
-'  <text x="'ex1 - 6'" y="'ey1 + 36'" text-anchor="end" style="fill:#B45309; font-weight:700">anker N<tspan baseline-shift="sub" font-size="8">t</tspan> = 'N_t,m' kN</text>
-'  <!-- maatlijnen -->
-'  <line x1="'ex0'" y1="'ey1 + 58'" x2="'ex1'" y2="'ey1 + 58'" style="stroke:#1E40AF; stroke-width:1"/>
-'  <text x="'(ex0 + ex1)/2'" y="'ey1 + 54'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">L = 'L_m' mm</text>
-'  <line x1="'ex0 - 22'" y1="'ey0'" x2="'ex0 - 22'" y2="'ey1'" style="stroke:#1E40AF; stroke-width:1"/>
-'  <text x="'ex0 - 26'" y="'(ey0 + ey1)/2'" text-anchor="end" style="fill:#1E40AF; font-weight:700">h = 'h_w' mm</text>
-'</svg>'
-
-# 10. Samenvatting
-
-'<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
-'<tr style="border-bottom:2px solid #374151;">
-'<th style="text-align:left; padding:4px 6px;">Wand</th>
-'<th style="text-align:right; padding:4px 6px;">Wandvlak (9.21)</th>
-'<th style="text-align:right; padding:4px 6px;">Anker</th>
-'<th style="text-align:right; padding:4px 6px;">Eindstijl</th>
-'<th style="text-align:right; padding:4px 6px;">Onderregel</th>
-'<th style="text-align:right; padding:4px 6px;">Glijden</th>
-'<th style="text-align:right; padding:4px 6px;">Plaat</th>
-'<th style="text-align:right; padding:4px 6px;">Verplaatsing</th>
-'<th style="text-align:right; padding:4px 6px;">Maatgevend</th></tr>
-#if onb_1 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">1</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,1)'">'UC_r,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,1)'">'UC_a,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,1)'">'UC_st,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,1)'">'UC_c90,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,1)'">'UC_gl,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,1)'">'UC_pl,1'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,1)'">'UC_w,1'</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">1</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,1)'">'UC_r,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,1)'">'UC_a,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,1)'">'UC_st,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,1)'">'UC_c90,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,1)'">'UC_gl,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,1)'">'UC_pl,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,1)'">'UC_u,1'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,1)'">'UC_w,1'</td></tr>
-#end if
-#if n_wanden ≥ 2
-#if onb_2 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">2</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,2)'">'UC_r,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,2)'">'UC_a,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,2)'">'UC_st,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,2)'">'UC_c90,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,2)'">'UC_gl,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,2)'">'UC_pl,2'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,2)'">'UC_w,2'</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">2</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,2)'">'UC_r,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,2)'">'UC_a,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,2)'">'UC_st,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,2)'">'UC_c90,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,2)'">'UC_gl,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,2)'">'UC_pl,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,2)'">'UC_u,2'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,2)'">'UC_w,2'</td></tr>
-#end if
-#end if
-#if n_wanden ≥ 3
-#if onb_3 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">3</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,3)'">'UC_r,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,3)'">'UC_a,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,3)'">'UC_st,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,3)'">'UC_c90,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,3)'">'UC_gl,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,3)'">'UC_pl,3'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,3)'">'UC_w,3'</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">3</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,3)'">'UC_r,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,3)'">'UC_a,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,3)'">'UC_st,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,3)'">'UC_c90,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,3)'">'UC_gl,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,3)'">'UC_pl,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,3)'">'UC_u,3'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,3)'">'UC_w,3'</td></tr>
-#end if
-#end if
-#if n_wanden ≥ 4
-#if onb_4 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">4</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,4)'">'UC_r,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,4)'">'UC_a,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,4)'">'UC_st,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,4)'">'UC_c90,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,4)'">'UC_gl,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,4)'">'UC_pl,4'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,4)'">'UC_w,4'</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">4</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,4)'">'UC_r,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,4)'">'UC_a,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,4)'">'UC_st,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,4)'">'UC_c90,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,4)'">'UC_gl,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,4)'">'UC_pl,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,4)'">'UC_u,4'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,4)'">'UC_w,4'</td></tr>
-#end if
-#end if
-#if n_wanden ≥ 5
-#if onb_5 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">5</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,5)'">'UC_r,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,5)'">'UC_a,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,5)'">'UC_st,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,5)'">'UC_c90,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,5)'">'UC_gl,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,5)'">'UC_pl,5'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,5)'">'UC_w,5'</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">5</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,5)'">'UC_r,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,5)'">'UC_a,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,5)'">'UC_st,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,5)'">'UC_c90,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,5)'">'UC_gl,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,5)'">'UC_pl,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,5)'">'UC_u,5'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,5)'">'UC_w,5'</td></tr>
-#end if
-#end if
-#if n_wanden ≥ 6
-#if onb_6 ≡ 1
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">6</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,6)'">'UC_r,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,6)'">'UC_a,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,6)'">'UC_st,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,6)'">'UC_c90,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,6)'">'UC_gl,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,6)'">'UC_pl,6'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,6)'">'UC_w,6'</td></tr>
-#else
-'<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">6</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,6)'">'UC_r,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,6)'">'UC_a,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,6)'">'UC_st,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,6)'">'UC_c90,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,6)'">'UC_gl,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,6)'">'UC_pl,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,6)'">'UC_u,6'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,6)'">'UC_w,6'</td></tr>
-#end if
-#end if
-'</table>
-
-UC_totaal', de bouwlaag als geheel: F_v,Ed gedeeld door de som van F_v,Rd'
-#if gebruikt_A ≡ 1
-    #if ok_A ≡ 1
-        'Detaillering beplating A (§3.3):<span style="color: green"> <b>voldoet</b></span>
+    '<h6>8.3 Krachten en verplaatsing per wand</h6>
+    '<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
+    '<tr style="border-bottom:2px solid #374151;">
+    '<th style="text-align:left; padding:4px 8px;">Wand</th>
+    '<th style="text-align:right; padding:4px 8px;">L<sub>ef</sub> (mm)</th>
+    '<th style="text-align:right; padding:4px 8px;">F<sub>t</sub> (kN)</th>
+    '<th style="text-align:right; padding:4px 8px;">N<sub>t</sub> anker (kN)</th>
+    '<th style="text-align:right; padding:4px 8px;">N<sub>c</sub> eindstijl (kN)</th>
+    '<th style="text-align:right; padding:4px 8px;">M<sub>w</sub> (kNm)</th>
+    '<th style="text-align:right; padding:4px 8px;">u (mm)</th></tr>
+    #if onb_1 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">1</td><td style="padding:4px 8px; text-align:right;">'L_ef,1'</td><td style="padding:4px 8px; text-align:right;">'F_t,1'</td><td style="padding:4px 8px; text-align:right;">'N_t,1'</td><td style="padding:4px 8px; text-align:right;">'N_c,1'</td><td style="padding:4px 8px; text-align:right;">'M_w,1'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
     #else
-        'Detaillering beplating A (§3.3):<span style="color: red"> <b>voldoet niet</b></span> — zie de regels met een waarde boven 1,0.
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">1</td><td style="padding:4px 8px; text-align:right;">'L_ef,1'</td><td style="padding:4px 8px; text-align:right;">'F_t,1'</td><td style="padding:4px 8px; text-align:right;">'N_t,1'</td><td style="padding:4px 8px; text-align:right;">'N_c,1'</td><td style="padding:4px 8px; text-align:right;">'M_w,1'</td><td style="padding:4px 8px; text-align:right;">'u_1'</td></tr>
     #end if
-#end if
-#if gebruikt_B ≡ 1
-    #if ok_B ≡ 1
-        'Detaillering beplating B (§4.3):<span style="color: green"> <b>voldoet</b></span>
+    #if n_wanden ≥ 2
+    #if onb_2 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">2</td><td style="padding:4px 8px; text-align:right;">'L_ef,2'</td><td style="padding:4px 8px; text-align:right;">'F_t,2'</td><td style="padding:4px 8px; text-align:right;">'N_t,2'</td><td style="padding:4px 8px; text-align:right;">'N_c,2'</td><td style="padding:4px 8px; text-align:right;">'M_w,2'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
     #else
-        'Detaillering beplating B (§4.3):<span style="color: red"> <b>voldoet niet</b></span> — zie de regels met een waarde boven 1,0.
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">2</td><td style="padding:4px 8px; text-align:right;">'L_ef,2'</td><td style="padding:4px 8px; text-align:right;">'F_t,2'</td><td style="padding:4px 8px; text-align:right;">'N_t,2'</td><td style="padding:4px 8px; text-align:right;">'N_c,2'</td><td style="padding:4px 8px; text-align:right;">'M_w,2'</td><td style="padding:4px 8px; text-align:right;">'u_2'</td></tr>
     #end if
-#end if
-
-#if voldoet ≡ 1
+    #end if
+    #if n_wanden ≥ 3
+    #if onb_3 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">3</td><td style="padding:4px 8px; text-align:right;">'L_ef,3'</td><td style="padding:4px 8px; text-align:right;">'F_t,3'</td><td style="padding:4px 8px; text-align:right;">'N_t,3'</td><td style="padding:4px 8px; text-align:right;">'N_c,3'</td><td style="padding:4px 8px; text-align:right;">'M_w,3'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
+    #else
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">3</td><td style="padding:4px 8px; text-align:right;">'L_ef,3'</td><td style="padding:4px 8px; text-align:right;">'F_t,3'</td><td style="padding:4px 8px; text-align:right;">'N_t,3'</td><td style="padding:4px 8px; text-align:right;">'N_c,3'</td><td style="padding:4px 8px; text-align:right;">'M_w,3'</td><td style="padding:4px 8px; text-align:right;">'u_3'</td></tr>
+    #end if
+    #end if
+    #if n_wanden ≥ 4
+    #if onb_4 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">4</td><td style="padding:4px 8px; text-align:right;">'L_ef,4'</td><td style="padding:4px 8px; text-align:right;">'F_t,4'</td><td style="padding:4px 8px; text-align:right;">'N_t,4'</td><td style="padding:4px 8px; text-align:right;">'N_c,4'</td><td style="padding:4px 8px; text-align:right;">'M_w,4'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
+    #else
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">4</td><td style="padding:4px 8px; text-align:right;">'L_ef,4'</td><td style="padding:4px 8px; text-align:right;">'F_t,4'</td><td style="padding:4px 8px; text-align:right;">'N_t,4'</td><td style="padding:4px 8px; text-align:right;">'N_c,4'</td><td style="padding:4px 8px; text-align:right;">'M_w,4'</td><td style="padding:4px 8px; text-align:right;">'u_4'</td></tr>
+    #end if
+    #end if
+    #if n_wanden ≥ 5
+    #if onb_5 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">5</td><td style="padding:4px 8px; text-align:right;">'L_ef,5'</td><td style="padding:4px 8px; text-align:right;">'F_t,5'</td><td style="padding:4px 8px; text-align:right;">'N_t,5'</td><td style="padding:4px 8px; text-align:right;">'N_c,5'</td><td style="padding:4px 8px; text-align:right;">'M_w,5'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
+    #else
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">5</td><td style="padding:4px 8px; text-align:right;">'L_ef,5'</td><td style="padding:4px 8px; text-align:right;">'F_t,5'</td><td style="padding:4px 8px; text-align:right;">'N_t,5'</td><td style="padding:4px 8px; text-align:right;">'N_c,5'</td><td style="padding:4px 8px; text-align:right;">'M_w,5'</td><td style="padding:4px 8px; text-align:right;">'u_5'</td></tr>
+    #end if
+    #end if
+    #if n_wanden ≥ 6
+    #if onb_6 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">6</td><td style="padding:4px 8px; text-align:right;">'L_ef,6'</td><td style="padding:4px 8px; text-align:right;">'F_t,6'</td><td style="padding:4px 8px; text-align:right;">'N_t,6'</td><td style="padding:4px 8px; text-align:right;">'N_c,6'</td><td style="padding:4px 8px; text-align:right;">'M_w,6'</td><td style="padding:4px 8px; text-align:right; color:#6B7280;">n.b.</td></tr>
+    #else
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 8px;">6</td><td style="padding:4px 8px; text-align:right;">'L_ef,6'</td><td style="padding:4px 8px; text-align:right;">'F_t,6'</td><td style="padding:4px 8px; text-align:right;">'N_t,6'</td><td style="padding:4px 8px; text-align:right;">'N_c,6'</td><td style="padding:4px 8px; text-align:right;">'M_w,6'</td><td style="padding:4px 8px; text-align:right;">'u_6'</td></tr>
+    #end if
+    #end if
+    '</table>
     #if onb_tot ≡ 1
-        '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ≤ 1,0, maar <b>de verplaatsing is niet bepaald</b> (n.b.): apart aantonen.</span>
-    #else
-        '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de wanden in deze richting voldoen</b></span>
+        '<i class="ook-afdruk">n.b.: verplaatsing niet bepaald; vul voor de beplating van die wand G en, bij gipsplaat, K<sub>ser</sub> in.</i>
     #end if
-#else if UC_max ≤ 1.0
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>de wanden voldoen niet: de detaillering klopt niet</b></span>
-#else
-    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de wanden in deze richting voldoen niet</b></span>
+
+    # 9. Overzicht en maatgevende wand
+
+    #hide
+    px_lo = min(0; x_1/(1 m); x_2/(1 m); x_3/(1 m); x_4/(1 m); x_5/(1 m); x_6/(1 m))
+    px_hi = max(B_gevel/(1 m); x_1/(1 m); x_2/(1 m); x_3/(1 m); x_4/(1 m); x_5/(1 m); x_6/(1 m))
+    px_s = 360/max(px_hi - px_lo; 0.001)
+    py_s = 110/max(L_1/(1 mm); L_2/(1 mm); L_3/(1 mm); L_4/(1 mm); L_5/(1 mm); L_6/(1 mm); 1)
+    X_1 = 60 + (x_1/(1 m) - px_lo)*px_s
+    Lp_1 = max(2; L_1/(1 mm)*py_s)
+    X_2 = 60 + (x_2/(1 m) - px_lo)*px_s
+    Lp_2 = max(2; L_2/(1 mm)*py_s)
+    X_3 = 60 + (x_3/(1 m) - px_lo)*px_s
+    Lp_3 = max(2; L_3/(1 mm)*py_s)
+    X_4 = 60 + (x_4/(1 m) - px_lo)*px_s
+    Lp_4 = max(2; L_4/(1 mm)*py_s)
+    X_5 = 60 + (x_5/(1 m) - px_lo)*px_s
+    Lp_5 = max(2; L_5/(1 mm)*py_s)
+    X_6 = 60 + (x_6/(1 m) - px_lo)*px_s
+    Lp_6 = max(2; L_6/(1 mm)*py_s)
+    X_F = 60 + ((B_gevel/2 + abs(e_F))/(1 m) - px_lo)*px_s
+    X_F2 = 60 + ((B_gevel/2 - abs(e_F))/(1 m) - px_lo)*px_s
+    'Zonder invoer (de eerste tel na het invoegen) is er nog geen sterktecentrum.
+    x_cs = if(isNaN(x_c); 0 m; x_c)
+    X_C = 60 + (x_cs/(1 m) - px_lo)*px_s
+    X_0 = 60 + (0 - px_lo)*px_s
+    X_B = 60 + (B_gevel/(1 m) - px_lo)*px_s
+    #show
+
+    '<i>Plattegrond op schaal, met de kleur van de maatgevende unity check per wand en zijn aandeel in
+    'de belasting.</i>
+
+    '<svg viewbox="0 0 480 250" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:260px;">
+    '  <!-- de gevel die de wind vangt -->
+    '  <line x1="'X_0'" y1="196" x2="'X_B'" y2="196" style="stroke:#374151; stroke-width:2.2"/>
+    '  <text x="'X_B'" y="190" text-anchor="end" style="fill:#374151">gevel</text>
+    '  <!-- sterktecentrum -->
+    '  <line x1="'X_C'" y1="22" x2="'X_C'" y2="188" style="stroke:#6B7280; stroke-width:1; stroke-dasharray:5 4"/>
+    '  <text x="'X_C + 4'" y="30" style="fill:#6B7280">sterktecentrum</text>
+    '  <rect x="'X_1 - 4'" y="'100 - Lp_1/2'" width="8" height="'Lp_1'" style="fill:'kleur(UC_w,1)'; stroke:#374151; stroke-width:0.8"/>
+    '  <text x="'X_1'" y="'100 - Lp_1/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">1</text>
+    '  <text x="'X_1'" y="'100 + Lp_1/2 + 14'" text-anchor="middle" style="fill:#374151">'F_1' kN</text>
+    #if n_wanden ≥ 2
+    '  <rect x="'X_2 - 4'" y="'100 - Lp_2/2'" width="8" height="'Lp_2'" style="fill:'kleur(UC_w,2)'; stroke:#374151; stroke-width:0.8"/>
+    '  <text x="'X_2'" y="'100 - Lp_2/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">2</text>
+    '  <text x="'X_2'" y="'100 + Lp_2/2 + 14'" text-anchor="middle" style="fill:#374151">'F_2' kN</text>
+    #end if
+    #if n_wanden ≥ 3
+    '  <rect x="'X_3 - 4'" y="'100 - Lp_3/2'" width="8" height="'Lp_3'" style="fill:'kleur(UC_w,3)'; stroke:#374151; stroke-width:0.8"/>
+    '  <text x="'X_3'" y="'100 - Lp_3/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">3</text>
+    '  <text x="'X_3'" y="'100 + Lp_3/2 + 14'" text-anchor="middle" style="fill:#374151">'F_3' kN</text>
+    #end if
+    #if n_wanden ≥ 4
+    '  <rect x="'X_4 - 4'" y="'100 - Lp_4/2'" width="8" height="'Lp_4'" style="fill:'kleur(UC_w,4)'; stroke:#374151; stroke-width:0.8"/>
+    '  <text x="'X_4'" y="'100 - Lp_4/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">4</text>
+    '  <text x="'X_4'" y="'100 + Lp_4/2 + 14'" text-anchor="middle" style="fill:#374151">'F_4' kN</text>
+    #end if
+    #if n_wanden ≥ 5
+    '  <rect x="'X_5 - 4'" y="'100 - Lp_5/2'" width="8" height="'Lp_5'" style="fill:'kleur(UC_w,5)'; stroke:#374151; stroke-width:0.8"/>
+    '  <text x="'X_5'" y="'100 - Lp_5/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">5</text>
+    '  <text x="'X_5'" y="'100 + Lp_5/2 + 14'" text-anchor="middle" style="fill:#374151">'F_5' kN</text>
+    #end if
+    #if n_wanden ≥ 6
+    '  <rect x="'X_6 - 4'" y="'100 - Lp_6/2'" width="8" height="'Lp_6'" style="fill:'kleur(UC_w,6)'; stroke:#374151; stroke-width:0.8"/>
+    '  <text x="'X_6'" y="'100 - Lp_6/2 - 6'" text-anchor="middle" style="fill:#374151; font-weight:700">6</text>
+    '  <text x="'X_6'" y="'100 + Lp_6/2 + 14'" text-anchor="middle" style="fill:#374151">'F_6' kN</text>
+    #end if
+    '  <!-- de horizontale belasting op B/2 ± e_F -->
+    #if abs(e_F) > 0.001 m
+    '  <line x1="'X_F2'" y1="244" x2="'X_F2'" y2="206" style="stroke:#B91C1C; stroke-width:1.2; stroke-dasharray:4 3"/>
+    '  <polygon points="'X_F2',200 'X_F2 - 5',211 'X_F2 + 5',211" style="fill:none; stroke:#B91C1C; stroke-width:1"/>
+    #end if
+    '  <line x1="'X_F'" y1="244" x2="'X_F'" y2="206" style="stroke:#B91C1C; stroke-width:2"/>
+    '  <polygon points="'X_F',200 'X_F - 6',212 'X_F + 6',212" style="fill:#B91C1C"/>
+    '  <text x="'X_F + 8'" y="236" style="fill:#B91C1C; font-weight:700">F<tspan baseline-shift="sub" font-size="8">v,Ed</tspan> = 'F_v,Ed' kN</text>
+    '</svg>'
+
+    #hide
+    gebruikt_A = max(bool(n_wanden ≥ 1)*bool(zijden_1 ≠ 2)*bool(zijden_1 ≠ 5); bool(n_wanden ≥ 2)*bool(zijden_2 ≠ 2)*bool(zijden_2 ≠ 5); bool(n_wanden ≥ 3)*bool(zijden_3 ≠ 2)*bool(zijden_3 ≠ 5); bool(n_wanden ≥ 4)*bool(zijden_4 ≠ 2)*bool(zijden_4 ≠ 5); bool(n_wanden ≥ 5)*bool(zijden_5 ≠ 2)*bool(zijden_5 ≠ 5); bool(n_wanden ≥ 6)*bool(zijden_6 ≠ 2)*bool(zijden_6 ≠ 5))
+    gebruikt_B = max(bool(n_wanden ≥ 1)*bool(zijden_1 ≠ 1)*bool(zijden_1 ≠ 4); bool(n_wanden ≥ 2)*bool(zijden_2 ≠ 1)*bool(zijden_2 ≠ 4); bool(n_wanden ≥ 3)*bool(zijden_3 ≠ 1)*bool(zijden_3 ≠ 4); bool(n_wanden ≥ 4)*bool(zijden_4 ≠ 1)*bool(zijden_4 ≠ 4); bool(n_wanden ≥ 5)*bool(zijden_5 ≠ 1)*bool(zijden_5 ≠ 4); bool(n_wanden ≥ 6)*bool(zijden_6 ≠ 1)*bool(zijden_6 ≠ 4))
+    'De detailleringsregels zijn grenzen, geen sterktetoetsen: ze tellen als
+    'voldoet of voldoet niet en niet mee in de maatgevende unity check.
+    ok_A = if(gebruikt_A ≡ 0; 1; bool(UC_s,A ≤ 1)*bool(UC_pen,A ≤ 1)*bool(UC_plooi,A ≤ 1)*bool(UC_dikte,A ≤ 1)*bool(k_mod,A > 0))
+    ok_B = if(gebruikt_B ≡ 0; 1; bool(UC_s,B ≤ 1)*bool(UC_pen,B ≤ 1)*bool(UC_plooi,B ≤ 1)*bool(UC_dikte,B ≤ 1)*bool(k_mod,B > 0))
+    'Een wand zonder sterkte krijgt geen aandeel; hebben alle wanden samen geen
+    'sterkte (R_tot = 0), dan beslist UC_totaal. Anders is die nooit maatgevend.
+    UC_max = max(UC_w,1; UC_w,2; UC_w,3; UC_w,4; UC_w,5; UC_w,6; UC_totaal)
+    voldoet = bool(UC_max ≤ 1)*ok_A*ok_B
+    j_m = if(UC_w,1 ≡ UC_max; 1; if(UC_w,2 ≡ UC_max; 2; if(UC_w,3 ≡ UC_max; 3; if(UC_w,4 ≡ UC_max; 4; if(UC_w,5 ≡ UC_max; 5; if(UC_w,6 ≡ UC_max; 6; 1))))))
+    L_m = if(j_m ≡ 1; L_1; if(j_m ≡ 2; L_2; if(j_m ≡ 3; L_3; if(j_m ≡ 4; L_4; if(j_m ≡ 5; L_5; L_6)))))
+    F_m = if(j_m ≡ 1; F_1; if(j_m ≡ 2; F_2; if(j_m ≡ 3; F_3; if(j_m ≡ 4; F_4; if(j_m ≡ 5; F_5; F_6)))))
+    R_m = if(j_m ≡ 1; R_1; if(j_m ≡ 2; R_2; if(j_m ≡ 3; R_3; if(j_m ≡ 4; R_4; if(j_m ≡ 5; R_5; R_6)))))
+    z_m = if(j_m ≡ 1; zijden_1; if(j_m ≡ 2; zijden_2; if(j_m ≡ 3; zijden_3; if(j_m ≡ 4; zijden_4; if(j_m ≡ 5; zijden_5; zijden_6)))))
+    N_t,m = if(j_m ≡ 1; N_t,1; if(j_m ≡ 2; N_t,2; if(j_m ≡ 3; N_t,3; if(j_m ≡ 4; N_t,4; if(j_m ≡ 5; N_t,5; N_t,6)))))
+    N_c,m = if(j_m ≡ 1; N_c,1; if(j_m ≡ 2; N_c,2; if(j_m ≡ 3; N_c,3; if(j_m ≡ 4; N_c,4; if(j_m ≡ 5; N_c,5; N_c,6)))))
+    'Aanzicht op schaal: panelen, stijlen, en de krachten aan de wandeinden.
+    L_mr = max(L_m/(1 mm); 1)
+    h_r = max(h_w/(1 mm); 1)
+    se = min(360/L_mr; 150/h_r)
+    ex0 = 60 + (360 - L_mr*se)/2
+    ex1 = ex0 + L_mr*se
+    ey0 = 40
+    ey1 = ey0 + h_r*se
+    bpl_m = max(if(z_m ≡ 2; b_pl,B; if(z_m ≡ 5; b_pl,B; b_pl,A))/(1 mm); 1)
+    np_m = floor(L_mr/bpl_m)
+    rest_m = L_mr - np_m*bpl_m
+    vul_rest = if(rest_m ≥ h_r/4; "#F5E6C8"; "#E5E7EB")
+    hoh_r = max(hoh/(1 mm); 1)
+    nst_m = floor(L_mr/hoh_r)
+    svgH_m = ey1 + 70
+    #show
+
+    '<i>Wand 'j_m' is maatgevend: aanzicht van de beplating op schaal met de krachten uit figuur 9.5. Een
+    'grijs restpaneel is smaller dan h/4 en telt niet mee.</i>
+
+    '<svg viewbox="0 0 480 'svgH_m'" xmlns="http://www.w3.org/2000/svg" style="font-size:11px; width:100%; max-height:'svgH_m + 10'px;">
+    #if np_m ≥ 1
+        #for i = 0 : np_m - 1
+        '  <rect x="'ex0 + i*bpl_m*se'" y="'ey0'" width="'bpl_m*se'" height="'h_r*se'" style="fill:#F5E6C8; stroke:#8B6F47; stroke-width:1"/>
+        #loop
+    #end if
+    #if rest_m > 1
+        '  <rect x="'ex0 + np_m*bpl_m*se'" y="'ey0'" width="'rest_m*se'" height="'h_r*se'" style="fill:'vul_rest'; stroke:#8B6F47; stroke-width:1"/>
+    #end if
+    #for i = 0 : nst_m
+    '  <line x1="'ex0 + i*hoh_r*se'" y1="'ey0'" x2="'ex0 + i*hoh_r*se'" y2="'ey1'" style="stroke:#8B6F47; stroke-width:0.8; stroke-dasharray:3 3"/>
+    #loop
+    '  <rect x="'ex0'" y="'ey0'" width="'L_mr*se'" height="'h_r*se'" style="fill:none; stroke:#374151; stroke-width:1.6"/>
+    '  <rect x="'ex0 - 3'" y="'ey0'" width="6" height="'h_r*se'" style="fill:#B45309"/>
+    '  <rect x="'ex1 - 3'" y="'ey0'" width="6" height="'h_r*se'" style="fill:#B45309"/>
+    '  <!-- horizontale kracht bovenin, van rechts -->
+    '  <line x1="'ex1 + 46'" y1="'ey0'" x2="'ex1 + 10'" y2="'ey0'" style="stroke:#B91C1C; stroke-width:2"/>
+    '  <polygon points="'ex1 + 4','ey0' 'ex1 + 14','ey0 - 5' 'ex1 + 14','ey0 + 5'" style="fill:#B91C1C"/>
+    '  <text x="'ex1 + 4'" y="'ey0 - 10'" style="fill:#B91C1C; font-weight:700">F = 'F_m' kN</text>
+    '  <!-- druk op de eindstijl links, anker rechts -->
+    '  <line x1="'ex0'" y1="'ey1 + 42'" x2="'ex0'" y2="'ey1 + 10'" style="stroke:#1E40AF; stroke-width:2"/>
+    '  <polygon points="'ex0','ey1 + 4' 'ex0 - 5','ey1 + 14' 'ex0 + 5','ey1 + 14'" style="fill:#1E40AF"/>
+    '  <text x="'ex0 + 6'" y="'ey1 + 36'" style="fill:#1E40AF; font-weight:700">N<tspan baseline-shift="sub" font-size="8">c</tspan> = 'N_c,m' kN</text>
+    '  <line x1="'ex1'" y1="'ey1 + 4'" x2="'ex1'" y2="'ey1 + 36'" style="stroke:#B45309; stroke-width:2"/>
+    '  <polygon points="'ex1','ey1 + 42' 'ex1 - 5','ey1 + 32' 'ex1 + 5','ey1 + 32'" style="fill:#B45309"/>
+    '  <text x="'ex1 - 6'" y="'ey1 + 36'" text-anchor="end" style="fill:#B45309; font-weight:700">anker N<tspan baseline-shift="sub" font-size="8">t</tspan> = 'N_t,m' kN</text>
+    '  <!-- maatlijnen -->
+    '  <line x1="'ex0'" y1="'ey1 + 58'" x2="'ex1'" y2="'ey1 + 58'" style="stroke:#1E40AF; stroke-width:1"/>
+    '  <text x="'(ex0 + ex1)/2'" y="'ey1 + 54'" text-anchor="middle" style="fill:#1E40AF; font-weight:700">L = 'L_m' mm</text>
+    '  <line x1="'ex0 - 22'" y1="'ey0'" x2="'ex0 - 22'" y2="'ey1'" style="stroke:#1E40AF; stroke-width:1"/>
+    '  <text x="'ex0 - 26'" y="'(ey0 + ey1)/2'" text-anchor="end" style="fill:#1E40AF; font-weight:700">h = 'h_w' mm</text>
+    '</svg>'
+
+    # 10. Samenvatting
+
+    '<table style="width:100%; border-collapse:collapse; font-size:0.95em;">
+    '<tr style="border-bottom:2px solid #374151;">
+    '<th style="text-align:left; padding:4px 6px;">Wand</th>
+    '<th style="text-align:right; padding:4px 6px;">Wandvlak (9.21)</th>
+    '<th style="text-align:right; padding:4px 6px;">Anker</th>
+    '<th style="text-align:right; padding:4px 6px;">Eindstijl</th>
+    '<th style="text-align:right; padding:4px 6px;">Onderregel</th>
+    '<th style="text-align:right; padding:4px 6px;">Glijden</th>
+    '<th style="text-align:right; padding:4px 6px;">Plaat</th>
+    '<th style="text-align:right; padding:4px 6px;">Verplaatsing</th>
+    '<th style="text-align:right; padding:4px 6px;">Maatgevend</th></tr>
+    #if onb_1 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">1</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,1)'">'UC_r,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,1)'">'UC_a,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,1)'">'UC_st,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,1)'">'UC_c90,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,1)'">'UC_gl,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,1)'">'UC_pl,1'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,1)'">'UC_w,1'</td></tr>
+    #else
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">1</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,1)'">'UC_r,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,1)'">'UC_a,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,1)'">'UC_st,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,1)'">'UC_c90,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,1)'">'UC_gl,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,1)'">'UC_pl,1'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,1)'">'UC_u,1'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,1)'">'UC_w,1'</td></tr>
+    #end if
+    #if n_wanden ≥ 2
+    #if onb_2 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">2</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,2)'">'UC_r,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,2)'">'UC_a,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,2)'">'UC_st,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,2)'">'UC_c90,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,2)'">'UC_gl,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,2)'">'UC_pl,2'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,2)'">'UC_w,2'</td></tr>
+    #else
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">2</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,2)'">'UC_r,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,2)'">'UC_a,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,2)'">'UC_st,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,2)'">'UC_c90,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,2)'">'UC_gl,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,2)'">'UC_pl,2'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,2)'">'UC_u,2'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,2)'">'UC_w,2'</td></tr>
+    #end if
+    #end if
+    #if n_wanden ≥ 3
+    #if onb_3 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">3</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,3)'">'UC_r,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,3)'">'UC_a,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,3)'">'UC_st,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,3)'">'UC_c90,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,3)'">'UC_gl,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,3)'">'UC_pl,3'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,3)'">'UC_w,3'</td></tr>
+    #else
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">3</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,3)'">'UC_r,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,3)'">'UC_a,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,3)'">'UC_st,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,3)'">'UC_c90,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,3)'">'UC_gl,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,3)'">'UC_pl,3'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,3)'">'UC_u,3'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,3)'">'UC_w,3'</td></tr>
+    #end if
+    #end if
+    #if n_wanden ≥ 4
+    #if onb_4 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">4</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,4)'">'UC_r,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,4)'">'UC_a,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,4)'">'UC_st,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,4)'">'UC_c90,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,4)'">'UC_gl,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,4)'">'UC_pl,4'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,4)'">'UC_w,4'</td></tr>
+    #else
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">4</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,4)'">'UC_r,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,4)'">'UC_a,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,4)'">'UC_st,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,4)'">'UC_c90,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,4)'">'UC_gl,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,4)'">'UC_pl,4'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,4)'">'UC_u,4'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,4)'">'UC_w,4'</td></tr>
+    #end if
+    #end if
+    #if n_wanden ≥ 5
+    #if onb_5 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">5</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,5)'">'UC_r,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,5)'">'UC_a,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,5)'">'UC_st,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,5)'">'UC_c90,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,5)'">'UC_gl,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,5)'">'UC_pl,5'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,5)'">'UC_w,5'</td></tr>
+    #else
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">5</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,5)'">'UC_r,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,5)'">'UC_a,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,5)'">'UC_st,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,5)'">'UC_c90,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,5)'">'UC_gl,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,5)'">'UC_pl,5'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,5)'">'UC_u,5'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,5)'">'UC_w,5'</td></tr>
+    #end if
+    #end if
+    #if n_wanden ≥ 6
+    #if onb_6 ≡ 1
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">6</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,6)'">'UC_r,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,6)'">'UC_a,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,6)'">'UC_st,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,6)'">'UC_c90,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,6)'">'UC_gl,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,6)'">'UC_pl,6'</td><td style="padding:4px 6px; text-align:right; color:#6B7280;">n.b.</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,6)'">'UC_w,6'</td></tr>
+    #else
+    '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:4px 6px;">6</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_r,6)'">'UC_r,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_a,6)'">'UC_a,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_st,6)'">'UC_st,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_c90,6)'">'UC_c90,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_gl,6)'">'UC_gl,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_pl,6)'">'UC_pl,6'</td><td style="padding:4px 6px; text-align:right; color:'kleur(UC_u,6)'">'UC_u,6'</td><td style="padding:4px 6px; text-align:right; font-weight:700; color:'kleur(UC_w,6)'">'UC_w,6'</td></tr>
+    #end if
+    #end if
+    '</table>
+
+    UC_totaal', de bouwlaag als geheel: F_v,Ed gedeeld door de som van F_v,Rd'
+    #if gebruikt_A ≡ 1
+        #if ok_A ≡ 1
+            'Detaillering beplating A (§3.3):<span style="color: green"> <b>voldoet</b></span>
+        #else
+            'Detaillering beplating A (§3.3):<span style="color: red"> <b>voldoet niet</b></span> — zie de regels met een waarde boven 1,0.
+        #end if
+    #end if
+    #if gebruikt_B ≡ 1
+        #if ok_B ≡ 1
+            'Detaillering beplating B (§4.3):<span style="color: green"> <b>voldoet</b></span>
+        #else
+            'Detaillering beplating B (§4.3):<span style="color: red"> <b>voldoet niet</b></span> — zie de regels met een waarde boven 1,0.
+        #end if
+    #end if
+
+    #if voldoet ≡ 1
+        #if onb_tot ≡ 1
+            '<b>Maatgevende UC = 'UC_max'</b><span style="color:#b45309"> ≤ 1,0, maar <b>de verplaatsing is niet bepaald</b> (n.b.): apart aantonen.</span>
+        #else
+            '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>de wanden in deze richting voldoen</b></span>
+        #end if
+    #else if UC_max ≤ 1.0
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> → <b>de wanden voldoen niet: de detaillering klopt niet</b></span>
+    #else
+        '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>de wanden in deze richting voldoen niet</b></span>
+    #end if
 #end if
 
 '<hr/>
-'<i>Aandachtspunten en vereenvoudigingen:</i>
+'<i class="ook-afdruk">Aandachtspunten en vereenvoudigingen:</i>
 '<ul style="margin:2px 0 0 0; padding-left:1.3em; font-size:0.95em;"><li>Methode A vraagt een anker aan beide wandeinden, direct verbonden met de constructie eronder (§9.2.4.2(1)); een onverankerde wand valt buiten dit blad.</li><li>Op de tussenstijlen hoogstens tweemaal de afstand van de verbindingsmiddelen langs de plaatranden, en niet meer dan 300 mm (§9.2.4.2(12) en §10.8.2).</li><li>De verplaatsing is een indicatief ingenieursmodel: methode A geeft er geen.</li><li>De eindstijl is alleen getoetst in de combinatie met wind; onder alleen verticale belasting hoort hij bij de stijlberekening.</li><li>Niet getoetst: de overdracht tussen geprefabriceerde wandelementen (§9.2.4.2(13)) en de vloerschijf. Bij glijden is de wrijving onder de onderregel niet meegenomen.</li></ul>
 `;

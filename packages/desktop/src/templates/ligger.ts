@@ -324,7 +324,7 @@ EI = E*I_y to kN*m^2', buigstijfheid<span class="kolom-2"></span>'
     aangrijping = 0
     #show
 #end if
-'<i>Posities worden gemeten vanaf het linkereind van de ligger, inclusief een overstek links. Een steunpunt draagt verticaal en is vrij draaibaar, tenzij hij als inklemming is gekozen; een gerberscharnier brengt geen moment over. Bij de steunpunten is de ligger tegen kantelen gesteund (gaffels).</i><span class="alleen-scherm"></span>
+'<i class="ook-afdruk"><span class="alleen-scherm">Posities worden gemeten vanaf het linkereind van de ligger, inclusief een overstek links. Een steunpunt draagt verticaal en is vrij draaibaar, tenzij hij als inklemming is gekozen; een gerberscharnier brengt geen moment over. </span>Bij de steunpunten is de ligger tegen kantelen gesteund (gaffels).</i>
 
 #hide
 r_L1 = max(L_1/(1 m); 0)
@@ -1152,7 +1152,7 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
     ej(j) = [bool(j ≡ 1); bool(j ≡ 2); bool(j ≡ 3); bool(j ≡ 4); bool(j ≡ 5); bool(j ≡ 6); 0]
     Rbg1 = ligger(geo; last; EIG; vG)
     #show
-    'Karakteristiek, per belastinggeval over de hele ligger; 'n_del' delen voor de schaakbordbelasting.
+    'Karakteristiek, per belastinggeval over de hele ligger; 'n_del' delen voor de schaakbordbelasting.<span class="alleen-scherm"></span>
     '<table style="width:100%; border-collapse:collapse; font-size:0.85em; line-height:1.25;">
     '<tr style="border-bottom:1.5px solid #374151;"><th style="padding:1px 4px; text-align:left;">Geval</th><th style="padding:1px 4px; text-align:right;">M<sub>max</sub> [kNm]</th><th style="padding:1px 4px; text-align:right;">M<sub>min</sub> [kNm]</th><th style="padding:1px 4px; text-align:right;">|V|<sub>max</sub> [kN]</th><th style="padding:1px 4px; text-align:right;">w<sub>max</sub> [mm]</th><th style="padding:1px 4px; text-align:right;">w<sub>min</sub> [mm]</th></tr>
     '<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:0 4px;">BG1 — permanent</td><td style="padding:0 4px; text-align:right;">'r2(ligger_ext(Rbg1; 3)[1])'</td><td style="padding:0 4px; text-align:right;">'r2(ligger_ext(Rbg1; 3)[3])'</td><td style="padding:0 4px; text-align:right;">'r2(max(ligger_ext(Rbg1; 2)[1]; -ligger_ext(Rbg1; 2)[3]))'</td><td style="padding:0 4px; text-align:right;">'r2(1000*ligger_ext(Rbg1; 4)[1])'</td><td style="padding:0 4px; text-align:right;">'r2(1000*ligger_ext(Rbg1; 4)[3])'</td></tr>
@@ -1172,7 +1172,7 @@ duurnaam(d) = if(d ≡ 1; "blijvend"; if(d ≡ 2; "lang"; if(d ≡ 3; "middellan
 
     # 5. Combinaties en omhullende
 
-    'Gevolgklasse CC'CC', factoren uit NEN-EN 1990 tabel 'if(CC ≡ 2; "NB.4"; "NB.5")'<span class="alleen-scherm"> — A1.2(B), met 6.10a en 6.10b; de permanente last ongunstig met γ<sub>G</sub> of gunstig met γ<sub>G,inf</sub>, op het totaal van de permanente lasten</span>.
+    'Gevolgklasse CC'CC', factoren uit NEN-EN 1990 tabel 'if(CC ≡ 2; "NB.4"; "NB.5")'<span class="alleen-scherm"> — A1.2(B), met 6.10a en 6.10b; de permanente last ongunstig met γ<sub>G</sub> of gunstig met γ<sub>G,inf</sub>, op het totaal van de permanente lasten</span>.<span class="alleen-scherm"></span>
     #hide
     γ_G = if(CC ≡ 1; 1.1; if(CC ≡ 3; 1.3; 1.2))
     γ_Q = if(CC ≡ 1; 1.35; if(CC ≡ 3; 1.65; 1.5))

@@ -58,7 +58,6 @@
 export const lasberekening = `"Lasberekening — EN 1993-1-8 §4.5 en §4.7
 
 '<i>Assen in het zwaartepunt van de lasfiguur: x loodrecht op het aansluitvlak, y in het aansluitvlak dwars op de las, z langs de las. De keelvlakken zijn in het aansluitvlak geklapt en in de laswortel geconcentreerd (§4.5.3.2(3)). Alle bijdragen tellen op in het zwaarst belaste hoekpunt, ongeacht hun teken: het teken van de invoer maakt voor de toets niet uit.</i><span class="alleen-scherm"></span>
-'Assen: x loodrecht op het aansluitvlak, y dwars op de las, z langs de las; bijdragen opgeteld in het zwaarst belaste hoekpunt.<span class="alleen-afdruk"></span>
 
 # 1. Invoer
 

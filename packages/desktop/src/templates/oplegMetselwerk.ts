@@ -221,11 +221,13 @@ N_Ed = N_Edc + a_L/1000*q_Edc', rekenlast incl. wandlast over de oplegging [kN]'
     'of een massieve laag onder de oplegging.
 #end if
 
-'<i>§6.1.3(5): toets de wand daarnaast op halve hoogte volgens §6.1.2, met de overige verticale lasten.</i>
+'<i class="ook-afdruk">§6.1.3(5): toets de wand daarnaast op halve hoogte volgens §6.1.2, met de overige verticale lasten.</i>
 
 # 7. Samenvatting
 
-#if UC ≤ 1.0 and opleg_min ≥ 90 and abs(exc) ≤ t/4 and h_c > 0
+#if isNaN(UC)
+    '<b>Maatgevende UC</b><span style="color: red"> niet bepaald → <b>niet getoetst: invoer onvolledig</b></span>
+#else if UC ≤ 1.0 and opleg_min ≥ 90 and abs(exc) ≤ t/4 and h_c > 0
     '<b>Maatgevende UC = 'UC'</b><span style="color: green"> ≤ 1,0 → <b>Oplegging voldoet</b></span>
 #else if UC ≤ 1.0
     '<b>Maatgevende UC = 'UC'</b> ≤ 1,0, maar een nevenvoorwaarde is niet vervuld<span style="color: red"> → <b>Oplegging voldoet niet</b></span>
