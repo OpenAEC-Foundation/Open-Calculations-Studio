@@ -107,7 +107,7 @@
 }
 
 .mk-afbeelding {
-  --mk-beeld-vlak: color-mix(in srgb, var(--theme-accent) 13%, var(--theme-dialog-content-bg));
+  --mk-beeld-vlak: color-mix(in srgb, var(--theme-accent) 11%, var(--theme-dialog-content-bg));
   position: relative;
   overflow: hidden;
   display: flex;
@@ -115,31 +115,24 @@
   justify-content: center;
   width: 100%;
   height: 104px;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 18%, var(--theme-dialog-input-border));
   border-radius: 5px;
   color: var(--theme-dialog-content-text);
-  background: color-mix(in srgb, var(--theme-accent) 5%, var(--theme-dialog-content-bg));
+  background-color: color-mix(in srgb, var(--theme-accent) 3%, var(--theme-dialog-content-bg));
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--theme-accent) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--theme-accent) 7%, transparent) 1px, transparent 1px);
+  background-size: 16px 16px;
   pointer-events: none;
 }
 
 .mk-afbeelding svg {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  width: 54px;
-  height: 38px;
-  padding: 2px;
-  border: 1px solid rgba(52, 71, 88, 0.16);
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.88);
-  color: #243747;
-  backdrop-filter: blur(3px);
-}
-
-.mk-afbeelding img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center;
+  padding: 4px 10px;
+  box-sizing: border-box;
+  color: var(--theme-dialog-content-text);
 }
 
 .mk-tegel:focus-visible {
