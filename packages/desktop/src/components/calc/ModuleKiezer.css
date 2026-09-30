@@ -84,6 +84,81 @@
   font-size: 11px;
 }
 
+.mk-normen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 2px;
+}
+
+.mk-norm-formulier {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) minmax(190px, 1.5fr) auto;
+  align-items: end;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--theme-dialog-input-border);
+  border-radius: 6px;
+}
+
+.mk-norm-formulier label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  color: var(--theme-dialog-content-text);
+  font-size: 11px;
+}
+
+.mk-norm-formulier input {
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--theme-dialog-input-border);
+  border-radius: 3px;
+  background: var(--theme-dialog-content-bg);
+  color: var(--theme-dialog-content-text);
+  font: inherit;
+}
+
+.mk-norm-formulier input[type="file"] { padding: 4px; }
+.mk-norm-formulier input[type="file"]::file-selector-button { margin-right: 8px; }
+.mk-norm-fout { color: #a52323; font-size: 12px; }
+.mk-norm-lijst { overflow: auto; }
+
+.mk-norm-regel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--theme-dialog-input-border);
+}
+
+.mk-norm-regel div { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.mk-norm-regel strong { font-size: 12px; }
+.mk-norm-regel span { overflow: hidden; color: var(--theme-text-secondary); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.mk-norm-regel button, .mk-norm-terug {
+  border: 0;
+  background: transparent;
+  color: var(--theme-accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+
+.mk-norm-regel button:hover, .mk-norm-terug:hover { text-decoration: underline; }
+.mk-normen-lezer strong { font-size: 12px; }
+.mk-normen-lezer p { color: var(--theme-text-secondary); font-size: 12px; }
+.mk-norm-acties { display: flex; gap: 12px; }
+.mk-norm-acties a { color: var(--theme-accent); font-size: 12px; }
+
+@media (max-width: 760px) {
+  .mk-norm-formulier { grid-template-columns: 1fr 1fr; }
+  .mk-norm-formulier label:nth-child(3) { grid-column: 1 / -1; }
+}
+
 .mk-tegels {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
