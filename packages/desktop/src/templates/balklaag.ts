@@ -1305,7 +1305,7 @@ pv2 = bool(u_var,2 > u_q,k,2)
     M_y,Ed = max(M_Ed,veld1; M_Ed,F1) to kN*m', maatgevend<span class="alleen-scherm"></span>'
     V_z,Ed = max(V_Ed,veld1; V_Ed,F1) to kN', maatgevend<span class="alleen-scherm"></span>'
 #end if
-'<i>Per plaats het grootste en het kleinste moment en de grootste en kleinste dwarskracht over de UGT-combinaties uit 5.2, met de puntlast op zijn plaats uit BG4 en BG5: doorgetrokken de grootste waarde, onderbroken de kleinste. Het moment staat aan de trekzijde. Valt M<sub>y,Ed</sub> of V<sub>z,Ed</sub> hoger uit dan de lijn, dan is dat de opgetelde bovengrens bij de puntlast.</i><span class="alleen-scherm"></span>
+'<i>Per plaats het grootste en het kleinste moment en de grootste en kleinste dwarskracht over de UGT-combinaties uit 5.2, met de puntlast op zijn plaats uit BG4 en BG5: doorgetrokken de grootste waarde, onderbroken de kleinste; bij de dwarskracht boven de as de grootste positieve en onder de as de grootste negatieve waarde, beide doorgetrokken. Het moment staat aan de trekzijde. Valt M<sub>y,Ed</sub> of V<sub>z,Ed</sub> hoger uit dan de lijn, dan is dat de opgetelde bovengrens bij de puntlast.</i><span class="alleen-scherm"></span>
 M_y,Ed'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
 V_z,Ed'<span class="alleen-afdruk"></span><span class="kolom-4"></span>'
 
@@ -1338,6 +1338,12 @@ Mo_max(x) = max(Mo1(x); Mo2(x); Mo3(x); Mo4(x); Mo5(x); Ma1(x); Ma2(x); Ma3(x); 
 Mo_min(x) = min(Mo1(x); Mo2(x); Mo3(x); Mo4(x); Mo5(x); Ma1(x); Ma2(x); Ma3(x); Ma4(x); Ma5(x))
 Vo_max(x) = max(Vo1(x); Vo2(x); Vo3(x); Vo4(x); Vo5(x); Va1(x); Va2(x); Va3(x); Va4(x); Va5(x))
 Vo_min(x) = min(Vo1(x); Vo2(x); Vo3(x); Vo4(x); Vo5(x); Va1(x); Va2(x); Va3(x); Va4(x); Va5(x))
+'Getekend wordt boven de as de grootste positieve en onder de as de grootste
+'negatieve dwarskracht: bij een ligger op twee steunpunten +V bij de eerste en
+'−V bij de tweede oplegging. Alleen het algebraïsch grootste zou bij de tweede
+'oplegging de lichtste combinatie tonen.
+Vo_boven(x) = max(Vo_max(x); 0)
+Vo_onder(x) = min(Vo_min(x); 0)
 'Kenmerkende waarden van de omhullende. Het grootste veldmoment in veld 1 komt
 'uit combinatie 1 of 4, in veld 2 uit 3 of 5, elk met 6.10a of 6.10b; het
 'steunmoment is overal het grootst bij de tussenoplegging. De dwarskracht
@@ -1356,12 +1362,17 @@ o_M2 = max(o_M2a; o_M2b)
 o_x2 = r_tot - if(o_M2b > o_M2a; o_x2b; o_x2a)
 o_Ms = max(c1_m; c2_m; c3_m; c4_m; c5_m; a1_m; a2_m; a3_m; a4_m; a5_m; 0)
 o_Mp = max(o_M1; o_M2; 0.0001)
-o_V0 = Vo_max(0)
-o_VL = Vo_min(r_L1)
-o_VR = Vo_max(r_L1 + (r_tot - r_L1)*10^-6)
-o_VE = Vo_min(r_tot*(1 - 10^-9))
-o_Vp = max(o_V0; o_VR*r_twee; 0.0001)
-o_Vn = max(-o_VL; -o_VE*r_twee; 0)
+o_V0 = Vo_boven(0)
+o_VL = Vo_onder(r_L1)
+o_VR = Vo_boven(r_L1 + (r_tot - r_L1)*10^-6)
+o_VE = Vo_onder(r_tot*(1 - 10^-9))
+'Trek in een oplegging: de waarde met het andere teken op dezelfde plek.
+o_V0n = Vo_onder(0)
+o_VLp = Vo_boven(r_L1)
+o_VRn = Vo_onder(r_L1 + (r_tot - r_L1)*10^-6)
+o_VEp = Vo_boven(r_tot*(1 - 10^-9))
+o_Vp = max(o_V0; o_VLp; o_VR*r_twee; o_VEp*r_twee; 0.0001)
+o_Vn = max(-o_VL; -o_V0n; -o_VE*r_twee; -o_VRn*r_twee; 0)
 'Schaal: het deel onder en boven de as past per lijn samen in 48 px.
 m_s = 48/max(o_Mp + o_Ms; 0.0001)
 my = 30 + o_Ms*m_s', as van de M-lijn'
@@ -1406,37 +1417,58 @@ svg_mv = vy2 + o_Vn*v_s + 24
     '  <circle cx="'lX(r_L1)'" cy="'my - m_s*o_Ms'" r="2.4" style="fill:#dc2626"/>
     '  <text x="'lX(r_L1)'" y="'my - m_s*o_Ms - 6'" text-anchor="middle" style="fill:#dc2626; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'-o_Ms'</text>
 #end if
-'  <!-- V-lijn: de grootste en de kleinste waarde -->
+'  <!-- V-lijn: boven de as de grootste positieve, onder de as de grootste negatieve waarde -->
 '  <polygon points="'lX(0)','vy2'
 #for i = 0 : 25
-' 'lX(sa(i))','vy2 - v_s*Vo_max(sa(i))'
+' 'lX(sa(i))','vy2 - v_s*Vo_boven(sa(i))'
 #loop
 #if r_twee ≡ 1
     #for i = 0 : 25
-    ' 'lX(sb(i))','vy2 - v_s*Vo_max(sb(i))'
+    ' 'lX(sb(i))','vy2 - v_s*Vo_boven(sb(i))'
     #loop
 #end if
 ' 'lX(r_tot)','vy2'" style="fill:rgba(59,130,246,0.20); stroke:#2563eb; stroke-width:2; stroke-linejoin:round"/>
 '  <polygon points="'lX(0)','vy2'
 #for i = 0 : 25
-' 'lX(sa(i))','vy2 - v_s*Vo_min(sa(i))'
+' 'lX(sa(i))','vy2 - v_s*Vo_onder(sa(i))'
 #loop
 #if r_twee ≡ 1
     #for i = 0 : 25
-    ' 'lX(sb(i))','vy2 - v_s*Vo_min(sb(i))'
+    ' 'lX(sb(i))','vy2 - v_s*Vo_onder(sb(i))'
     #loop
 #end if
-' 'lX(r_tot)','vy2'" style="fill:rgba(59,130,246,0.12); stroke:#2563eb; stroke-width:1.4; stroke-dasharray:5 3; stroke-linejoin:round"/>
+' 'lX(r_tot)','vy2'" style="fill:rgba(59,130,246,0.20); stroke:#2563eb; stroke-width:2; stroke-linejoin:round"/>
 '  <line x1="'lX(0) - 10'" y1="'vy2'" x2="'lX(r_tot) + 10'" y2="'vy2'" style="stroke:#374151; stroke-width:1.4"/>
 '  <text x="'lX(0) - 10'" y="'vy2 - o_Vp*v_s - 14'" style="fill:#2563eb; font-weight:700">V-lijn [kN]</text>
 '  <text x="'lX(r_tot) + 10'" y="'vy2 - o_Vp*v_s - 14'" text-anchor="end" style="fill:#374151">V<tspan baseline-shift="sub" font-size="8">z,Ed</tspan> = 'V_z,Ed' kN (maatgevend)</text>
-'  <text x="'lX(0) + 5'" y="'vy2 - v_s*o_V0 + if(o_V0 < 0; 14; -5)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_V0'</text>
-'  <text x="'lX(r_L1) - 5'" y="'vy2 - v_s*o_VL + if(o_VL < 0; 14; -5)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VL'</text>
+'  <!-- waarden aan de randen: boven de as positief, onder de as negatief; trek in een eindoplegging buiten de ligger, naast de oplegging -->
+#if o_V0 > 0.005 or o_V0n > -0.005
+    '  <text x="'lX(0) + 5'" y="'vy2 - v_s*o_V0 - 5'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_V0'</text>
+#end if
+#if o_V0n < -0.005
+    '  <text x="'lX(0) - 8'" y="'max(vy2 - v_s*o_V0n + 4; vy2 + 12)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_V0n'</text>
+#end if
+#if o_VL < -0.005 or o_VLp < 0.005
+    '  <text x="'lX(r_L1) - 5'" y="'vy2 - v_s*o_VL + 14'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VL'</text>
+#end if
+#if o_VLp > 0.005
+    '  <text x="'lX(r_L1) - 5'" y="'vy2 - v_s*o_VLp - 5'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VLp'</text>
+#end if
 #if r_twee ≡ 1
-    '  <text x="'lX(r_L1) + 5'" y="'vy2 - v_s*o_VR + if(o_VR < 0; 14; -5)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VR'</text>
+    #if o_VR > 0.005 or o_VRn > -0.005
+        '  <text x="'lX(r_L1) + 5'" y="'vy2 - v_s*o_VR - 5'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VR'</text>
+    #end if
+    #if o_VRn < -0.005
+        '  <text x="'lX(r_L1) + 5'" y="'vy2 - v_s*o_VRn + 14'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VRn'</text>
+    #end if
 #end if
 #if s3 ≡ 1
-    '  <text x="'lX(r_tot) - 5'" y="'vy2 - v_s*o_VE + if(o_VE < 0; 14; -5)'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VE'</text>
+    #if o_VE < -0.005 or o_VEp < 0.005
+        '  <text x="'lX(r_tot) - 5'" y="'vy2 - v_s*o_VE + 14'" text-anchor="end" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VE'</text>
+    #end if
+    #if o_VEp > 0.005
+        '  <text x="'lX(r_tot) + 8'" y="'min(vy2 - v_s*o_VEp + 4; vy2 - 3)'" style="fill:#2563eb; font-weight:700; stroke:#ffffff; stroke-width:3; paint-order:stroke; stroke-linejoin:round">'o_VEp'</text>
+    #end if
 #end if
 '  <!-- opleggingen onder beide assen -->
 '  <polygon points="'lX(0)','my' 'lX(0) - 6','my + 11' 'lX(0) + 6','my + 11'" style="fill:#fbbf24; stroke:#92400e; stroke-width:1"/>

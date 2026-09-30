@@ -127,6 +127,22 @@ export interface Lijnen {
   u: (x: number) => number;
 }
 
+/**
+ * Omhullende dwarskracht voor de tekening: boven de as per x de grootste
+ * positieve, onder de as de grootste negatieve waarde over de combinaties.
+ * Bij een ligger op twee steunpunten geeft dat +V bij de eerste en −V bij de
+ * tweede oplegging. Alleen het algebraïsche maximum tekenen toont bij die
+ * tweede oplegging de lichtste combinatie; per x de grootste absolute waarde
+ * kiezen geeft een schijnsprong waar de twee grenzen even groot zijn. Beide
+ * helften zijn continu, op de sprongen van de puntlasten en opleggingen na.
+ */
+export function vOmhullende(fs: ((x: number) => number)[]): { boven: (x: number) => number; onder: (x: number) => number } {
+  return {
+    boven: (x) => Math.max(0, ...fs.map((f) => f(x))),
+    onder: (x) => Math.min(0, ...fs.map((f) => f(x))),
+  };
+}
+
 /** Moment, dwarskracht en zakking van één lastset op afstand x van het begin. */
 export function lijnen(g: Ligger, s: Lastset): Lijnen {
   const { L1, EI } = g;

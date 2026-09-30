@@ -18,7 +18,7 @@ open staat. De open punten staan ook als issues op GitHub (label
 | `packages/desktop/src/rapport`, `components/rapport` | Constructierapport (hoofdstukken, uitgangspunten, belastingen met opbouwen en gewichtenbibliotheek `gewichten.ts`, bijlage A met de rekenbladen). |
 | `packages/desktop/src/store` | Project (exemplaren/bladen, projectgegevens, rapport), projectbestand, undo. |
 | `packages/web/src/templates` | Kopieën van de losse normbladen (`eurocode5`, `en1990`–`en1997`, `vandepitte`) voor de web-app. **Byte-gelijk houden** met de desktopversie. |
-| `scripts/check-*.mjs` | Controles; `node scripts/check-alles.mjs` draait ze allemaal (nu 72 controles). |
+| `scripts/check-*.mjs` | Controles; `node scripts/check-alles.mjs` draait ze allemaal (nu 73 controles). |
 
 ## 2. Afspraken in de bladen
 

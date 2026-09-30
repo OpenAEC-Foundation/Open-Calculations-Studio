@@ -7,7 +7,7 @@ import {
   RaveelPlattegrond, raveelMaten, raveelHoogte, extremen, randwaarden, nl,
 } from "./balklaagTekening";
 import { leesBlad, rekenBladDoor, useBladUitkomst } from "./bladResultaat";
-import { belastinggevallen, lijnen, ugtCombinaties, type Ligger, type Lijnen } from "./balklaagLijnen";
+import { belastinggevallen, lijnen, ugtCombinaties, vOmhullende, type Ligger, type Lijnen } from "./balklaagLijnen";
 import { balklaagKent, kdefUitKlimaat } from "./balklaagBlad";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
@@ -412,6 +412,9 @@ export default function BalklaagDesigner() {
   const Mmin = (x: number) => Math.min(...combis.map((c) => c.M(x)));
   const Vmax = (x: number) => Math.max(...combis.map((c) => c.V(x)));
   const Vmin = (x: number) => Math.min(...combis.map((c) => c.V(x)));
+  // Getekend: boven de as de grootste positieve, onder de as de grootste
+  // negatieve dwarskracht (zie vOmhullende).
+  const Vomh = vOmhullende(combis.map((c) => c.V));
   const grenzen = schema === 2 || schema === 3 ? [0, L1, tot] : [0, tot];
   // Waar de dwarskracht springt: de opleggingen en de puntlasten.
   const sprongen = [...grenzen, L1 / 2, ...(schema === 3 ? [L1 + ligger.L2 / 2] : [])];
@@ -908,10 +911,12 @@ export default function BalklaagDesigner() {
                   <div className="vd-stage" style={{ width: W, height: vH, background: "transparent", border: "none", borderRadius: 0 }}>
                     {tekenbaar && (
                       <svg width={W} height={vH} className="vd-svg">
-                        <KrachtenLijn x1={mx1} x2={mx2} tot={tot} asY={asV} schaal={sV} f={Vmax} omlaag={false} kleur={KLEUR_V}
-                          breekpunten={sprongen} arcering tekens labels={Vlabels} stippel={Vmin} />
+                        <KrachtenLijn x1={mx1} x2={mx2} tot={tot} asY={asV} schaal={sV} f={Vomh.boven} omlaag={false} kleur={KLEUR_V}
+                          breekpunten={sprongen} arcering tekens labels={Vlabels} />
+                        <KrachtenLijn x1={mx1} x2={mx2} tot={tot} asY={asV} schaal={sV} f={Vomh.onder} omlaag={false} kleur={KLEUR_V}
+                          breekpunten={sprongen} arcering tekens />
                         {steunen.map((x, i) => <Oplegging key={i} x={X(x)} y={asV} soort={i === 0 ? "scharnier" : "rol"} g={4.5} />)}
-                        <text x={mx1 - 8} y={vH - 4} fontSize={10} fill="#6b7280">lijn: grootste · stippel: kleinste; V<tspan baselineShift="sub" fontSize={7}>z,Ed</tspan> neemt de puntlast bij de oplegging</text>
+                        <text x={mx1 - 8} y={vH - 4} fontSize={10} fill="#6b7280">boven: grootste +V · onder: grootste −V; V<tspan baselineShift="sub" fontSize={7}>z,Ed</tspan> neemt de puntlast bij de oplegging</text>
                       </svg>
                     )}
                   </div>
