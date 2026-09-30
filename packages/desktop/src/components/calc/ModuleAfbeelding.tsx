@@ -29,6 +29,13 @@ const ligger = <>{r(26, 43, 108, 8)}{steun(34, 51)}{steun(126, 51)}{kracht(54, 1
 const verbinding = <>{r(44, 16, 18, 63)}{r(62, 35, 65, 23)}{p("M62 39h65M62 54h65")}</>;
 const doorsnede = <>{r(49, 17, 62, 64)}<rect x="56" y="24" width="48" height="50" rx="7" stroke={accent} />{stip(62, 30)}{stip(98, 30)}{stip(62, 68)}{stip(80, 68)}{stip(98, 68)}</>;
 
+/** Gegenereerde modulebeelden; het symbool benoemt de toets visueel. */
+const eigenBeelden = import.meta.glob("../../assets/module-beelden/*.webp", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
+
 /** Elk rekenmodule-id heeft een eigen herkenningsbeeld. */
 const beelden: Record<string, ReactNode> = {
   spuwer: <>{p("M27 23v52h108M36 23v43h60V48h32v9h-24v18")}
@@ -78,11 +85,12 @@ const beelden: Record<string, ReactNode> = {
 export default function ModuleAfbeelding({ templateId }: { templateId: string }) {
   const beeld = beelden[templateId];
   if (!beeld) return null;
+  const foto = eigenBeelden[`../../assets/module-beelden/${templateId}.webp`];
   return (
     <span className="mk-afbeelding" aria-hidden="true">
+      {foto && <img src={foto} alt="" loading="lazy" />}
       <svg viewBox="0 -10 160 110" fill="none" stroke="currentColor" strokeWidth="1.8"
         strokeLinecap="round" strokeLinejoin="round" focusable="false">
-        <path d="M11 7h9M11 7v9M149 7h-9m9 0v9M11 87h9m-9 0v-9m138 9h-9m9 0v-9" stroke={accent} opacity="0.42" />
         {beeld}
       </svg>
     </span>

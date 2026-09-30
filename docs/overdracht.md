@@ -74,9 +74,10 @@ Status in de catalogus: *gereed* (gecalibreerd op referentiebladen), *controlere
 | Metselwerk | Dragende metselwerkwand, Metselwerk loodrecht belast, Oplegging op metselwerk |
 | Normbladen | EN 1990–1997 per artikel, waaronder wind (gevel, plat dak, zadeldak, schilddak, overkapping, luifel, lijnlast per zone, windmoment) en sneeuw (kiel, ophoping), hout (wringing, tapse ligger, uitkeping, beschot), staal (onderflensbuiging) |
 
-De 38 selecteerbare modules hebben elk een eigen schematisch beeld in
-`components/calc/ModuleAfbeelding.tsx`. `check-modulebeelden.mjs` bewaakt de
-dekking van de catalogus. Zie [modulebeelden.md](modulebeelden.md).
+De 38 selecteerbare modules hebben elk een eigen compact beeld in
+`packages/desktop/src/assets/module-beelden`; de schematische symbolen blijven
+als herkenning over de beelden zichtbaar. `check-modulebeelden.mjs` bewaakt de
+dekking van de catalogus.
 
 ## 7. Open punten
 
