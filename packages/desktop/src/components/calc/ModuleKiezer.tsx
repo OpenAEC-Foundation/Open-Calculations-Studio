@@ -10,6 +10,7 @@ import {
 import { templates } from "../../templates";
 import { useModuleKiezer } from "../../store/moduleKiezer";
 import ModuleAfbeelding from "./ModuleAfbeelding";
+import LokaleNormen from "./LokaleNormen";
 import "../settings/SettingsDialog.css";
 import "./ProjectBrowser.css";
 import "./ModuleKiezer.css";
@@ -60,8 +61,9 @@ async function openNormBron(url: string) {
 }
 
 const TABS = [
-  { id: "modules", label: "Modules", bron: moduleCatalogus },
-  { id: "bibliotheek", label: "Bibliotheek", bron: bibliotheek },
+  { id: "modules", label: "Modules" },
+  { id: "bibliotheek", label: "Bibliotheek" },
+  { id: "normbestanden", label: "Normbestanden" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -181,7 +183,7 @@ export default function ModuleKiezer() {
   const [zoek, setZoek] = useState("");
   const [gekozen, setGekozen] = useState<Item | null>(null);
 
-  const bron = TABS.find((t) => t.id === tab)!.bron;
+  const bron = tab === "modules" ? moduleCatalogus : bibliotheek;
   const groepen = useMemo(() => {
     const z = zoek.trim().toLowerCase();
     return bron
@@ -205,15 +207,17 @@ export default function ModuleKiezer() {
 
   const footer = (
     <>
-      <Legenda />
-      <button className="settings-btn settings-btn-secondary" onClick={afbreken}>Annuleren</button>
-      <button
-        className="settings-btn settings-btn-primary"
-        disabled={!gekozen}
-        onClick={() => toevoegen(gekozen)}
-      >
-        Toevoegen
-      </button>
+      {tab !== "normbestanden" && <Legenda />}
+      <button className="settings-btn settings-btn-secondary" onClick={afbreken}>{tab === "normbestanden" ? "Sluiten" : "Annuleren"}</button>
+      {tab !== "normbestanden" && (
+        <button
+          className="settings-btn settings-btn-primary"
+          disabled={!gekozen}
+          onClick={() => toevoegen(gekozen)}
+        >
+          Toevoegen
+        </button>
+      )}
     </>
   );
 
@@ -221,7 +225,7 @@ export default function ModuleKiezer() {
     <Modal
       open={open}
       onClose={afbreken}
-      title="Module toevoegen"
+      title={tab === "normbestanden" ? "Normbestanden" : "Module toevoegen"}
       width={Math.min(960, window.innerWidth - 32)}
       height={Math.min(720, window.innerHeight - 64)}
       className="module-kiezer"
@@ -243,25 +247,27 @@ export default function ModuleKiezer() {
           <input
             className="mk-zoek"
             type="search"
-            aria-label={tab === "modules" ? "Zoek een module" : "Zoek in de bibliotheek"}
-            placeholder={tab === "modules" ? "Zoek een module…" : "Zoek in de bibliotheek…"}
+            aria-label={tab === "modules" ? "Zoek een module" : tab === "bibliotheek" ? "Zoek in de bibliotheek" : "Zoek een lokaal normbestand"}
+            placeholder={tab === "modules" ? "Zoek een module…" : tab === "bibliotheek" ? "Zoek in de bibliotheek…" : "Zoek een lokaal normbestand…"}
             value={zoek}
             autoFocus
             onChange={(e) => { setZoek(e.target.value); setGekozen(null); }}
           />
-          <div className="mk-lijst">
-            {groepen.length === 0 && <p className="mk-leeg">Niets gevonden voor "{zoek}".</p>}
-            {groepen.map((g) => (
-              <GroepBlok
-                key={g.id}
-                groep={g}
-                niveau={0}
-                gekozen={gekozen?.id ?? null}
-                onKies={setGekozen}
-                onVoegToe={toevoegen}
-              />
-            ))}
-          </div>
+          {tab === "normbestanden" ? <LokaleNormen zoek={zoek} /> : (
+            <div className="mk-lijst">
+              {groepen.length === 0 && <p className="mk-leeg">Niets gevonden voor "{zoek}".</p>}
+              {groepen.map((g) => (
+                <GroepBlok
+                  key={g.id}
+                  groep={g}
+                  niveau={0}
+                  gekozen={gekozen?.id ?? null}
+                  onKies={setGekozen}
+                  onVoegToe={toevoegen}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </Modal>

@@ -39,6 +39,7 @@ open staat. De open punten staan ook als issues op GitHub (label
 - Eurocodes met de Nederlandse nationale bijlagen (NEN-EN 1990 t/m 1997 + NB, NEN 9997-1). Waar de norm-stand rekent, volgt hij de NB; bijvoorbeeld k_cr = 1,0 voor prismatische houten liggers (NB bij 6.1.7(2)).
 - **Normtekst nooit in de repo**: alleen artikel-, formule- en tabelnummers. Controleren gebeurt tegen lokale normteksten van de gebruiker, die niet in de repo staan.
 - De normbibliotheek in de modulekiezer verwijst naar de officiële NEN-overzichten. NEN 8700/8701 en EN 1999 staan er als zichtbare ontbrekende rekenbladen; de verwijzing is geen inhoudelijke toets. Editie en nationale bijlage moeten per project worden vastgesteld.
+- Het tabblad *Normbestanden* bewaart eigen PDF's met normnummer en editie in de lokale applicatieopslag (IndexedDB). Deze bestanden gaan niet mee in een projectbestand of de repository. De tool toont de bron voor handmatige controle en leidt er geen rekenwaarden of conformiteit uit af.
 - Waar een waarde niet uit de beschikbare tekst te onderbouwen was, is die **invoer** met een korte uitleg op het scherm, of staat de toets als *niet getoetst* op het blad. Zie de issues voor wat nog tegen een volledige normtekst moet worden gelegd.
 
 ## 4. Controleren

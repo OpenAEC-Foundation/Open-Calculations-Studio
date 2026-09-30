@@ -41,5 +41,10 @@ Voor een native build zijn Rust en de platformspecifieke Tauri-buildtools
 nodig. Op Linux zijn dat onder meer de GTK- en WebKitGTK-ontwikkelbibliotheken.
 De Rust-rapportengine is optioneel; afdrukken gebruikt standaard de browser.
 
+Via **Module → Normbestanden** kun je eigen PDF's met normnummer en editie
+bewaren en terugvinden. De bestanden blijven lokaal in de appopslag en gaan
+niet mee in projectbestanden. Deze catalogus leest geen normwaarden automatisch
+in rekenbladen in.
+
 Zie de [hoofd-README](../../README.md) voor installatie en
 [de overdracht](../../docs/overdracht.md) voor de huidige stand en werkafspraken.
