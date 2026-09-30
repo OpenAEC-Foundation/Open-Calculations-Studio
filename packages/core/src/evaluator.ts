@@ -844,12 +844,12 @@ function evaluateAssignment(
     }
 
     // Evaluate the full expression (including "to unit" if present)
-    const compiled = math.parse(expression);
-    const value = compiled.evaluate(scope);
+    const parsed = math.parse(expression);
+    const value = parsed.evaluate(scope);
     scope[name] = value;
 
     // Build substitution: replace variable names with their values
-    const substitution = buildSubstitution(displayExpr, scope, name);
+    const substitution = buildSubstitution(displayExpr, scope, name, displayExpr === expression ? parsed : undefined);
 
     // Format the result with simplified units
     const resultStr = formatResult(value);
@@ -881,9 +881,12 @@ function evaluateAssignment(
 function buildSubstitution(
   expression: string,
   scope: Scope,
-  currentVar: string
+  currentVar: string,
+  parsedExpression?: MathNode,
 ): string {
-  const parsed = math.parse(expression);
+  // Bij een gewone toewijzing is dit dezelfde boom die zojuist is berekend.
+  // Alleen een eenheidsconversie toont een ander deel van de expressie.
+  const parsed = parsedExpression ?? math.parse(expression);
   const variables = new Set<string>();
   parsed.traverse((node: MathNode) => {
     if (node.type === 'SymbolNode' && 'name' in node) {
@@ -994,6 +997,9 @@ function getNumericValue(value: MathUnit): number {
     const simplified = simplifyUnitString(value);
     return value.toNumber(simplified);
   } catch {
+    // `1 / K` is goed leesbaar op het blad, maar wordt door de eenheidsparser
+    // niet als doeleenheid geaccepteerd. De interne notatie `K^-1` wel.
+    try { return value.toNumber(value.formatUnits()); } catch { /* laatste terugval */ }
     // Fallback: extract from toString
     const str = String(value);
     const match = str.match(/^([+-]?\d+\.?\d*(?:e[+-]?\d+)?)\s/i);

@@ -219,7 +219,7 @@ function detectElements(bindings: ScalarBinding[]): DetectedElements {
     };
   }
 
-  // Footing detection — 2259-Intertek uses b_fdn / l_fdn / t_fdn / G_fdn
+  // Funderingsmaten uit de gebruikelijke bindingsnamen herkennen.
   const bFdn = findBinding(bindings, ['b_fdn', 'b_fdn_1', 'b_fdn1']);
   const lFdn = findBinding(bindings, ['l_fdn', 'l_fdn_1', 'l_fdn1']);
   const tFdn = findBinding(bindings, ['t_fdn', 'h_fdn']);

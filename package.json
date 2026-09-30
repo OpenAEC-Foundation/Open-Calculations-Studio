@@ -7,6 +7,9 @@
     "packages/desktop"
   ],
   "scripts": {
+    "dev": "npm run build --workspace=@ifc-calc/core && npm run dev --workspace=@openaec/calculations-studio",
+    "build": "npm run build --workspace=@ifc-calc/core && npm run build --workspace=@openaec/calculations-studio",
+    "build:debug": "npm run build --workspace=@ifc-calc/core && npm run tauri:build --workspace=@openaec/calculations-studio -- --debug --no-bundle",
     "icons": "node scripts/generate-icons.mjs && npm --prefix packages/desktop exec -- tauri icon src-tauri/icon-source.png",
     "check": "npm --prefix packages/core run build && node scripts/check-alles.mjs",
     "snapshot": "node scripts/snapshot-templates.mjs"

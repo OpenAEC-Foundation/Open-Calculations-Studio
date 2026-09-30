@@ -34,6 +34,9 @@ import { betonplaat } from "./betonplaat";
 import { verankeringslengte } from "./verankeringslengte";
 import { betonDetaillering } from "./betonDetaillering";
 import { opdrijven } from "./opdrijven";
+import { lastresultante } from "./lastresultante";
+import { wapeningshoeveelheid } from "./wapeningshoeveelheid";
+import { plaatwandhoeveelheid } from "./plaatwandhoeveelheid";
 import { houtenKap } from "./houtenKap";
 import { ligger } from "./ligger";
 import { portaalSpant } from "./portaalSpant";
@@ -102,6 +105,9 @@ export const templates: Record<string, string> = {
   "verankeringslengte": verankeringslengte,
   "beton-detaillering": betonDetaillering,
   "opdrijven": opdrijven,
+  "lastresultante": lastresultante,
+  "wapeningshoeveelheid": wapeningshoeveelheid,
+  "plaatwandhoeveelheid": plaatwandhoeveelheid,
   "houten-kap": houtenKap,
   "ligger": ligger,
   "portaal-spant": portaalSpant,

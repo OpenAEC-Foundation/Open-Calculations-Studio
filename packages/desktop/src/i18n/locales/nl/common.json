@@ -71,11 +71,13 @@
     "status": {
       "gereed": "gecalibreerd",
       "controleren": "nog controleren",
+      "raming": "hoeveelhedenraming",
       "concept": "nog uit te werken"
     },
     "statusUitleg": {
       "gereed": "Module gecalibreerd — toetsing nagerekend op referentiebladen",
       "controleren": "Module nog controleren — toetsing uitgewerkt, nog niet tegen referentiebladen gecontroleerd",
+      "raming": "Hoeveelheden nagerekend — geen constructieve sterktetoets",
       "concept": "Module nog uit te werken — alleen invoer en parametrisch beeld, geen toetsing"
     },
     "melding": "Nieuwere rekenversie beschikbaar",

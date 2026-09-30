@@ -45,6 +45,20 @@ export interface OpenedFile {
   raw: string;
 }
 
+// De browser geeft geen bestandspad terug. Bewaar de gekozen handle gedurende
+// de sessie, zodat Opslaan hetzelfde bestand kan overschrijven.
+let browserHandle: FileSystemFileHandle | null = null;
+let browserBestandsnaam: string | null = null;
+
+type BestandsKiezer = Window & {
+  showOpenFilePicker?: (options?: object) => Promise<FileSystemFileHandle[]>;
+  showSaveFilePicker?: (options?: object) => Promise<FileSystemFileHandle>;
+};
+
+function geannuleerd(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
 /**
  * Wrap a CalcPAD source + IFCX representation into the on-disk
  * `.ifc-calculation` JSON-LD format. The result IS a valid IFCX document
@@ -85,6 +99,24 @@ export async function openCalculationFile(): Promise<OpenedFile | null> {
     return { path: picked, name, raw };
   }
 
+  const kies = (window as BestandsKiezer).showOpenFilePicker;
+  if (kies) {
+    try {
+      const [handle] = await kies.call(window, {
+        types: [{ description: "Berekeningen", accept: { "application/json": [".ifccalculation", ".ifc-calculation", ".cpd", ".cpdz"] } }],
+        excludeAcceptAllOption: false,
+      });
+      if (!handle) return null;
+      const raw = await (await handle.getFile()).text();
+      browserHandle = handle;
+      browserBestandsnaam = handle.name;
+      return { path: handle.name, name: stripExt(handle.name), raw };
+    } catch (error) {
+      if (geannuleerd(error)) return null;
+      throw error;
+    }
+  }
+
   // Browser fallback: HTML <input type=file>
   return new Promise<OpenedFile | null>((resolve) => {
     const input = document.createElement("input");
@@ -94,6 +126,8 @@ export async function openCalculationFile(): Promise<OpenedFile | null> {
       const f = input.files?.[0];
       if (!f) return resolve(null);
       const raw = await f.text();
+      browserHandle = null;
+      browserBestandsnaam = null;
       resolve({ path: f.name, name: stripExt(f.name), raw });
     };
     input.oncancel = () => resolve(null);
@@ -121,11 +155,19 @@ function sanitizeFileName(name: string): string {
  * niet ongemerkt, daarvoor komt eerst de dialoog.
  */
 export function kanDirectOpslaan(path: string | null): path is string {
-  return !!path && isTauri() && /\.ifccalculation$/i.test(path);
+  return !!path && /\.ifccalculation$/i.test(path) &&
+    (isTauri() || (browserHandle !== null && browserBestandsnaam === path));
 }
 
 /** Schrijf een payload over een bestaand bestand heen, zonder dialoog. */
 export async function schrijfCalculationFile(path: string, payload: string): Promise<void> {
+  if (!isTauri()) {
+    if (!browserHandle || browserBestandsnaam !== path) throw new Error("Geen geopend bestand om te overschrijven");
+    const writable = await browserHandle.createWritable();
+    await writable.write(payload);
+    await writable.close();
+    return;
+  }
   const { writeTextFile } = await import("@tauri-apps/plugin-fs");
   await writeTextFile(path, payload);
 }
@@ -160,6 +202,25 @@ export async function saveCalculationFile(
     if (!path) return null;
     await writeTextFile(path, payload);
     return path;
+  }
+
+  const kies = (window as BestandsKiezer).showSaveFilePicker;
+  if (kies) {
+    try {
+      const handle = await kies.call(window, {
+        suggestedName: defaultFile,
+        types: [{ description: "Berekening", accept: { "application/json": [".ifccalculation"] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(payload);
+      await writable.close();
+      browserHandle = handle;
+      browserBestandsnaam = handle.name;
+      return handle.name;
+    } catch (error) {
+      if (geannuleerd(error)) return null;
+      throw error;
+    }
   }
 
   // Browser fallback — download via Blob link

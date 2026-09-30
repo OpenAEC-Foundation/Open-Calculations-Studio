@@ -64,26 +64,87 @@
   color: var(--theme-text-secondary);
 }
 
+.mk-bron {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--theme-accent);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.mk-bron:hover {
+  text-decoration: underline;
+}
+
+.mk-norm-uitleg {
+  margin: 0 0 10px;
+  color: var(--theme-text-secondary);
+  font-size: 11px;
+}
+
 .mk-tegels {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 6px;
+  gap: 10px;
 }
 
 .mk-tegel {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 3px;
-  padding: 7px 9px;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid var(--theme-dialog-input-border);
-  border-radius: 2px;
+  border-radius: 6px;
   background: var(--theme-dialog-content-bg);
   color: var(--theme-dialog-content-text);
   font: inherit;
   text-align: left;
-  cursor: default;
+  cursor: pointer;
   transition: background 0.1s, border-color 0.1s;
+}
+
+.mk-afbeelding {
+  --mk-beeld-vlak: color-mix(in srgb, var(--theme-accent) 13%, var(--theme-dialog-content-bg));
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 104px;
+  border-radius: 5px;
+  color: var(--theme-dialog-content-text);
+  background: color-mix(in srgb, var(--theme-accent) 5%, var(--theme-dialog-content-bg));
+  pointer-events: none;
+}
+
+.mk-afbeelding svg {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 54px;
+  height: 38px;
+  padding: 2px;
+  border: 1px solid rgba(52, 71, 88, 0.16);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #243747;
+  backdrop-filter: blur(3px);
+}
+
+.mk-afbeelding img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.mk-tegel:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
 }
 
 .mk-tegel:hover:not(:disabled) {
@@ -118,6 +179,13 @@
   align-items: center;
   gap: 6px;
   padding-left: 16px;
+  margin-top: auto;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .module-kiezer .settings-sidebar { width: 88px; }
+  .mk-tegels { grid-template-columns: minmax(0, 1fr); }
 }
 
 .mk-status {

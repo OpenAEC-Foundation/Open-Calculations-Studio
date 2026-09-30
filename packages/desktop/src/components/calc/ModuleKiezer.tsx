@@ -9,6 +9,7 @@ import {
 } from "./projectTree";
 import { templates } from "../../templates";
 import { useModuleKiezer } from "../../store/moduleKiezer";
+import ModuleAfbeelding from "./ModuleAfbeelding";
 import "../settings/SettingsDialog.css";
 import "./ProjectBrowser.css";
 import "./ModuleKiezer.css";
@@ -28,6 +29,7 @@ interface Groep {
   label: string;
   items: Item[];
   subgroepen: Groep[];
+  bronUrl?: string;
 }
 
 /** Een categorie uit de catalogus als groep: eigen items plus subcategorieën. */
@@ -35,18 +37,27 @@ function naarGroep(node: TreeNode): Groep | null {
   if (node.kind === "item") return null;
   const items = node.children.filter((c): c is Item => c.kind === "item");
   const subgroepen = node.children.map(naarGroep).filter((g): g is Groep => g !== null);
-  return { id: node.id, label: node.label, items, subgroepen };
+  return { id: node.id, label: node.label, items, subgroepen, bronUrl: node.kind === "category" ? node.bronUrl : undefined };
 }
 
-/** Alleen de items (en subgroepen) waarvan het label de zoektekst bevat. */
+/** Zoek ook op de groepsnaam, zodat bijvoorbeeld "staal" alle staalmodules toont. */
 function filter(groep: Groep, zoek: string): Groep | null {
-  if (!zoek) return groep;
+  if (!zoek || groep.label.toLowerCase().includes(zoek)) return groep;
   const items = groep.items.filter((i) => i.label.toLowerCase().includes(zoek));
   const subgroepen = groep.subgroepen.map((g) => filter(g, zoek)).filter((g): g is Groep => g !== null);
   return items.length || subgroepen.length ? { ...groep, items, subgroepen } : null;
 }
 
 const aantal = (g: Groep): number => g.items.length + g.subgroepen.reduce((s, sg) => s + aantal(sg), 0);
+
+async function openNormBron(url: string) {
+  if ("__TAURI_INTERNALS__" in window) {
+    const { openUrl } = await import("@tauri-apps/plugin-opener");
+    await openUrl(url);
+  } else {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
 
 const TABS = [
   { id: "modules", label: "Modules", bron: moduleCatalogus },
@@ -75,10 +86,18 @@ function Tegel({ item, gekozen, onKies, onVoegToe }: {
       type="button"
       className={`mk-tegel${gekozen ? " gekozen" : ""}${beschikbaar ? "" : " uit"}`}
       disabled={!beschikbaar}
+      aria-pressed={gekozen}
       onClick={onKies}
       onDoubleClick={onVoegToe}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onVoegToe();
+        }
+      }}
       title={uitleg}
     >
+      {status && item.templateId && <ModuleAfbeelding templateId={item.templateId} />}
       <span className="mk-kop">
         {status && (
           <span className={`tree-item-icon tree-status-${status}`}>{status === "concept" ? "○" : "●"}</span>
@@ -107,7 +126,15 @@ function GroepBlok({ groep, niveau, gekozen, onKies, onVoegToe }: {
     <section className={`mk-groep mk-niveau-${Math.min(niveau, 2)}`}>
       <Kop>
         {groep.label} <span className="mk-aantal">{aantal(groep)}</span>
+        {groep.bronUrl && (
+          <button type="button" className="mk-bron" onClick={() => void openNormBron(groep.bronUrl!)}>
+            NEN-overzicht ↗
+          </button>
+        )}
       </Kop>
+      {groep.id === "standards" && (
+        <p className="mk-norm-uitleg">Rekenuitwerkingen en bronverwijzingen; controleer de geldende editie en nationale bijlage.</p>
+      )}
       {groep.items.length > 0 && (
         <div className="mk-tegels">
           {groep.items.map((item) => (
@@ -133,7 +160,7 @@ function Legenda() {
   const { t } = useTranslation();
   return (
     <span className="mk-legenda">
-      {(["gereed", "controleren", "concept"] as const).map((status) => (
+      {(["gereed", "controleren", "raming", "concept"] as const).map((status) => (
         <span key={status} title={t(`bladVersie.statusUitleg.${status}`)}>
           <span className={`tree-item-icon tree-status-${status}`}>{status === "concept" ? "○" : "●"}</span>{" "}
           {t(`bladVersie.status.${status}`)}
@@ -195,8 +222,8 @@ export default function ModuleKiezer() {
       open={open}
       onClose={afbreken}
       title="Module toevoegen"
-      width={Math.min(820, window.innerWidth - 32)}
-      height={Math.min(600, window.innerHeight - 64)}
+      width={Math.min(960, window.innerWidth - 32)}
+      height={Math.min(720, window.innerHeight - 64)}
       className="module-kiezer"
       footer={footer}
     >
@@ -206,28 +233,21 @@ export default function ModuleKiezer() {
             <button
               key={t.id}
               className={`settings-tab${tab === t.id ? " active" : ""}`}
-              onClick={() => { setTab(t.id); setGekozen(null); }}
+              onClick={() => { setTab(t.id); setGekozen(null); setZoek(""); }}
             >
               {t.label}
             </button>
           ))}
         </div>
-        <div
-          className="settings-content mk-inhoud"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && gekozen) {
-              e.preventDefault();
-              toevoegen(gekozen);
-            }
-          }}
-        >
+        <div className="settings-content mk-inhoud">
           <input
             className="mk-zoek"
             type="search"
+            aria-label={tab === "modules" ? "Zoek een module" : "Zoek in de bibliotheek"}
             placeholder={tab === "modules" ? "Zoek een module…" : "Zoek in de bibliotheek…"}
             value={zoek}
             autoFocus
-            onChange={(e) => setZoek(e.target.value)}
+            onChange={(e) => { setZoek(e.target.value); setGekozen(null); }}
           />
           <div className="mk-lijst">
             {groepen.length === 0 && <p className="mk-leeg">Niets gevonden voor "{zoek}".</p>}

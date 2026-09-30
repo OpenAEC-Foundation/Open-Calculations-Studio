@@ -31,10 +31,11 @@
  * controleren.
  */
 
-export const hsbStabiliteit = `"Stabiliteit HSB-wanden — wandschijven volgens EN 1995-1-1 §9.2.4.2
+export const hsbStabiliteit = `"Stabiliteit HSB-wanden — één wandschijf of meerdere stabiliteitswanden
 
 '<i>Eén bouwlaag in één richting, methode A (§9.2.4.2). Een wand is een dicht wanddeel met een
-'anker aan beide einden; de dichte delen naast een opening zijn aparte wanden (§9.2.4.2(6)).</i>
+'anker aan beide einden; de dichte delen naast een opening zijn aparte wanden (§9.2.4.2(6)).
+'Kies één wand voor een losse wandschijf of meerdere wanden voor de belastingverdeling van de bouwlaag.</i>
 
 # 1. Uitgangspunten
 
