@@ -1,23 +1,36 @@
-/** Elk selecteerbaar rekenblad heeft een eigen compact catalogusbeeld. */
-import { existsSync, readdirSync, statSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+/** Elk selecteerbaar rekenblad heeft een eigen schematisch catalogusbeeld. */
+import { readFileSync } from "node:fs";
+import ts from "typescript";
 
-const bron = readFileSync("packages/desktop/src/components/calc/projectTree.ts", "utf8");
-const catalogus = bron.split("export const moduleCatalogus:")[1]?.split("export const bibliotheek:")[0] ?? "";
+const boom = readFileSync("packages/desktop/src/components/calc/projectTree.ts", "utf8");
+const catalogus = boom.split("export const moduleCatalogus:")[1]?.split("export const bibliotheek:")[0] ?? "";
 const ids = [...catalogus.matchAll(/templateId: "([^"]+)"/g)].map((m) => m[1]);
-const map = "packages/desktop/src/assets/module-beelden";
-const ontbrekend = ids.filter((id) => !existsSync(join(map, `${id}.webp`)));
-const teGroot = ids.filter((id) => existsSync(join(map, `${id}.webp`)) && statSync(join(map, `${id}.webp`)).size > 200_000);
-const namen = new Set(readdirSync(map));
-const dubbeleIds = ids.filter((id, i) => ids.indexOf(id) !== i);
-for (const id of ids) namen.delete(`${id}.webp`);
-namen.delete("schijfwerking.webp"); // Oud blad blijft beschikbaar in bestaande projecten.
-if (ontbrekend.length || teGroot.length || dubbeleIds.length || namen.size) {
-  if (ontbrekend.length) console.error("Geen eigen beeld:", ontbrekend.join(", "));
-  if (teGroot.length) console.error("Beeld groter dan 200 kB:", teGroot.join(", "));
-  if (dubbeleIds.length) console.error("Dubbele module-id:", dubbeleIds.join(", "));
-  if (namen.size) console.error("Ongebruikte beelden:", [...namen].join(", "));
+const dubbel = ids.filter((id, i) => ids.indexOf(id) !== i);
+
+const bron = readFileSync("packages/desktop/src/components/calc/ModuleAfbeelding.tsx", "utf8");
+const syntax = ts.createSourceFile("ModuleAfbeelding.tsx", bron, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const verklaring = syntax.statements.find((s) =>
+  ts.isVariableStatement(s) && s.declarationList.declarations.some((d) => d.name.getText(syntax) === "beelden"));
+const initialisatie = verklaring?.declarationList.declarations.find((d) => d.name.getText(syntax) === "beelden")?.initializer;
+if (!initialisatie || !ts.isObjectLiteralExpression(initialisatie)) {
+  throw new Error("Catalogusbeelden niet gevonden");
+}
+const beeldIds = initialisatie.properties.map((eigenschap) => {
+  if (!ts.isPropertyAssignment(eigenschap) && !ts.isShorthandPropertyAssignment(eigenschap)) {
+    throw new Error("Onbekende beeldeigenschap");
+  }
+  return eigenschap.name.text;
+});
+const ontbrekend = ids.filter((id) => !beeldIds.includes(id));
+const ongebruikt = beeldIds.filter((id) => !ids.includes(id) && id !== "schijfwerking");
+const dubbeleBeelden = beeldIds.filter((id, i) => beeldIds.indexOf(id) !== i);
+
+if (ontbrekend.length || ongebruikt.length || dubbel.length || dubbeleBeelden.length) {
+  if (ontbrekend.length) console.error("Geen schematisch beeld:", ontbrekend.join(", "));
+  if (ongebruikt.length) console.error("Ongebruikt beeld:", ongebruikt.join(", "));
+  if (dubbel.length) console.error("Dubbele module-id:", dubbel.join(", "));
+  if (dubbeleBeelden.length) console.error("Dubbele beeld-id:", dubbeleBeelden.join(", "));
   process.exitCode = 1;
 } else {
-  console.log(`${ids.length} modules hebben elk een eigen catalogusbeeld.`);
+  console.log(`${ids.length} modules hebben elk een eigen schematisch catalogusbeeld.`);
 }
