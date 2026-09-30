@@ -71,11 +71,13 @@
     "status": {
       "gereed": "calibrated",
       "controleren": "to be checked",
+      "raming": "quantity estimate",
       "concept": "to be worked out"
     },
     "statusUitleg": {
       "gereed": "Module calibrated — checks verified against reference sheets",
       "controleren": "Module to be checked — checks worked out, not yet verified against reference sheets",
+      "raming": "Quantities hand-checked — no structural strength check",
       "concept": "Module to be worked out — input and parametric view only, no checks"
     },
     "melding": "Newer calc version available",

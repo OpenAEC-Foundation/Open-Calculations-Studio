@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo } from "react";
-import { process, defaultStyles } from "@ifc-calc/core";
+import { parse, evaluate, render, defaultStyles } from "@ifc-calc/core";
 import {
   useActieveBron,
   useActieveWaarden,
@@ -42,19 +42,25 @@ export default function Preview() {
     ensureCoreStyles();
   }, []);
 
+  // Invoerwaarden veranderen tijdens het typen, de bladtekst niet. De
+  // syntaxisboom hoeft dan niet bij iedere toetsaanslag opnieuw opgebouwd.
+  const ast = useMemo(() => {
+    try {
+      return parse(source, { includes: calcpadIncludes, imageUrls: calcpadImageUrls });
+    } catch (err) {
+      return err as Error;
+    }
+  }, [source]);
+
   const html = useMemo(() => {
     try {
-      return process(
-        source,
-        selectValues,
-        { includes: calcpadIncludes, imageUrls: calcpadImageUrls },
-        projectScope,
-      );
+      if (ast instanceof Error) throw ast;
+      return render(evaluate(ast, selectValues, projectScope));
     } catch (err) {
       const msg = (err as Error).message;
       return `<div class="ifc-calc"><p class="calc-text" style="color:#dc2626;">Render error: ${msg}</p></div>`;
     }
-  }, [source, selectValues, projectScope]);
+  }, [ast, selectValues, projectScope]);
 
   useEffect(() => {
     const root = containerRef.current;

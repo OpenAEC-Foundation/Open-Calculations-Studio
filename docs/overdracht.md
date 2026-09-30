@@ -1,6 +1,6 @@
 # Overdracht — stand van de rekenmodules
 
-Stand: 28-09-2026, versie 0.1.9, branch `verbeter/berekeningen`.
+Stand: 30-09-2026, versie 0.1.9, branch `verbeter/berekeningen`.
 Dit document is het startpunt voor wie verder bouwt aan de rekenmodules: hoe
 het in elkaar zit, welke afspraken gelden, hoe je controleert en wat er nog
 open staat. De open punten staan ook als issues op GitHub (label
@@ -18,7 +18,7 @@ open staat. De open punten staan ook als issues op GitHub (label
 | `packages/desktop/src/rapport`, `components/rapport` | Constructierapport (hoofdstukken, uitgangspunten, belastingen met opbouwen en gewichtenbibliotheek `gewichten.ts`, bijlage A met de rekenbladen). |
 | `packages/desktop/src/store` | Project (exemplaren/bladen, projectgegevens, rapport), projectbestand, undo. |
 | `packages/web/src/templates` | Kopieën van de losse normbladen (`eurocode5`, `en1990`–`en1997`, `vandepitte`) voor de web-app. **Byte-gelijk houden** met de desktopversie. |
-| `scripts/check-*.mjs` | Controles; `node scripts/check-alles.mjs` draait ze allemaal (nu 66 controles). |
+| `scripts/check-*.mjs` | Controles; `node scripts/check-alles.mjs` draait ze allemaal (nu 72 controles). |
 
 ## 2. Afspraken in de bladen
 
@@ -38,6 +38,7 @@ open staat. De open punten staan ook als issues op GitHub (label
 
 - Eurocodes met de Nederlandse nationale bijlagen (NEN-EN 1990 t/m 1997 + NB, NEN 9997-1). Waar de norm-stand rekent, volgt hij de NB; bijvoorbeeld k_cr = 1,0 voor prismatische houten liggers (NB bij 6.1.7(2)).
 - **Normtekst nooit in de repo**: alleen artikel-, formule- en tabelnummers. Controleren gebeurt tegen lokale normteksten van de gebruiker, die niet in de repo staan.
+- De normbibliotheek in de modulekiezer verwijst naar de officiële NEN-overzichten. NEN 8700/8701 en EN 1999 staan er als zichtbare ontbrekende rekenbladen; de verwijzing is geen inhoudelijke toets. Editie en nationale bijlage moeten per project worden vastgesteld.
 - Waar een waarde niet uit de beschikbare tekst te onderbouwen was, is die **invoer** met een korte uitleg op het scherm, of staat de toets als *niet getoetst* op het blad. Zie de issues voor wat nog tegen een volledige normtekst moet worden gelegd.
 
 ## 4. Controleren
@@ -50,6 +51,7 @@ cd packages/desktop && npx tsc --noEmit -p .
 - Elke module heeft een eigen check met handberekeningen (als commentaar bij de verwachting) en vaak een onafhankelijke uitwerking in het script zelf. Verwachtingen alleen aanpassen met een handberekening die aantoont dat de nieuwe waarde juist is.
 - `check-renders.mjs` rekent elk blad met elke keuze uit de keuzelijsten; `check-designerkeuze.mjs` controleert blad↔beeld; `check-blad-bijwerken.mjs` het bijwerken.
 - Afdruk als PDF (dev-server `npm run dev --workspace=@openaec/calculations-studio`, poort 3021): `node scripts/rapport-pdf.mjs <project.json> <uit.pdf>`. Voor een proefproject met alleen `templateId`'s: `--beginwaarden`, anders rekenen bladen met een beeld met lege invoer.
+- Prestaties van de rekenkern en de volgende matrixproef: [rekenkern-prestaties.md](rekenkern-prestaties.md). Herhaal de warme meting met `node scripts/bench-rekenkern.mjs` na het bouwen van de core.
 - Werkwijze die fouten vond die de eigen checks misten: na het bouwen van een module rekent een tweede, onafhankelijke controle minstens twee gevallen met de hand na en zoekt gericht naar een onterecht 'voldoet'.
 
 ## 5. Bouwen en uitbrengen
@@ -60,24 +62,38 @@ cd packages/desktop && npx tsc --noEmit -p .
 
 ## 6. Modules
 
-Status in de catalogus: *gereed* (gecalibreerd op referentiebladen), *controleren* (toetsing compleet en nagerekend, nog niet tegen referentiebladen van een extern pakket gelegd).
+Status in de catalogus: *gereed* (gecalibreerd op referentiebladen), *controleren* (toetsing compleet en nagerekend, nog niet tegen referentiebladen gelegd), *hoeveelhedenraming* (nagerekende hoeveelheden zonder constructieve sterktetoets).
 
 | Groep | Modules |
 |---|---|
-| Algemeen | Spuwer, Paaldraagvermogen (alle paaltypen van tabel 7.c, trekpalen, kalendercontrole), Permanente vuurlast, Opdrijven en drijvend lichaam, Ligger (hout of staal), Portaal en spant, Mechanica (doorsnede, vakwerk, standaardgevallen), Hekwerk en balustrade |
+| Algemeen | Spuwer, Paaldraagvermogen (alle paaltypen van tabel 7.c, trekpalen, kalendercontrole), Permanente vuurlast, Opdrijven en drijvend lichaam, Lastresultante en statisch moment, Ligger (hout of staal), Portaal en spant, Mechanica (doorsnede, vakwerk, standaardgevallen), Hekwerk en balustrade |
 | Staal | Stalen kolom, Stalen gevelkolom, Verticaal windverband, Voetplaat, Moment-, Dwarskracht-, Schoorverbinding, Boutberekening (met boutgroep), Lasberekening, Brandwerendheid (staal, hout of beton) |
-| Beton | Betonkolom, Betonplaat en console, Poer (2-, 3-, 4-paals en op staal), Betondoorsnede (met M-κ), Pons, Verankeringslengte, Beton detaillering, Kruipfactor |
-| Hout | Kolom (met gevelstijl en stempel), Balklaag, Gording, Houten kap, Schijfwerking, Stabiliteit HSB-wanden, Nagel- en schroefverbinding (ook keep, pen-en-gat, zwaluwstaart) |
+| Beton | Betonkolom, Betonplaat en console, Poer (2-, 3-, 4-paals en op staal), Betondoorsnede (met M-κ), Pons, Verankeringslengte, Beton detaillering, Beton- en wapeningshoeveelheid, Plaat- en wandhoeveelheden (beide zonder sterktetoets), Kruipfactor |
+| Hout | Kolom (met gevelstijl en stempel), Balklaag, Gording, Houten kap, Wandschijf en stabiliteitswanden (één of maximaal zes HSB-wanden), Nagel- en schroefverbinding (ook keep, pen-en-gat, zwaluwstaart) |
 | Metselwerk | Dragende metselwerkwand, Metselwerk loodrecht belast, Oplegging op metselwerk |
 | Normbladen | EN 1990–1997 per artikel, waaronder wind (gevel, plat dak, zadeldak, schilddak, overkapping, luifel, lijnlast per zone, windmoment) en sneeuw (kiel, ophoping), hout (wringing, tapse ligger, uitkeping, beschot), staal (onderflensbuiging) |
 
+De 38 selecteerbare modules hebben elk een eigen compact beeld in
+`packages/desktop/src/assets/module-beelden`; de schematische symbolen blijven
+als herkenning over de beelden zichtbaar. `check-modulebeelden.mjs` bewaakt de
+dekking van de catalogus.
+
 ## 7. Open punten
 
-Als issues met label `berekeningen`:
+Afgehandeld in deze werkstand:
+
+- #12 — browseropslag gebruikt de bestandskiezer en overschrijft na Opslaan als dezelfde gekozen handle; zonder browserondersteuning blijft de downloadterugval;
+- #13 — inverse temperatuurcoëfficiënten tonen de werkelijke waarde in 1/K of 1/degC, gecontroleerd met dimensieloze rek;
+
+Nog open als issues met label `berekeningen`:
 
 - #14 — waarden die nog tegen een volledige normtekst moeten worden gelegd;
 - #15 — open punten uit het register van afwijkingen: besluit van de constructeur;
 - #16 — onderdelen die de modules nog niet toetsen (op het blad als *niet getoetst* vermeld);
-- #17 — normen die nog ontbreken (bestaande bouw, aluminium).
+- #17 — normen die nog ontbreken (bestaande bouw, aluminium); alleen de officiële bronverwijzingen staan in de bibliotheek, nog geen rekenbladen.
 
 Verder in [backlog.md](backlog.md): IFC-export, licentie, rapportengine.
+
+Het oudere losse blad Schijfwerking blijft in de sjabloonregistratie voor bestaande
+projecten en bijwerken van bestaande exemplaren; nieuwe projecten gebruiken de
+gecombineerde HSB-module met de keuze voor één tot zes wanden.

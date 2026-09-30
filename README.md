@@ -15,7 +15,7 @@ Open desktop-applicatie voor constructieve berekeningen op basis van CalcPAD-syn
 - **Project met meerdere rekenbladen** — dezelfde module kan er meerdere keren in (drie balklagen, elk met eigen invoer); de projectgegevens gelden voor alle bladen
 
 ### CalcPAD-compatibiliteit
-Full subset compatibility met real-world CalcPAD-bestanden. Het 1094-regel `2259-Intertek-units.cpd` regressie-bestand evalueert met 0 errors en rendert 6 SVG-tekeningen.
+Compatibiliteit met voorbeeldbestanden voor de ondersteunde rekensyntax.
 
 - `"Title`, `'prose`, `// comment`
 - `#if … #else if … #else … #end if`, `#hide / #show / #pre / #post`
@@ -117,14 +117,20 @@ npm install
 ## Ontwikkeling
 
 ```bash
-# Core package bouwen (watch)
-npm run build --workspace=@ifc-calc/core
+# Browser-preview starten (bouwt eerst de rekenkern)
+npm run dev
+
+# Rekenkern en frontend bouwen, inclusief TypeScript-controle
+npm run build
+
+# Native debugbuild zonder installatiepakket
+npm run build:debug
 
 # Desktop (Tauri) starten
 npm run tauri:dev --workspace=@openaec/calculations-studio
 
-# Of alleen de Vite browser-preview
-npm run dev --workspace=@openaec/calculations-studio
+# Rekenkern automatisch herbouwen tijdens wijzigingen
+npm run dev --workspace=@ifc-calc/core
 ```
 
 De desktop-app vraagt een Rust-toolchain (`rustup`) plus, op Windows, de

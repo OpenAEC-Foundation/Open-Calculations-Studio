@@ -25,6 +25,8 @@ export type ModuleStatus =
   | "gereed"
   /** Toetsing staat er, maar is nog niet tegen referentiebladen gecontroleerd. */
   | "controleren"
+  /** Hoeveelheden geraamd en nagerekend; geen constructieve toetsing. */
+  | "raming"
   /** Alleen invoer en parametrisch beeld — de toetsing moet nog worden gemaakt. */
   | "concept";
 
@@ -43,7 +45,7 @@ export const PUBLICATIE_UITLEG = {
 
 export type TreeNode =
   | { kind: "section"; id: string; label: string; children: TreeNode[] }
-  | { kind: "category"; id: string; label: string; defaultExpanded?: boolean; children: TreeNode[]; count?: number }
+  | { kind: "category"; id: string; label: string; defaultExpanded?: boolean; children: TreeNode[]; count?: number; bronUrl?: string }
   | {
       kind: "item";
       id: string;
@@ -73,12 +75,13 @@ export const moduleCatalogus: TreeNode[] = [
     id: "cat-algemeen",
     label: "Algemeen",
     defaultExpanded: true,
-    count: 7,
+    count: 9,
     children: [
       { kind: "item", id: "sheet-spuwer", label: "Spuwer (noodoverlaat)", templateId: "spuwer", status: "gereed", gepubliceerd: true },
       { kind: "item", id: "sheet-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen", status: "controleren" },
       { kind: "item", id: "sheet-permanente-vuurlast", label: "Permanente vuurlast (NEN 6090)", templateId: "permanente-vuurlast", status: "controleren" },
       { kind: "item", id: "sheet-opdrijven", label: "Opdrijven en drijvend lichaam", templateId: "opdrijven", status: "controleren" },
+      { kind: "item", id: "sheet-lastresultante", label: "Lastresultante en statisch moment", templateId: "lastresultante", status: "controleren" },
       { kind: "item", id: "sheet-ligger", label: "Ligger (hout of staal)", templateId: "ligger", status: "controleren" },
       { kind: "item", id: "sheet-portaal-spant", label: "Portaal en spant (hout of staal)", templateId: "portaal-spant", status: "controleren" },
       { kind: "item", id: "sheet-mechanica", label: "Mechanica (doorsnede, vakwerk, vergeetmenietjes)", templateId: "mechanica", status: "controleren" },
@@ -113,7 +116,7 @@ export const moduleCatalogus: TreeNode[] = [
     id: "cat-beton",
     label: "Beton",
     defaultExpanded: true,
-    count: 7,
+    count: 10,
     children: [
       { kind: "item", id: "sheet-betonkolom", label: "Betonkolom", templateId: "betonkolom", status: "controleren" },
       { kind: "item", id: "sheet-betonplaat", label: "Betonplaat en console", templateId: "betonplaat", status: "controleren" },
@@ -122,6 +125,8 @@ export const moduleCatalogus: TreeNode[] = [
       { kind: "item", id: "sheet-ponsberekening", label: "Pons", templateId: "ponsberekening", status: "controleren" },
       { kind: "item", id: "sheet-verankeringslengte", label: "Verankeringslengte", templateId: "verankeringslengte", status: "gereed" },
       { kind: "item", id: "sheet-beton-detaillering", label: "Beton detaillering (dekking, wapening, wand)", templateId: "beton-detaillering", status: "controleren" },
+      { kind: "item", id: "sheet-wapeningshoeveelheid", label: "Beton- en wapeningshoeveelheid", templateId: "wapeningshoeveelheid", status: "raming" },
+      { kind: "item", id: "sheet-plaatwandhoeveelheid", label: "Plaat- en wandhoeveelheden", templateId: "plaatwandhoeveelheid", status: "raming" },
       { kind: "item", id: "sheet-kruipfactor", label: "Kruipfactor", templateId: "kruipfactor", status: "gereed" },
     ],
   },
@@ -136,8 +141,7 @@ export const moduleCatalogus: TreeNode[] = [
       { kind: "item", id: "sheet-balklaag", label: "Balklaag (houten vloerbalken)", templateId: "balklaag", status: "gereed", gepubliceerd: true },
       { kind: "item", id: "sheet-gording", label: "Gording (dakgording)", templateId: "gording", status: "gereed" },
       { kind: "item", id: "sheet-houten-kap", label: "Houten kap (sporen, spanten, hoekkeper)", templateId: "houten-kap", status: "controleren" },
-      { kind: "item", id: "sheet-schijfwerking", label: "Schijfwerking (wandschijf)", templateId: "schijfwerking", status: "controleren" },
-      { kind: "item", id: "sheet-hsb-stabiliteit", label: "Stabiliteit HSB-wanden", templateId: "hsb-stabiliteit", status: "controleren" },
+      { kind: "item", id: "sheet-hsb-stabiliteit", label: "Wandschijf en stabiliteitswanden", templateId: "hsb-stabiliteit", status: "controleren" },
       { kind: "item", id: "sheet-nagel-schroef", label: "Nagel- en schroefverbinding, keep, pen-en-gat, zwaluwstaart", templateId: "nagel-schroef", status: "controleren" },
     ],
   },
@@ -176,8 +180,9 @@ export const bibliotheek: TreeNode[] = [
   {
     kind: "category",
     id: "standards",
-    label: "Standards",
+    label: "Normbibliotheek",
     defaultExpanded: true,
+    bronUrl: "https://www.nen.nl/bouw/constructieve-veiligheid/eurocodes/overzicht-eurocodes",
     children: [
       {
         kind: "category",
@@ -279,6 +284,20 @@ export const bibliotheek: TreeNode[] = [
           { kind: "item", id: "en1997-glijding", label: "§6.5.3 Glijding", templateId: "en1997-glijding" },
         ],
       },
+      {
+        kind: "category",
+        id: "std-nen8700",
+        label: "NEN 8700/8701 Bestaande bouw — nog geen rekenblad",
+        bronUrl: "https://www.nen.nl/bouw/constructieve-veiligheid/constructieve-veiligheid-bestaande-bouw",
+        children: [],
+      },
+      {
+        kind: "category",
+        id: "std-en1999",
+        label: "EN 1999 Aluminium — nog geen rekenblad",
+        bronUrl: "https://www.nen.nl/bouw/constructieve-veiligheid/eurocodes/overzicht-eurocodes",
+        children: [],
+      },
     ],
   },
   {
@@ -286,9 +305,8 @@ export const bibliotheek: TreeNode[] = [
     id: "calcpad-samples",
     label: "CalcPAD voorbeelden",
     defaultExpanded: false,
-    count: 12,
+    count: 11,
     children: [
-      { kind: "item", id: "cpd-2259-intertek", label: "2259 Intertek units (real-world)", templateId: "cpd-2259-intertek" },
       { kind: "item", id: "cpd-calcpad-demo", label: "CalcPAD syntax demo", templateId: "calcpad-demo" },
       { kind: "item", id: "cpd-quadratic", label: "Quadratic Equation", templateId: "cpd-quadratic" },
       { kind: "item", id: "cpd-cubic", label: "Cubic Equation", templateId: "cpd-cubic" },
