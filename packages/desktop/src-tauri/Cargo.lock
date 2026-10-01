@@ -3004,7 +3004,7 @@ dependencies = [
 
 [[package]]
 name = "open-calculations-studio"
-version = "0.1.10"
+version = "2026.39.0"
 dependencies = [
  "openaec-core",
  "serde",

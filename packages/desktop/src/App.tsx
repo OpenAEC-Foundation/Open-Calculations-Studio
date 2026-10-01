@@ -26,8 +26,12 @@ import { useRecentFiles } from "./hooks/useRecentFiles";
 import { useSneltoetsen } from "./hooks/useSneltoetsen";
 import { useBestandActies } from "./hooks/useBestandActies";
 import { leesProjectBestand } from "./store/projectBestand";
+import { startbestand } from "./tauri/fileOps";
 import { setAngleMode, type AngleMode } from "@ifc-calc/core";
 import { UNITS_DEFAULTS, type UnitsSettings } from "./components/settings/SettingsDialog";
+
+/** Het startbestand is geopend; een later effect opent het niet nog eens. */
+let startbestandGeopend = false;
 
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -232,6 +236,19 @@ export default function App() {
       alert(`Bestand openen mislukt: ${(err as Error).message}`);
     }
   }, [laadProject, markeerOpgeslagen, addRecentFile]);
+
+  // Gestart met een bestand (bestandskoppeling): dat bestand openen, één keer.
+  useEffect(() => {
+    let afgebroken = false;
+    startbestand()
+      .then((pad) => {
+        if (!pad || afgebroken || startbestandGeopend) return;
+        startbestandGeopend = true;
+        void handleOpenRecent(pad);
+      })
+      .catch((err) => console.error("Startbestand lezen mislukt:", err));
+    return () => { afgebroken = true; };
+  }, [handleOpenRecent]);
 
   return (
     <>

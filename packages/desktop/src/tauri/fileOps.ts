@@ -135,6 +135,20 @@ export async function openCalculationFile(): Promise<OpenedFile | null> {
   });
 }
 
+let startbestandVraag: Promise<string | null> | null = null;
+
+/**
+ * Het bestand waarmee de app is gestart: een dubbelklik in de Verkenner geeft
+ * via de bestandskoppeling het pad mee op de opdrachtregel. `null` in de
+ * browser of zonder bestand. Eén vraag per sessie, ook als React het effect
+ * twee keer draait.
+ */
+export function startbestand(): Promise<string | null> {
+  if (!isTauri()) return Promise.resolve(null);
+  startbestandVraag ??= import("@tauri-apps/api/core").then(({ invoke }) => invoke<string | null>("startbestand"));
+  return startbestandVraag;
+}
+
 function pathBaseName(p: string): string {
   const last = p.split(/[\\/]/).pop() ?? p;
   return stripExt(last);

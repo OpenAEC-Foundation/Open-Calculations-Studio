@@ -1,6 +1,6 @@
 [package]
 name = "open-calculations-studio"
-version = "0.1.10"
+version = "2026.39.0"
 description = "Open Calculations Studio - lightweight CalcPAD alternative for Eurocode verifications"
 authors = ["OpenAEC Contributors"]
 edition = "2021"
