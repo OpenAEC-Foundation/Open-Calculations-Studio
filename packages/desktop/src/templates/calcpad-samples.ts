@@ -16,7 +16,6 @@ import roseCurve from "./calcpad-samples/Rose Curve.cpd?raw";
 import hexagonSection from "./calcpad-samples/Hexagon Section.cpd?raw";
 import ssbForce from "./calcpad-samples/SSB Concentrated Force.cpd?raw";
 import deepBeam from "./calcpad-samples/Deep Beam.cpd?raw";
-import intertekUnits from "./calcpad-samples/2259-Intertek-units.cpd?raw";
 import funderingMetSvg from "./calcpad-samples/fundering-met-svg.cpd?raw";
 
 export const calcpadSamples = {
@@ -30,6 +29,5 @@ export const calcpadSamples = {
   "cpd-hexagon": hexagonSection,
   "cpd-ssb-force": ssbForce,
   "cpd-deep-beam": deepBeam,
-  "cpd-2259-intertek": intertekUnits,
   "cpd-fundering-met-svg": funderingMetSvg,
 } as const;

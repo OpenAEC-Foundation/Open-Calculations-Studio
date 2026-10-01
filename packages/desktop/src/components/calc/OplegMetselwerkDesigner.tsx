@@ -1,49 +1,51 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
-import { useProjectCC, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useBladUitkomst } from "./bladResultaat";
+import { UitkomstKop } from "./designerKit";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
  * Losstaand parametrisch beeld van een geconcentreerde oplegging op een
  * metselwerkwand (bijv. een liggereinde dat op de wand rust). Reproduceert het
- * de referentie-uitwerking-beeld: vooraanzicht van de wand met de opleg­plaat, de last­spreiding
+ * beeld van de referentie-uitwerking: vooraanzicht van de wand met de opleg­plaat, de last­spreiding
  * onder 60° en de effectieve lengte l_efm, plus een dwarsdoorsnede.
  *
- * Toetsing volgens NEN-EN 1996-1-1 §6.1.3 (geconcentreerde belastingen):
- *   N_Edc ≤ N_Rdc = β · A_b · f_d
- * De unity check loopt live mee en spiegelt de rekensheet (oplegMetselwerk.ts).
+ * De toetsing (NEN-EN 1996-1-1 §6.1.3) staat alleen in het blad
+ * (oplegMetselwerk.ts). De kop toont de maatgevende UC en het oordeel van het
+ * blad, de voetregel de tussenwaarden uit dezelfde uitwerking. Eerder rekende
+ * het beeld zelf na en keurde het op de nevenvoorwaarden af terwijl het blad
+ * "voldoet" gaf.
  *
  * Marker waarop we detecteren dat de actieve sheet deze module is:
  */
 const MARKER = "Oplegging op metselwerk";
 
-// ── materiaal-tabellen ──────────────────────────────────────────────────────
-// Het percentage is het holtepercentage → steengroep (≤25 % = groep 1, hoger =
-// groep 2), dat de factor K bepaalt (tabel 3.3 NB). `kwal` bepaalt hoe de
-// sterkteklasse van de steen wordt aangeduid: f_b-waarden, CS-klassen of G-klassen.
-// K/α/β voor f_k = K·f_b^α·f_m^β (EN 1996-1-1 form. 3.2 + NB). `verified` = de
-// waarden zijn afgeleid uit de referentie-referentieberekening (document1.pdf);
-// de overige rijen zijn nog te bevestigen met de NB:2018-tabel (zie noot).
-interface Steen { name: string; Km: number; Kl: number; kwal: "fb" | "CS" | "G"; verM?: boolean; verL?: boolean }
-// f_k = K·f_b^α·f_m^β. Uit de de referentie-uitwerking-referenties:
-//  • Metselmortel (M-klasse): α=0,65 · β=0,25 · Km = 0,6 (groep 1 <25%) / 0,5 (groep 2).
-//  • Lijmmortel   (L-klasse): α=0,85 · β=0   · Kl per steensoort (EN-tabel).
-// verM/verL = 1-op-1 gecheckt tegen een PDF; overige waarden volgen het patroon/EN.
+// ── materiaal ───────────────────────────────────────────────────────────────
+// Het percentage is het holtepercentage → steengroep. `kwal` bepaalt hoe de
+// sterkteklasse van de steen wordt aangeduid: f_b-waarden, CS-klassen of
+// G-klassen. K, α, β en de steengroep staan in het blad (tabel NB-2).
+interface Steen { name: string; kwal: "fb" | "CS" | "G" }
 const STENEN: Record<number, Steen> = {
-  1: { name: "Baksteen <25%", Km: 0.6, Kl: 0.75, kwal: "fb" },
-  2: { name: "Baksteen <55%", Km: 0.5, Kl: 0.70, kwal: "fb", verM: true },
-  3: { name: "Kalkzandsteen <25%", Km: 0.6, Kl: 0.80, kwal: "CS", verM: true },
-  4: { name: "Kalkzandsteen <55%", Km: 0.5, Kl: 0.70, kwal: "CS" },
-  5: { name: "Betonsteen <25%", Km: 0.6, Kl: 0.80, kwal: "fb" },
-  6: { name: "Betonsteen <60%", Km: 0.5, Kl: 0.70, kwal: "fb" },
-  7: { name: "Cellenbeton <25%", Km: 0.6, Kl: 0.80, kwal: "G", verM: true, verL: true },
+  1: { name: "Baksteen <25%", kwal: "fb" },
+  2: { name: "Baksteen <55%", kwal: "fb" },
+  3: { name: "Kalkzandsteen <25%", kwal: "CS" },
+  4: { name: "Kalkzandsteen <55%", kwal: "CS" },
+  5: { name: "Betonsteen <25%", kwal: "fb" },
+  6: { name: "Betonsteen <60%", kwal: "fb" },
+  7: { name: "Cellenbeton <25%", kwal: "G" },
 };
 const MORTELTYPE: { v: number; label: string }[] = [
   { v: 1, label: "Metselmortel" }, { v: 2, label: "Lijmmortel" },
 ];
-// Voeg-sterkteklassen per morteltype → f_m (bij lijmmortel niet van invloed, β=0)
+// Voeg-sterkteklassen per morteltype → f_m. Bij lijmmortel telt f_m alleen bij
+// baksteen ≤ 25 % mee (β = 0,1, tabel NB-2); bij de andere stenen is β = 0.
 const VOEG_METSEL = [5, 10, 15];
 const VOEG_LIJM = [10, 12.5];
+// Mortelvoeg evenwijdig aan het wandvlak: K maal 0,8 (§3.6.1.2(6)), in het blad.
+const LANGSVOEG: { v: number; label: string }[] = [
+  { v: 1, label: "geen" }, { v: 2, label: "wel (K × 0,8)" },
+];
 // Sterkteklasse-opties per aanduiding → genormaliseerde druksterkte f_b (N/mm²)
 const KWALITEIT: Record<Steen["kwal"], { v: number; label: string }[]> = {
   fb: [5, 10, 15, 20, 25, 30, 35, 40].map((v) => ({ v, label: `fb ${v}` })),
@@ -51,17 +53,10 @@ const KWALITEIT: Record<Steen["kwal"], { v: number; label: string }[]> = {
   G: [2, 3, 4, 6, 8].map((v) => ({ v, label: `G${v}` })),
 };
 const KWAL_DEFAULT: Record<Steen["kwal"], number> = { fb: 10, CS: 12, G: 4 };
-// Steencategorie → basis-γ_M (geldt voor CC2 én CC3). Alleen CC1 verlaagt met 0,2.
-// Gekalibreerd op de referenties: Cat I → CC1=1,5 · CC2=1,7 · CC3=1,7; Cat II → CC1=2,0.
-// base: Cat I=1,7 · Cat II=2,2 (uit CC1=2,0 + 0,2) · Cat III=2,7 (geëxtrapoleerd).
-const CATEGORIE: { v: number; label: string; base: number }[] = [
-  { v: 1, label: "I", base: 1.7 },
-  { v: 2, label: "II", base: 2.2 },
-  { v: 3, label: "III", base: 2.7 },
-];
-const OVERSPANNING: { v: number; label: string }[] = [
-  { v: 1, label: "Loodrecht" },
-  { v: 2, label: "Evenwijdig" },
+// De stenennormen kennen alleen categorie I en II; γ_M volgt in het blad.
+const CATEGORIE: { v: number; label: string }[] = [
+  { v: 1, label: "I" },
+  { v: 2, label: "II" },
 ];
 
 /**
@@ -69,11 +64,11 @@ const OVERSPANNING: { v: number; label: string }[] = [
  * tonen én om de gedeelde store te seeden, zodat de evaluator (rekensheet) en
  * de designer nooit op verschillende defaults uitkomen.
  */
-// Defaults spiegelen de de referentie-uitwerking-referentie (document1.pdf): cellenbeton G2,
+// Defaults spiegelen de referentieberekening (document1.pdf): cellenbeton G2,
 // M15, t=150, a_t=100 → UC ≈ 12,66.
 const DEFAULTS: Record<string, number> = {
-  overspanning: 1, steensoort: 7, steencategorie: 1, 
-  morteltype: 1, f_b: 2, f_m: 15,
+  steensoort: 7, steencategorie: 1,
+  morteltype: 1, f_b: 2, f_m: 15, langsvoeg: 1,
   N_Edc: 360, q_Edc: 5.5,
   h: 2800, t: 150, a_L: 200, a_t: 100, h_k: 250, a_1: 300, L_r: 2220, exc: 0,
 };
@@ -100,6 +95,8 @@ export default function OplegMetselwerkDesigner() {
     [activeId, seedWaarden],
   );
   const [editing, setEditing] = useState<string | null>(null);
+  // De uitkomst en de tussenwaarden van het blad zelf.
+  const uitkomst = useBladUitkomst();
 
   // Meet de beschikbare tekengebied-grootte, zodat het beeld meegroeit met de
   // paneelbreedte (bv. als de scheiding met de uitwerking verschoven wordt).
@@ -138,18 +135,14 @@ export default function OplegMetselwerkDesigner() {
   const d = (name: string) => num(name, DEFAULTS[name]);
 
   // ── invoer ────────────────────────────────────────────────────────────────
-  const overspanning = Math.round(d("overspanning"));
   const steenId = Math.round(d("steensoort"));
   const steen = STENEN[steenId] ?? STENEN[1];
   const catId = Math.round(d("steencategorie"));
-  const cat = CATEGORIE.find((c) => c.v === catId) ?? CATEGORIE[0];
-  // Gevolgklasse komt van het project, niet van dit blad.
-  const cc = useProjectCC();
-  const gammaM = cat.base - (cc === 1 ? 0.2 : 0);     // alleen CC1 verlaagt γ_M met 0,2
   const morteltype = Math.round(d("morteltype"));     // 1 = metselmortel, 2 = lijmmortel
   const isLijm = morteltype === 2;
   const fb = d("f_b");
   const fmRaw = d("f_m");
+  const langsvoeg = Math.round(d("langsvoeg"));        // 1 = geen, 2 = wel
   const N_Edc = d("N_Edc");   // kN
   const q_Edc = d("q_Edc");   // kN/m
   const h = d("h");           // mm — wandhoogte tot last
@@ -161,16 +154,6 @@ export default function OplegMetselwerkDesigner() {
   const L_r = d("L_r");       // mm — wandlengte rechts van oplegging
   const exc = d("exc");       // mm — excentriciteit
 
-  // ── materiaal (EN 1996-1-1 §3.6.1, form. 3.2) ───────────────────────────────
-  // Metselmortel: α=0,65 · β=0,25. Lijmmortel: α=0,85 · β=0 (f_m valt weg).
-  // Referentie (de referentie-uitwerking) begrenst f_m NIET op 2·f_b; alleen ≤ 20 N/mm².
-  const alpha = isLijm ? 0.85 : 0.65;
-  const betaExp = isLijm ? 0 : 0.25;
-  const K = isLijm ? steen.Kl : steen.Km;
-  const fmEff = Math.min(fmRaw, 20);
-  const f_k = K * fb ** alpha * fmEff ** betaExp;
-  const f_d = f_k / gammaM;                            // N/mm² (3.1)
-
   // ── geometrie: effectieve hoogte + lastspreiding onder 60° (art. 6.1.3) ─────
   const h_c = Math.max(1, h - h_k);                    // hoogte tot lastniveau = h − h_k
   const reach = (0.5 * h_c) / TAN60;                   // spreiding per zijde, over ½·h_c
@@ -179,23 +162,10 @@ export default function OplegMetselwerkDesigner() {
   const l_efm = a_L + leftReach + rightReach;          // effectieve lengte op ½ hoogte
   const dLeftEnd = Math.min(a_1 * TAN60, 0.5 * h_c);   // diepte waar de linkerlijn het wandeinde raakt
 
-  // ── toetsing geconcentreerde last (art. 6.1.3) ──────────────────────────────
-  const A_b = a_L * a_t;                               // belaste (opleg)vlak [mm²]
-  const A_ef = l_efm * t;                              // effectief vlak [mm²]
-  const ratioAb = A_b / A_ef;                          // A_b/A_ef (apart getoetst ≤ 0,45)
-  const betaCalc = (1 + 0.3 * a_1 / h_c) * (1.5 - 1.1 * ratioAb); // (6.11)
-  const betaMax = Math.min(1.25 + a_1 / (2 * h_c), 1.5);
-  const beta = Math.max(1.0, Math.min(betaCalc, betaMax));
-  const N_Rdc = (beta * A_b * f_d) / 1e3;             // opnamecapaciteit [kN] (6.10)
-  const N_Ed = N_Edc + (a_L / 1e3) * q_Edc;           // last incl. wandlast over oplegging [kN]
-  const UC = N_Rdc > 0 ? N_Ed / N_Rdc : 0;            // (6.9)
-
-  // ── nevenvoorwaarden (geldigheid methode + detaillering) ────────────────────
-  const ratioOk = ratioAb <= 0.45;                    // A_b/A_ef ≤ 0,45
-  const bearingMin = Math.min(a_L, a_t);              // kleinste oplegmaat
-  const oplegOk = bearingMin >= 90;                   // art. 8.1.6(1): oplegmaat ≥ 90 mm
-  const excOk = Math.abs(exc) <= t / 4;               // methode 6.1.3 geldig als e ≤ t/4
-  const ok = UC <= 1.0 && ratioOk && oplegOk && excOk;
+  const fmt = (v: number, dec: number) => v.toFixed(dec).replace(".", ",");
+  // Tussenwaarden uit de uitwerking; "—" zolang het blad ze niet toont.
+  const g = uitkomst?.getallen ?? {};
+  const w = (naam: string, dec: number) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));
 
   // ── klikbare maat (HTML-chip over de tekening) ─────────────────────────────
   function Dim(props: { name: string; value: number; x: number; y: number; step?: number; label?: string }) {
@@ -268,7 +238,9 @@ export default function OplegMetselwerkDesigner() {
   const EH = box.h - capH, CH = EH;              // stages vullen de hoogte
   const mL = 44, mT = 96, mR = 44, mB = 34;
   const cPad = 46;                               // horizontale marge in de doorsnede (maten)
-  const availW = EW - mL - mR, availH = EH - mT - mB;
+  // In een smal paneel wordt de ruimte naast de marges negatief; dan krimpt de
+  // tekening tot een ondergrens in plaats van met negatieve maten om te klappen.
+  const availW = Math.max(20, EW - mL - mR), availH = Math.max(20, EH - mT - mB);
   const totalMM = a_1 + a_L + L_r;
   // Grootste schaal die zowel de wandhoogte, de wandbreedte als de dikte laat passen.
   const s = Math.min(availH / h, availW / totalMM, (CW - cPad) / Math.max(t, 1));
@@ -299,22 +271,10 @@ export default function OplegMetselwerkDesigner() {
 
   return (
     <div className="vd-panel">
-      <div className="vd-head">
-        <strong>Parametrisch beeld — oplegging op metselwerk</strong>
-        <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
-          UC = {UC.toFixed(2)} {ok ? "✓ voldoet" : "✗ voldoet niet"}
-        </span>
-      </div>
+      <UitkomstKop titel="Parametrisch beeld — oplegging op metselwerk" uitkomst={uitkomst} />
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
-        <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
-          <span className="vd-ctrl-h">Geometrie</span>
-          <label>Overspanningrichting
-            <select value={overspanning} onChange={(e) => setVal("overspanning", parseInt(e.target.value))}>
-              {OVERSPANNING.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-            </select>
-          </label>
-
+        <div className="vd-controls vd-compact" style={{ alignSelf: "stretch", overflowY: "auto", minHeight: 0 }}>
           <span className="vd-ctrl-h">Metselwerk</span>
           <label>Steencategorie
             <select value={catId} onChange={(e) => setVal("steencategorie", parseInt(e.target.value))}>
@@ -353,6 +313,11 @@ export default function OplegMetselwerkDesigner() {
               ))}
             </select>
           </label>
+          <label title="Mortelvoeg evenwijdig aan het wandvlak, over de hele wandlengte of een deel ervan (bijvoorbeeld een steense wand met strekkenlagen): K maal 0,8 (§3.6.1.2(6))">Langsvoeg
+            <select value={langsvoeg} onChange={(e) => setVal("langsvoeg", parseInt(e.target.value))}>
+              {LANGSVOEG.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
+            </select>
+          </label>
 
           <span className="vd-ctrl-h">Belasting</span>
           <label>N<sub>Edc</sub> (kN)
@@ -375,6 +340,9 @@ export default function OplegMetselwerkDesigner() {
           <label>Oplegbreedte a<sub>t</sub>
             <input type="number" step={10} value={a_t} onChange={(e) => setVal("a_t", parseFloat(e.target.value))} />
           </label>
+          <label title="Excentriciteit van de last t.o.v. het wandhart; de oplegplaat ligt gecentreerd onder de last">Excentriciteit e
+            <input type="number" step={5} value={exc} onChange={(e) => setVal("exc", parseFloat(e.target.value))} />
+          </label>
           <label>Hoogte oplegblok h<sub>k</sub>
             <input type="number" step={10} value={h_k} onChange={(e) => setVal("h_k", parseFloat(e.target.value))} />
           </label>
@@ -386,7 +354,7 @@ export default function OplegMetselwerkDesigner() {
           </label>
         </div>
 
-        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "flex-start", justifyContent: "center", gap, flexWrap: "nowrap", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
+        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "flex-start", justifyContent: "safe center", gap, flexWrap: "nowrap", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
           <div className="vd-canvas">
             <div className="vd-caption">Vooraanzicht</div>
             <div className="vd-stage" style={{ width: EW, height: EH, background: "transparent", border: "none", borderRadius: 0 }}>
@@ -510,7 +478,9 @@ export default function OplegMetselwerkDesigner() {
       <div className="vd-foot">
         <span>Klik op een blauwe maat om die te wijzigen — stroomt direct terug in de rekensheet.</span>
         <span className="vd-live">
-          f<sub>d</sub> = {f_d.toFixed(2)} N/mm² · γ<sub>M</sub> = {gammaM.toFixed(2)} · h<sub>c</sub> = {h_c.toFixed(0)} · l<sub>efm</sub> = {l_efm.toFixed(0)} · β = {beta.toFixed(2)} · N<sub>Rdc</sub> = {N_Rdc.toFixed(1)} kN · N<sub>Ed</sub> = {N_Ed.toFixed(1)} kN{ratioOk ? "" : " · ⚠ A_b/A_ef>0,45"}{oplegOk ? "" : " · ⚠ opleg<90"}
+          f<sub>d</sub> = {w("f_d", 2)} N/mm² · h<sub>c</sub> = {w("h_c", 0)} · l<sub>efm</sub> = {w("l_efm", 0)} ·
+          A<sub>b</sub>/A<sub>ef</sub> = {w("ratio_Ab", 2)} · β = {w("β", 2)} · N<sub>Rdc</sub> = {w("N_Rdc", 1)} kN ·
+          N<sub>Ed</sub> = {w("N_Ed", 1)} kN
         </span>
       </div>
     </div>

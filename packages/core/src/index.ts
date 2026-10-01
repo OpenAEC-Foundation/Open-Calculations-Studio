@@ -5,6 +5,20 @@ export { render, defaultStyles } from './renderer.js';
 export { exprToLatex, nameToLatex } from './latex.js';
 export { parseGef, type GefData } from './gef-parser.js';
 export {
+  liggerOplossing, liggerReacties, liggerOmhullende, liggerOmhullendeReacties, liggerExtremen,
+  liggerInterpoleer, liggerNulpunt, liggerStatus, liggerDelen, liggerVelden, liggerSvgPunten, liggerSamen,
+  LIGGER_PUNT, LIGGER_LAST, LIGGER_STATUS,
+} from './ligger.js';
+export {
+  raamwerkOplossing, raamwerkReacties, raamwerkVerplaatsingen, raamwerkStatus, raamwerkExtremen,
+  raamwerkInterpoleer, raamwerkSvgPunten, raamwerkVormPunten, raamwerkKnik, raamwerkSamenvatting, raamwerkZakking,
+  RAAMWERK_LAST, RAAMWERK_RICHTING, RAAMWERK_STATUS, RAAMWERK_GEEN_KNIK,
+} from './raamwerk.js';
+export {
+  doorsnedeGrootheden, doorsnedeDeel, doorsnedePlastisch, doorsnedeStatisch, doorsnedeSvgPunten,
+  DOORSNEDE_DEEL,
+} from './doorsnede.js';
+export {
   generateIfcx,
   generateIfc4x3Step,
   generateProjectIfcx,

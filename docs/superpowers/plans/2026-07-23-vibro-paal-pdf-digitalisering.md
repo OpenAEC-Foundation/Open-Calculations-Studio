@@ -603,7 +603,7 @@ ruime tolerantie. Markeer:
 - [ ] **Step 5: Run referentietest**
 
 ```powershell
-$env:VIBRO_REFERENCE_PDF='C:\Users\rickd\Documents\GitHub\verification-files\Constructieberekeningen\Funderingspaal\Vibro\AA22485resultaten grondonderzoek.pdf'
+$env:VIBRO_REFERENCE_PDF='<pad naar de pdf van het grondonderzoek>'
 npm --prefix packages/desktop test -- src/vibro/referenceValidation.test.ts
 ```
 

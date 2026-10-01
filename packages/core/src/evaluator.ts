@@ -1,5 +1,16 @@
 import { create, all, type MathJsInstance, type MathNode } from 'mathjs';
 import type { AstNode, ConditionalNode, EvaluatedNode } from './types.js';
+import {
+  liggerOplossing, liggerReacties, liggerOmhullende, liggerOmhullendeReacties, liggerExtremen,
+  liggerInterpoleer, liggerNulpunt, liggerStatus, liggerDelen, liggerVelden, liggerSvgPunten, liggerSamen,
+} from './ligger.js';
+import {
+  raamwerkOplossing, raamwerkReacties, raamwerkVerplaatsingen, raamwerkStatus, raamwerkExtremen,
+  raamwerkInterpoleer, raamwerkSvgPunten, raamwerkVormPunten, raamwerkKnik, raamwerkSamenvatting, raamwerkZakking,
+} from './raamwerk.js';
+import {
+  doorsnedeGrootheden, doorsnedeDeel, doorsnedePlastisch, doorsnedeStatisch, doorsnedeSvgPunten,
+} from './doorsnede.js';
 
 const math: MathJsInstance = create(all, {});
 
@@ -288,6 +299,248 @@ math.import(
   { override: true },
 );
 
+// ── Ligger (packages/core/src/ligger.ts) ───────────────────────────────────
+// Een ligger op steunpunten, met overstekken, inklemmingen en scharnieren,
+// opgelost met de verplaatsingsmethode. In het blad met kale getallen in m, kN,
+// kN/m, kNm en kNm²; een grootheid met eenheid wordt daarnaar omgerekend (EI
+// bijvoorbeeld als E*I_y). De uitkomsten zijn matrices: rijen [x, V, M, w] langs
+// de ligger, of [x, R, M] per steunpunt. Zie ligger.ts voor de afspraken.
+
+/** Getal in m, kN, kN/m, kNm of kNm², afhankelijk van de eenheid; een kaal getal blijft. */
+function liggerGetal(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'boolean') return v ? 1 : 0;
+  if (isUnit(v)) {
+    for (const e of ['m', 'kN', 'kN/m', 'kN*m', 'kN*m^2']) {
+      try { return v.toNumber(e); } catch { /* volgende */ }
+    }
+    return v.value;
+  }
+  return asNumber(v);
+}
+/** Matrix of vector als rijen met getallen. */
+function liggerRijen(v: unknown): number[][] {
+  const a = toArrayLike(v);
+  if (!a) return [[liggerGetal(v)]];
+  return a.map((r) => {
+    const rr = toArrayLike(r);
+    return rr ? rr.map(liggerGetal) : [liggerGetal(r)];
+  });
+}
+/** Vector als platte lijst getallen (ook een kolom- of rijmatrix). */
+function liggerVector(v: unknown): number[] | undefined {
+  if (v === undefined) return undefined;
+  const a = toArrayLike(v);
+  if (!a) return [liggerGetal(v)];
+  return a.flatMap((r) => {
+    const rr = toArrayLike(r);
+    return rr ? rr.map(liggerGetal) : [liggerGetal(r)];
+  });
+}
+const liggerMatrix = (m: number[][]) => math.matrix(m);
+/** Stijfheid van de ligger: EI (kNm²) of de vector [EI; GA] met GA = κ·G·A (kN) voor de afschuifvervorming. */
+function liggerStijf(v: unknown): number | number[] {
+  return toArrayLike(v) ? (liggerVector(v) ?? [0]) : liggerGetal(v);
+}
+
+math.import(
+  {
+    /** ligger(geo; last; EI[; f[; deel[; xs]]]) → [x, V, M, w] langs de ligger, met de punten xs erbij. */
+    ligger: function (geo: unknown, last: unknown, EI: unknown, f?: unknown, deel?: unknown, xs?: unknown) {
+      return liggerMatrix(liggerOplossing(
+        liggerRijen(geo), liggerRijen(last), liggerStijf(EI), liggerVector(f), deel === undefined ? 0 : liggerGetal(deel),
+        liggerVector(xs) ?? [],
+      ));
+    },
+    /** ligger_R(geo; last; EI[; f[; deel]]) → [x, R, M] per steunpunt. */
+    ligger_R: function (geo: unknown, last: unknown, EI: unknown, f?: unknown, deel?: unknown) {
+      return liggerMatrix(liggerReacties(liggerRijen(geo), liggerRijen(last), liggerStijf(EI), liggerVector(f), deel === undefined ? 0 : liggerGetal(deel)));
+    },
+    /** ligger_omh(geo; last; EI; groep; f1; f2; teken[; lead]) → omhullende [x, V, M, w]. */
+    ligger_omh: function (geo: unknown, last: unknown, EI: unknown, groep: unknown, f1: unknown, f2: unknown, teken?: unknown, lead?: unknown) {
+      return liggerMatrix(liggerOmhullende(
+        liggerRijen(geo), liggerRijen(last), liggerStijf(EI), liggerVector(groep) ?? [], liggerVector(f1) ?? [], liggerVector(f2) ?? [],
+        teken === undefined ? 1 : liggerGetal(teken), lead === undefined ? 0 : liggerGetal(lead),
+      ));
+    },
+    /** ligger_omhR(…) → omhullende [x, R, M] per steunpunt, argumenten als ligger_omh. */
+    ligger_omhR: function (geo: unknown, last: unknown, EI: unknown, groep: unknown, f1: unknown, f2: unknown, teken?: unknown, lead?: unknown) {
+      return liggerMatrix(liggerOmhullendeReacties(
+        liggerRijen(geo), liggerRijen(last), liggerStijf(EI), liggerVector(groep) ?? [], liggerVector(f1) ?? [], liggerVector(f2) ?? [],
+        teken === undefined ? 1 : liggerGetal(teken), lead === undefined ? 0 : liggerGetal(lead),
+      ));
+    },
+    /** ligger_max(R1; R2; …) → per punt en per kolom de grootste waarde (x uit R1). */
+    ligger_max: function (...ms: unknown[]) {
+      return liggerMatrix(liggerSamen(1, ...ms.map(liggerRijen)));
+    },
+    /** ligger_min(R1; R2; …) → per punt en per kolom de kleinste waarde (x uit R1). */
+    ligger_min: function (...ms: unknown[]) {
+      return liggerMatrix(liggerSamen(-1, ...ms.map(liggerRijen)));
+    },
+    /** ligger_ext(R; k[; x1; x2]) → [max; x bij max; min; x bij min] van kolom k. */
+    ligger_ext: function (R: unknown, k: unknown, x1?: unknown, x2?: unknown) {
+      return math.matrix(liggerExtremen(liggerRijen(R), liggerGetal(k),
+        x1 === undefined ? -Infinity : liggerGetal(x1), x2 === undefined ? Infinity : liggerGetal(x2)));
+    },
+    /** ligger_int(R; k; x) → kolom k in x, lineair tussen de rasterpunten. */
+    ligger_int: function (R: unknown, k: unknown, x: unknown) {
+      return liggerInterpoleer(liggerRijen(R), liggerGetal(k), liggerGetal(x));
+    },
+    /** ligger_nul(R; k; x_van; x_tot) → eerste x vanaf x_van waar kolom k niet negatief is. */
+    ligger_nul: function (R: unknown, k: unknown, xVan: unknown, xTot: unknown) {
+      return liggerNulpunt(liggerRijen(R), liggerGetal(k), liggerGetal(xVan), liggerGetal(xTot));
+    },
+    /** ligger_status(geo[; EI]) → 1 stabiel, -1 beweeglijk, 0 ongeldig. */
+    ligger_status: function (geo: unknown, EI?: unknown) {
+      return liggerStatus(liggerRijen(geo), EI === undefined ? 1 : liggerStijf(EI));
+    },
+    /** ligger_delen(geo) → [x_begin, x_eind] per deel voor de schaakbordbelasting. */
+    ligger_delen: function (geo: unknown) {
+      return liggerMatrix(liggerDelen(liggerRijen(geo)));
+    },
+    /** ligger_velden(geo) → [x_begin, x_eind, overstek] per veld tussen de steunpunten. */
+    ligger_velden: function (geo: unknown) {
+      return liggerMatrix(liggerVelden(liggerRijen(geo)));
+    },
+    /** ligger_svg(R; k; x0; sx; y0; sy) → "X,Y X,Y …" voor een polyline of polygon. */
+    ligger_svg: function (R: unknown, k: unknown, x0: unknown, sx: unknown, y0: unknown, sy: unknown) {
+      return liggerSvgPunten(liggerRijen(R), liggerGetal(k), liggerGetal(x0), liggerGetal(sx), liggerGetal(y0), liggerGetal(sy));
+    },
+  },
+  { override: true },
+);
+
+// ── Raamwerk (packages/core/src/raamwerk.ts) ────────────────────────────────
+// Een vlak raamwerk van knopen en staven met scharnieren en opleggingen,
+// eerste orde opgelost met de verplaatsingsmethode. Kale getallen in m, kN,
+// kN/m, kNm, kNm² (EI) en kN (EA); een grootheid met eenheid wordt omgerekend
+// zoals bij de ligger. Uitkomst per staaf: rijen [staaf, s, x, y, N, V, M, u_x,
+// u_y, w]. Zie raamwerk.ts voor de afspraken.
+
+/**
+ * Rijen van een matrix voor de raamwerkfuncties. Een blad vraagt een uitkomst
+ * vaak vele keren op (per staaf, per toets); een matrix met alleen kale getallen
+ * gaat daarom zonder kopie door, de rest via liggerRijen (eenheden, vectoren).
+ */
+function raamwerkRijen(v: unknown): number[][] {
+  const d = (v as { _data?: unknown })?._data;
+  if (Array.isArray(d) && d.length && d.every((r) => Array.isArray(r) && (r as unknown[]).every((x) => typeof x === 'number'))) {
+    return d as number[][];
+  }
+  return liggerRijen(v);
+}
+
+math.import(
+  {
+    /** raamwerk(kn; st; op; last[; f[; toppen]]) → [staaf, s, x, y, N, V, M, u_x, u_y, w] langs de staven. */
+    raamwerk: function (kn: unknown, st: unknown, op: unknown, last: unknown, f?: unknown, toppen?: unknown) {
+      return liggerMatrix(raamwerkOplossing(
+        raamwerkRijen(kn), raamwerkRijen(st), raamwerkRijen(op), raamwerkRijen(last), liggerVector(f),
+        toppen === undefined ? 0 : liggerGetal(toppen),
+      ));
+    },
+    /** raamwerk_R(kn; st; op; last[; f]) → [knoop, R_x, R_y, M] per oplegging. */
+    raamwerk_R: function (kn: unknown, st: unknown, op: unknown, last: unknown, f?: unknown) {
+      return liggerMatrix(raamwerkReacties(raamwerkRijen(kn), raamwerkRijen(st), raamwerkRijen(op), raamwerkRijen(last), liggerVector(f)));
+    },
+    /** raamwerk_u(kn; st; op; last[; f]) → [knoop, u_x, u_y, φ] per knoop. */
+    raamwerk_u: function (kn: unknown, st: unknown, op: unknown, last: unknown, f?: unknown) {
+      return liggerMatrix(raamwerkVerplaatsingen(raamwerkRijen(kn), raamwerkRijen(st), raamwerkRijen(op), raamwerkRijen(last), liggerVector(f)));
+    },
+    /** raamwerk_acr(kn; st; op; last[; f]) → kritieke belastingsfactor α_cr van de combinatie. */
+    raamwerk_acr: function (kn: unknown, st: unknown, op: unknown, last: unknown, f?: unknown) {
+      return raamwerkKnik(raamwerkRijen(kn), raamwerkRijen(st), raamwerkRijen(op), raamwerkRijen(last), liggerVector(f));
+    },
+    /** raamwerk_status(kn; st; op) → 1 stabiel, -1 beweeglijk, 0 ongeldig. */
+    raamwerk_status: function (kn: unknown, st: unknown, op: unknown) {
+      return raamwerkStatus(raamwerkRijen(kn), raamwerkRijen(st), raamwerkRijen(op));
+    },
+    /** raamwerk_ext(R; staaf; k) → [max; s bij max; min; s bij min] van kolom k (staaf 0: alle staven). */
+    raamwerk_ext: function (R: unknown, staaf: unknown, k: unknown) {
+      return math.matrix(raamwerkExtremen(raamwerkRijen(R), liggerGetal(staaf), liggerGetal(k)));
+    },
+    /** raamwerk_int(R; staaf; k; s) → kolom k van de staaf in s, lineair tussen de rasterpunten. */
+    raamwerk_int: function (R: unknown, staaf: unknown, k: unknown, s: unknown) {
+      return raamwerkInterpoleer(raamwerkRijen(R), liggerGetal(staaf), liggerGetal(k), liggerGetal(s));
+    },
+    /** raamwerk_sam(R; staaf) → [N_min; N_max; V_min; V_max; M_min; M_max; M(0); M(L/4); M(L/2); M(3L/4); M(L); L; w_min; w_max]. */
+    raamwerk_sam: function (R: unknown, staaf: unknown) {
+      return math.matrix(raamwerkSamenvatting(raamwerkRijen(R), liggerGetal(staaf)));
+    },
+    /** raamwerk_zak(R; staaf; x_a; u_a; x_b; u_b) → grootste verticale verplaatsing ten opzichte van de lijn door (x_a, u_a) en (x_b, u_b). */
+    raamwerk_zak: function (R: unknown, staaf: unknown, xa: unknown, ua: unknown, xb: unknown, ub: unknown) {
+      return raamwerkZakking(raamwerkRijen(R), liggerGetal(staaf), liggerGetal(xa), liggerGetal(ua), liggerGetal(xb), liggerGetal(ub));
+    },
+    /** raamwerk_svg(R; staaf; k; x0; y0; schaal; sk) → "X,Y …" voor een polygoon met het verloop van kolom k. */
+    raamwerk_svg: function (R: unknown, staaf: unknown, k: unknown, x0: unknown, y0: unknown, schaal: unknown, sk: unknown) {
+      return raamwerkSvgPunten(raamwerkRijen(R), liggerGetal(staaf), liggerGetal(k), liggerGetal(x0), liggerGetal(y0), liggerGetal(schaal), liggerGetal(sk));
+    },
+    /** raamwerk_vorm(R; staaf; x0; y0; schaal; su) → "X,Y …" voor de verplaatste vorm van de staaf. */
+    raamwerk_vorm: function (R: unknown, staaf: unknown, x0: unknown, y0: unknown, schaal: unknown, su: unknown) {
+      return raamwerkVormPunten(raamwerkRijen(R), liggerGetal(staaf), liggerGetal(x0), liggerGetal(y0), liggerGetal(schaal), liggerGetal(su));
+    },
+    /** raamwerk_max(R1; R2; …) → per punt en per kolom de grootste waarde (zelfde raster). */
+    raamwerk_max: function (...ms: unknown[]) {
+      return liggerMatrix(liggerSamen(1, ...ms.map(liggerRijen)));
+    },
+    /** raamwerk_min(R1; R2; …) → per punt en per kolom de kleinste waarde (zelfde raster). */
+    raamwerk_min: function (...ms: unknown[]) {
+      return liggerMatrix(liggerSamen(-1, ...ms.map(liggerRijen)));
+    },
+  },
+  { override: true },
+);
+
+// ── Doorsnede (packages/core/src/doorsnede.ts) ──────────────────────────────
+// Grootheden van een samengestelde doorsnede: rijen [soort, p1 … p5, y, z, n,
+// draai] per deel, kale getallen in mm (een lengte met eenheid wordt naar mm
+// omgerekend). Zie doorsnede.ts voor de afspraken.
+
+/** Getal in mm; een kaal getal blijft. */
+function doorsnedeGetal(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'boolean') return v ? 1 : 0;
+  if (isUnit(v)) {
+    try { return v.toNumber('mm'); } catch { return v.value; }
+  }
+  return asNumber(v);
+}
+function doorsnedeRijen(v: unknown): number[][] {
+  const a = toArrayLike(v);
+  if (!a) return [[doorsnedeGetal(v)]];
+  return a.map((r) => {
+    const rr = toArrayLike(r);
+    return rr ? rr.map(doorsnedeGetal) : [doorsnedeGetal(r)];
+  });
+}
+
+math.import(
+  {
+    /** doorsnede(D) → [A; y_c; z_c; I_y; I_z; I_yz; y_min; y_max; z_min; z_max] van de ideële doorsnede. */
+    doorsnede: function (D: unknown) {
+      return math.matrix(doorsnedeGrootheden(doorsnedeRijen(D)));
+    },
+    /** doorsnede_deel(D; i) → [A; I_y; I_z; y_min; y_max; z_min; z_max] van deel i, om zijn eigen hart, zonder n. */
+    doorsnede_deel: function (D: unknown, i: unknown) {
+      return math.matrix(doorsnedeDeel(doorsnedeRijen(D), doorsnedeGetal(i)));
+    },
+    /** doorsnede_pl(D; as) → [W_pl; plaats van de plastische neutrale lijn], as 1 = om de y-as, 2 = om de z-as. */
+    doorsnede_pl: function (D: unknown, as: unknown) {
+      return math.matrix(doorsnedePlastisch(doorsnedeRijen(D), doorsnedeGetal(as)));
+    },
+    /** doorsnede_S(D; as; s) → [S; b]: statisch moment voorbij de lijn s om de zwaartelijn, en de breedte daar. */
+    doorsnede_S: function (D: unknown, as: unknown, s: unknown) {
+      return math.matrix(doorsnedeStatisch(doorsnedeRijen(D), doorsnedeGetal(as), doorsnedeGetal(s)));
+    },
+    /** doorsnede_svg(D; i; x0; y0; schaal) → "X,Y …" voor een polygoon met de omtrek van deel i. */
+    doorsnede_svg: function (D: unknown, i: unknown, x0: unknown, y0: unknown, schaal: unknown) {
+      return doorsnedeSvgPunten(doorsnedeRijen(D), doorsnedeGetal(i), doorsnedeGetal(x0), doorsnedeGetal(y0), doorsnedeGetal(schaal));
+    },
+  },
+  { override: true },
+);
+
 export interface Scope {
   [key: string]: unknown;
 }
@@ -372,9 +625,13 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
               }
             }
           }
-          result.push({ type: 'text', text: out.join(''), html: true });
+          result.push({ type: 'text', text: out.join(''), html: true, ...(node.inline ? { inline: true } : {}) });
         } else {
-          result.push({ type: 'text', text: node.text, html: node.html });
+          // De normbladen schrijven een uitkomst als {{naam}} in een tekstregel,
+          // zoals in een tekening. Zonder invulling stond er letterlijk
+          // "UC = {{UC_druk}}" op het blad.
+          const text = node.text.includes('{{') ? interpolateBraces(node.text, scope) : node.text;
+          result.push({ type: 'text', text, html: node.html, ...(node.inline ? { inline: true } : {}) });
         }
         break;
 
@@ -388,12 +645,35 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
 
       case 'input-prompt': {
         // CalcPAD `?` prompt — pick the user-supplied value or fall back to the default.
-        const raw = selectValues[node.name] ?? node.defaultValue;
+        // Het veld toont wat er is ingetypt; gerekend wordt met een punt. Een
+        // komma is hier altijd een decimaalteken: "0,42" is 0,42.
+        const invoer = String(selectValues[node.name] ?? node.defaultValue);
+        // Een leeg veld telt als 0 in de eenheid van het veld, net als een
+        // nieuw '?'-veld. Zonder deze stap werd "" met eenheid " kN": een
+        // eenheid zonder getal, die als 1 kN rekende of verderop NaN en
+        // "unit with undefined value" gaf; zonder eenheid bleef de naam
+        // ongedefinieerd. Het veld zelf blijft leeg (currentValue).
+        const raw = invoer.trim().replace(',', '.') || '0';
         const fullExpr = node.unit ? `${raw} ${node.unit}` : raw;
         try {
-          scope[node.name] = math.evaluate(fullExpr, {});
+          const waarde = math.evaluate(fullExpr, {});
+          // Wat geen getal oplevert (alleen een eenheid of een teken, zoals
+          // "kN" of "-"), gaat naar de afhandeling van een halve invoer.
+          if (waarde === undefined || waarde === null || (isUnit(waarde) && waarde.value === null)) {
+            throw new Error('invoer zonder getal');
+          }
+          scope[node.name] = waarde;
         } catch {
-          scope[node.name] = parseFloat(raw) || 0;
+          // Een halve invoer (tijdens het typen "0." of "") telt als getal, en
+          // houdt zijn eenheid: zonder eenheid liep elke regel die er verderop
+          // mee rekende vast op "Units do not match".
+          const getal = parseFloat(raw);
+          const n = Number.isFinite(getal) ? getal : 0;
+          try {
+            scope[node.name] = node.unit ? math.evaluate(`${n} ${node.unit}`, {}) : n;
+          } catch {
+            scope[node.name] = n;
+          }
         }
         if (!node.hidden) {
           result.push({
@@ -401,7 +681,7 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
             name: node.name,
             label: node.label,
             unit: node.unit,
-            currentValue: raw,
+            currentValue: invoer,
           });
         }
         break;
@@ -506,7 +786,7 @@ function evaluateNodes(nodes: AstNode[], scope: Scope, selectValues: SelectValue
 
       case 'svg': {
         if (node.hidden) break;
-        const interpolated = interpolateSvg(node.content, scope);
+        const interpolated = interpolateBraces(node.content, scope);
         result.push({ type: 'svg', content: interpolated });
         break;
       }
@@ -564,12 +844,12 @@ function evaluateAssignment(
     }
 
     // Evaluate the full expression (including "to unit" if present)
-    const compiled = math.parse(expression);
-    const value = compiled.evaluate(scope);
+    const parsed = math.parse(expression);
+    const value = parsed.evaluate(scope);
     scope[name] = value;
 
     // Build substitution: replace variable names with their values
-    const substitution = buildSubstitution(displayExpr, scope, name);
+    const substitution = buildSubstitution(displayExpr, scope, name, displayExpr === expression ? parsed : undefined);
 
     // Format the result with simplified units
     const resultStr = formatResult(value);
@@ -601,9 +881,12 @@ function evaluateAssignment(
 function buildSubstitution(
   expression: string,
   scope: Scope,
-  currentVar: string
+  currentVar: string,
+  parsedExpression?: MathNode,
 ): string {
-  const parsed = math.parse(expression);
+  // Bij een gewone toewijzing is dit dezelfde boom die zojuist is berekend.
+  // Alleen een eenheidsconversie toont een ander deel van de expressie.
+  const parsed = parsedExpression ?? math.parse(expression);
   const variables = new Set<string>();
   parsed.traverse((node: MathNode) => {
     if (node.type === 'SymbolNode' && 'name' in node) {
@@ -621,11 +904,22 @@ function buildSubstitution(
   let sub = expression;
   for (const varName of variables) {
     const val = scope[varName];
+    // Alleen getallen, grootheden met eenheid en teksten invullen. Een
+    // gebruikersfunctie staat ook in de scope, maar dan kwam de broncode van de
+    // mathjs-functie in de uitdraai; een matrix werd een lege plek, zodat er
+    // `hlookup(, 2, 1, 2)` stond. Die houden hun naam.
+    const invulbaar =
+      typeof val === 'number' || typeof val === 'string' || typeof val === 'boolean' || isUnit(val);
+    if (!invulbaar) continue;
     const formatted = formatInline(val);
     // Wrap in parentheses if value has a unit (contains space) to preserve
     // operator precedence: h^2 → (500 mm)^2, not 500 mm^2
     const wrapped = isUnit(val) ? `(${formatted})` : formatted;
-    sub = sub.replace(new RegExp(`\\b${varName}\\b`, 'g'), wrapped);
+    // Grenzen op letters en cijfers in Unicode-zin. `\b` kent alleen ASCII,
+    // waardoor een naam die met een Griekse letter begint (γ_M, σ_m,d, ψ_0)
+    // nooit werd ingevuld: de ingevulde formule toonde dan nog het symbool.
+    const naam = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    sub = sub.replace(new RegExp(`(?<![\\p{L}\\p{N}_])${naam}(?![\\p{L}\\p{N}_])`, 'gu'), wrapped);
   }
   return sub;
 }
@@ -703,6 +997,9 @@ function getNumericValue(value: MathUnit): number {
     const simplified = simplifyUnitString(value);
     return value.toNumber(simplified);
   } catch {
+    // `1 / K` is goed leesbaar op het blad, maar wordt door de eenheidsparser
+    // niet als doeleenheid geaccepteerd. De interne notatie `K^-1` wel.
+    try { return value.toNumber(value.formatUnits()); } catch { /* laatste terugval */ }
     // Fallback: extract from toString
     const str = String(value);
     const match = str.match(/^([+-]?\d+\.?\d*(?:e[+-]?\d+)?)\s/i);
@@ -714,7 +1011,10 @@ function getNumericValue(value: MathUnit): number {
 // ─── Number formatting ──────────────────────────────────────────────
 
 function formatNumber(n: number): string {
-  if (!isFinite(n)) return String(n);
+  // Een deling door een weerstand nul geeft een oneindige unity check; die
+  // hoort als ∞ op het blad, niet als het woord "Infinity".
+  if (Number.isNaN(n)) return 'NaN';
+  if (!isFinite(n)) return n > 0 ? '∞' : '-∞';
   if (n === 0) return '0';
 
   // If integer and not too large, show exact
@@ -950,7 +1250,8 @@ function stringifyInterpolated(v: unknown): string {
   return String(v);
 }
 
-function interpolateSvg(content: string, scope: Scope): string {
+/** Vult {{naam}} in met de waarde uit de scope, zonder eenheid; onbekende namen blijven staan. */
+function interpolateBraces(content: string, scope: Scope): string {
   return content.replace(/\{\{(\w+)\}\}/g, (_, varName: string) => {
     if (varName in scope) {
       const val = scope[varName];

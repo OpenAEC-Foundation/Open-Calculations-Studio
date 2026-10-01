@@ -1,24 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
 import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useBladUitkomst } from "./bladResultaat";
+import { UitkomstKop } from "./designerKit";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
  * Parametrisch beeld van een spuwer (noodoverlaat) in een dakrand-opstand.
- * Reproduceert het de referentie-uitwerking-invoerbeeld: links een doorsnede door de opstand
+ * Reproduceert het invoerbeeld van de referentie-uitwerking: links een doorsnede door de opstand
  * met het dakvlak op afschot, de drempelhoogte h_nd, de spuweropening h en de
  * waterstanden, rechts het vooraanzicht van de opening b × h in de opstand.
  * Beide aanzichten staan op één uniforme schaal.
  *
- * De UC in de kop en de voet is dezelfde toetsing als in het rekenblad
- * (templates/spuwer.ts, gecalibreerd op 5 de referentie-uitwerking-referenties):
+ * De kop toont de UC en het oordeel van het blad zelf (templates/spuwer.ts).
+ * Voor de tekening en de voetregel rekent het beeld dezelfde regels na:
  * Q_h = A·i_r (7.2), d_nd = 0,7·(Q_h/(b·n))^(2/3) (7.4), d_hw = d_nd + h_nd
  * (7.8), en h_min = 30 + d_hw − h_nd uit §7.3(3) getoetst op de spuwerhoogte h.
+ * Een diameter voor een ronde spuwer toont het beeld niet: (7.7) geeft geen
+ * minimale maat, §7.3(3) vraagt ten minste 117 mm.
  */
 const MARKER = "Spuwer";
 
 /** Eén bron van waarheid voor de invoer — voedt de controls én de gedeelde store. */
-// Defaults spiegelen de referentie-uitwerking-referentie 1S, zodat elk getoond getal tegen een
+// Defaults spiegelen referentieberekening 1S, zodat elk getoond getal tegen een
 // referentieblad te leggen is (u.c. = 0,95 voldoet).
 const DEFAULTS: Record<string, number> = {
   A_afv: 600,   // m²  — afvoergebied
@@ -30,7 +34,8 @@ const DEFAULTS: Record<string, number> = {
 };
 
 // Ontwerplevensduurklassen zoals elders in het project (EN 1990 NB tabel NB.1-2.1),
-// met de regenintensiteit uit Tabel NB.1. Alle vier tegen een referentie geverifieerd.
+// met de regenintensiteit uit Tabel NB.1 zoals de referentie-uitwerking die afrondt.
+// Alle vier tegen een referentie geverifieerd.
 const LEVENSDUUR: { v: number; label: string; ir: number }[] = [
   { v: 5, label: "5 jaar (tijdelijk)", ir: 0.000027 },
   { v: 15, label: "15 jaar (landbouw)", ir: 0.000041 },
@@ -68,6 +73,8 @@ export default function SpuwerDesigner() {
     [activeId, seedWaarden],
   );
   const [editing, setEditing] = useState<string | null>(null);
+  // De uitkomst van het blad zelf, voor de kop.
+  const uitkomst = useBladUitkomst();
 
   // Meet het beschikbare tekengebied zodat het beeld meegroeit met het paneel.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -111,7 +118,9 @@ export default function SpuwerDesigner() {
   const h_sp = Math.max(1, d("h_sp"));
   const h_nd = Math.max(0, d("h_nd"));
   const t_ref = Math.round(d("t_ref"));
-  const i_r = (LEVENSDUUR.find((o) => o.v === t_ref) ?? LEVENSDUUR[2]).ir;   // Tabel NB.1
+  // Tabel NB.1: de waarde van het blad zelf, want die volgt de rekenwijze
+  // (register punt 20); de lijst hierboven alleen zolang het blad nog niet rekent.
+  const i_r = uitkomst?.getallen.i_r ?? (LEVENSDUUR.find((o) => o.v === t_ref) ?? LEVENSDUUR[2]).ir;
 
   // ── toetsing (zelfde regels als templates/spuwer.ts) ──────────────────────
   const b_tot = n_sp * b_sp;                        // mm — som van de spuwerbreedten
@@ -123,7 +132,6 @@ export default function SpuwerDesigner() {
   const h_min = H_VERSTOP + d_hw - h_nd;            // mm — §7.3(3)
   const UC = h_sp > 0 ? h_min / h_sp : 0;
   const ok = UC <= 1.0;
-  const d_min = d_nd > 0 ? (Q_h / n_sp) / (d_nd / 1000 / 0.29) ** 1.5 * 1000 : 0;  // mm (7.7)
   const A_op = (b_sp * h_sp) / 1e6;                 // doorstroomoppervlak per spuwer [m²]
   const fmt = (v: number, dec = 0) => v.toFixed(dec).replace(".", ",");
 
@@ -227,12 +235,7 @@ export default function SpuwerDesigner() {
 
   return (
     <div className="vd-panel">
-      <div className="vd-head">
-        <strong>Parametrisch beeld — spuwer (noodoverlaat)</strong>
-        <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
-          u.c. = {fmt(UC, 2)} {ok ? "✓ voldoet" : "✗ voldoet niet"}
-        </span>
-      </div>
+      <UitkomstKop titel="Parametrisch beeld — spuwer (noodoverlaat)" uitkomst={uitkomst} />
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
         <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
@@ -266,7 +269,7 @@ export default function SpuwerDesigner() {
             d<sub>nd</sub> = {fmt(d_nd, 1)} mm · d<sub>hw</sub> = {fmt(d_hw, 1)} mm · q = {fmt(q_rw, 2)} kN/m²</span>
         </div>
 
-        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, flexDirection: stacked ? "column" : "row", alignItems: "center", justifyContent: "center", gap, flexWrap: "nowrap", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
+        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, flexDirection: stacked ? "column" : "row", alignItems: "center", justifyContent: "safe center", gap, flexWrap: "nowrap", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
           <div className="vd-canvas">
             <div className="vd-caption">Doorsnede — detail dakrand</div>
             <div className="vd-stage" style={{ width: SW, height: SH, background: "transparent", border: "none", borderRadius: 0 }}>
@@ -319,7 +322,7 @@ export default function SpuwerDesigner() {
               <Dim name="h_sp" value={h_sp} x={xL - dimL} y={(yTop + ySill) / 2} step={10} label="h" />
               <Dim name="h_nd" value={h_nd} x={xL - dimL} y={(ySill + yRoof) / 2} step={10} label="hnd" />
               <Ro text={`dhw=${fmt(d_hw)}`} x={xL + 55 * s} y={(yWat + yRoof) / 2} title="waterstand op het dak = hnd + dnd" />
-              <Dim name="d_nd" value={d_nd} x={xL + 130 * s} y={(yWat + ySill) / 2} step={2} label="dnd" />
+              <Ro text={`dnd=${fmt(d_nd)}`} x={xL + 130 * s} y={(yWat + ySill) / 2} title="waterhoogte boven de onderzijde van de spuwer (7.4)" />
               <div className="vd-dim-ro" style={{ left: xP0 + T_OPSTAND * s / 2, top: (y30 + yWat) / 2, color: ok ? "#6b7280" : "#dc2626" }}
                 title="30 mm vrije hoogte tegen verstopping (§7.3(3)) — moet binnen de spuweropening passen">
                 {H_VERSTOP}
@@ -370,7 +373,7 @@ export default function SpuwerDesigner() {
         <span className="vd-live">
           Q<sub>h</sub> = {fmt(Q_h, 3)} m³/s · b<sub>tot</sub> = {fmt(b_tot)} mm · d<sub>nd</sub> = {fmt(d_nd, 1)} mm ·
           d<sub>hw</sub> = {fmt(d_hw, 1)} mm · q = {fmt(q_rw, 2)} kN/m² · h<sub>min</sub> = 30 + d<sub>hw</sub> − h<sub>nd</sub> = {fmt(h_min, 1)} mm ·
-          u.c. = {fmt(h_min, 1)}/{fmt(h_sp)} = {fmt(UC, 2)} · ronde spuwer d<sub>min</sub> = {fmt(d_min)} mm ·
+          u.c. = {fmt(h_min, 1)}/{fmt(h_sp)} = {fmt(UC, 2)} ·
           opening {fmt(b_sp)}×{fmt(h_sp)} mm ({fmt(A_op, 3)} m²)
         </span>
       </div>

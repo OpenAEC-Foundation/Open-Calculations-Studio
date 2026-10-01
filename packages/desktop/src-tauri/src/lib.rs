@@ -69,6 +69,18 @@ fn engine_preview_pdf(report: serde_json::Value) -> Result<String, String> {
     Ok(path.to_string_lossy().into_owned())
 }
 
+/// Het projectbestand waarmee de app is gestart. Een dubbelklik in de
+/// Verkenner geeft via de bestandskoppeling het pad mee als argument.
+#[tauri::command]
+fn startbestand() -> Option<String> {
+    std::env::args_os().skip(1).find_map(|arg| {
+        let pad = std::path::PathBuf::from(arg);
+        let ext = pad.extension()?.to_str()?.to_ascii_lowercase();
+        let bekend = matches!(ext.as_str(), "ifccalculation" | "ifc-calculation" | "cpd" | "cpdz");
+        (bekend && pad.is_file()).then(|| pad.to_string_lossy().into_owned())
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -81,6 +93,7 @@ pub fn run() {
             engine_generate_pdf,
             engine_save_pdf,
             engine_preview_pdf,
+            startbestand,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

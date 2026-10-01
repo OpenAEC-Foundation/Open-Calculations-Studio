@@ -27,6 +27,15 @@ export const saveDiskIcon = svg(
    <polyline points="7 3 7 8 15 8"/>`,
 );
 
+// ── Insert ─────────────────────────────────────────────────────────────
+/** Module toevoegen: een raster van bladen met een plus. */
+export const moduleIcon = svg(
+  `<rect x="3" y="3" width="7.5" height="7.5" rx="1"/>
+   <rect x="13.5" y="3" width="7.5" height="7.5" rx="1"/>
+   <rect x="3" y="13.5" width="7.5" height="7.5" rx="1"/>
+   <path d="M17.25 14v6M14.25 17h6"/>`,
+);
+
 export const undoIcon = svg(
   `<polyline points="1 4 1 10 7 10"/>
    <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>`,

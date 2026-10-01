@@ -1,7 +1,7 @@
 /**
  * Gedeelde bouwstenen voor de controlescripts `check-<module>.mjs`.
  *
- * Elk zo'n script zet de invoer van een de referentie-uitwerking-referentieblad in de module,
+ * Elk zo'n script zet de invoer van een referentieblad in de module,
  * rekent hem door en vergelijkt de tussenstappen met het afgedrukte getal.
  * Bekende afwijkingen worden apart gemeld en tellen niet als fout — die staan
  * in docs/afwijkingen-referentie.md en zijn juist bewuste keuzes.
@@ -86,7 +86,7 @@ function ontleed(verwacht) {
  * @param naam        omschrijving van het referentieblad
  * @param got         {values, text} uit reken()
  * @param verwacht    { variabele: "gedrukte waarde" } — normconform, moet kloppen
- * @param afwijkend   { variabele: "gedrukte waarde" } — bekende de referentie-uitwerking-afwijking
+ * @param afwijkend   { variabele: "gedrukte waarde" } — bekende afwijking van de referentie-uitwerking
  * @param afgeleid    { variabele: getal } — waarden die niet als var-display in
  *                    het blad staan maar uit de tekst zijn gehaald
  * @returns aantal fouten
@@ -127,12 +127,12 @@ export function toets(naam, got, verwacht, afwijkend = {}, afgeleid = {}) {
  *   1. elke grootheid blijft een eindig getal (een tak die alleen in deze stand
  *      loopt sterft anders stilletjes af op een NaN of een lege variabele);
  *   2. de opgegeven grootheden bewegen de verwachte kant op ten opzichte van de
- *      de referentie-uitwerking-stand — dat is de enige inhoudelijke uitspraak die zonder
+ *      referentiestand — dat is de enige inhoudelijke uitspraak die zonder
  *      referentie hard te maken is.
  *
  * @param richting  { variabele: "lager" | "hoger" | "gelijk" } t.o.v. de referentie-uitwerking
  */
-export function toetsNormStand(naam, xc, nb, richting = {}) {
+export function toetsNormStand(naam, refStand, nb, richting = {}) {
   console.log(`
 ${naam}  — norm-stand`);
   let fouten = 0;
@@ -147,7 +147,7 @@ ${naam}  — norm-stand`);
     console.log(`  OK     alle ${Object.keys(nb.values).length} grootheden eindig`);
   }
   for (const [variabele, wil] of Object.entries(richting)) {
-    const a = xc.values[variabele], b = nb.values[variabele];
+    const a = refStand.values[variabele], b = nb.values[variabele];
     const ok =
       wil === "gelijk" ? Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a))
       : wil === "lager" ? b < a

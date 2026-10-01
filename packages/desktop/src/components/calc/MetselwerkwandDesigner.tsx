@@ -1,90 +1,84 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
-import { useProjectCC, useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useBladUitkomst } from "./bladResultaat";
+import { UitkomstKop } from "./designerKit";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
  * Parametrisch beeld van een dragende (ongewapende) metselwerkwand op druk,
- * volgens NEN-EN 1996-1-1 §6.1.2. Reproduceert het de referentie-uitwerking-invoerbeeld:
+ * volgens NEN-EN 1996-1-1 §6.1.2. Reproduceert het invoerbeeld van de referentie-uitwerking:
  * een vooraanzicht van de wand (ℓ × h) met N_Ed / N_Ed,max op de wandkop, en
  * een dwarsdoorsnede (t × h) met de momenten M_1Ed (kop), M_mEd (midden) en
  * M_2Ed (voet). Beide aanzichten staan op één uniforme schaal.
  *
- * De UC's in de kop en de voet zijn dezelfde toetsingen als in het rekenblad
- * (templates/metselwerkwand.ts, gecalibreerd op 9 de referentie-uitwerking-referenties):
- * slankheid §5.5.1.4, de reductiefactoren Φ aan kop/voet (6.4) — inclusief de
- * lage-belastingstak met begrensde e_i en restmoment ΔM — en op halve hoogte
- * via bijlage G, N_Rd = Φ·ℓ·t·f_d (6.2), plus de extra toets bij constante
- * minimale eerste-orde excentriciteit (ρ_2 = 1,00 met behoud van de verticale
- * randsteuning, getoetst op N_Ed,max en overgeslagen zodra de eerste toets al
- * niet voldoet).
+ * Het beeld rekent zelf niets. De kop toont de maatgevende UC en het oordeel
+ * van het blad (templates/metselwerkwand.ts), de voetregel de tussenwaarden
+ * uit dezelfde uitwerking. Eerder rekende het beeld de hele toetsing na, en
+ * kon het dus iets anders zeggen dan het blad ernaast.
  */
 const MARKER = "Dragende metselwerkwand";
 
-// ── randsteuning boven/onder → ρ_2 (EN 1996-1-1 §5.5.1.2) ──────────────────
-// Betonvloer/-dak geeft ρ_2 = 0,75, hout ρ_2 = 1,0. Bij een oplegging aan één
-// zijde geldt 0,75 alleen als de opleglengte ≥ ⅔·t en ≥ 85 mm is. Dezelfde vier
-// opties (en volgorde) als de referentie-uitwerking.
-const ONDERSTEUNING: { v: number; label: string; rho2: number; hint?: string }[] = [
-  { v: 1, label: "wand met aan beide zijden betonvloer of -dak", rho2: 0.75 },
-  { v: 2, label: "betonvloer of -dak opgelegd aan één zijde van de wand", rho2: 0.75, hint: "vereist opleglengte ≥ ⅔·t en ≥ 85 mm" },
-  { v: 3, label: "wand met aan beide zijden houten vloer of dak", rho2: 1.0 },
-  { v: 4, label: "houten vloer of dak opgelegd aan één zijde van de wand", rho2: 1.0 },
+// ── randsteuning boven/onder → ρ_2 (EN 1996-1-1 §5.5.1.2(11)) ──────────────
+// Dezelfde opties als het blad. 1-4 volgen de referentie-uitwerking; 5 en 6
+// dekken een vloer aan één zijde met een te korte oplegging af.
+const ONDERSTEUNING: { v: number; label: string }[] = [
+  { v: 1, label: "wand met aan beide zijden betonvloer of -dak" },
+  { v: 2, label: "betonvloer of -dak aan één zijde, oplegging ten minste ⅔·t" },
+  { v: 3, label: "wand met aan beide zijden houten vloer of dak" },
+  { v: 4, label: "houten vloer of dak aan één zijde, oplegging ten minste ⅔·t en 85 mm" },
+  { v: 5, label: "betonvloer of -dak aan één zijde, oplegging korter dan ⅔·t" },
+  { v: 6, label: "houten vloer of dak aan één zijde, kortere oplegging" },
 ];
 const RANDEN: { v: number; label: string }[] = [
   { v: 2, label: "2" }, { v: 3, label: "3" }, { v: 4, label: "4" },
 ];
 
-// ── metselwerk (zelfde tabellen als OplegMetselwerkDesigner) ────────────────
-// Het percentage is het holtepercentage → steengroep (≤25 % = groep 1, hoger =
-// groep 2), dat de factor K bepaalt. `kwal` bepaalt hoe de sterkteklasse van de
-// steen wordt aangeduid: f_b-waarden, CS-klassen of G-klassen.
-// f_k = K·f_b^α·f_m^β. Metselmortel heeft altijd α = 0,65 en β = 0,25; bij
-// lijmmortel verschillen K, α en β per steensoort. Tegen een referentie
-// geverifieerd: kalkzandsteen<25%+metselmortel, baksteen<25%+lijmmortel
-// (K=0,8 α=0,75 β=0,1) en cellenbeton<25%+lijmmortel (K=0,8 α=0,85 β=0). De
-// overige lijmmortel-cellen volgen dat patroon (klei → 0,75/0,10, overig →
-// 0,85/0) en zijn NIET geverifieerd.
-interface Steen { name: string; Km: number; Kl: number; al: number; bl: number; kwal: "fb" | "CS" | "G" }
+// ── metselwerk ──────────────────────────────────────────────────────────────
+// Het percentage is het holtepercentage → steengroep. `kwal` bepaalt hoe de
+// sterkteklasse van de steen wordt aangeduid: f_b-waarden, CS-klassen of
+// G-klassen. K, α en β staan in het blad (tabel NB-2).
+interface Steen { name: string; kwal: "fb" | "CS" | "G" }
 const STENEN: Record<number, Steen> = {
-  1: { name: "Baksteen <25%", Km: 0.6, Kl: 0.80, al: 0.75, bl: 0.10, kwal: "fb" },
-  2: { name: "Baksteen <55%", Km: 0.5, Kl: 0.70, al: 0.75, bl: 0.10, kwal: "fb" },
-  3: { name: "Kalkzandsteen <25%", Km: 0.6, Kl: 0.80, al: 0.85, bl: 0, kwal: "CS" },
-  4: { name: "Kalkzandsteen <55%", Km: 0.5, Kl: 0.70, al: 0.85, bl: 0, kwal: "CS" },
-  5: { name: "Betonsteen <25%", Km: 0.6, Kl: 0.80, al: 0.85, bl: 0, kwal: "fb" },
-  6: { name: "Betonsteen <60%", Km: 0.5, Kl: 0.70, al: 0.85, bl: 0, kwal: "fb" },
-  7: { name: "Cellenbeton <25%", Km: 0.6, Kl: 0.80, al: 0.85, bl: 0, kwal: "G" },
+  1: { name: "Baksteen <25%", kwal: "fb" },
+  2: { name: "Baksteen <55%", kwal: "fb" },
+  3: { name: "Kalkzandsteen <25%", kwal: "CS" },
+  4: { name: "Kalkzandsteen <55%", kwal: "CS" },
+  5: { name: "Betonsteen <25%", kwal: "fb" },
+  6: { name: "Betonsteen <60%", kwal: "fb" },
+  7: { name: "Cellenbeton <25%", kwal: "G" },
 };
 const MORTELTYPE: { v: number; label: string }[] = [
   { v: 1, label: "Metselmortel" }, { v: 2, label: "Lijmmortel" },
 ];
 const VOEG_METSEL = [5, 10, 15];
 const VOEG_LIJM = [10, 12.5];
+// Mortelvoeg evenwijdig aan het wandvlak: K maal 0,8 (§3.6.1.2(6)), in het blad.
+// φ_∞ is geen invoer: het blad neemt hem uit tabel NB-3 bij steen en mortel.
+const LANGSVOEG: { v: number; label: string }[] = [
+  { v: 1, label: "geen" }, { v: 2, label: "wel (K × 0,8)" },
+];
 const KWALITEIT: Record<Steen["kwal"], { v: number; label: string }[]> = {
   fb: [5, 10, 15, 20, 25, 30, 35, 40].map((v) => ({ v, label: `fb ${v}` })),
   CS: [12, 16, 20, 24, 30].map((v) => ({ v, label: `CS${v}` })),
   G: [2, 3, 4, 6, 8].map((v) => ({ v, label: `G${v}` })),
 };
 const KWAL_DEFAULT: Record<Steen["kwal"], number> = { fb: 10, CS: 12, G: 4 };
-// Steencategorie → basis-γ_M (CC2 = CC3 = basis; alleen CC1 verlaagt met 0,2).
-// EN 771-1 t/m 6 kent alleen categorie I en II.
-const CATEGORIE: { v: number; label: string; base: number }[] = [
-  { v: 1, label: "I", base: 1.7 },
-  { v: 2, label: "II", base: 2.2 },
+// EN 771-1 t/m 6 kent alleen categorie I en II; γ_M volgt in het blad.
+const CATEGORIE: { v: number; label: string }[] = [
+  { v: 1, label: "I" },
+  { v: 2, label: "II" },
 ];
 
 /** Eén bron van waarheid voor de invoer — voedt de controls én de gedeelde store. */
-// Defaults spiegelen het de referentie-uitwerking-invoerscherm: kalkzandsteen CS12, M15,
+// Defaults spiegelen het invoerscherm van de referentie-uitwerking: kalkzandsteen CS12, M15,
 // categorie I, ℓ = 1000, h = 2800, t = 120, N_Ed = N_Ed,max = 200 kN.
 const DEFAULTS: Record<string, number> = {
   ondersteuning: 1, n_rand: 2,
   l_w: 1000, h_w: 2800, t_w: 120, L_v: 3000,
-  steencategorie: 1, steensoort: 3, morteltype: 1, f_b: 12, f_m: 15, phi_inf: 0,
+  steencategorie: 1, steensoort: 3, morteltype: 1, f_b: 12, f_m: 15, langsvoeg: 1,
   N_Ed: 200, N_Ed_max: 200, M_1Ed: 0, M_mEd: 0, M_2Ed: 0,
 };
-
-const LAMBDA_MAX = 27; // §5.5.1.4 — grens slankheid ongewapende wand
-const K_E = 700;       // E = 700·f_k (NB:2018), teruggerekend uit de referenties
 
 export default function MetselwerkwandDesigner() {
   // Invoer hoort bij het exemplaar dat openstaat: twee bladen van dezelfde
@@ -106,6 +100,8 @@ export default function MetselwerkwandDesigner() {
     [activeId, seedWaarden],
   );
   const [editing, setEditing] = useState<string | null>(null);
+  // De uitkomst en de tussenwaarden van het blad zelf.
+  const uitkomst = useBladUitkomst();
 
   // Meet het beschikbare tekengebied zodat het beeld meegroeit met het paneel.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -151,104 +147,19 @@ export default function MetselwerkwandDesigner() {
   const steenId = Math.round(d("steensoort"));
   const steen = STENEN[steenId] ?? STENEN[3];
   const catId = Math.round(d("steencategorie"));
-  const cat = CATEGORIE.find((c) => c.v === catId) ?? CATEGORIE[0];
-  // Gevolgklasse komt van het project, niet van dit blad.
-  const cc = useProjectCC();
   const morteltype = Math.round(d("morteltype"));
   const isLijm = morteltype === 2;
-  const fb = d("f_b"), fmRaw = d("f_m"), phiInf = d("phi_inf");
+  const fb = d("f_b"), fmRaw = d("f_m"), langsvoeg = Math.round(d("langsvoeg"));
   const N_Ed = d("N_Ed"), N_Ed_max = d("N_Ed_max");
   const M_1 = d("M_1Ed"), M_m = d("M_mEd"), M_2 = d("M_2Ed");
 
-  // ── materiaal (EN 1996-1-1 §3.6.1, form. 3.2) ─────────────────────────────
-  const gammaM = cat.base - (cc === 1 ? 0.2 : 0);
-  const alpha = isLijm ? steen.al : 0.65;
-  const betaExp = isLijm ? steen.bl : 0.25;
-  const K = isLijm ? steen.Kl : steen.Km;
-  const f_k = K * fb ** alpha * Math.min(fmRaw, 20) ** betaExp;
-  const f_d = f_k / gammaM;
-  const E_mw = K_E * f_k;
-
-  // ── effectieve hoogte en slankheid (§5.5.1.2 / §5.5.1.4) ──────────────────
-  // Een verticale randsteuning telt alleen mee zolang L_v < 15·t (n = 3) resp.
-  // 30·t (n = 4); daarboven valt de wand terug op n = 2. ρ_3/ρ_4 rekenen met
-  // L_v, de afstand tussen de stijve verticale randen — niet met ℓ.
-  // ρ_2 = 0,75 mag alleen als de excentriciteit aan de kop niet groter is dan
-  // 0,25·t (§5.5.1.2(4)); daarboven vervalt de inklemming → ρ_2 = 1,00.
-  const N_min0 = Math.max(Math.abs(N_Ed), 0.001);
-  const e_t0 = Math.abs((M_1 * 1e6) / (N_min0 * 1e3));
-  const e_grens = 0.25 * t_w;
-  const rho2 = e_t0 > e_grens ? 1.0 : ond.rho2;
+  // Een verticale randsteuning vervalt bij L_v ≥ 15·t (n = 3) resp. 30·t (n = 4).
   const nLim = n === 4 ? 30 * t_w : 15 * t_w;
-  const nEff = n === 2 ? 2 : L_v >= nLim ? 2 : n;
-  /** ρ_n volgens (5.3)-(5.6) voor een gegeven ρ_2. */
-  const rhoN = (r2: number) =>
-    nEff === 3
-      ? h_w <= 3.5 * L_v
-        ? r2 / (1 + ((r2 * h_w) / (3 * L_v)) ** 2)
-        : (1.5 * L_v) / h_w
-      : nEff === 4
-        ? h_w <= 1.15 * L_v
-          ? r2 / (1 + ((r2 * h_w) / L_v) ** 2)
-          : (0.5 * L_v) / h_w
-        : r2;
-  const rho = rhoN(rho2);
-  const h_ef = rho * h_w;
-  const t_ef = t_w;                     // enkelvoudig blad: t_ef = t
-  const lambda = h_ef / t_ef;
-  const UC_lam = lambda / LAMBDA_MAX;
-  const e_init = h_ef / 450;
   const fmt = (v: number, dec = 2) => v.toFixed(dec).replace(".", ",");
-
-  // ── toetsing §6.1.2.2 + bijlage G (zelfde regels als templates/metselwerkwand.ts) ──
-  const N_min = Math.max(N_Ed, 0.001);                 // kN — voorkomt deling door nul
-  const A_wall = l_w * t_w;                            // mm²
-  const NRd = (phi: number) => (phi * A_wall * f_d) / 1e3;   // kN
-  const ecc = (M: number) => Math.abs((M * 1e6) / (N_min * 1e3)); // kNm/kN → mm
-
-  // Bij N_Ed/(ℓ·t·f_d) ≤ 0,1 wordt e_i begrensd op wat nog binnen de doorsnede
-  // past; het afgekapte deel komt als restmoment ΔM terug op halve hoogte.
-  const ratioN = (N_Ed * 1e3) / (A_wall * f_d);
-  const e_cap = t_w / 2 - (N_Ed * 1e3) / (2 * l_w * f_d);
-  const cap = (ef: number) => (ratioN > 0.1 ? ef : Math.min(ef, e_cap));
-  const e_itf = Math.max(ecc(M_1) + e_init, 0.05 * t_w);
-  const e_ibf = Math.max(ecc(M_2) + e_init, 0.05 * t_w);
-  const e_it = cap(e_itf), e_ib = cap(e_ibf);
-  const dM_t = ((e_itf - e_it) * N_Ed) / 1e3;          // kNm
-  const dM_b = ((e_ibf - e_ib) * N_Ed) / 1e3;
-  const Phi_it = 1 - (2 * e_it) / t_w;
-  const Phi_ib = 1 - (2 * e_ib) / t_w;
-
-  const e_m = ecc(M_m + (dM_t + dM_b) / 2) + e_init;
-  const e_k = 0.002 * phiInf * (h_ef / t_ef) * Math.sqrt(t_w * e_m);
-  const e_mk = Math.max(e_m + e_k, 0.05 * t_ef);
-  /** Φ volgens bijlage G (G.1)-(G.4). */
-  const phiG = (hef: number, emk: number) => {
-    const A1 = 1 - (2 * emk) / t_w;
-    const lamF = (hef / t_ef) * Math.sqrt(f_k / E_mw);
-    const u = (lamF - 0.063) / (0.73 - (1.17 * emk) / t_ef);
-    return A1 * Math.exp(-(u * u) / 2);
-  };
-  const Phi_m = phiG(h_ef, e_mk);
-  const N_Rd = Math.min(NRd(Phi_it), NRd(Phi_ib), NRd(Phi_m));
-  const UC_1 = N_Rd > 0 ? N_Ed / N_Rd : 0;
-
-  // Extra toets bij constante minimale eerste-orde excentriciteit: ρ_2 = 1,00,
-  // maar een verticale randsteuning blijft meetellen. de referentie-uitwerking slaat deze
-  // toets over zodra de vorige al niet voldoet.
-  const h_ef2 = rhoN(1.0) * h_w;
-  const e_m2 = Math.max(10, h_ef2 / 300);
-  const minExc = UC_1 <= 1.0;
-  const lambda2 = h_ef2 / t_ef;
-  const e_mk2 = Math.max(e_m2 + e_k, 0.05 * t_w);
-  const Phi_m2 = phiG(h_ef2, e_mk2);
-  const N_Rdm2 = NRd(Phi_m2);
-  const UC_2 = minExc && N_Rdm2 > 0 ? N_Ed_max / N_Rdm2 : 0;
-  const UC_lam2 = minExc ? lambda2 / LAMBDA_MAX : 0;
-  void e_m2;
-
-  const UC_max = Math.max(UC_lam, UC_lam2, UC_1, UC_2);
-  const ok = UC_max <= 1.0;
+  // Tussenwaarden uit de uitwerking; "—" zolang het blad ze niet toont.
+  const g = uitkomst?.getallen ?? {};
+  const w = (naam: string, dec: number) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));
+  const nEff = g.n_eff ?? n;
 
   // ── klikbare chips ────────────────────────────────────────────────────────
   function Dim(props: { name: string; value: number; x: number; y: number; step?: number; label?: string }) {
@@ -331,7 +242,9 @@ export default function MetselwerkwandDesigner() {
   // krachtlabels, en de lastband met pijlen die op de wandkop landen.
   const mL = 52, mT = 116, mR = 40, mB = 40;
   const cSec = 96;                                          // ruimte in de rechterstage naast de doorsnede
-  const availW = EW - mL - mR, availH = EH - mT - mB;
+  // In een smal paneel wordt de ruimte naast de marges negatief; dan krimpt de
+  // tekening tot een ondergrens in plaats van met negatieve maten om te klappen.
+  const availW = Math.max(20, EW - mL - mR), availH = Math.max(20, EH - mT - mB);
   const s = Math.min(availH / h_w, availW / l_w, (CW - cSec) / t_w);
   const wallW = l_w * s, wallH = h_w * s, tPx = Math.max(3, t_w * s);
   const xW0 = mL + Math.max(0, (availW - wallW) / 2), xW1 = xW0 + wallW;
@@ -356,22 +269,17 @@ export default function MetselwerkwandDesigner() {
 
   return (
     <div className="vd-panel">
-      <div className="vd-head">
-        <strong>Parametrisch beeld — dragende metselwerkwand</strong>
-        <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
-          UC<sub>max</sub> = {fmt(UC_max, 2)} {ok ? "✓ voldoet" : "✗ voldoet niet"}
-        </span>
-      </div>
+      <UitkomstKop titel="Parametrisch beeld — dragende metselwerkwand" uitkomst={uitkomst} />
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
-        <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
+        <div className="vd-controls vd-compact" style={{ alignSelf: "stretch", overflowY: "auto", minHeight: 0 }}>
           <span className="vd-ctrl-h">Geometrie</span>
-          <label style={{ flexDirection: "column", alignItems: "stretch" }} title={ond.hint ?? `ρ₂ = ${ond.rho2}`}>Ondersteuning
+          <label style={{ flexDirection: "column", alignItems: "stretch" }} title={ond.label}>Ondersteuning
             <select style={{ width: "100%" }} value={ondId} onChange={(e) => setVal("ondersteuning", parseInt(e.target.value))}>
               {ONDERSTEUNING.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
             </select>
           </label>
-          <label>n (ingeklemde randen)
+          <label>n (gesteunde randen)
             <span className="mw-radios">
               {RANDEN.map((o) => (
                 <label key={o.v} title={o.v === 2 ? "boven + onder" : o.v === 3 ? "boven + onder + één verticale rand" : "boven + onder + twee verticale randen"}>
@@ -380,7 +288,7 @@ export default function MetselwerkwandDesigner() {
               ))}
             </span>
           </label>
-          <label>Wandlengte ℓ (mm)
+          <label>Werkelijke lengte ℓ, wand of penant (mm)
             <input type="number" step={100} value={l_w} onChange={(e) => setVal("l_w", parseFloat(e.target.value))} />
           </label>
           <label>Wandhoogte h (mm)
@@ -389,7 +297,7 @@ export default function MetselwerkwandDesigner() {
           <label>Wanddikte t (mm)
             <input type="number" step={10} value={t_w} onChange={(e) => setVal("t_w", parseFloat(e.target.value))} />
           </label>
-          <label title={`Verticale randsteuning vervalt bij L_v ≥ ${nLim} mm → n = ${nEff}`}>Afstand gesteunde rand L<sub>v</sub> (mm)
+          <label title={`Verticale randsteuning vervalt bij L_v ≥ ${nLim} mm → n = ${nEff}`}>Lengte l (mm): vrije rand–steun (n = 3) of tussen de steunen (n = 4)
             <input type="number" step={100} value={L_v} onChange={(e) => setVal("L_v", parseFloat(e.target.value))} />
           </label>
 
@@ -429,15 +337,17 @@ export default function MetselwerkwandDesigner() {
               {(isLijm ? VOEG_LIJM : VOEG_METSEL).map((v) => <option key={v} value={v}>{(isLijm ? "L" : "M") + v}</option>)}
             </select>
           </label>
-          <label title="Eindkruipgetal voor e_k (6.7) — NB:2018 geeft 0">Eindkruipgetal φ<sub>∞</sub>
-            <input type="number" step={0.1} value={phiInf} onChange={(e) => setVal("phi_inf", parseFloat(e.target.value))} />
+          <label title="Mortelvoeg evenwijdig aan het wandvlak, over de hele wandlengte of een deel ervan (bijvoorbeeld een steense wand met strekkenlagen): K maal 0,8 (§3.6.1.2(6))">Langsvoeg
+            <select value={langsvoeg} onChange={(e) => setVal("langsvoeg", parseInt(e.target.value))}>
+              {LANGSVOEG.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
+            </select>
           </label>
 
           <span className="vd-ctrl-h">Belasting</span>
           <label>N<sub>Ed</sub> (kN)
             <input type="number" step={10} value={N_Ed} onChange={(e) => setVal("N_Ed", parseFloat(e.target.value))} />
           </label>
-          <label>N<sub>Ed,max</sub> (kN)
+          <label title="Grootste normaalkracht uit de fundamentele combinaties, niet kleiner dan N_Ed (NB bij 5.5.1.1(5))">N<sub>Ed,max</sub> (kN)
             <input type="number" step={10} value={N_Ed_max} onChange={(e) => setVal("N_Ed_max", parseFloat(e.target.value))} />
           </label>
           <label>M<sub>1Ed</sub> (kNm)
@@ -451,7 +361,7 @@ export default function MetselwerkwandDesigner() {
           </label>
         </div>
 
-        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "flex-start", justifyContent: "center", gap, flexWrap: "nowrap", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
+        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "flex-start", justifyContent: "safe center", gap, flexWrap: "nowrap", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
           <div className="vd-canvas">
             <div className="vd-caption">Vooraanzicht</div>
             <div className="vd-stage" style={{ width: EW, height: EH, background: "transparent", border: "none", borderRadius: 0 }}>
@@ -527,14 +437,14 @@ export default function MetselwerkwandDesigner() {
       <div className="vd-foot">
         <span>Klik op een blauwe maat of rode belasting om die te wijzigen — stroomt direct terug in de rekensheet.</span>
         <span className="vd-live">
-          n = {nEff}{nEff !== n ? ` (L_v ≥ ${nLim})` : ""} · ρ<sub>2</sub> = {fmt(rho2, 2)}
-          {e_t0 > e_grens ? ` (e_t = ${fmt(e_t0, 1)} > 0,25t = ${fmt(e_grens, 1)} mm → inklemming vervalt)` : ""} ·
-          ρ<sub>n</sub> = {fmt(rho, 3)} · h<sub>ef</sub> = {Math.round(h_ef)} mm ·
-          λ = {fmt(lambda, 1)}/27 · f<sub>d</sub> = {fmt(f_d, 2)} N/mm² · e<sub>i,t</sub> = {fmt(e_it, 1)} · e<sub>mk</sub> = {fmt(e_mk, 1)} mm ·
-          Φ<sub>i,t</sub> = {fmt(Phi_it, 3)} · Φ<sub>i,b</sub> = {fmt(Phi_ib, 3)} · Φ<sub>m</sub> = {fmt(Phi_m, 3)} ·
-          N<sub>Rd</sub> = {fmt(N_Rd, 2)} kN · UC = {fmt(UC_1, 2)}
-          {minExc ? ` · min.exc.: Φ_m2 = ${fmt(Phi_m2, 3)} · N_Rd,m2 = ${fmt(N_Rdm2, 2)} kN · UC = ${fmt(UC_2, 2)}` : ""}
-          {ratioN <= 0.1 ? ` · lage-belastingstak (N_Ed/(ℓ·t·f_d) = ${fmt(ratioN, 3)} ≤ 0,1): e_cap = ${fmt(e_cap, 1)} mm` : ""}
+          n = {nEff}{nEff !== n ? ` (L_v ≥ ${nLim})` : ""} · ρ<sub>2</sub> = {w("rho_2", 2)}
+          {g.e_t0 > g.e_grens ? ` (e_t = ${fmt(g.e_t0, 1)} > 0,25t = ${fmt(g.e_grens, 1)} mm → inklemming vervalt)` : ""} ·
+          ρ<sub>n</sub> = {w("rho_n", 3)} · h<sub>ef</sub> = {w("h_ef", 0)} mm ·
+          λ = {w("lam", 1)}/27 · f<sub>d</sub> = {w("f_d", 2)} N/mm² · e<sub>i,t</sub> = {w("e_it", 1)} · e<sub>mk</sub> = {w("e_mk", 1)} mm ·
+          Φ<sub>i,t</sub> = {w("Phi_it", 3)} · Φ<sub>i,b</sub> = {w("Phi_ib", 3)} · Φ<sub>m</sub> = {w("Phi_m", 3)} ·
+          N<sub>Rd</sub> = {w("N_Rd", 1)} kN · UC = {g.UC_1 !== undefined ? fmt(g.UC_1, 2) : uitkomst ? "∞" : "—"}
+          {g.N_Rdm2 !== undefined ? ` · min.exc.: Φ_m2 = ${w("Phi_m2", 3)} · N_Rd,m2 = ${w("N_Rdm2", 1)} kN · UC = ${g.UC_2 !== undefined ? fmt(g.UC_2, 2) : "∞"}` : ""}
+          {g.ratio_N <= 0.1 ? ` · lage-belastingstak (N_Ed/(ℓ·t·f_d) = ${fmt(g.ratio_N, 3)} ≤ 0,1): e_cap = ${w("e_cap", 1)} mm` : ""}
         </span>
       </div>
     </div>

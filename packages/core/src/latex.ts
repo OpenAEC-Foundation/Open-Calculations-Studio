@@ -63,9 +63,18 @@ function symbolToLatex(name: string): string {
   const underscoreIdx = name.indexOf('_');
   if (underscoreIdx > 0) {
     const base = name.substring(0, underscoreIdx);
-    const sub = name.substring(underscoreIdx + 1);
+    // Elk volgend liggend streepje is een gevouwen komma: `F_v,Rd` wordt bij
+    // het inlezen `F_v_Rd`. In beeld hoort de notatie van de norm, F_{v,Rd}.
+    const sub = name.substring(underscoreIdx + 1).replace(/_/g, ',');
     const baseLatex = GREEK[base] || base;
-    return `{${baseLatex}_{\\text{${escapeText(sub)}}}}`;
+    // Een Griekse letter in het subscript (n_ξ, f_δ) staat in wiskundemodus:
+    // in \text{} heeft KaTeX er geen tekenmaten voor en valt hij terug op een
+    // noodletter, met een waarschuwing in de console.
+    const delen = sub.split(/([Α-ω])/u).filter((d) => d !== '');
+    const subLatex = delen
+      .map((d) => (/^[Α-ω]$/u.test(d) ? d : `\\text{${escapeText(d)}}`))
+      .join('');
+    return `{${baseLatex}_{${subLatex}}}`;
   }
   if (GREEK[name]) return GREEK[name];
   // Multi-letter non-Greek variable: use mathrm
@@ -80,7 +89,8 @@ function unitToLatex(name: string): string {
 // ─── Number formatting ──────────────────────────────────────────────
 
 function numberToLatex(value: number): string {
-  if (!isFinite(value)) return String(value);
+  if (Number.isNaN(value)) return 'NaN';
+  if (!isFinite(value)) return value > 0 ? '\\infty' : '-\\infty';
   if (value === 0) return '0';
 
   // Integer in reasonable range
@@ -126,6 +136,7 @@ function nodeToLatex(node: MathNode): string {
 
     case 'SymbolNode': {
       const name = nd.name!;
+      if (name === 'Infinity') return '\\infty';
       if (isKnownUnit(name)) return unitToLatex(name);
       return symbolToLatex(name);
     }
@@ -249,15 +260,18 @@ function functionToLatex(nd: AnyNode): string {
     }
   }
 
-  // Fallback
-  return `\\text{${fnName}}\\left(${args.map(a => nodeToLatex(a)).join(', ')}\\right)`;
+  // Fallback — overige functies, waaronder de eigen functies van een blad.
+  // Die naam gaat door dezelfde opmaak als een variabele: `R_pA` wordt R met
+  // subscript pA. Een kale `\text{R_pA}` liet KaTeX struikelen over de `_`,
+  // waarna de hele formuleregel als ruwe LaTeX in de uitwerking stond.
+  return `${symbolToLatex(fnName)}\\left(${args.map(a => nodeToLatex(a)).join(', ')}\\right)`;
 }
 
 // ─── Result formatting ──────────────────────────────────────────────
 
 /** Format a result value (number + unit) as LaTeX */
 export function resultToLatex(numStr: string, unitStr: string): string {
-  const num = escapeLatex(numStr);
+  const num = numStr.includes('∞') ? numStr.replace(/∞/g, '\\infty') : escapeLatex(numStr);
   if (!unitStr) return num;
   return `${num} \\; ${unitPartToLatex(unitStr)}`;
 }

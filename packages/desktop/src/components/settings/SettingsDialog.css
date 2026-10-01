@@ -317,3 +317,230 @@
   font-size: 11px;
   margin: 0;
 }
+
+/* ─── Tab Bureau (components/rapport/BureauTab.tsx) ─────────
+   Het bureauprofiel is een langer formulier dan de andere tabs:
+   brede tekstvelden, afbeeldingen met voorbeeld, kleurvelden en
+   een bewerkbare lijst constructeurs. Alle velden rechts zijn even
+   breed (--bureau-veld), zodat de kolom recht blijft; in een smal
+   venster krimpt die kolom mee.
+   ─────────────────────────────────────────────────────────── */
+
+/* Het venster is 680 px breed voor deze tab; in een smal venster
+   (het Browser-paneel) krimpt het mee in plaats van buiten beeld te vallen. */
+.settings-dialog {
+  max-width: calc(100vw - 16px);
+}
+
+.bureau-tab {
+  --bureau-veld: min(300px, 58%);
+}
+
+.bureau-intro {
+  margin: 0 0 12px 0;
+  line-height: 1.5;
+}
+
+.bureau-sessie {
+  margin: -6px 0 12px 0;
+  color: var(--theme-danger-color);
+}
+
+.settings-input.bureau-invoer {
+  width: var(--bureau-veld);
+}
+
+/* Toelichting onder een veld, uitgelijnd met de veldkolom */
+.bureau-hint {
+  width: var(--bureau-veld);
+  margin: -4px 0 8px auto;
+  line-height: 1.4;
+}
+
+/* Postcode en plaats op één regel */
+.bureau-duo {
+  display: flex;
+  gap: 6px;
+  width: var(--bureau-veld);
+}
+
+.settings-input.bureau-postcode {
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.settings-input.bureau-plaats {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+/* Afbeeldingen: label links, voorbeeld + knoppen rechts */
+.bureau-afbeelding {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.bureau-afbeelding .settings-label {
+  padding-top: 4px;
+}
+
+.bureau-afbeelding-rechts {
+  width: var(--bureau-veld);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bureau-beeldvak {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--theme-dialog-input-border);
+  /* Wit in elk thema: de afbeelding komt op papier. */
+  background: #ffffff;
+  overflow: hidden;
+}
+
+/* De voet beslaat 210 × 19,8 mm; het voorbeeld houdt die verhouding aan. */
+.bureau-beeldvak-breed {
+  height: auto;
+  aspect-ratio: 210 / 19.8;
+}
+
+.bureau-beeldvak img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.bureau-beeldvak-leeg {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.bureau-knoppen {
+  display: flex;
+  gap: 6px;
+}
+
+/* Kleinere knop dan de voetknoppen van het venster */
+.settings-btn.bureau-knop {
+  padding: 3px 10px;
+  min-width: 0;
+}
+
+.settings-btn.bureau-knop:disabled {
+  opacity: 0.5;
+}
+
+.settings-btn.bureau-knop:disabled:hover {
+  background: var(--theme-btn-secondary-bg);
+  border-color: var(--theme-dialog-input-border);
+}
+
+.bureau-fout {
+  font-size: 11px;
+  color: var(--theme-danger-color);
+}
+
+/* Kleur: kiezer plus hexcode */
+.bureau-kleur {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: var(--bureau-veld);
+}
+
+.bureau-kleur input[type="color"] {
+  width: 32px;
+  height: 22px;
+  padding: 0 2px;
+  border: 1px solid var(--theme-dialog-input-border);
+  background: var(--theme-dialog-input-bg);
+  cursor: default;
+}
+
+.settings-input.bureau-hex {
+  width: 80px;
+  font-family: var(--font-mono, monospace);
+}
+
+/* Proef van de huisstijl: wit en zwart zoals op papier, los van het thema */
+.bureau-proef {
+  width: var(--bureau-veld);
+  margin: 0 0 8px auto;
+  padding: 6px 10px;
+  border: 1px solid var(--theme-dialog-input-border);
+  background: #ffffff;
+  color: #000000;
+  font-size: 11px;
+  line-height: 1.6;
+  user-select: none;
+}
+
+.bureau-proef-titel {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.bureau-proef-paragraaf {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.bureau-proef-rij {
+  display: flex;
+  gap: 16px;
+  border-bottom: 1px solid #000000;
+}
+
+.bureau-rechts {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Constructeurs: naam, telefoon, e-mail en een verwijderknop per rij */
+.bureau-constructeurs {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.4fr) 22px;
+  gap: 4px 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.bureau-constructeurs .settings-input {
+  width: 100%;
+}
+
+.bureau-kolomkop {
+  font-size: 10px;
+  color: var(--theme-dialog-content-secondary);
+}
+
+.bureau-verwijder {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--theme-dialog-content-secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: default;
+}
+
+.bureau-verwijder:hover {
+  color: var(--theme-danger-color);
+  border-color: var(--theme-dialog-input-border);
+}
+
+.bureau-leeg {
+  margin: 0 0 8px 0;
+}

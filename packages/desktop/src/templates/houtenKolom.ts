@@ -4,18 +4,22 @@
  *
  * Toetsingen:
  *   §6.1.4   Druk evenwijdig aan de vezels (uitgangspunt)
- *   §6.3.2   Knikcontrole (kolom op druk + buiging)
+ *   §6.3.2   Knikcontrole (kolom op druk + buiging), (6.23)/(6.24)
+ *   §6.3.3   Kip in combinatie met druk, (6.32)–(6.35)
+ *   §6.1.7   Dwarskracht, (6.13) met k_cr = 1,0 (NB art. 6.1.7(2))
  *
- * Onderbouw + matrices identiek aan houtenBalklaag.ts (zelfde C-klassen,
- * zelfde k_def en k_mod-keuzes). Geometrie is een staaflengte met
+ * Onderbouw als in houtenBalklaag.ts (zelfde C-klassen en k_def); k_mod
+ * volgt een keuze voor de belastingduur. Geometrie is een staaflengte met
  * kniklengte-factoren per knikrichting (y en z).
+ *
+ * Niet in gebruik: het blad staat niet in templates/index.ts en is vervangen
+ * door kolom.ts.
  */
 
 export const houtenKolom = `"Houten kolom — knikcheck EN 1995-1-1 §6.3.2
 
-'<i>Massief-houten kolom onder centrische normaalkracht en optionele
-'tweezijdige buiging. Toetsing volgt §6.1.4 (druk) gecombineerd met
-'§6.3.2 (knikinstabiliteit). De kolom-knikgrafiek wordt apart geplot.</i>
+'<i>Massief-houten kolom onder normaalkracht met optionele buiging om beide assen en dwarskracht:
+'knik (6.23)/(6.24), kip (6.35) en dwarskracht (6.13).</i>
 
 # 1. Geometrie en materiaal
 
@@ -58,12 +62,12 @@ export const houtenKolom = `"Houten kolom — knikcheck EN 1995-1-1 §6.3.2
   III — vol weersbelast = 3
 @end
 
-@select belastingsduur "Belasting-duur (Tabel 3.1)"
+@select belastingsduur "Belasting-duur (Tabel 3.1, toekenning volgens NB tabel 2.2)"
   Permanent = 1
   Lang (> 6 mnd) = 2
   Middellang (1 wk – 6 mnd) = 3
-  Kort (< 1 wk) = 4
-  Zeer kort (wind/aardbeving) = 5
+  Kort (< 1 wk, sneeuw en wind) = 4
+  Zeer kort (bijzondere belasting) = 5
 @end
 
 #hide
@@ -73,7 +77,7 @@ b_p = hlookup(profiles_b_h; profile; 1; 2)*mm
 h_p = hlookup(profiles_b_h; profile; 1; 3)*mm
 
 'Houtsterkte EN 338 [id | f_m,k | f_c,0,k | f_v,k | E_0,mean | E_0,05 | rho_k]
-strength_C = [14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |16; 17; 18; 19; 20; 21; 22; 23; 25; 26 |1.7; 1.8; 2.0; 2.2; 2.4; 2.5; 2.8; 3.0; 3.4; 3.8 |7000; 8000; 9000; 9500; 10000; 11000; 11500; 12000; 13000; 14000 |4700; 5400; 6000; 6400; 6700; 7400; 7700; 8000; 8700; 9400 |290; 310; 320; 330; 340; 350; 370; 380; 400; 420]
+strength_C = [14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |14; 16; 18; 20; 22; 24; 27; 30; 35; 40 |16; 17; 18; 19; 20; 21; 22; 23; 25; 26 |3.0; 3.2; 3.4; 3.6; 3.8; 4.0; 4.0; 4.0; 4.0; 4.0 |7000; 8000; 9000; 9500; 10000; 11000; 11500; 12000; 13000; 14000 |4700; 5400; 6000; 6400; 6700; 7400; 7700; 8000; 8700; 9400 |290; 310; 320; 330; 340; 350; 370; 380; 400; 420]
 
 f_m,k = hlookup(strength_C; houtkwaliteit; 1; 2)*N/mm^2
 f_c,0,k = hlookup(strength_C; houtkwaliteit; 1; 3)*N/mm^2
@@ -130,7 +134,7 @@ i_z = sqrt(I_z/A)
 #end if
 
 γ_M = 1.3
-β_c = 0.2', §6.3.2(1) — imperfectiefactor gezaagd hout (0.1 voor gelamineerd)'
+β_c = 0.2', (6.29) — imperfectiefactor gezaagd hout (0.1 voor gelamineerd)'
 k_m = 0.7', §6.1.6(2) — rechthoekige doorsnede'
 
 'k_h — alleen op buiging van toepassing (hoogtefactor 150/h)
@@ -151,14 +155,14 @@ L = ?*(m)', staaflengte (m)'
 @select randvoorw_y "Randvoorwaarden y-y-as (sterke as)"
   Beide einden scharnierend, L_cr = 1.0·L = 100
   Boven scharnier, onder ingeklemd, L_cr = 0.7·L = 70
-  Boven ingeklemd, onder vrij (kraagkolom), L_cr = 2.0·L = 200
+  Onder ingeklemd, boven vrij (kraagkolom), L_cr = 2.0·L = 200
   Beide einden ingeklemd, L_cr = 0.5·L = 50
 @end
 
 @select randvoorw_z "Randvoorwaarden z-z-as (zwakke as)"
   Beide einden scharnierend, L_cr = 1.0·L = 100
   Boven scharnier, onder ingeklemd, L_cr = 0.7·L = 70
-  Boven ingeklemd, onder vrij (kraagkolom), L_cr = 2.0·L = 200
+  Onder ingeklemd, boven vrij (kraagkolom), L_cr = 2.0·L = 200
   Beide einden ingeklemd, L_cr = 0.5·L = 50
 @end
 
@@ -179,11 +183,16 @@ k_z = 0.5*(1 + β_c*(λ_rel,z - 0.3) + λ_rel,z^2)
 'k_c,y/k_c,z (§6.3.2.3 formule 6.25/6.26)
 k_c,y = if(λ_rel,y ≤ 0.3; 1.0; 1/(k_y + sqrt(k_y^2 - λ_rel,y^2)))
 k_c,z = if(λ_rel,z ≤ 0.3; 1.0; 1/(k_z + sqrt(k_z^2 - λ_rel,z^2)))
+'Namen zonder Griekse letter voor de tekening: {{…}} vult alleen ASCII-namen in.
+lam_y = λ_y
+lam_z = λ_z
+lam_rel_y = λ_rel,y
+lam_rel_z = λ_rel,z
 #show
 
 '<b>Kniklengtes:</b> L<sub>cr,y</sub> = 'L_cr,y', L<sub>cr,z</sub> = 'L_cr,z
 '<b>Slankheden:</b> λ<sub>y</sub> = 'λ_y', λ<sub>z</sub> = 'λ_z
-'<b>Relatieve slankheden (§6.3.2.2):</b>
+'<b>Relatieve slankheden (6.21)/(6.22):</b>
 'λ̄<sub>rel,y</sub> = (λ<sub>y</sub>/π)·√(f<sub>c,0,k</sub>/E<sub>0,05</sub>) = 'λ_rel,y
 'λ̄<sub>rel,z</sub> = 'λ_rel,z
 '<b>Reductiefactoren:</b> k<sub>c,y</sub> = 'k_c,y', k<sub>c,z</sub> = 'k_c,z
@@ -193,6 +202,7 @@ k_c,z = if(λ_rel,z ≤ 0.3; 1.0; 1/(k_z + sqrt(k_z^2 - λ_rel,z^2)))
 N_Ed = ?*(kN)', drukkracht N_Ed (kN, positief = druk)'
 M_y,Ed = ?*(kN m)', buigmoment om y-as (sterke as) M_y,Ed (kNm) — 0 als geen'
 M_z,Ed = ?*(kN m)', buigmoment om z-as (zwakke as) M_z,Ed (kNm) — 0 als geen'
+V_Ed = ?*(kN)', maatgevende dwarskracht V_Ed (kN) — 0 als geen'
 
 # 4. Rekenwaarden sterkten
 
@@ -209,7 +219,7 @@ f_m,d = k_mod*k_h*f_m,k/γ_M
 'f<sub>c,0,d</sub> = 'f_c,0,d
 'f<sub>m,d</sub> = 'f_m,d
 
-# 5. Knikcheck §6.3.2.3
+# 5. Knikcheck §6.3.2(3)
 
 '<i>Combineerformules 6.23/6.24 (kolom op druk + 2× buiging):
 '  rond y-as: σ<sub>c,0,d</sub>/(k<sub>c,y</sub>·f<sub>c,0,d</sub>) + σ<sub>m,y,d</sub>/f<sub>m,d</sub> + k<sub>m</sub>·σ<sub>m,z,d</sub>/f<sub>m,d</sub> ≤ 1
@@ -218,18 +228,43 @@ f_m,d = k_mod*k_h*f_m,k/γ_M
 UC_y = σ_c,0,d/(k_c,y*f_c,0,d) + σ_m,y,d/f_m,d + k_m*σ_m,z,d/f_m,d
 UC_z = σ_c,0,d/(k_c,z*f_c,0,d) + k_m*σ_m,y,d/f_m,d + σ_m,z,d/f_m,d
 
-UC_max = max(UC_y; UC_z)
-
 'UC<sub>y</sub> (knik om y-as) = 'UC_y
 'UC<sub>z</sub> (knik om z-as) = 'UC_z
 
-#if UC_max ≤ 1.0
-    '<b>UC<sub>max</sub> = 'UC_max'<span style="color:green"> ≤ 1.0 → Voldoet</span></b>
+# 6. Kip in combinatie met druk §6.3.3
+
+l_ef = max(L; 0.9*L + 2*h_p) to m', kiplengte, tabel 6.1: de grootste van 1,0·L (constant moment) en 0,9·L + 2h (last op de drukrand)'
+σ_m,crit = 0.78*b_p^2*E_0,05/(h_p*l_ef) to N/mm^2', (6.32)'
+λ_rel,m = sqrt(f_m,k/σ_m,crit)', (6.30)'
+
+#if λ_rel,m ≤ 0.75
+    k_crit = 1.0', (6.34)'
+#else if λ_rel,m ≤ 1.4
+    k_crit = 1.56 - 0.75*λ_rel,m', (6.34)'
 #else
-    '<b>UC<sub>max</sub> = 'UC_max'<span style="color:red"> > 1.0 → Voldoet NIET</span></b>
+    k_crit = 1/λ_rel,m^2', (6.34)'
 #end if
 
-# 6. Schema
+UC_635 = (σ_m,y,d/(k_crit*f_m,d))^2 + σ_c,0,d/(k_c,z*f_c,0,d) + σ_m,z,d/f_m,d', (6.35); M_z lineair erbij (veilige kant)'
+
+# 7. Dwarskracht §6.1.7
+
+k_cr = 1.0', NB art. 6.1.7(2), prismatische doorsnede'
+f_v,d = k_mod*f_v,k/γ_M
+τ_d = 1.5*V_Ed/(k_cr*b_p*h_p) to N/mm^2
+UC_V = τ_d/f_v,d', (6.13)'
+
+# 8. Samenvatting
+
+UC_max = max(UC_y; UC_z; UC_635; UC_V)
+
+#if UC_max ≤ 1.0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:green"> ≤ 1.0 → <b>Kolom voldoet</b></span>
+#else
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color:red"> > 1.0 → <b>Kolom voldoet niet</b></span>
+#end if
+
+# 9. Schema
 
 @svg
 <svg width="540" height="380" viewBox="0 0 540 380" xmlns="http://www.w3.org/2000/svg">
@@ -274,15 +309,17 @@ UC_max = max(UC_y; UC_z)
 
   <!-- Resultaten -->
   <text x="380" y="80" font-size="12" fill="#1e40af" font-weight="bold">EN 1995-1-1 §6.3.2</text>
-  <text x="380" y="102" font-size="10" fill="#374151">λ_y = {{λ_y}}</text>
-  <text x="380" y="116" font-size="10" fill="#374151">λ_z = {{λ_z}}</text>
-  <text x="380" y="135" font-size="10" fill="#374151">λ̄_rel,y = {{λ_rel,y}}</text>
-  <text x="380" y="149" font-size="10" fill="#374151">λ̄_rel,z = {{λ_rel,z}}</text>
+  <text x="380" y="102" font-size="10" fill="#374151">λ_y = {{lam_y}}</text>
+  <text x="380" y="116" font-size="10" fill="#374151">λ_z = {{lam_z}}</text>
+  <text x="380" y="135" font-size="10" fill="#374151">λ̄_rel,y = {{lam_rel_y}}</text>
+  <text x="380" y="149" font-size="10" fill="#374151">λ̄_rel,z = {{lam_rel_z}}</text>
   <text x="380" y="168" font-size="11" fill="#1e40af" font-weight="bold">k_c,y = {{k_c,y}}</text>
   <text x="380" y="184" font-size="11" fill="#1e40af" font-weight="bold">k_c,z = {{k_c,z}}</text>
   <text x="380" y="210" font-size="10" fill="#374151">UC_y = {{UC_y}}</text>
   <text x="380" y="226" font-size="10" fill="#374151">UC_z = {{UC_z}}</text>
-  <text x="380" y="250" font-size="13" fill="#059669" font-weight="bold">UC_max = {{UC_max}}</text>
+  <text x="380" y="242" font-size="10" fill="#374151">UC (6.35) = {{UC_635}}</text>
+  <text x="380" y="258" font-size="10" fill="#374151">UC_V = {{UC_V}}</text>
+  <text x="380" y="282" font-size="13" fill="#059669" font-weight="bold">UC_max = {{UC_max}}</text>
 
   <!-- Steunpunten symbolisch -->
   <circle cx="170" cy="320" r="4" fill="#374151"/>
@@ -291,15 +328,14 @@ UC_max = max(UC_y; UC_z)
 @end
 
 '<hr/>
-'<i>Aannames:
+'<i class="ook-afdruk">Aannames:
 '<ul>
 '<li>k<sub>m</sub> = 0.7 voor rechthoekige doorsnede (§6.1.6(2)). Voor andere
 'profielen of gelijmd-gelamineerd hout: zie norm.</li>
-'<li>β<sub>c</sub> = 0.2 voor gezaagd hout, 0.1 voor gelijmd-gelamineerd (§6.3.2(1)).</li>
+'<li>β<sub>c</sub> = 0.2 voor gezaagd hout, 0.1 voor gelijmd-gelamineerd (6.29).</li>
 '<li>k<sub>mod</sub> volgt klimaatklasse + belasting-duur (Tabel 3.1, gezaagd hout).
 'Voor andere materiaal-categorieën: tabel-keuze in code aanpassen.</li>
 '<li>Hier wordt de kolom belast door N + M zonder 2e-orde effecten;
 '§5.4.4 vervangt deze sheet voor kolommen met δ<sub>2</sub>·N<sub>Ed</sub>/E·I-effecten.</li>
-'<li>Kipcontrole bij grote M<sub>y</sub> in een slanke kolom: §6.3.3 separaat toepassen.</li>
 '</ul></i>
 `;

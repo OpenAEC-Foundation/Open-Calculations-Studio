@@ -20,7 +20,12 @@
     "undo": "Ongedaan",
     "redo": "Opnieuw",
     "pdf": "PDF",
-    "ifcExport": "IFC"
+    "preview": "Voorbeeld",
+    "pdfSheet": "PDF blad",
+    "pdfSave": "Rapport (PDF)",
+    "ifcExport": "IFC",
+    "insert": "Invoegen",
+    "module": "Module"
   },
   "insert": {
     "elements": "Elementen",

@@ -1,10 +1,15 @@
 /**
  * Controlescript voor de module Gording (houten dakgording).
  *
- * Acht de referentie-uitwerking-referenties, alle afgeleid van één basisgeval: 85×250 C24,
+ * Acht referentieberekeningen, alle afgeleid van één basisgeval: 85×250 C24,
  * klimaatklasse 1, dak 4500 × 3000 (33,7°), 3 gordingen, dagmaat 5000,
  * opleglengte 75, dakbeschot I = 486000 · E = 5000, pannen 0,80 kN/m²,
- * muurplaat/nokgording 1,0 kN/m, Q_k = 2 kN, s_k = 0,70, q_p = 0,822, CC2:
+ * muurplaat/nokgording 1,0 kN/m, Q_k = 2 kN, s_k = 0,70, q_p = 0,822, CC2.
+ * c_pe bij zuiging (−0,7) geldt alleen voor de opwaartse combinaties die ons
+ * blad toevoegt; die zijn op geen van de referenties maatgevend, net als de
+ * winddruk in zone I op een plat dak. Die combinaties, de opwaartse
+ * doorbuiging, kip, oplegdruk en de ondergrens van k_r staan in
+ * check-gording-aanvullend.mjs.
  *
  *   1  basisgeval
  *   2  dikte dakbeschot 25 mm — verandert in de referentie-uitwerking níets: `Dikte` en
@@ -25,18 +30,19 @@ import { laadTemplate, reken, toets, toetsNormStand, afronden } from "./lib/refc
 const tpl = laadTemplate("gording.ts");
 
 /** CC2 → K_FI = 1,00; komt in de app uit de projectgegevens. */
-// windgebied en terreincategorie hebben in de app altijd een waarde (standaard
-// II/II), ook als het blad q_p niet zelf berekent — het paneel levert ze uit de
-// projectgegevens. Zonder die twee loopt de q_p-keten op Infinity.
-const PROJECT = { K_FI: 1, rekenwijze: 1, windgebied: 2, terreincategorie: 2 };
+// windgebied, terreincategorie en ontwerplevensduur hebben in de app altijd een
+// waarde (standaard II/II en 50 jaar), ook als het blad q_p niet zelf berekent —
+// het paneel levert ze uit de projectgegevens. Zonder de eerste twee loopt de
+// q_p-keten op Infinity.
+const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 1, windgebied: 2, terreincategorie: 2, DesignLife: 50 };
 
 const BASIS = {
   profiel: "5", sterkteklasse: "2", klimaatklasse: "1", dakType: "2",
   l_h: "4500", h_v: "3000", L_dag: "5000", a_opl: "75", n_gording: "3",
   t_beschot: "18", I_manual: "1", I_beschot: "486000", E_beschot: "5000",
   g_pannen: "0.8", g_panlat: "0", g_dakplaat: "0", g_plafond: "0",
-  q_par: "1", varType: "1", Q_k: "2", q_var: "0", s_k: "0.70",
-  windbron: "0", z_wind: "9", q_wind_hand: "0.822",
+  q_par: "1", Q_k: "2", q_var: "0", s_k: "0.70",
+  windbron: "0", z_wind: "9", q_wind_hand: "0.822", c_pe_zuig: "-0.7",
   controleer: "1", grensfactor: "0.004", dubbele: "1",
 };
 
@@ -91,7 +97,7 @@ const REFERENTIES = [
     } },
 
   { blad: "document4 — plat dak + verdeelde last (zuiging, middellang)",
-    invoer: { dakType: "1", q_var: "1", varType: "2" },
+    invoer: { dakType: "1", q_var: "1" },
     verwacht: {
       slope: "4500", "α_deg": "0", hoh: "1125", f_myd_m: "14.77",
       q_gy: "1.02", q_gz: "0.00", M_gy: "3.27", M_gz: "0.00",
@@ -193,22 +199,24 @@ for (const ref of WIND) {
 // Drie splitspunten zijn hier actief: het eigen gewicht, het meedoen van 6.10a,
 // en de vraag of 6.11/6.12 uit één combinatie komen of per formule de max zijn.
 // Op de u.c.'s kan dat twee kanten op werken — een lichter eigen gewicht verlaagt
-// ze, 6.10a kan ze verhogen — dus daar toetsen we alleen op eindigheid.
+// ze, 6.10a kan ze verhogen — dus daar toetsen we alleen op eindigheid. De
+// winddruk P_w hangt niet van de rekenwijze af; q_p staat alleen op het blad als
+// het blad hem zelf berekent (windbron 1), P_w altijd.
 for (const [basis, sets] of [[BASIS, REFERENTIES], [WIND_BASIS, WIND]]) {
   for (const ref of sets) {
     const invoer = { ...basis, ...ref.invoer };
     const project = { ...PROJECT, ...(ref.project ?? {}) };
-    const xc = reken(tpl, invoer, project);
+    const refStand = reken(tpl, invoer, project);
     const nb = reken(tpl, invoer, { ...project, rekenwijze: 0 });
-    fouten += toetsNormStand(ref.blad, xc, nb, {
+    fouten += toetsNormStand(ref.blad, refStand, nb, {
       g_eig: "lager", u_gy: "lager",
-      hoh: "gelijk", "μ_1": "gelijk", k_r: "gelijk", q_p: "gelijk",
+      hoh: "gelijk", "μ_1": "gelijk", k_r: "gelijk", P_w: "gelijk",
     });
   }
 }
 
 console.log(`
-De de referentie-uitwerking-stand is op alle vijftien bladen exact — inclusief document7,
+De referentiestand is op alle vijftien bladen exact — inclusief document7,
 wind4 en wind7, waar 6.10a en de combinatiekeuze eerder als bekende afwijking
 stonden. Die zijn nu gewone toetsen. De norm-stand heeft geen referentieblad en
 is alleen op eindigheid en op de richting van het verschil gecontroleerd.`)

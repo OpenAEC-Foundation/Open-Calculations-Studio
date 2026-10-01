@@ -108,6 +108,14 @@
   margin: 0.5em 0;
 }
 
+/* Wat een blad alleen voor papier bedoelt: een element met `alleen-afdruk`,
+   of een hele regel met een leeg merkteken van die klasse erin. Tegenhanger
+   van `alleen-scherm` in PrintDocument.css. */
+.calc-preview-content .alleen-afdruk,
+.calc-preview-content :is(.calc-text, .calc-line, .calc-input-prompt, h1, h2, h3, h4, h5, h6):has(.alleen-afdruk:empty) {
+  display: none !important;
+}
+
 .calc-preview-content .calc-select-input {
   font-family: var(--font-body);
   font-size: 0.9rem;

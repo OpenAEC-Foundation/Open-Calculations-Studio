@@ -10,6 +10,20 @@
  * - Belastingcombinaties BGT (karakteristiek, frequent, quasi-blijvend)
  * - Partiele factoren per gevolgklasse
  * - Psi-factoren per belastingcategorie
+ *
+ * Elke veranderlijke belasting heeft een eigen categorie, dus eigen ψ-factoren
+ * (tabel NB.2 – A1.1); een vaste ψ = 0 liet Q_k2 eerder stil wegvallen. Bij
+ * categorie C is ψ0 = 0,6 voor delen die bij een calamiteit zwaar door een
+ * menigte kunnen worden belast (vluchtroutes, trappen) en 0,4 voor de overige
+ * (voetnoot a); beide staan als keuze in de lijsten. Waar
+ * het ertoe doet zijn beide veranderlijke belastingen om beurten overheersend.
+ * Werkt Q_k1 tegen de blijvende belasting in (windzuiging op een licht dak),
+ * dan volgt ook de combinatie met γ_G,inf = 0,9 op G_k,inf; het overzicht geeft
+ * dan ook de bruikbaarheidscombinaties met G_k,inf en Q_k1 tegen G in.
+ * Buitengewoon: Q_k1 met ψ2,1, behalve wind bij brand (ψ1,1), voetnoot a bij
+ * tabel NB.10 – A1.3. De referentieperiode is ten minste 15 jaar (tabel
+ * NB.1 – 2.1 en 4.1.2(7a) van de NB).
+ * scripts/check-en1990-combinaties.mjs rekent de uitkomsten met de hand na.
  */
 
 // ---------------------------------------------------------------------------
@@ -17,30 +31,27 @@
 // ---------------------------------------------------------------------------
 
 /** EN 1990 $6.4.3.2 -- Fundamentele combinatie (UGT) voor gebouwen */
-export const en1990Fundamenteel = `# Belastingcombinatie UGT -- EN 1990 $6.4.3.2
-## Fundamentele combinatie (STR/GEO) -- Bijlage A1, Tabel NB.4-A1.2(B)
+export const en1990Fundamenteel = `"Fundamentele combinatie — NEN-EN 1990 §6.4.3.2 + NB
 
-In Nederland worden voor STR/GEO de vergelijkingen (6.10a) en (6.10b) gebruikt
-(Tabel NB.4 - A1.2(B), groep B). De maatgevende van beide is bepalend.
+# 1. Belastingen (karakteristiek)
 
-### Partiele factoren (Tabel NB.4 en NB.5)
+@select richting "Q_k1 werkt"
+In dezelfde richting als de blijvende belasting = 1
+Tegen de blijvende belasting in, bijv. windzuiging op een licht dak = 2
+@end
 
-Factor K_FI (tabel B3):
-
-#if CC == 1
-K_FI = 0.9
+G_ksup = ?*(kN)', blijvend, ongunstig'
+#if richting ≡ 2
+    G_kinf = ?*(kN)', blijvend, gunstig'
 #end if
-#if CC == 2
-K_FI = 1.0
-#end if
-#if CC == 3
-K_FI = 1.1
-#end if
+Q_k1 = ?*(kN)', veranderlijk'
+Q_k2 = ?*(kN)', veranderlijk, gelijktijdig; 0 als die er niet is'
 
-@select belastingcategorie "Belastingcategorie veranderlijke belasting"
+@select belastingcategorie "Categorie van Q_k1"
 Categorie A -- woon- en verblijfsruimtes = 1
 Categorie B -- kantoorruimtes = 2
-Categorie C -- bijeenkomstruimtes = 3
+Categorie C -- bijeenkomstruimtes, overige delen = 3
+Categorie C -- vluchtroutes en trappen, zwaar belast door een menigte bij calamiteit = 11
 Categorie D -- winkelruimtes = 4
 Categorie E -- opslagruimtes = 5
 Categorie F -- verkeersruimte, voertuig <= 25 kN = 6
@@ -50,136 +61,60 @@ Sneeuwbelasting = 9
 Windbelasting = 10
 @end
 
-### Psi-factoren (Tabel NB.2 - A1.1)
+@select categorie_2 "Categorie van Q_k2"
+Categorie A -- woon- en verblijfsruimtes = 1
+Categorie B -- kantoorruimtes = 2
+Categorie C -- bijeenkomstruimtes, overige delen = 3
+Categorie C -- vluchtroutes en trappen, zwaar belast door een menigte bij calamiteit = 11
+Categorie D -- winkelruimtes = 4
+Categorie E -- opslagruimtes = 5
+Categorie F -- verkeersruimte, voertuig <= 25 kN = 6
+Categorie G -- verkeersruimte, 25 < voertuig <= 160 kN = 7
+Categorie H -- daken = 8
+Sneeuwbelasting = 9
+Windbelasting = 10
+@end
 
-#if belastingcategorie == 1
-psi_0 = 0.4
-psi_1 = 0.5
-psi_2 = 0.3
-#end if
-#if belastingcategorie == 2
-psi_0 = 0.5
-psi_1 = 0.5
-psi_2 = 0.3
-#end if
-#if belastingcategorie == 3
-psi_0 = 0.4
-psi_1 = 0.7
-psi_2 = 0.6
-#end if
-#if belastingcategorie == 4
-psi_0 = 0.4
-psi_1 = 0.7
-psi_2 = 0.6
-#end if
-#if belastingcategorie == 5
-psi_0 = 1.0
-psi_1 = 0.9
-psi_2 = 0.8
-#end if
-#if belastingcategorie == 6
-psi_0 = 0.7
-psi_1 = 0.7
-psi_2 = 0.6
-#end if
-#if belastingcategorie == 7
-psi_0 = 0.7
-psi_1 = 0.5
-psi_2 = 0.3
-#end if
-#if belastingcategorie == 8
-psi_0 = 0
-psi_1 = 0
-psi_2 = 0
-#end if
-#if belastingcategorie == 9
-psi_0 = 0
-psi_1 = 0.2
-psi_2 = 0
-#end if
-#if belastingcategorie == 10
-psi_0 = 0
-psi_1 = 0.2
-psi_2 = 0
-#end if
+# 2. Factoren (tabel NB.2 – A1.1, NB.4 en NB.5)
 
-Partiele factoren voor CC2 (Tabel NB.4 - A1.2(B)):
-
-gamma_Gsup_610a = 1.35
-gamma_Ginf = 0.9
-gamma_Gsup_610b = 1.2
-xi = 0.89
-gamma_Q = 1.5
-
-Gecorrigeerde factoren voor de gevolgklasse uit de projectgegevens:
-
-#if CC == 1
-gamma_Gsup_610a_CC = 1.2
-gamma_Gsup_610b_CC = 1.1
-gamma_Q_CC = 1.35
-#end if
-#if CC == 2
-gamma_Gsup_610a_CC = 1.35
-gamma_Gsup_610b_CC = 1.2
-gamma_Q_CC = 1.5
-#end if
-#if CC == 3
-gamma_Gsup_610a_CC = 1.5
-gamma_Gsup_610b_CC = 1.3
-gamma_Q_CC = 1.65
-#end if
-
-### Invoer belastingen (karakteristieke waarden)
-
-Blijvende belasting (ongunstig):
-
-G_ksup = 10.0 kN
-
-Blijvende belasting (gunstig, indien verschillend):
-
-G_kinf = 10.0 kN
-
-Overheersende veranderlijke belasting:
-
-Q_k1 = 5.0 kN
-
-Gelijktijdig optredende veranderlijke belasting:
-
-Q_k2 = 2.0 kN
-
-Psi_0 factor voor Q_k2 (handmatig aanpasbaar):
-
-psi_0_2 = 0.0
-
----
-
-### Vergelijking 6.10a -- alle gamma op G, Q met psi_0
-
-Vgl. (6.10a): gamma_G,sup * G_k,sup "+" gamma_Q * psi_0 * Q_k,1 "+" gamma_Q * psi_0,i * Q_k,i
-
-E_d_610a = gamma_Gsup_610a_CC * G_ksup + gamma_Q_CC * psi_0 * Q_k1 + gamma_Q_CC * psi_0_2 * Q_k2 to kN
-
-### Vergelijking 6.10b -- gereduceerde G, volle Q
-
-Vgl. (6.10b): xi * gamma_G,sup * G_k,sup "+" gamma_Q * Q_k,1 "+" gamma_Q * psi_0,i * Q_k,i
-
-E_d_610b = gamma_Gsup_610b_CC * G_ksup + gamma_Q_CC * Q_k1 + gamma_Q_CC * psi_0_2 * Q_k2 to kN
-
----
-
-### Maatgevende combinatie
-
-#if E_d_610a > E_d_610b
-Vergelijking 6.10a is maatgevend.
-
-E_d = E_d_610a to kN
+#hide
+'Tabel NB.2 – A1.1: categorie | ψ0 | ψ1 | ψ2; 11 is C met ψ0 = 0,6 (voetnoot a)
+psi = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11 | 0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0; 0.6 | 0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2; 0.7 | 0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0; 0.6]
+ψ_0,1 = hlookup(psi; belastingcategorie; 1; 2)
+ψ_0,2 = hlookup(psi; categorie_2; 1; 2)
+#show
+'ψ<sub>0</sub> = 'ψ_0,1' voor Q<sub>k,1</sub> en 'ψ_0,2' voor Q<sub>k,2</sub>.
+#if CC ≡ 1
+    γ_G,a = 1.2', 6.10a, CC1 (tabel NB.5)'
+    γ_G,b = 1.1', 6.10b'
+    γ_Q = 1.35
+#else if CC ≡ 3
+    γ_G,a = 1.5', 6.10a, CC3 (tabel NB.5)'
+    γ_G,b = 1.3', 6.10b'
+    γ_Q = 1.65
 #else
-Vergelijking 6.10b is maatgevend.
-
-E_d = E_d_610b to kN
+    γ_G,a = 1.35', 6.10a, CC2 (tabel NB.4)'
+    γ_G,b = 1.2', 6.10b'
+    γ_Q = 1.5
+#end if
+#if richting ≡ 2
+    γ_G,inf = 0.9', blijvend, gunstig'
 #end if
 
-Rekenwaarde belastingseffect E_d = {{E_d}} kN.
+# 3. Combinaties
+
+#if richting ≡ 1
+    E_610a = γ_G,a*G_ksup + γ_Q*ψ_0,1*Q_k1 + γ_Q*ψ_0,2*Q_k2 to kN', (6.10a)'
+    E_610b,1 = γ_G,b*G_ksup + γ_Q*Q_k1 + γ_Q*ψ_0,2*Q_k2 to kN', (6.10b), Q_k1 overheersend'
+    E_610b,2 = γ_G,b*G_ksup + γ_Q*Q_k2 + γ_Q*ψ_0,1*Q_k1 to kN', (6.10b), Q_k2 overheersend'
+    E_d = max(E_610a; E_610b,1; E_610b,2) to kN', maatgevend'
+#else
+    '<i>In de combinaties met G<sub>k,sup</sub> werkt Q<sub>k,1</sub> gunstig en telt niet mee; in die met G<sub>k,inf</sub> telt Q<sub>k,2</sub> niet mee.</i>
+    E_610a = γ_G,a*G_ksup + γ_Q*ψ_0,2*Q_k2 to kN', (6.10a)'
+    E_610b = γ_G,b*G_ksup + γ_Q*Q_k2 to kN', (6.10b)'
+    E_d = max(E_610a; E_610b) to kN', maatgevend in de richting van G'
+    E_d,inf = γ_G,inf*G_kinf - γ_Q*Q_k1 to kN', G gunstig, Q_k1 overheersend (6.10b); negatief: netto tegen G in'
+#end if
 `;
 
 // ---------------------------------------------------------------------------
@@ -187,73 +122,53 @@ Rekenwaarde belastingseffect E_d = {{E_d}} kN.
 // ---------------------------------------------------------------------------
 
 /** EN 1990 $6.4.2 -- Statisch evenwicht (EQU) */
-export const en1990EQU = `# Toetsing Statisch Evenwicht (EQU) -- EN 1990 $6.4.2
-## Tabel NB.3 - A1.2(A) -- Groep A
+export const en1990EQU = `"Statisch evenwicht (EQU) — NEN-EN 1990 §6.4.2 + NB
 
-Controle of het destabiliserend belastingseffect niet groter is dan
-het stabiliserend belastingseffect (formule 6.7):
+# 1. Belastingen (karakteristiek)
 
-  E_d,dst <= E_d,stb
+G_kdst = ?*(kN)', blijvend, destabiliserend'
+G_kstb = ?*(kN)', blijvend, stabiliserend'
+Q_k1dst = ?*(kN)', veranderlijk, destabiliserend, overheersend'
+Q_kidst = ?*(kN)', veranderlijk, destabiliserend, gelijktijdig'
 
-### Partiele factoren EQU (Tabel NB.3 - A1.2(A))
-
-Opmerking: waarden voor CC2 uit Tabel NB.3. Voor CC1 en CC3 zie
-Tabel NB.5 / Tabel B3.
-
-gamma_Gsup = 1.1
-gamma_Ginf = 0.9
-gamma_Q = 1.5
-
-### Invoer belastingen (karakteristieke waarden)
-
-Destabiliserende blijvende belasting:
-
-G_k_dst = 5.0 kN
-
-Stabiliserende blijvende belasting:
-
-G_k_stb = 8.0 kN
-
-@select belastingcategorie "Belastingcategorie"
+@select belastingcategorie "Categorie van Q_ki"
 Categorie A -- woon- en verblijfsruimtes (psi_0 = 0.4) = 0.4
 Categorie B -- kantoorruimtes (psi_0 = 0.5) = 0.5
-Categorie C -- bijeenkomstruimtes (psi_0 = 0.4) = 0.4
+Categorie C -- bijeenkomstruimtes, overige delen (psi_0 = 0.4) = 0.4
+Categorie C -- vluchtroutes en trappen (psi_0 = 0.6) = 0.6
 Categorie D -- winkelruimtes (psi_0 = 0.4) = 0.4
 Categorie E -- opslagruimtes (psi_0 = 1.0) = 1.0
+Categorie H -- daken (psi_0 = 0) = 0
 Sneeuwbelasting (psi_0 = 0) = 0
 Windbelasting (psi_0 = 0) = 0
 @end
 
-psi_0 = belastingcategorie * 1
+# 2. Factoren (tabel NB.3 – A1.2(A))
 
-Destabiliserende veranderlijke belasting (overheersend):
+γ_G,sup = 1.1
+γ_G,inf = 0.9
+γ_Q = 1.5
+#hide
+ψ_0,i = belastingcategorie*1
+#show
+ψ_0,i', tabel NB.2 – A1.1'
 
-Q_k1_dst = 3.0 kN
+# 3. Toetsing (6.7)
 
-Overige gelijktijdige veranderlijke belasting:
-
-Q_ki_dst = 0.0 kN
-
-psi_0_i = 0.0
-
-### Destabiliserend effect (formule 6.7, linkerlid)
-
-E_d_dst = gamma_Gsup * G_k_dst + gamma_Q * Q_k1_dst + gamma_Q * psi_0_i * Q_ki_dst to kN
-
-### Stabiliserend effect (formule 6.7, rechterlid)
-
-E_d_stb = gamma_Ginf * G_k_stb to kN
-
----
-
-### Toetsing (formule 6.7): E_d,dst <= E_d,stb
-
-UC_equ = E_d_dst / E_d_stb
-
-#if UC_equ < 1
-  Statisch evenwicht voldoet (UC = {{UC_equ}}).
+E_d,dst = γ_G,sup*G_kdst + γ_Q*Q_k1dst + γ_Q*ψ_0,i*Q_kidst to kN
+E_d,stb = γ_G,inf*G_kstb to kN
+#if E_d,stb > 0 kN
+    UC_max = E_d,dst/E_d,stb
 #else
-  Statisch evenwicht voldoet NIET (UC = {{UC_equ}})!
+    '<span style="color: red">Vul de stabiliserende belasting in.</span>
+    #hide
+    UC_max = 1/0
+    #show
+#end if
+#if UC_max ≤ 1.0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: statisch evenwicht</span>
+#else
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: statisch evenwicht</span>
 #end if
 `;
 
@@ -262,22 +177,22 @@ UC_equ = E_d_dst / E_d_stb
 // ---------------------------------------------------------------------------
 
 /** EN 1990 $6.4.3.3 -- Buitengewone ontwerpsituatie (UGT) */
-export const en1990Buitengewoon = `# Belastingcombinatie UGT -- EN 1990 $6.4.3.3
-## Buitengewone ontwerpsituatie -- Tabel NB.10 - A1.3
+export const en1990Buitengewoon = `"Buitengewone combinatie — NEN-EN 1990 §6.4.3.3 + NB
 
-Formule (6.11a/b):
-
-  G_k,j "+" P "+" A_d "+" (psi_1,1 of psi_2,1) * Q_k,1 "+" SOM(psi_2,i * Q_k,i)
-
-Alle partiele belastingsfactoren gamma = 1,0.
+# 1. Belastingen
 
 @select type_buitengewoon "Type buitengewone situatie"
-Brand -- psi_1,1 * Q_k,1 (wind in combinatie met brand) = 1
-Schok/ontploffing -- psi_2,1 * Q_k,1 = 2
-Overige buitengewoon -- psi_1,1 * Q_k,1 = 3
+Brand -- psi_2,1 * Q_k,1; bij wind psi_1,1 = 1
+Schok of ontploffing -- psi_2,1 * Q_k,1 = 2
+Overige buitengewone situatie -- psi_2,1 * Q_k,1 = 3
 @end
 
-@select belastingcategorie "Belastingcategorie overheersende veranderlijke belasting"
+G_k = ?*(kN)', blijvend, karakteristiek'
+A_d = ?*(kN)', buitengewone belasting, rekenwaarde'
+Q_k1 = ?*(kN)', veranderlijk, overheersend'
+Q_k2 = ?*(kN)', veranderlijk, gelijktijdig'
+
+@select belastingcategorie "Categorie van Q_k1"
 Categorie A -- woon (psi_1=0.5, psi_2=0.3) = 1
 Categorie B -- kantoor (psi_1=0.5, psi_2=0.3) = 2
 Categorie C -- bijeenkomst (psi_1=0.7, psi_2=0.6) = 3
@@ -287,68 +202,33 @@ Sneeuw (psi_1=0.2, psi_2=0) = 6
 Wind (psi_1=0.2, psi_2=0) = 7
 @end
 
-#if belastingcategorie == 1
-psi_1_1 = 0.5
-psi_2_1 = 0.3
-#end if
-#if belastingcategorie == 2
-psi_1_1 = 0.5
-psi_2_1 = 0.3
-#end if
-#if belastingcategorie == 3
-psi_1_1 = 0.7
-psi_2_1 = 0.6
-#end if
-#if belastingcategorie == 4
-psi_1_1 = 0.7
-psi_2_1 = 0.6
-#end if
-#if belastingcategorie == 5
-psi_1_1 = 0.9
-psi_2_1 = 0.8
-#end if
-#if belastingcategorie == 6
-psi_1_1 = 0.2
-psi_2_1 = 0
-#end if
-#if belastingcategorie == 7
-psi_1_1 = 0.2
-psi_2_1 = 0
-#end if
+@select categorie_2 "Categorie van Q_k2"
+Categorie A -- woon (psi_2=0.3) = 0.3
+Categorie B -- kantoor (psi_2=0.3) = 0.3
+Categorie C -- bijeenkomst (psi_2=0.6) = 0.6
+Categorie D -- winkel (psi_2=0.6) = 0.6
+Categorie E -- opslag (psi_2=0.8) = 0.8
+Sneeuw (psi_2=0) = 0
+Wind (psi_2=0) = 0
+@end
 
-### Invoer belastingen
+# 2. Rekenwaarde (6.11b, tabel NB.10 – A1.3)
 
-Blijvende belasting (karakteristiek):
-
-G_k = 10.0 kN
-
-Buitengewone belasting (rekenwaarde):
-
-A_d = 20.0 kN
-
-Overheersende veranderlijke belasting (karakteristiek):
-
-Q_k1 = 5.0 kN
-
-Gelijktijdig optredende veranderlijke belasting:
-
-Q_k2 = 2.0 kN
-
-psi_2_2 = 0.3
-
-### Rekenwaarde belastingseffect (formule 6.11b)
-
-#if type_buitengewoon == 2
-Combinatiefactor Q_k,1: psi_2,1 (schok/ontploffing).
-
-E_d = 1.0 * G_k + 1.0 * A_d + psi_2_1 * Q_k1 + psi_2_2 * Q_k2 to kN
+#hide
+psi = [1; 2; 3; 4; 5; 6; 7 | 0.5; 0.5; 0.7; 0.7; 0.9; 0.2; 0.2 | 0.3; 0.3; 0.6; 0.6; 0.8; 0; 0]
+ψ_1,1 = hlookup(psi; belastingcategorie; 1; 2)
+ψ_2,1 = hlookup(psi; belastingcategorie; 1; 3)
+ψ_2,2 = categorie_2*1
+#show
+#if type_buitengewoon ≡ 1 and belastingcategorie ≡ 7
+    ψ_1,1', Q_k1: wind bij brand (tabel NB.10 – A1.3, voetnoot a)'
+    ψ_2,2', Q_k2'
+    E_d = G_k + A_d + ψ_1,1*Q_k1 + ψ_2,2*Q_k2 to kN', alle γ = 1,0'
 #else
-Combinatiefactor Q_k,1: psi_1,1 (brand of overig).
-
-E_d = 1.0 * G_k + 1.0 * A_d + psi_1_1 * Q_k1 + psi_2_2 * Q_k2 to kN
+    ψ_2,1', Q_k1: ψ_1,1 alleen voor wind bij brand (tabel NB.10 – A1.3, voetnoot a)'
+    ψ_2,2', Q_k2'
+    E_d = G_k + A_d + ψ_2,1*Q_k1 + ψ_2,2*Q_k2 to kN', alle γ = 1,0'
 #end if
-
-Rekenwaarde belastingseffect E_d = {{E_d}} kN.
 `;
 
 // ---------------------------------------------------------------------------
@@ -356,19 +236,16 @@ Rekenwaarde belastingseffect E_d = {{E_d}} kN.
 // ---------------------------------------------------------------------------
 
 /** EN 1990 $6.4.3.4 -- Aardbevingsontwerpsituatie (UGT) */
-export const en1990Aardbeving = `# Belastingcombinatie UGT -- EN 1990 $6.4.3.4
-## Aardbevingsontwerpsituatie -- Tabel NB.10 - A1.3
+export const en1990Aardbeving = `"Aardbevingscombinatie — NEN-EN 1990 §6.4.3.4 + NB
 
-Formule (6.12a/b):
+# 1. Belastingen
 
-  G_k,j "+" P "+" A_Ed "+" SOM(psi_2,i * Q_k,i)
+G_k = ?*(kN)', blijvend, karakteristiek'
+A_Ed = ?*(kN)', aardbevingsbelasting, rekenwaarde volgens NEN-EN 1998'
+Q_k1 = ?*(kN)', veranderlijk'
+Q_k2 = ?*(kN)', veranderlijk'
 
-Alle partiele belastingsfactoren gamma = 1,0.
-Alle veranderlijke belastingen met psi_2.
-
-- A_Ed = aardbevingsbelasting (rekenwaarde), bepaald conform EN 1998.
-
-@select belastingcategorie "Belastingcategorie veranderlijke belasting"
+@select belastingcategorie "Categorie van Q_k1"
 Categorie A -- woon (psi_2 = 0.3) = 0.3
 Categorie B -- kantoor (psi_2 = 0.3) = 0.3
 Categorie C -- bijeenkomst (psi_2 = 0.6) = 0.6
@@ -378,33 +255,27 @@ Sneeuw (psi_2 = 0) = 0
 Wind (psi_2 = 0) = 0
 @end
 
-psi_2_1 = belastingcategorie * 1
+@select categorie_2 "Categorie van Q_k2"
+Categorie A -- woon (psi_2 = 0.3) = 0.3
+Categorie B -- kantoor (psi_2 = 0.3) = 0.3
+Categorie C -- bijeenkomst (psi_2 = 0.6) = 0.6
+Categorie D -- winkel (psi_2 = 0.6) = 0.6
+Categorie E -- opslag (psi_2 = 0.8) = 0.8
+Sneeuw (psi_2 = 0) = 0
+Wind (psi_2 = 0) = 0
+@end
 
-### Invoer belastingen
+# 2. Rekenwaarde (6.12b, tabel NB.10 – A1.3)
 
-Blijvende belasting (karakteristiek):
-
-G_k = 10.0 kN
-
-Aardbevingsbelasting (rekenwaarde):
-
-A_Ed = 15.0 kN
-
-Veranderlijke belasting 1 (karakteristiek):
-
-Q_k1 = 5.0 kN
-
-Veranderlijke belasting 2 (karakteristiek):
-
-Q_k2 = 2.0 kN
-
-psi_2_2 = 0.3
-
-### Rekenwaarde belastingseffect (formule 6.12b)
-
-E_d = 1.0 * G_k + 1.0 * A_Ed + psi_2_1 * Q_k1 + psi_2_2 * Q_k2 to kN
-
-Rekenwaarde belastingseffect E_d = {{E_d}} kN.
+#hide
+ψ_2,1 = belastingcategorie*1
+#show
+ψ_2,1
+#hide
+ψ_2,2 = categorie_2*1
+#show
+ψ_2,2
+E_d = G_k + A_Ed + ψ_2,1*Q_k1 + ψ_2,2*Q_k2 to kN', alle γ = 1,0'
 `;
 
 // ---------------------------------------------------------------------------
@@ -412,18 +283,19 @@ Rekenwaarde belastingseffect E_d = {{E_d}} kN.
 // ---------------------------------------------------------------------------
 
 /** EN 1990 $6.5.3 -- Bruikbaarheidsgrenstoestanden (BGT/SLS) */
-export const en1990BGT = `# Belastingcombinaties BGT -- EN 1990 $6.5.3
-## Bruikbaarheidsgrenstoestanden -- Tabel A1.4
+export const en1990BGT = `"Bruikbaarheidscombinaties — NEN-EN 1990 §6.5.3 + NB
 
-Drie combinaties voor BGT:
-- Karakteristieke combinatie (6.14b): onomkeerbare grenstoestanden
-- Frequente combinatie (6.15b): omkeerbare grenstoestanden
-- Quasi-blijvende combinatie (6.16b): langetermijneffecten
+# 1. Belastingen (karakteristiek)
 
-@select belastingcategorie "Belastingcategorie overheersende veranderlijke belasting"
+G_k = ?*(kN)', blijvend'
+Q_k1 = ?*(kN)', veranderlijk'
+Q_k2 = ?*(kN)', veranderlijk, gelijktijdig; 0 als die er niet is'
+
+@select belastingcategorie "Categorie van Q_k1"
 Categorie A -- woon (psi_0=0.4, psi_1=0.5, psi_2=0.3) = 1
 Categorie B -- kantoor (psi_0=0.5, psi_1=0.5, psi_2=0.3) = 2
-Categorie C -- bijeenkomst (psi_0=0.4, psi_1=0.7, psi_2=0.6) = 3
+Categorie C -- bijeenkomst, overige delen (psi_0=0.4, psi_1=0.7, psi_2=0.6) = 3
+Categorie C -- vluchtroutes en trappen (psi_0=0.6, psi_1=0.7, psi_2=0.6) = 11
 Categorie D -- winkel (psi_0=0.4, psi_1=0.7, psi_2=0.6) = 4
 Categorie E -- opslag (psi_0=1.0, psi_1=0.9, psi_2=0.8) = 5
 Categorie F -- verkeer <= 25 kN (psi_0=0.7, psi_1=0.7, psi_2=0.6) = 6
@@ -433,111 +305,37 @@ Sneeuw (psi_0=0, psi_1=0.2, psi_2=0) = 9
 Wind (psi_0=0, psi_1=0.2, psi_2=0) = 10
 @end
 
-### Psi-factoren (Tabel NB.2 - A1.1)
+@select categorie_2 "Categorie van Q_k2"
+Categorie A -- woon (psi_0=0.4, psi_1=0.5, psi_2=0.3) = 1
+Categorie B -- kantoor (psi_0=0.5, psi_1=0.5, psi_2=0.3) = 2
+Categorie C -- bijeenkomst, overige delen (psi_0=0.4, psi_1=0.7, psi_2=0.6) = 3
+Categorie C -- vluchtroutes en trappen (psi_0=0.6, psi_1=0.7, psi_2=0.6) = 11
+Categorie D -- winkel (psi_0=0.4, psi_1=0.7, psi_2=0.6) = 4
+Categorie E -- opslag (psi_0=1.0, psi_1=0.9, psi_2=0.8) = 5
+Categorie F -- verkeer <= 25 kN (psi_0=0.7, psi_1=0.7, psi_2=0.6) = 6
+Categorie G -- verkeer 25-160 kN (psi_0=0.7, psi_1=0.5, psi_2=0.3) = 7
+Categorie H -- daken (psi_0=0, psi_1=0, psi_2=0) = 8
+Sneeuw (psi_0=0, psi_1=0.2, psi_2=0) = 9
+Wind (psi_0=0, psi_1=0.2, psi_2=0) = 10
+@end
 
-#if belastingcategorie == 1
-psi_0 = 0.4
-psi_1 = 0.5
-psi_2 = 0.3
-#end if
-#if belastingcategorie == 2
-psi_0 = 0.5
-psi_1 = 0.5
-psi_2 = 0.3
-#end if
-#if belastingcategorie == 3
-psi_0 = 0.4
-psi_1 = 0.7
-psi_2 = 0.6
-#end if
-#if belastingcategorie == 4
-psi_0 = 0.4
-psi_1 = 0.7
-psi_2 = 0.6
-#end if
-#if belastingcategorie == 5
-psi_0 = 1.0
-psi_1 = 0.9
-psi_2 = 0.8
-#end if
-#if belastingcategorie == 6
-psi_0 = 0.7
-psi_1 = 0.7
-psi_2 = 0.6
-#end if
-#if belastingcategorie == 7
-psi_0 = 0.7
-psi_1 = 0.5
-psi_2 = 0.3
-#end if
-#if belastingcategorie == 8
-psi_0 = 0
-psi_1 = 0
-psi_2 = 0
-#end if
-#if belastingcategorie == 9
-psi_0 = 0
-psi_1 = 0.2
-psi_2 = 0
-#end if
-#if belastingcategorie == 10
-psi_0 = 0
-psi_1 = 0.2
-psi_2 = 0
-#end if
+#hide
+'Tabel NB.2 – A1.1: categorie | ψ0 | ψ1 | ψ2; 11 is C met ψ0 = 0,6 (voetnoot a)
+psi = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11 | 0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0; 0.6 | 0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2; 0.7 | 0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0; 0.6]
+ψ_0,1 = hlookup(psi; belastingcategorie; 1; 2)
+ψ_1,1 = hlookup(psi; belastingcategorie; 1; 3)
+ψ_2,1 = hlookup(psi; belastingcategorie; 1; 4)
+ψ_0,2 = hlookup(psi; categorie_2; 1; 2)
+ψ_1,2 = hlookup(psi; categorie_2; 1; 3)
+ψ_2,2 = hlookup(psi; categorie_2; 1; 4)
+#show
+'ψ-factoren (tabel NB.2 – A1.1): Q<sub>k,1</sub> 'ψ_0,1' / 'ψ_1,1' / 'ψ_2,1' en Q<sub>k,2</sub> 'ψ_0,2' / 'ψ_1,2' / 'ψ_2,2' (ψ<sub>0</sub> / ψ<sub>1</sub> / ψ<sub>2</sub>).
 
-### Invoer belastingen (karakteristieke waarden)
+# 2. Combinaties (tabel A1.4)
 
-Blijvende belasting:
-
-G_k = 10.0 kN
-
-Overheersende veranderlijke belasting:
-
-Q_k1 = 5.0 kN
-
-Gelijktijdige veranderlijke belasting:
-
-Q_k2 = 2.0 kN
-
-psi_0_2 = 0.0
-psi_2_2 = 0.0
-
----
-
-### a) Karakteristieke combinatie (formule 6.14b)
-
-G_k,j "+" Q_k,1 "+" SOM(psi_0,i * Q_k,i)
-
-Gebruikt voor onomkeerbare grenstoestanden.
-
-E_kar = G_k + Q_k1 + psi_0_2 * Q_k2 to kN
-
-### b) Frequente combinatie (formule 6.15b)
-
-G_k,j "+" psi_1,1 * Q_k,1 "+" SOM(psi_2,i * Q_k,i)
-
-Gebruikt voor omkeerbare grenstoestanden.
-
-E_freq = G_k + psi_1 * Q_k1 + psi_2_2 * Q_k2 to kN
-
-### c) Quasi-blijvende combinatie (formule 6.16b)
-
-G_k,j "+" SOM(psi_2,i * Q_k,i)
-
-Gebruikt voor langetermijneffecten en uiterlijk.
-
-E_qp = G_k + psi_2 * Q_k1 + psi_2_2 * Q_k2 to kN
-
----
-
-### Overzicht BGT combinaties
-
-| Combinatie | Formule | E_d |
-|---|---|---|
-| Karakteristiek (6.14b) | G + Q_k,1 + psi_0 * Q_k,i | {{E_kar}} kN |
-| Frequent (6.15b) | G + psi_1 * Q_k,1 + psi_2 * Q_k,i | {{E_freq}} kN |
-| Quasi-blijvend (6.16b) | G + psi_2 * Q_k,1 + psi_2 * Q_k,i | {{E_qp}} kN |
+E_kar = max(G_k + Q_k1 + ψ_0,2*Q_k2; G_k + Q_k2 + ψ_0,1*Q_k1) to kN', karakteristiek (6.14b), elk van beide overheersend'
+E_freq = max(G_k + ψ_1,1*Q_k1 + ψ_2,2*Q_k2; G_k + ψ_1,2*Q_k2 + ψ_2,1*Q_k1) to kN', frequent (6.15b)'
+E_qp = G_k + ψ_2,1*Q_k1 + ψ_2,2*Q_k2 to kN', quasi-blijvend (6.16b)'
 `;
 
 // ---------------------------------------------------------------------------
@@ -545,13 +343,27 @@ E_qp = G_k + psi_2 * Q_k1 + psi_2_2 * Q_k2 to kN
 // ---------------------------------------------------------------------------
 
 /** EN 1990 -- Volledige belastingcombinatie gebouwen */
-export const en1990Compleet = `# Belastingcombinaties -- NEN-EN 1990+NB:2019
-## Volledig overzicht UGT en BGT voor gebouwen
+export const en1990Compleet = `"Belastingcombinaties — NEN-EN 1990 + NB
 
-@select belastingcategorie "Belastingcategorie overheersende veranderlijke belasting"
+# 1. Belastingen (karakteristiek)
+
+@select richting "Q_k1 werkt"
+In dezelfde richting als de blijvende belasting = 1
+Tegen de blijvende belasting in, bijv. windzuiging op een licht dak = 2
+@end
+
+G_ksup = ?*(kN)', blijvend, ongunstig'
+#if richting ≡ 2
+    G_kinf = ?*(kN)', blijvend, gunstig'
+#end if
+Q_k1 = ?*(kN)', veranderlijk'
+Q_k2 = ?*(kN)', veranderlijk, gelijktijdig; 0 als die er niet is'
+
+@select belastingcategorie "Categorie van Q_k1"
 Categorie A -- woon- en verblijfsruimtes = 1
 Categorie B -- kantoorruimtes = 2
-Categorie C -- bijeenkomstruimtes = 3
+Categorie C -- bijeenkomstruimtes, overige delen = 3
+Categorie C -- vluchtroutes en trappen, zwaar belast door een menigte bij calamiteit = 11
 Categorie D -- winkelruimtes = 4
 Categorie E -- opslagruimtes = 5
 Categorie F -- verkeersruimte, voertuig <= 25 kN = 6
@@ -561,180 +373,79 @@ Sneeuwbelasting = 9
 Windbelasting = 10
 @end
 
-### Psi-factoren (Tabel NB.2 - A1.1)
+@select categorie_2 "Categorie van Q_k2"
+Categorie A -- woon- en verblijfsruimtes = 1
+Categorie B -- kantoorruimtes = 2
+Categorie C -- bijeenkomstruimtes, overige delen = 3
+Categorie C -- vluchtroutes en trappen, zwaar belast door een menigte bij calamiteit = 11
+Categorie D -- winkelruimtes = 4
+Categorie E -- opslagruimtes = 5
+Categorie F -- verkeersruimte, voertuig <= 25 kN = 6
+Categorie G -- verkeersruimte, 25 < voertuig <= 160 kN = 7
+Categorie H -- daken = 8
+Sneeuwbelasting = 9
+Windbelasting = 10
+@end
 
-#if belastingcategorie == 1
-psi_0 = 0.4
-psi_1 = 0.5
-psi_2 = 0.3
-#end if
-#if belastingcategorie == 2
-psi_0 = 0.5
-psi_1 = 0.5
-psi_2 = 0.3
-#end if
-#if belastingcategorie == 3
-psi_0 = 0.4
-psi_1 = 0.7
-psi_2 = 0.6
-#end if
-#if belastingcategorie == 4
-psi_0 = 0.4
-psi_1 = 0.7
-psi_2 = 0.6
-#end if
-#if belastingcategorie == 5
-psi_0 = 1.0
-psi_1 = 0.9
-psi_2 = 0.8
-#end if
-#if belastingcategorie == 6
-psi_0 = 0.7
-psi_1 = 0.7
-psi_2 = 0.6
-#end if
-#if belastingcategorie == 7
-psi_0 = 0.7
-psi_1 = 0.5
-psi_2 = 0.3
-#end if
-#if belastingcategorie == 8
-psi_0 = 0
-psi_1 = 0
-psi_2 = 0
-#end if
-#if belastingcategorie == 9
-psi_0 = 0
-psi_1 = 0.2
-psi_2 = 0
-#end if
-#if belastingcategorie == 10
-psi_0 = 0
-psi_1 = 0.2
-psi_2 = 0
-#end if
+# 2. Factoren (tabel NB.2 – A1.1, NB.4 en NB.5)
 
-### Partiele factoren STR/GEO (Tabel NB.4 en NB.5)
-
-#if CC == 1
-gamma_Gsup_a = 1.2
-gamma_Gsup_b = 1.1
-gamma_Q_CC = 1.35
-K_FI = 0.9
-#end if
-#if CC == 2
-gamma_Gsup_a = 1.35
-gamma_Gsup_b = 1.2
-gamma_Q_CC = 1.5
-K_FI = 1.0
-#end if
-#if CC == 3
-gamma_Gsup_a = 1.5
-gamma_Gsup_b = 1.3
-gamma_Q_CC = 1.65
-K_FI = 1.1
-#end if
-
-gamma_Ginf = 0.9
-
-### Invoer belastingen (karakteristieke waarden)
-
-Blijvende belasting (ongunstig):
-
-G_ksup = 10.0 kN
-
-Overheersende veranderlijke belasting:
-
-Q_k1 = 5.0 kN
-
-Gelijktijdige veranderlijke belasting 2:
-
-Q_k2 = 2.0 kN
-
-psi_0_2 = 0.0
-psi_2_2 = 0.0
-
----
-
-## 1. UGT -- Fundamentele combinatie STR/GEO ($6.4.3.2)
-
-### Vergelijking 6.10a
-
-E_610a = gamma_Gsup_a * G_ksup + gamma_Q_CC * psi_0 * Q_k1 + gamma_Q_CC * psi_0_2 * Q_k2 to kN
-
-### Vergelijking 6.10b
-
-E_610b = gamma_Gsup_b * G_ksup + gamma_Q_CC * Q_k1 + gamma_Q_CC * psi_0_2 * Q_k2 to kN
-
-### Maatgevende UGT-fundamenteel
-
-#if E_610a > E_610b
-Vgl. 6.10a is maatgevend.
-
-E_UGT = E_610a to kN
+#hide
+'Tabel NB.2 – A1.1: categorie | ψ0 | ψ1 | ψ2; 11 is C met ψ0 = 0,6 (voetnoot a)
+psi = [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11 | 0.4; 0.5; 0.4; 0.4; 1.0; 0.7; 0.7; 0; 0; 0; 0.6 | 0.5; 0.5; 0.7; 0.7; 0.9; 0.7; 0.5; 0; 0.2; 0.2; 0.7 | 0.3; 0.3; 0.6; 0.6; 0.8; 0.6; 0.3; 0; 0; 0; 0.6]
+ψ_0,1 = hlookup(psi; belastingcategorie; 1; 2)
+ψ_1,1 = hlookup(psi; belastingcategorie; 1; 3)
+ψ_2,1 = hlookup(psi; belastingcategorie; 1; 4)
+ψ_0,2 = hlookup(psi; categorie_2; 1; 2)
+ψ_1,2 = hlookup(psi; categorie_2; 1; 3)
+ψ_2,2 = hlookup(psi; categorie_2; 1; 4)
+#show
+'ψ-factoren: Q<sub>k,1</sub> 'ψ_0,1' / 'ψ_1,1' / 'ψ_2,1' en Q<sub>k,2</sub> 'ψ_0,2' / 'ψ_1,2' / 'ψ_2,2' (ψ<sub>0</sub> / ψ<sub>1</sub> / ψ<sub>2</sub>).
+#if CC ≡ 1
+    γ_G,a = 1.2', 6.10a, CC1 (tabel NB.5)'
+    γ_G,b = 1.1', 6.10b'
+    γ_Q = 1.35
+#else if CC ≡ 3
+    γ_G,a = 1.5', 6.10a, CC3 (tabel NB.5)'
+    γ_G,b = 1.3', 6.10b'
+    γ_Q = 1.65
 #else
-Vgl. 6.10b is maatgevend.
-
-E_UGT = E_610b to kN
+    γ_G,a = 1.35', 6.10a, CC2 (tabel NB.4)'
+    γ_G,b = 1.2', 6.10b'
+    γ_Q = 1.5
+#end if
+#if richting ≡ 2
+    γ_G,inf = 0.9', blijvend, gunstig'
 #end if
 
----
+# 3. Uiterste grenstoestand, fundamenteel (§6.4.3.2)
 
-## 2. BGT -- Bruikbaarheidsgrenstoestanden ($6.5.3)
+#if richting ≡ 1
+    E_610a = γ_G,a*G_ksup + γ_Q*ψ_0,1*Q_k1 + γ_Q*ψ_0,2*Q_k2 to kN', (6.10a)'
+    E_610b,1 = γ_G,b*G_ksup + γ_Q*Q_k1 + γ_Q*ψ_0,2*Q_k2 to kN', (6.10b), Q_k1 overheersend'
+    E_610b,2 = γ_G,b*G_ksup + γ_Q*Q_k2 + γ_Q*ψ_0,1*Q_k1 to kN', (6.10b), Q_k2 overheersend'
+    E_UGT = max(E_610a; E_610b,1; E_610b,2) to kN', maatgevend'
+#else
+    '<i>In de combinaties met G<sub>k,sup</sub> werkt Q<sub>k,1</sub> gunstig en telt niet mee; in die met G<sub>k,inf</sub> telt Q<sub>k,2</sub> niet mee.</i>
+    E_610a = γ_G,a*G_ksup + γ_Q*ψ_0,2*Q_k2 to kN', (6.10a)'
+    E_610b = γ_G,b*G_ksup + γ_Q*Q_k2 to kN', (6.10b)'
+    E_UGT = max(E_610a; E_610b) to kN', maatgevend in de richting van G'
+    E_UGT,inf = γ_G,inf*G_kinf - γ_Q*Q_k1 to kN', G gunstig, Q_k1 overheersend (6.10b); negatief: netto tegen G in'
+#end if
 
-### a) Karakteristieke combinatie (6.14b)
+# 4. Bruikbaarheidsgrenstoestand (§6.5.3, tabel A1.4)
 
-E_kar = G_ksup + Q_k1 + psi_0_2 * Q_k2 to kN
-
-### b) Frequente combinatie (6.15b)
-
-E_freq = G_ksup + psi_1 * Q_k1 + psi_2_2 * Q_k2 to kN
-
-### c) Quasi-blijvende combinatie (6.16b)
-
-E_qp = G_ksup + psi_2 * Q_k1 + psi_2_2 * Q_k2 to kN
-
----
-
-## Samenvatting
-
-| Combinatie | Ref. | E_d |
-|---|---|---|
-| UGT fundamenteel (6.10a) | $6.4.3.2 | {{E_610a}} kN |
-| UGT fundamenteel (6.10b) | $6.4.3.2 | {{E_610b}} kN |
-| **UGT maatgevend** | | **{{E_UGT}} kN** |
-| BGT karakteristiek | (6.14b) | {{E_kar}} kN |
-| BGT frequent | (6.15b) | {{E_freq}} kN |
-| BGT quasi-blijvend | (6.16b) | {{E_qp}} kN |
-
----
-
-## Tabel psi-factoren (Tabel NB.2 - A1.1)
-
-| Belasting | psi_0 | psi_1 | psi_2 |
-|---|---|---|---|
-| Cat. A woon | 0,4 | 0,5 | 0,3 |
-| Cat. B kantoor | 0,5 | 0,5 | 0,3 |
-| Cat. C bijeenkomst | 0,4/0,6 | 0,7 | 0,6 |
-| Cat. D winkel | 0,4 | 0,7 | 0,6 |
-| Cat. E opslag | 1,0 | 0,9 | 0,8 |
-| Cat. F verkeer <= 25kN | 0,7 | 0,7 | 0,6 |
-| Cat. G verkeer 25-160kN | 0,7 | 0,5 | 0,3 |
-| Cat. H daken | 0 | 0 | 0 |
-| Sneeuw | 0 | 0,2 | 0 |
-| Wind | 0 | 0,2 | 0 |
-| Temperatuur | 0 | 0,5 | 0 |
-
-## Tabel partiele factoren STR/GEO (Tabel NB.4 en NB.5)
-
-| CC | Vgl. | gamma_G,sup | gamma_G,inf | gamma_Q |
-|---|---|---|---|---|
-| CC1 | 6.10a | 1,2 | 0,9 | 1,35 |
-| CC1 | 6.10b | 1,1 | 0,9 | 1,35 |
-| CC2 | 6.10a | 1,35 | 0,9 | 1,5 |
-| CC2 | 6.10b | 1,2 | 0,9 | 1,5 |
-| CC3 | 6.10a | 1,5 | 0,9 | 1,65 |
-| CC3 | 6.10b | 1,3 | 0,9 | 1,65 |
+#if richting ≡ 1
+    E_kar = max(G_ksup + Q_k1 + ψ_0,2*Q_k2; G_ksup + Q_k2 + ψ_0,1*Q_k1) to kN', karakteristiek (6.14b), elk van beide overheersend'
+    E_freq = max(G_ksup + ψ_1,1*Q_k1 + ψ_2,2*Q_k2; G_ksup + ψ_1,2*Q_k2 + ψ_2,1*Q_k1) to kN', frequent (6.15b)'
+    E_qp = G_ksup + ψ_2,1*Q_k1 + ψ_2,2*Q_k2 to kN', quasi-blijvend (6.16b)'
+#else
+    E_kar = G_ksup + Q_k2 to kN', karakteristiek (6.14b), in de richting van G'
+    E_freq = G_ksup + ψ_1,2*Q_k2 to kN', frequent (6.15b)'
+    E_qp = G_ksup + ψ_2,2*Q_k2 to kN', quasi-blijvend (6.16b)'
+    E_kar,inf = G_kinf - Q_k1 to kN', karakteristiek (6.14b), Q_k1 tegen G in; negatief: netto tegen G in'
+    E_freq,inf = G_kinf - ψ_1,1*Q_k1 to kN', frequent (6.15b)'
+    E_qp,inf = G_kinf - ψ_2,1*Q_k1 to kN', quasi-blijvend (6.16b)'
+#end if
 `;
 
 // ---------------------------------------------------------------------------
@@ -742,43 +453,35 @@ E_qp = G_ksup + psi_2 * Q_k1 + psi_2_2 * Q_k2 to kN
 // ---------------------------------------------------------------------------
 
 /** EN 1990 Tabel NB.6-A1.2(C) -- Geotechnische belastingen (groep C) */
-export const en1990GroepC = `# Belastingcombinatie UGT -- EN 1990 Tabel NB.6 - A1.2(C)
-## STR/GEO groep C -- Geotechnische belastingen
+export const en1990GroepC = `"Geotechnische combinatie, groep C — NEN-EN 1990 tabel NB.6 – A1.2(C)
 
-Groep C wordt gebruikt voor geotechnische belastingen bij:
-- algemene stabiliteit van de fundering
-- taludstabiliteit
-- damwandberekening
+# 1. Belastingen (karakteristiek)
 
-Vergelijking (6.10) met gereduceerde partiele factoren.
+G_ksup = ?*(kN)', blijvend, ongunstig'
+Q_k1 = ?*(kN)', veranderlijk, overheersend'
+Q_k2 = ?*(kN)', veranderlijk, gelijktijdig'
 
-### Partiele factoren groep C (Tabel NB.6 - A1.2(C))
+@select categorie_2 "Categorie van Q_k2"
+Categorie A -- woon (psi_0 = 0.4) = 0.4
+Categorie B -- kantoor (psi_0 = 0.5) = 0.5
+Categorie C -- bijeenkomst, overige delen (psi_0 = 0.4) = 0.4
+Categorie C -- vluchtroutes en trappen (psi_0 = 0.6) = 0.6
+Categorie D -- winkel (psi_0 = 0.4) = 0.4
+Categorie E -- opslag (psi_0 = 1.0) = 1.0
+Categorie H -- daken (psi_0 = 0) = 0
+Sneeuw (psi_0 = 0) = 0
+Wind (psi_0 = 0) = 0
+@end
 
-gamma_Gsup = 1.0
-gamma_Ginf = 1.0
-gamma_Q = 1.3
+# 2. Rekenwaarde (6.10)
 
-### Invoer belastingen (karakteristieke waarden)
-
-Blijvende belasting (ongunstig):
-
-G_ksup = 10.0 kN
-
-Overheersende veranderlijke belasting:
-
-Q_k1 = 5.0 kN
-
-Gelijktijdige veranderlijke belasting:
-
-Q_k2 = 0.0 kN
-
-psi_0_2 = 0.0
-
-### Rekenwaarde (formule 6.10)
-
-E_d = gamma_Gsup * G_ksup + gamma_Q * Q_k1 + gamma_Q * psi_0_2 * Q_k2 to kN
-
-Rekenwaarde belastingseffect E_d = {{E_d}} kN.
+γ_G,sup = 1.0
+γ_Q = 1.3
+#hide
+ψ_0,2 = categorie_2*1
+#show
+ψ_0,2', tabel NB.2 – A1.1'
+E_d = γ_G,sup*G_ksup + γ_Q*Q_k1 + γ_Q*ψ_0,2*Q_k2 to kN
 `;
 
 // ---------------------------------------------------------------------------
@@ -786,80 +489,22 @@ Rekenwaarde belastingseffect E_d = {{E_d}} kN.
 // ---------------------------------------------------------------------------
 
 /** EN 1990 $6.3 -- Rekenwaarden van belastingen en weerstand */
-export const en1990Rekenwaarden = `# Rekenwaarden -- EN 1990 $6.3
-## Rekenwaarden van belastingen, effecten en weerstand
+export const en1990Rekenwaarden = `"Rekenwaarden en toetsing — NEN-EN 1990 §6.3 en §6.4.2
 
-### Rekenwaarde van een belasting ($6.3.1, formule 6.1a)
-
-- F_d = gamma_f · F_rep
-
-met:
-
-- F_rep = psi · F_k  (formule 6.1b)
-
-waarbij psi = 1,00 of psi_0, psi_1 of psi_2.
-
-### Rekenwaarde van belastingseffecten ($6.3.2, formule 6.2)
-
-- E_d = gamma_Sd · E{ gamma_f,i · F_rep,i ; a_d }
-
-Vereenvoudigd (formule 6.2a):
-
-- E_d = E{ gamma_F,i · F_rep,i ; a_d }
-
-met gamma_F,i = gamma_Sd · gamma_f,i  (formule 6.2b)
-
-### Rekenwaarde materiaal-/producteigenschap ($6.3.3, formule 6.3)
-
-- X_d = eta · X_k / gamma_m
-
-waarbij:
-- X_k = karakteristieke waarde
-- eta = omrekeningsfactor
-- gamma_m = partiele materiaalfactor
-
-### Rekenwaarde van de weerstand ($6.3.5, formule 6.6a)
-
-- R_d = R{ eta_i · X_k,i / gamma_M,i ; a_d }
-
-Vereenvoudigd (formule 6.6c):
-
-- R_d = R_k / gamma_M
-
-### Toetsingsvoorwaarde ($6.4.2-6.4.3)
-
-STR/GEO (formule 6.8):
-
-  E_d <= R_d
-
-EQU (formule 6.7):
-
-  E_d,dst <= E_d,stb
-
-BGT (formule 6.13):
-
-  E_d <= C_d
-
----
-
-### Invoer voor toetsing
-
-Rekenwaarde belastingseffect:
-
-E_d = 100 kN
-
-Rekenwaarde weerstand:
-
-R_d = 120 kN
-
-### Toetsing (formule 6.8)
-
-UC = E_d / R_d
-
-#if UC < 1
-  Toetsing voldoet: E_d <= R_d (UC = {{UC}}).
+E_d = ?*(kN)', rekenwaarde van het belastingseffect'
+R_d = ?*(kN)', rekenwaarde van de weerstand'
+#if R_d > 0 kN
+    UC_max = E_d/R_d
 #else
-  Toetsing voldoet NIET: E_d > R_d (UC = {{UC}})!
+    '<span style="color: red">Vul de weerstand in.</span>
+    #hide
+    UC_max = 1/0
+    #show
+#end if
+#if UC_max ≤ 1.0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: E<sub>d</sub> ≤ R<sub>d</sub></span>
+#else
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: E<sub>d</sub> > R<sub>d</sub></span>
 #end if
 `;
 
@@ -868,65 +513,26 @@ UC = E_d / R_d
 // ---------------------------------------------------------------------------
 
 /** EN 1990 NB formule NB.1 -- Aanpassing karakteristieke waarde referentieperiode */
-export const en1990Referentieperiode = `# Aanpassing referentieperiode -- EN 1990 NB, formule NB.1
-## Aanpassen karakteristieke waarde veranderlijke belasting
-
-Indien de ontwerplevensduur afwijkt van 50 jaar, moet de karakteristieke
-waarde van gelijkmatig verdeelde veranderlijke belastingen worden aangepast
-(NEN-EN 1990 NB, art. A1.1(2)).
-
-Formule NB.1:
-
-- F_t = F_t0 · { 1 + (1 - psi_0) / 9 · ln(t / t_0) }
-
-@select ontwerplevensduurklasse "Ontwerplevensduurklasse (Tabel NB.1 - 2.1)"
-Klasse 1 -- 5 jaar (tijdelijk) = 5
-Klasse 2 -- 15 jaar (landbouw) = 15
-Klasse 3 -- 50 jaar (gebouwen) = 50
-Klasse 4 -- 100 jaar (monumentaal) = 100
-@end
+export const en1990Referentieperiode = `"Aanpassing referentieperiode — NEN-EN 1990 NB, formule NB.1
 
 @select belastingcategorie "Belastingcategorie (voor psi_0)"
 Categorie A -- woon (psi_0 = 0.4) = 0.4
 Categorie B -- kantoor (psi_0 = 0.5) = 0.5
-Categorie C -- bijeenkomst (psi_0 = 0.4) = 0.4
+Categorie C -- bijeenkomst, overige delen (psi_0 = 0.4) = 0.4
+Categorie C -- vluchtroutes en trappen (psi_0 = 0.6) = 0.6
 Categorie D -- winkel (psi_0 = 0.4) = 0.4
 Categorie E -- opslag (psi_0 = 1.0) = 1.0
 @end
 
-psi_0 = belastingcategorie * 1
-
-Referentieperiode bij de gekozen ontwerplevensduur (in jaren):
-
-t = ontwerplevensduurklasse * 1
-
-Basisreferentieperiode (standaard, in jaren):
-
-t_0 = 50
-
-Karakteristieke waarde bij basisreferentieperiode:
-
-F_t0 = 5.0 kN/m^2
-
-### Aangepaste karakteristieke waarde (formule NB.1)
-
-F_t = F_t0 * (1 + (1 - psi_0) / 9 * ln(t / t_0)) to kN/m^2
-
-Omrekeningsfactor:
-
-factor = F_t / F_t0
-
-#if t == 50
-  Referentieperiode is 50 jaar: geen aanpassing nodig (factor = 1,0).
-#end if
-
-#if t < 50
-  De referentieperiode is korter dan 50 jaar: de belasting wordt verlaagd.
-#end if
-
-#if t > 50
-  De referentieperiode is langer dan 50 jaar: de belasting wordt verhoogd.
-#end if
+F_t0 = ?*(kN/m^2)', gelijkmatig verdeelde veranderlijke belasting bij 50 jaar'
+#hide
+ψ_0 = belastingcategorie*1
+#show
+ψ_0', tabel NB.2 – A1.1'
+t = max(DesignLife; 15)', ontwerplevensduur in jaren uit de projectgegevens, ten minste 15 (tabel NB.1 – 2.1 en 4.1.2(7a) van de NB)'
+t_0 = 50', basisreferentieperiode in jaren'
+factor = 1 + (1 - ψ_0)/9*log(t/t_0)', formule NB.1 (A1.1(2))'
+F_t = factor*F_t0 to kN/m^2
 `;
 
 // ---------------------------------------------------------------------------

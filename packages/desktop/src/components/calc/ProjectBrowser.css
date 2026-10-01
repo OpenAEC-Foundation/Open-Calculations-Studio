@@ -190,10 +190,12 @@
   color: var(--theme-accent);
 }
 
-/* Status van een module — gevulde bol = toetsing bestaat, open bol = concept.
-   De kleur zegt of de toetsing ook is nagerekend op referentiebladen. */
+/* Status van een module — gevulde bol = uitwerking bestaat, open bol = concept.
+   De kleur onderscheidt gecalibreerde toetsing, nog te controleren toetsing
+   en een hoeveelhedenraming zonder constructieve toetsing. */
 .tree-item-icon.tree-status-gereed { color: #16a34a; }
 .tree-item-icon.tree-status-controleren { color: #d97706; }
+.tree-item-icon.tree-status-raming { color: #2563eb; }
 .tree-item-icon.tree-status-concept { color: #9ca3af; }
 
 .tree-legend {
@@ -406,4 +408,16 @@
    kunnen worden. */
 .tree-item-onuitgegeven .tree-item-label {
   opacity: 0.6;
+}
+
+/* Knop naar het scherm "Module toevoegen", onder de projectbladen. */
+.tree-item-toevoegen {
+  margin-top: 6px;
+  color: var(--theme-accent);
+  font-weight: 500;
+}
+
+.tree-item-toevoegen .tree-item-icon {
+  color: var(--theme-accent);
+  font-weight: 700;
 }

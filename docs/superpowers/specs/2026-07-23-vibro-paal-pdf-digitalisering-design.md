@@ -11,8 +11,8 @@ De tool bepaalt voor één sondering de benodigde punt- en schachtgemiddelden,
 genereert een controleerbare rekensheet in Calcpad-syntax en slaat die sheet op
 in het bestaande documentmodel.
 
-De eerste validatie gebruikt sondering 1 uit het grondonderzoek van project
-AA22485 en vergelijkt de resultaten met bijlage 3.4 van het bijbehorende
+De eerste validatie gebruikt sondering 1 uit het grondonderzoek van een
+referentieproject en vergelijkt de resultaten met bijlage 3.4 van het bijbehorende
 referentierapport.
 
 ## Afbakening versie 1

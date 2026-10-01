@@ -9,6 +9,10 @@ import {
   ec5Knik,
   ec5Doorbuiging,
   ec5HoutenBalk,
+  ec5Wringing,
+  ec5TapseLigger,
+  ec5Uitkeping,
+  ec5Beschot,
 } from './templates/eurocode5';
 import {
   vandepitteSchuifspanning,
@@ -46,6 +50,7 @@ import {
   ec3Knik,
   ec3Doorbuiging,
   ec3StalenLigger,
+  ec3Onderflens,
 } from './templates/en1993';
 import {
   en1996Druksterkte,
@@ -69,6 +74,7 @@ import {
   ec2Doorbuiging,
   ec2BetonBalk,
 } from './templates/en1992';
+import { metProjectkop } from './templates/projectkop';
 
 const paalExample = `# Projectgegevens
 
@@ -84,8 +90,6 @@ CC3 — Grote gevolgen = 3
 100 jaar (bijzondere constructie) = 100
 @end
 
-Projectnummer: 2558
-Projectomschrijving: Woning en bijgebouw Laageind 57 Driebruggen
 Onderdeel: Funderingen
 
 # Paaldraagvermogen — NEN 9997-1
@@ -426,10 +430,10 @@ function debounce(fn: (arg: string) => void, ms: number) {
   };
 }
 
-// Template map for calculation items
-const templates: Record<string, string> = {
-  'paaldraagvermogen': paalExample,
-  'stalen-ligger': exampleDoc,
+// Normbladen: kopieën van de desktopbladen. Die rekenen met projectgegevens
+// (gevolgklasse, wind, …) die de web-app niet in de scope zet; metProjectkop
+// geeft een blad dat er een gebruikt, daarvoor keuzelijsten onder de titel.
+const normbladen: Record<string, string> = {
   'ec5-buiging': ec5Buiging,
   'ec5-afschuiving': ec5Afschuiving,
   'ec5-druk': ec5Druk,
@@ -437,6 +441,10 @@ const templates: Record<string, string> = {
   'ec5-knik': ec5Knik,
   'ec5-doorbuiging': ec5Doorbuiging,
   'ec5-houten-balk': ec5HoutenBalk,
+  'ec5-wringing': ec5Wringing,
+  'ec5-tapse-ligger': ec5TapseLigger,
+  'ec5-uitkeping': ec5Uitkeping,
+  'ec5-beschot': ec5Beschot,
   'vdp-schuifspanning': vandepitteSchuifspanning,
   'vdp-doorbuiging': vandepitteDoorbuiging,
   'vdp-knikken': vandepitteKnikken,
@@ -466,6 +474,7 @@ const templates: Record<string, string> = {
   'ec3-knik': ec3Knik,
   'ec3-doorbuiging': ec3Doorbuiging,
   'ec3-stalen-ligger': ec3StalenLigger,
+  'ec3-onderflens': ec3Onderflens,
   'en1996-druksterkte': en1996Druksterkte,
   'en1996-drukwand': en1996Drukwand,
   'en1996-afschuiving': en1996Afschuiving,
@@ -482,6 +491,15 @@ const templates: Record<string, string> = {
   'ec2-scheurwijdte': ec2Scheurwijdte,
   'ec2-doorbuiging': ec2Doorbuiging,
   'ec2-betonbalk': ec2BetonBalk,
+};
+
+// Template map for calculation items
+const templates: Record<string, string> = {
+  'paaldraagvermogen': paalExample,
+  'stalen-ligger': exampleDoc,
+  ...Object.fromEntries(
+    Object.entries(normbladen).map(([id, blad]) => [id, metProjectkop(blad)]),
+  ),
 };
 
 const editorEl = document.getElementById('editor')!;

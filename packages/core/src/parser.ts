@@ -59,6 +59,9 @@ const VAR_DISPLAY_RE = new RegExp(`^(${IDENT})\\s*$`, 'u');
 
 const TITLE_RE = /^"(.*)$/;           // CalcPAD title: "Quadratic Equation
 const PROSE_RE = /^'(.*)$/;           // CalcPAD prose: 'free text with <i>HTML</i>
+// Merkteken voor tekst die op dezelfde bronregel achter een rekendeel stond
+// (`x = a*b', uitleg'`). Een stuurteken, zodat het nooit in echte tekst staat.
+const INLINE_MARK = '\u0001';
 const COMMENT_SLASH_RE = /^\/\//;
 
 const HEADING_RE = /^(#{1,6})\s+(.+)$/;
@@ -66,7 +69,10 @@ const SVG_START_RE = /^@svg\s*$/;
 const BLOCK_END_RE = /^@end\s*$/;
 const IMG_RE = /^@img\((.+)\)\s*$/;
 const SELECT_START_RE = /^@select\s+([a-zA-Z_]\w*)\s+"([^"]+)"\s*$/;
-const SELECT_OPTION_RE = /^(.+?)\s*=\s*(.+)$/;
+// Het label mag zelf een "=" bevatten ("Categorie A (psi_0 = 0.4) = 0.4"): de
+// waarde staat na de laatste "=". Eerder werd bij de eerste gesplitst, zodat
+// het label afbrak en de keuze een verkeerde waarde kreeg.
+const SELECT_OPTION_RE = /^(.+)\s*=\s*(.+)$/;
 const GEF_RE = /^@gef\s+([a-zA-Z_]\w*)\s*$/;
 // Directive recognizers. All allow trailing characters after the keyword because
 // CalcPAD frequently packs persisted-input values onto the same line as the
@@ -123,10 +129,71 @@ interface ParserState {
  * identifiers.
  */
 function foldSubscriptCommas(source: string): string {
-  return source.replace(
-    /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*_[\p{L}\p{N}_]+(?:,[\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_])/gu,
-    (match) => match.replace(/,/g, '_'),
+  return alleenInCode(source, (code) =>
+    code.replace(
+      /(?<![\p{L}\p{N}_])([\p{L}_][\p{L}\p{N}_]*_[\p{L}\p{N}_]+(?:,[\p{L}\p{N}_]+)+)(?![\p{L}\p{N}_])/gu,
+      (match) => match.replace(/,/g, '_'),
+    ),
   );
+}
+
+/**
+ * Past `fn` alleen toe op de rekendelen van de bron, nooit op tekst.
+ *
+ * De herschrijvingen voor namen (`V_b,0` → `V_b_0`, `Cs.Cd` → `Cs_Cd`,
+ * `v.2` → `v[2]`) zijn bedoeld voor expressies. Liepen ze over de hele regel,
+ * dan raakten ze ook de toelichting: "Tabel NB.2" werd "NB[2]", "(NB.8.1)"
+ * werd "NB_8_1" en "F_ax,Rk" in een commentaar "F_ax_Rk".
+ *
+ * Een regel wordt op enkele aanhalingstekens gesplitst, behalve binnen een
+ * tekenreeks tussen dubbele aanhalingstekens in een rekendeel. De stukken om
+ * en om zijn rekendeel en tekst: bij een prozaregel (`'tekst'expr'tekst`) is
+ * het eerste, lege stuk rekendeel en volgt daarna tekst; bij een rekenregel met
+ * commentaar (`x = expr', uitleg'`) is het eerste stuk rekendeel en het tweede
+ * commentaar. Koppen (`# …`) zijn geheel tekst, net als de keuzes binnen een
+ * `@select`-blok; van de `@select`-regel zelf telt alleen de naam als code.
+ */
+function alleenInCode(source: string, fn: (code: string) => string): string {
+  let inSelect = false;
+  return source
+    .split('\n')
+    .map((regel) => {
+      const t = regel.trim();
+      if (inSelect) {
+        if (/^@end\b/.test(t)) inSelect = false;
+        return regel;
+      }
+      if (/^@select\b/.test(t)) {
+        inSelect = true;
+        const label = regel.indexOf('"');
+        return label === -1 ? fn(regel) : fn(regel.slice(0, label)) + regel.slice(label);
+      }
+      if (/^#+(\s|$)/.test(t)) return regel;
+      let uit = '';
+      let stuk = '';
+      let code = true;
+      let inString = false;
+      for (const ch of regel) {
+        if (code) {
+          if (ch === '"') inString = !inString;
+          if (ch === "'" && !inString) {
+            uit += fn(stuk) + ch;
+            stuk = '';
+            code = false;
+            continue;
+          }
+        } else if (ch === "'") {
+          uit += stuk + ch;
+          stuk = '';
+          code = true;
+          inString = false;
+          continue;
+        }
+        stuk += ch;
+      }
+      return uit + (code ? fn(stuk) : stuk);
+    })
+    .join('\n');
 }
 
 /**
@@ -405,24 +472,31 @@ function foldIdentifierDots(source: string): string {
     return out;
   };
 
-  return source
-    .split('\n')
-    .map((line) => {
-      if (line.indexOf('"') === -1) return transformOutsideQuotes(line);
-      const segs = line.split('"');
-      return segs.map((seg, i) => (i % 2 === 1 ? seg : transformOutsideQuotes(seg))).join('"');
-    })
-    .join('\n');
+  return alleenInCode(source, (code) => {
+    if (code.indexOf('"') === -1) return transformOutsideQuotes(code);
+    const segs = code.split('"');
+    return segs.map((seg, i) => (i % 2 === 1 ? seg : transformOutsideQuotes(seg))).join('"');
+  });
 }
 
 /**
  * CalcPAD lets every expression carry a trailing display-format hint
  * (`:F2` = fixed-point 2 decimals, `:N0`, `:G`, `:E3`, `:P`). It's a
- * display directive, not part of the math — strip everywhere.
+ * display directive, not part of the math — strip it from expressions.
  *
  *   `Z_0:F2`         →  `Z_0`           (bare display)
  *   `Cs.Cd = 1:F2`   →  `Cs.Cd = 1`     (assignment value)
  *   `ψ_0,wind = 0.0:F2`  →  `ψ_0,wind = 0.0`
+ *   `'b = 'x:F2' mm` →  `'b = 'x' mm`   (ingevoegde expressie in tekst)
+ *
+ * Alleen in rekendelen. Liep het knippen over de hele regel, dan verdween in
+ * tekst elke dubbele punt met een losse F, N, G, E of P erachter:
+ * "'Glijden: F/(v·L)" werd "'Glijden/(v·L)" en "per m¹: g = b·h·ρ" werd
+ * "per m¹ = b·h·ρ". Daarom blijven ongemoeid: tekst en toelichting (via
+ * alleenInCode), tekenreeksen tussen dubbele aanhalingstekens (ook de titel
+ * `"…`), de inhoud van een `@svg`-blok (die kent alleen `{{naam}}`) en het
+ * bereik van een lus of oplosser (`#for i = 1 : n`, `$Root{… @ x = 0 : N }`),
+ * waar de dubbele punt een bereik is en geen formaat.
  */
 function stripFormatSpecs(source: string): string {
   // Match `:F2`, `:N0`, `:G`, `:E3`, `:P0` where preceded by digit/letter/`)`
@@ -430,10 +504,43 @@ function stripFormatSpecs(source: string): string {
   // Whitespace around `:` must stay WITHIN the line ([^\S\n], not \s) —
   // otherwise a prose line ending in `:` swallows the next statement when it
   // happens to start with one of F/N/G/E/P (e.g. `n = N_Ed/N_plRd`).
-  return source.replace(
-    /(?<=[\p{L}\p{N}_)])[^\S\n]*:[^\S\n]*[FNGEPfngep]\d*(?=[^\S\n]|$|[,;)+\-*/'])/gmu,
-    '',
-  );
+  const FORMAAT = /(?<=[\p{L}\p{N}_)])[^\S\n]*:[^\S\n]*[FNGEPfngep]\d*(?=[^\S\n]|$|[,;)+\-*/'])/gmu;
+  // Staat de dubbele punt in het bereik `var = van : tot` van een #for of
+  // van een `@` in een $-blok, dan is het geen formaataanduiding.
+  const IN_BEREIK = /(?:^\s*#for|@)\s*[\p{L}_][\p{L}\p{N}_]*\s*=[^{}@]*$/u;
+  const knip = (code: string): string =>
+    code.replace(FORMAAT, (spec: string, plek: number, geheel: string) =>
+      IN_BEREIK.test(geheel.slice(0, plek)) ? spec : '',
+    );
+  const buitenTekenreeksen = (code: string): string =>
+    code.indexOf('"') === -1
+      ? knip(code)
+      : code.split('"').map((stuk, i) => (i % 2 === 1 ? stuk : knip(stuk))).join('"');
+
+  // Een `@svg`-blok gaat in zijn geheel ongemoeid door; de rest per aaneengesloten
+  // stuk door alleenInCode, zodat die zijn eigen `@select`-toestand houdt.
+  const uit: string[] = [];
+  let stuk: string[] = [];
+  let inSvg = false;
+  const spoel = () => {
+    if (stuk.length > 0) uit.push(alleenInCode(stuk.join('\n'), buitenTekenreeksen));
+    stuk = [];
+  };
+  for (const regel of source.split('\n')) {
+    const t = regel.trim();
+    if (inSvg) {
+      uit.push(regel);
+      if (/^@end\b/.test(t)) inSvg = false;
+    } else if (/^@svg\s*$/.test(t)) {
+      spoel();
+      uit.push(regel);
+      inSvg = true;
+    } else {
+      stuk.push(regel);
+    }
+  }
+  spoel();
+  return uit.join('\n');
 }
 
 /**
@@ -596,11 +703,16 @@ export function parse(source: string, options: ParseOptions = {}): AstNode[] {
     }
     // Toggle split — alternating code / prose fragments (`a = ?', 'b = ?`)
     const parts = raw.split("'");
+    let naCode = false;
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       const isCode = i % 2 === 0;
       if (part.trim() === '') continue;
-      lines.push(isCode ? part : "'" + part);
+      // Tekst die op dezelfde regel achter een rekendeel staat, is de
+      // toelichting daarbij (`x = a*b', uitleg'`). Die krijgt een merkteken,
+      // zodat hij naast de formule komt en niet als losse alinea eronder.
+      lines.push(isCode ? part : "'" + (naCode ? INLINE_MARK : '') + part);
+      naCode = isCode;
     }
   }
 
@@ -645,8 +757,10 @@ function parseLines(
     // May contain embedded `'expr'` value interpolation (e.g. SVG macros).
     const proseMatch = trimmed.match(PROSE_RE);
     if (proseMatch) {
-      const text = proseMatch[1];
+      const inline = proseMatch[1].startsWith(INLINE_MARK);
+      const text = inline ? proseMatch[1].slice(INLINE_MARK.length) : proseMatch[1];
       const textTrim = text.trim();
+      const extra = inline ? { inline: true } : {};
       // Skip empty prose AND CalcPAD's persisted input values that latch
       // onto a trailing `'` (e.g. `'2	1` at EOF).
       if (textTrim !== '' && !TRAILING_DATA_RE.test(textTrim)) {
@@ -670,9 +784,9 @@ function parseLines(
               if (expr !== '') parts.push({ kind: 'expr', value: expr });
             }
           }
-          nodes.push(markHidden({ type: 'text', text: textTrim, html: true, parts }, state));
+          nodes.push(markHidden({ type: 'text', text: textTrim, html: true, parts, ...extra }, state));
         } else {
-          nodes.push(markHidden({ type: 'text', text: textTrim, html: true }, state));
+          nodes.push(markHidden({ type: 'text', text: textTrim, html: true, ...extra }, state));
         }
       }
       i++;

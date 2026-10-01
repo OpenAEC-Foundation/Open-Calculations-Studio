@@ -11,18 +11,27 @@ import SplitPane from "./components/calc/SplitPane";
 import ProjectBrowser from "./components/calc/ProjectBrowser";
 import { designerVoor } from "./components/calc/designerKeuze";
 import ProjectGegevensPanel from "./components/calc/ProjectGegevensPanel";
+import RapportPanel from "./components/rapport/RapportPanel";
 import PrintDocument from "./components/calc/PrintDocument";
+import { wachtOpVellen, zetDrukvellenKlaar } from "./components/rapport/afdruk/drukvellen";
 import AfdrukVoorbeeld from "./components/calc/AfdrukVoorbeeld";
+import ModuleKiezer from "./components/calc/ModuleKiezer";
+import BladBijwerken from "./components/calc/BladBijwerken";
+import { BladVersieKop, BladVersieMelding } from "./components/calc/BladVersieKop";
 import IfcViewerPanel from "./components/calc/IfcViewerPanel";
 import { getSetting } from "./store";
-import { useProjectStore, PROJECT_ID } from "./store/projectStore";
+import { useProjectStore, PROJECT_ID, RAPPORT_ID } from "./store/projectStore";
 import { usePrintStore } from "./store/printStore";
 import { useRecentFiles } from "./hooks/useRecentFiles";
 import { useSneltoetsen } from "./hooks/useSneltoetsen";
-import { openCalculationFile } from "./tauri/fileOps";
+import { useBestandActies } from "./hooks/useBestandActies";
 import { leesProjectBestand } from "./store/projectBestand";
+import { startbestand } from "./tauri/fileOps";
 import { setAngleMode, type AngleMode } from "@ifc-calc/core";
 import { UNITS_DEFAULTS, type UnitsSettings } from "./components/settings/SettingsDialog";
+
+/** Het startbestand is geopend; een later effect opent het niet nog eens. */
+let startbestandGeopend = false;
 
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -68,6 +77,7 @@ export default function App() {
   const actief = exemplaren.find((e) => e.id === activeId) ?? null;
   const source = actief?.source ?? "";
   const { addRecentFile } = useRecentFiles();
+  const { openen } = useBestandActies();
   useSneltoetsen();
 
   // De afdrukweergave bestaat alleen tijdens het printen. Even wachten voordat
@@ -77,9 +87,16 @@ export default function App() {
   const printBezig = usePrintStore((s) => s.bezig);
   const printVoorbeeld = usePrintStore((s) => s.voorbeeld);
   const printKlaar = usePrintStore((s) => s.klaar);
+  const toonVoorbeeld = usePrintStore((s) => s.toonVoorbeeld);
+  const sluitVoorbeeld = usePrintStore((s) => s.sluitVoorbeeld);
+  const printSelectie = usePrintStore((s) => s.selectie);
+  const kiesSelectie = usePrintStore((s) => s.kiesSelectie);
+  const printSoort = usePrintStore((s) => s.soort);
   // Alleen het échte printen zet de app weg. Het afdrukvoorbeeld is een paneel
   // binnen de applicatie: lint, projectboom en statusbalk blijven staan.
-  const afdrukmodus = printBezig;
+  // Het rapport gaat via de vellen van het afdrukvoorbeeld (drukvellen.ts);
+  // de app blijft daarbij staan, want het voorbeeld moet die vellen bouwen.
+  const afdrukmodus = printBezig && printSoort !== "rapport";
 
   // De afdrukopmaak hangt aan een klasse op <html> in plaats van aan
   // `@media print`, zodat het voorbeeld op het scherm er precies zo uitziet.
@@ -91,7 +108,32 @@ export default function App() {
   }, [afdrukmodus]);
 
   useEffect(() => {
-    if (!printBezig) return;
+    if (!printBezig || printSoort !== "rapport") return;
+    let afgebroken = false;
+    useProjectStore.getState().selecteer(RAPPORT_ID);
+    toonVoorbeeld(null, "rapport");
+    wachtOpVellen()
+      .then((vellen) => {
+        if (afgebroken) return;
+        const opruimen = zetDrukvellenKlaar(vellen);
+        try {
+          window.print();
+        } finally {
+          opruimen();
+          printKlaar();
+        }
+      })
+      .catch((err) => {
+        alert((err as Error).message);
+        printKlaar();
+      });
+    return () => {
+      afgebroken = true;
+    };
+  }, [printBezig, printSoort, printKlaar, toonVoorbeeld]);
+
+  useEffect(() => {
+    if (!printBezig || printSoort === "rapport") return;
     let afgebroken = false;
     const id = window.setTimeout(() => {
       if (afgebroken) return;
@@ -105,33 +147,76 @@ export default function App() {
       afgebroken = true;
       clearTimeout(id);
     };
-  }, [printBezig, printKlaar]);
+  }, [printBezig, printSoort, printKlaar]);
+
+  // Staat het afdrukvoorbeeld op één blad en open je een ander blad, dan volgt
+  // het voorbeeld mee. Een keuze voor het hele project blijft staan.
+  useEffect(() => {
+    if (!printVoorbeeld || !actief) return;
+    if (printSelectie && printSelectie.length === 1 && printSelectie[0] !== actief.id) {
+      kiesSelectie([actief.id]);
+    }
+  }, [printVoorbeeld, actief, printSelectie, kiesSelectie]);
+
+  // Het rapportvoorbeeld hoort bij de knoop Rapport, het voorbeeld van bladen
+  // bij de bladen. Kies je een andere knoop terwijl het rapportvoorbeeld
+  // openstaat, of de knoop Rapport terwijl er bladen in het voorbeeld staan,
+  // dan gaat het voorbeeld dicht. Anders blijft het onzichtbaar "open" en
+  // drukt Ctrl+P iets anders af dan je ziet. Hetzelfde als je vanuit het
+  // voorbeeld van een blad het rapport afdrukt: dat voorbeeld zou daarna het
+  // rapport tonen onder de tabs van het blad.
+  useEffect(() => {
+    if (!printVoorbeeld) return;
+    if ((printSoort === "rapport") !== (activeId === RAPPORT_ID)) sluitVoorbeeld();
+  }, [printVoorbeeld, printSoort, activeId, sluitVoorbeeld]);
 
   const designerPane = designerVoor(source);
   // Het projectgegevens-formulier is geen rekenblad: geen editor, geen
   // uitwerking, geen splitsing — alleen het formulier.
   const toontProjectGegevens = activeId === PROJECT_ID;
+  // Het rapport is evenmin een rekenblad: een eigen paneel, met het hele
+  // rapport als afdrukvoorbeeld in de tweede tab. Net als bij de bladen wint
+  // een open voorbeeld van de IFC-weergave, het invulpaneel niet.
+  const toontRapport = activeId === RAPPORT_ID;
+  const rapportVoorbeeld = printVoorbeeld && printSoort === "rapport";
+  const rapportWerkruimte = toontRapport && (rapportVoorbeeld || activeView !== "ifc");
   const hasDesigner = designerPane !== null && !toontProjectGegevens;
   const mode = hasDesigner ? splitMode : "cu";
   const leftPane = mode === "vu" ? designerPane : <Editor />;
   const rightPane = mode === "cv" ? designerPane : <Preview />;
 
-  const handleBrowse = useCallback(async () => {
-    try {
-      const file = await openCalculationFile();
-      if (!file) return;
-      laadProject(leesProjectBestand(file.raw, file.name));
-      markeerOpgeslagen(file.path);
-      await addRecentFile({
-        path: file.path,
-        name: file.name,
-        type: "report",
-        timestamp: Date.now(),
-      });
-    } catch (err) {
-      alert(`Bestand openen mislukt: ${(err as Error).message}`);
-    }
-  }, [laadProject, markeerOpgeslagen, addRecentFile]);
+  // De weergaven van een geopend blad, met het afdrukvoorbeeld als laatste tab.
+  // Dat voorbeeld toont de bladen, ook als er eerder een rapport is afgedrukt.
+  // Rechts in de balk de modulestatus en rekenversie van het blad; eronder de
+  // melding als de module intussen een nieuwere rekenversie heeft.
+  const kiesWeergave = (m: "cv" | "cu" | "vu") => {
+    sluitVoorbeeld();
+    setSplitMode(m);
+  };
+  const tabBalk = actief && !toontProjectGegevens ? (
+    <>
+      <div className="split-tabs">
+        {hasDesigner && (
+          <button className={`split-tab${!printVoorbeeld && mode === "cv" ? " active" : ""}`} onClick={() => kiesWeergave("cv")}>Code + Visueel</button>
+        )}
+        <button className={`split-tab${!printVoorbeeld && mode === "cu" ? " active" : ""}`} onClick={() => kiesWeergave("cu")}>Code + Uitwerking</button>
+        {hasDesigner && (
+          <button className={`split-tab${!printVoorbeeld && mode === "vu" ? " active" : ""}`} onClick={() => kiesWeergave("vu")}>Visueel + Uitwerking</button>
+        )}
+        <button className={`split-tab${printVoorbeeld ? " active" : ""}`} onClick={() => toonVoorbeeld([actief.id], "bladen")}>Afdrukvoorbeeld</button>
+        <BladVersieKop ex={actief} />
+      </div>
+      <BladVersieMelding ex={actief} />
+    </>
+  ) : null;
+
+  // De knoop Rapport: het invulpaneel, of het hele rapport zoals het op papier komt.
+  const rapportTabs = (
+    <div className="split-tabs">
+      <button className={`split-tab${rapportVoorbeeld ? "" : " active"}`} onClick={() => sluitVoorbeeld()}>Rapport</button>
+      <button className={`split-tab${rapportVoorbeeld ? " active" : ""}`} onClick={() => toonVoorbeeld(null, "rapport")}>Afdrukvoorbeeld</button>
+    </div>
+  );
 
   const handleOpenRecent = useCallback(async (path: string) => {
     try {
@@ -152,6 +237,19 @@ export default function App() {
     }
   }, [laadProject, markeerOpgeslagen, addRecentFile]);
 
+  // Gestart met een bestand (bestandskoppeling): dat bestand openen, één keer.
+  useEffect(() => {
+    let afgebroken = false;
+    startbestand()
+      .then((pad) => {
+        if (!pad || afgebroken || startbestandGeopend) return;
+        startbestandGeopend = true;
+        void handleOpenRecent(pad);
+      })
+      .catch((err) => console.error("Startbestand lezen mislukt:", err));
+    return () => { afgebroken = true; };
+  }, [handleOpenRecent]);
+
   return (
     <>
       <TitleBar onSettingsClick={() => setSettingsOpen(true)} />
@@ -165,8 +263,22 @@ export default function App() {
       <main className="main-view" style={{ flex: 1, minHeight: 0, display: "flex" }}>
         <ProjectBrowser />
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          {printVoorbeeld ? (
-            <AfdrukVoorbeeld />
+          {rapportWerkruimte ? (
+            <>
+              {rapportTabs}
+              {rapportVoorbeeld ? (
+                <AfdrukVoorbeeld />
+              ) : (
+                <div style={{ flex: 1, minHeight: 0 }}>
+                  <RapportPanel />
+                </div>
+              )}
+            </>
+          ) : printVoorbeeld ? (
+            <>
+              {tabBalk}
+              <AfdrukVoorbeeld />
+            </>
           ) : activeView === "ifc" ? (
             <IfcViewerPanel />
           ) : toontProjectGegevens ? (
@@ -175,20 +287,14 @@ export default function App() {
             <div className="werkruimte-leeg">
               <h2>Nog geen rekenblad geopend</h2>
               <p>
-                Kies links een module om er een aan dit project toe te voegen. Elk blad dat je
+                Voeg een module toe met <b>Module</b> in het lint (tab Start). Elk blad dat je
                 toevoegt heeft zijn eigen invoer — je kunt dezelfde module meerdere keren
                 gebruiken zonder dat de bladen elkaar beïnvloeden.
               </p>
             </div>
           ) : (
             <>
-              {hasDesigner && (
-                <div className="split-tabs">
-                  <button className={`split-tab${mode === "cv" ? " active" : ""}`} onClick={() => setSplitMode("cv")}>Code + Visueel</button>
-                  <button className={`split-tab${mode === "cu" ? " active" : ""}`} onClick={() => setSplitMode("cu")}>Code + Uitwerking</button>
-                  <button className={`split-tab${mode === "vu" ? " active" : ""}`} onClick={() => setSplitMode("vu")}>Visueel + Uitwerking</button>
-                </div>
-              )}
+              {tabBalk}
               <div style={{ flex: 1, minHeight: 0 }}>
                 <SplitPane left={leftPane} right={rightPane} />
               </div>
@@ -205,7 +311,7 @@ export default function App() {
           setBackstageOpen(false);
           setSettingsOpen(true);
         }}
-        onBrowse={handleBrowse}
+        onBrowse={openen}
         onOpenFile={handleOpenRecent}
       />
       <SettingsDialog
@@ -214,6 +320,8 @@ export default function App() {
         theme={theme}
         onThemeChange={handleThemeChange}
       />
+      <ModuleKiezer />
+      <BladBijwerken />
     </>
   );
 }

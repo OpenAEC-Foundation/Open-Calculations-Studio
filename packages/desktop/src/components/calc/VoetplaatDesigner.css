@@ -22,30 +22,35 @@
 }
 .vd-head strong { font-size: 13px; }
 
-/* 2-pane keuze-tabs boven de werkruimte */
+/* 2-pane keuze-tabs boven de werkruimte, ook die van het rapport (App.tsx).
+   Alleen themavariabelen (themes.css): de balk hoort bij de bediening, niet
+   bij het werkvlak eronder, en moet in elk thema leesbaar zijn. */
 .split-tabs {
   display: flex;
   gap: 4px;
   padding: 6px 10px;
-  border-bottom: 1px solid var(--theme-border-subtle, #e5e7eb);
-  background: var(--theme-bg-canvas, #f8fafc);
+  border-bottom: 1px solid var(--theme-border);
+  background: var(--theme-bg);
   flex: 0 0 auto;
 }
 .split-tab {
   font-size: 12px;
   font-weight: 600;
   padding: 4px 12px;
-  border: 1px solid var(--theme-border-subtle, #d1d5db);
+  border: 1px solid var(--theme-border);
   border-radius: 14px;
-  background: var(--theme-bg-surface, #fff);
-  color: var(--theme-text-muted, #6b7280);
+  background: var(--theme-bg-lighter);
+  color: var(--theme-text-secondary);
   cursor: pointer;
 }
-.split-tab:hover { border-color: #93c5fd; }
+.split-tab:hover {
+  border-color: var(--theme-accent);
+  color: var(--theme-text);
+}
 .split-tab.active {
-  background: #1e40af;
-  border-color: #1e40af;
-  color: #fff;
+  background: var(--theme-accent);
+  border-color: var(--theme-accent);
+  color: var(--theme-accent-text);
 }
 .vd-uc {
   margin-left: auto;
@@ -556,4 +561,90 @@
 .vd-help {
   border-bottom: 1px dotted var(--theme-text-muted, #9ca3af);
   cursor: help;
+}
+
+/* Korte toelichting onder een tekening, bv. waarom de getekende piek afwijkt
+   van de rekenwaarde in de uitwerking. */
+.vd-noot {
+  box-sizing: border-box;
+  padding: 2px 8px 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-muted, #6b7280);
+  text-align: center;
+}
+
+/* Een waarde in een onderschrift: niet in kapitalen, anders wordt kNm "KNM". */
+.vd-caption-waarde {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  color: var(--text, #374151);
+}
+
+/* ── Keuze met pictogrammen (statisch schema) ─────────────────────── */
+
+.vd-iconkeuze {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0 8px;
+  font-size: 11px;
+  border-bottom: 1px solid var(--theme-border-subtle, rgba(0, 0, 0, 0.05));
+  container-type: inline-size;
+}
+
+/* Alle tegels op één rij; past dat niet, dan twee per rij, zodat vier
+ * mogelijkheden een nette 2 × 2 worden in plaats van 3 + 1. */
+.vd-iconkeuze-rij {
+  display: grid;
+  grid-template-columns: repeat(var(--iconkeuze-n, 4), minmax(0, 1fr));
+  gap: 6px;
+}
+
+@container (max-width: 320px) {
+  .vd-iconkeuze-rij {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.vd-iconkeuze-optie {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px 4px 5px;
+  border: 1px solid var(--theme-border-subtle, #d1d5db);
+  border-radius: 6px;
+  background: var(--theme-bg-surface, #fff);
+  color: var(--theme-text-secondary, var(--theme-text-muted, #4b5563));
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.vd-iconkeuze-optie svg {
+  width: 100%;
+  max-width: 64px;
+  height: auto;
+}
+
+.vd-iconkeuze-optie:hover {
+  border-color: var(--theme-accent, #d97706);
+}
+
+.vd-iconkeuze-optie.actief {
+  border-color: var(--theme-accent, #d97706);
+  background: color-mix(in srgb, var(--theme-accent, #d97706) 10%, transparent);
+  color: var(--theme-accent, #d97706);
+  font-weight: 600;
+}
+
+.vd-iconkeuze-optie:focus-visible {
+  outline: 2px solid var(--theme-accent, #d97706);
+  outline-offset: 1px;
 }

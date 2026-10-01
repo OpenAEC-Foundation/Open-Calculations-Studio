@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
-import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useActiefExemplaar, useAlleenLezen, useProjectGetal } from "../../store/actiefBlad";
+import { useBladUitkomst } from "./bladResultaat";
+import { Kop } from "./designerKit";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
  * Parametrisch beeld van de kruipcoëfficiënt (NEN-EN 1992-1-1 bijlage B).
  *
- * De de referentie-uitwerking-module heeft geen tekening — alleen invoer en één uitkomst. In
+ * De module in de referentie-uitwerking heeft geen tekening — alleen invoer en één uitkomst. In
  * plaats van een doorsnede toont dit paneel waar dat getal vandaan komt:
  *   • links het invoerscherm, één op één met de referentie-uitwerking;
  *   • rechtsboven de opbouw φ₀ = φ_RH · β(f_cm) · β(t₀) als staafjes, zodat je
@@ -14,10 +16,11 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
  *   • rechtsonder het verloop φ(t;t₀) op een logaritmische tijdas, met φ₀ als
  *     asymptoot en een klikbare marker op het gekozen t.
  *
- * De rekenregels zijn dezelfde als in templates/kruipfactor.ts, gecalibreerd op
- * de de referentie-uitwerking-referentie C45/55 · N · RH 50 % · t₀ 28 d · h₀ 300 mm. Het
- * gerapporteerde getal is φ(t;t₀) bij t = 100000 dagen — 1,614 → 1,61 — en niet
- * φ₀ = 1,617, dat op 1,62 zou uitkomen.
+ * Alle getallen komen uit het doorgerekende blad (templates/kruipfactor.ts), dus
+ * met de tak die de projectinstelling rekenwijze kiest. Het beeld rekent zelf
+ * alleen het verloop β_c(t) van (B.7) voor de kromme, met φ₀ en β_H van het blad.
+ * Het gerapporteerde getal is φ(t;t₀) bij t = 100000 dagen — 1,614 → 1,61 — en
+ * niet φ₀ = 1,617, dat op 1,62 zou uitkomen.
  */
 const MARKER = "Kruipfactor";
 
@@ -36,7 +39,7 @@ const CEMENT: { v: number; label: string; alpha: number }[] = [
 ];
 
 /** Eén bron van waarheid voor de invoer — voedt de controls én de gedeelde store. */
-// Defaults spiegelen de de referentie-uitwerking-referentie, zodat elk getoond getal tegen een
+// Defaults spiegelen de referentieberekening, zodat elk getoond getal tegen een
 // referentieblad te leggen is (φ = 1,614 → geprint als 1,61).
 const DEFAULTS: Record<string, number> = {
   betonkwaliteit: 45,   // C45/55
@@ -56,22 +59,6 @@ const TICKS: { d: number; label: string }[] = [
   { d: 100000, label: "∞" },
 ];
 
-/** Rekengang van bijlage B — identiek aan templates/kruipfactor.ts. */
-function kruip(fck: number, alpha: number, RH: number, t0: number, h0: number) {
-  const fcm = fck + 8;
-  const a1 = (35 / fcm) ** 0.7, a2 = (35 / fcm) ** 0.2, a3 = (35 / fcm) ** 0.5;
-  const droog = (1 - RH / 100) / (0.1 * h0 ** (1 / 3));
-  const phiRH = fcm <= 35 ? 1 + droog : (1 + droog * a1) * a2;      // (B.3a/b)
-  const bfcm = 16.8 / Math.sqrt(fcm);                               // (B.4)
-  const t0cor = Math.max(0.5, t0 * (9 / (2 + t0 ** 1.2) + 1) ** alpha);  // (B.9)
-  const bt0 = 1 / (0.1 + t0cor ** 0.2);                             // (B.5)
-  const phi0 = phiRH * bfcm * bt0;                                  // (B.2)
-  // (B.8a) zonder α_3 bij f_cm ≤ 35, (B.8b) mét α_3 daarboven.
-  const aH = fcm <= 35 ? 1 : a3;
-  const bH = Math.min(1.5 * (1 + (0.012 * RH) ** 18) * h0 + 250 * aH, 1500 * aH);
-  const Ecm = 22000 * (fcm / 10) ** 0.3;                            // (3.14)
-  return { fcm, a1, a2, a3, phiRH, bfcm, t0cor, bt0, phi0, bH, Ecm };
-}
 /** β_c(t;t₀) — (B.7). Gebruikt de wérkelijke ouderdom, niet de (B.9)-correctie. */
 const betaC = (t: number, t0: number, bH: number) =>
   t <= t0 ? 0 : ((t - t0) / (bH + t - t0)) ** 0.3;
@@ -96,6 +83,9 @@ export default function KruipfactorDesigner() {
     [activeId, seedWaarden],
   );
   const [editing, setEditing] = useState<string | null>(null);
+  // De uitkomst en de tussenwaarden van het blad zelf, met de gekozen tak.
+  const uitkomst = useBladUitkomst();
+  const ref = Math.round(useProjectGetal("rekenwijze", 1)) === 1;
 
   // Meet het beschikbare tekengebied zodat het beeld meegroeit met het paneel.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -139,18 +129,23 @@ export default function KruipfactorDesigner() {
   // Bijlage B geldt voor 40 % ≤ RH ≤ 100 %, maar buiten dat bereik rekenen de
   // formules gewoon door — en het referentieprogramma laat het toe. Niet
   // stilzwijgend bijknippen dus; alleen waarschuwen.
-  const RH = Math.min(100, Math.max(1, d("RH")));
+  const RH = d("RH");
   const rhBuitenBereik = RH < 40;
-  const t0 = Math.max(0.5, d("t_0"));
-  const h0 = Math.max(1, d("h_0"));
-  const t = Math.min(T_MAX, Math.max(t0, d("t")));
+  const t0Invoer = d("t_0");
+  // Alleen voor de logaritmische tijdas; het blad en de kromme rekenen met t0Invoer.
+  const t0 = Math.max(0.5, t0Invoer);
+  const h0 = d("h_0");
+  const tInvoer = d("t");
+  // Alleen voor de plaats van de marker op de tijdas; het blad rekent met tInvoer.
+  const t = Math.min(T_MAX, Math.max(t0, tInvoer));
 
-  // ── rekenen ───────────────────────────────────────────────────────────────
-  const r = kruip(fck, alpha, RH, t0, h0);
-  const bc = betaC(t, t0, r.bH);
-  const phiT = r.phi0 * bc;
-  const EcEff = r.Ecm / (1 + phiT);
+  // ── uitkomsten van het blad ───────────────────────────────────────────────
   const fmt = (v: number, dec = 2) => v.toFixed(dec).replace(".", ",");
+  const g = uitkomst?.getallen ?? {};
+  // "—" zolang het blad een waarde niet toont.
+  const w = (naam: string, dec = 2) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));
+  const phi0 = g["φ_0"], bH = g["β_H"], phiT = g["φ_t"];
+  const heeftKromme = phi0 !== undefined && bH !== undefined;
 
   // ── klikbare chip ─────────────────────────────────────────────────────────
   function Dim(props: { name: string; value: number; x: number; y: number; step?: number; label?: string }) {
@@ -184,33 +179,35 @@ export default function KruipfactorDesigner() {
 
   // opbouw φ₀ — drie factoren naast elkaar, hoogte naar rato van de waarde
   const bars = [
-    { k: "φ_RH", v: r.phiRH, kleur: "#2563eb", uitleg: "vochtigheid + dikte" },
-    { k: "β(f_cm)", v: r.bfcm, kleur: "#0d9488", uitleg: "betonsterkte" },
-    { k: "β(t₀)", v: r.bt0, kleur: "#b45309", uitleg: "ouderdom bij belasten" },
+    { k: "φ_RH", v: g["φ_RH"], kleur: "#2563eb", uitleg: "vochtigheid + dikte" },
+    { k: "β(f_cm)", v: g["β_fcm"], kleur: "#0d9488", uitleg: "betonsterkte" },
+    { k: "β(t₀)", v: g["β_t0"], kleur: "#b45309", uitleg: "ouderdom bij belasten" },
   ];
-  const bMax = Math.max(...bars.map((b) => b.v), 1) * 1.15;
+  const bMax = Math.max(...bars.map((b) => b.v ?? 0), 1) * 1.15;
   const bL = 12, bR = 12, bT = 16, bB = 26;
   const bW = (W - bL - bR) / bars.length;
 
   // tijdgrafiek — logaritmische x-as van t₀ tot 100 jaar
   const cL = 44, cR = 16, cT = 18, cB = 30;
   const cw = Math.max(40, W - cL - cR), ch = Math.max(40, CH - cT - cB);
-  const lo = Math.log10(Math.max(0.5, t0)), hi = Math.log10(T_MAX);
+  const lo = Math.log10(Math.max(0.5, t0)), hi = Math.log10(Math.max(T_MAX, 10 * t0));
   const gx = (dd: number) => cL + ((Math.log10(Math.max(dd, 10 ** lo)) - lo) / (hi - lo)) * cw;
-  const yMax = Math.max(r.phi0, 0.1) * 1.12;
+  const yMax = Math.max(phi0 ?? 0, phiT ?? 0, 0.1) * 1.12;
   const gy = (v: number) => cT + ch - (v / yMax) * ch;
-  const pad = Array.from({ length: 121 }, (_, i) => {
-    const dd = 10 ** (lo + ((hi - lo) * i) / 120);
-    return `${i === 0 ? "M" : "L"} ${gx(dd).toFixed(1)} ${gy(r.phi0 * betaC(dd, t0, r.bH)).toFixed(1)}`;
-  }).join(" ");
+  // De kromme φ₀·β_c(t): φ₀ en β_H van het blad, β_c uit (B.7). Op t valt hij
+  // samen met φ(t;t₀) van het blad.
+  const pad = heeftKromme
+    ? Array.from({ length: 121 }, (_, i) => {
+        const dd = 10 ** (lo + ((hi - lo) * i) / 120);
+        return `${i === 0 ? "M" : "L"} ${gx(dd).toFixed(1)} ${gy(phi0 * betaC(dd, t0Invoer, bH)).toFixed(1)}`;
+      }).join(" ")
+    : "";
   const ticks = TICKS.filter((k) => k.d >= t0 && k.d <= T_MAX);
+  const fcm = g["f_cm"] ?? fck + 8;
 
   return (
     <div className="vd-panel">
-      <div className="vd-head">
-        <strong>Parametrisch beeld — kruipfactor</strong>
-        <span className="vd-uc info">φ(t;t<sub>0</sub>) = {fmt(phiT)}</span>
-      </div>
+      <Kop titel="Parametrisch beeld — kruipfactor" badge={<>φ(t;t<sub>0</sub>) = {w("φ_t")}</>} />
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
         <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
@@ -225,8 +222,8 @@ export default function KruipfactorDesigner() {
               {CEMENT.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
             </select>
           </label>
-          <span className="gd-note">f<sub>cm</sub> = f<sub>ck</sub> + 8 = {fmt(r.fcm, 0)} N/mm² →
-            {r.fcm <= 35 ? " (B.3a), geen α-demping" : ` (B.3b) met α₁ = ${fmt(r.a1)} · α₂ = ${fmt(r.a2)}`}</span>
+          <span className="gd-note">f<sub>cm</sub> = f<sub>ck</sub> + 8 = {fmt(fcm, 0)} N/mm² →
+            {fcm <= 35 ? " (B.3a), geen α-demping" : ` (B.3b) met α₁ = ${w("α_1")} · α₂ = ${w("α_2")}`}</span>
 
           <span className="vd-ctrl-h">Omgeving en belasten</span>
           <label title="Bijlage B is opgesteld voor 40 % ≤ RH ≤ 100 %; daarbuiten rekenen de formules door">Rel. vochtigheid RH (%)
@@ -240,44 +237,48 @@ export default function KruipfactorDesigner() {
             </span>
           )}
           <label title="Ouderdom van het beton op het moment dat de blijvende belasting wordt aangebracht">Ouderdom t<sub>0</sub> (dagen)
-            <input type="number" step={1} min={1} value={t0} onChange={(e) => setVal("t_0", parseFloat(e.target.value))} />
+            <input type="number" step={1} min={1} value={t0Invoer} onChange={(e) => setVal("t_0", parseFloat(e.target.value))} />
           </label>
           <label title="Theoretische dikte h₀ = 2·A_c/u, met u de aan uitdroging blootgestelde omtrek">Theor. dikte h<sub>0</sub> (mm)
             <input type="number" step={25} min={1} value={h0} onChange={(e) => setVal("h_0", parseFloat(e.target.value))} />
           </label>
           {alpha !== 0 && (
             <span className="gd-note" style={{ color: "#1d4ed8" }}>
-              Cementcorrectie (B.9): t<sub>0</sub> = {fmt(t0, 0)} → {fmt(r.t0cor, 1)} dagen.
-              Dit blad past die toe zoals de norm voorschrijft. De referentie-uitwerking rekent hem wél
-              uit maar gebruikt hem niet in β(t<sub>0</sub>) en wijkt hier dus af.
+              {ref ? (
+                <>Cementcorrectie (B.9): de referentiestand vult in (B.5) de onbewerkte
+                  t<sub>0</sub> = {fmt(t0Invoer, 0)} dagen in, zoals de referentie-uitwerking. De norm-stand
+                  rekent met de gecorrigeerde ouderdom.</>
+              ) : (
+                <>Cementcorrectie (B.9): t<sub>0</sub> = {fmt(t0Invoer, 0)} → {w("t_0_cor")} dagen in (B.5).</>
+              )}
             </span>
           )}
 
           <span className="vd-ctrl-h">Tijdstip</span>
           <label title="Het referentieblad rekent met 100000 dagen (≈ 274 jaar) als eindstadium">Tijdstip t (dagen)
-            <input type="number" step={365} min={1} value={t} onChange={(e) => setVal("t", parseFloat(e.target.value))} />
+            <input type="number" step={365} min={1} value={tInvoer} onChange={(e) => setVal("t", parseFloat(e.target.value))} />
           </label>
-          <span className="gd-note">β<sub>H</sub> = {fmt(r.bH, 0)} · β<sub>c</sub> = {fmt(bc, 3)} →
-            φ(t;t<sub>0</sub>) = φ<sub>0</sub>·β<sub>c</sub> = {fmt(phiT)}</span>
-          <span className="gd-note">E<sub>cm</sub> = {fmt(r.Ecm, 0)} N/mm² · E<sub>c,eff</sub> = E<sub>cm</sub>/(1+φ) = {fmt(EcEff, 0)} N/mm²</span>
+          <span className="gd-note">β<sub>H</sub> = {w("β_H", 0)} · β<sub>c</sub> = {w("β_c", 3)} →
+            φ(t;t<sub>0</sub>) = φ<sub>0</sub>·β<sub>c</sub> = {w("φ_t")}</span>
+          <span className="gd-note">E<sub>cm</sub> = {w("E_cm", 0)} N/mm² · E<sub>c,eff</sub> = E<sub>cm</sub>/(1+φ) = {w("E_c_eff", 0)} N/mm²</span>
         </div>
 
         <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, gap, borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
           <div className="vd-canvas">
-            <div className="vd-caption">Opbouw — φ = φ<sub>RH</sub> · β(f<sub>cm</sub>) · β(t<sub>0</sub>)</div>
+            <div className="vd-caption">Opbouw — φ<sub>0</sub> = φ<sub>RH</sub> · β(f<sub>cm</sub>) · β(t<sub>0</sub>)</div>
             <div className="vd-stage" style={{ width: W, height: BH, background: "transparent", border: "none", borderRadius: 0 }}>
               <svg width={W} height={BH} className="vd-svg">
                 {/* referentielijn op 1,0 — factoren erboven vergroten de kruip */}
                 <line x1={bL} y1={bT + (BH - bT - bB) * (1 - 1 / bMax)} x2={W - bR} y2={bT + (BH - bT - bB) * (1 - 1 / bMax)}
                   stroke="#9ca3af" strokeWidth={1} strokeDasharray="5 3" />
                 {bars.map((b, i) => {
-                  const hgt = (b.v / bMax) * (BH - bT - bB);
+                  const hgt = ((b.v ?? 0) / bMax) * (BH - bT - bB);
                   const x = bL + i * bW + bW * 0.22, w = bW * 0.56;
                   return (
                     <g key={b.k}>
                       <rect x={x} y={bT + (BH - bT - bB) - hgt} width={w} height={hgt} fill={b.kleur} opacity={0.82} rx={2} />
                       <text x={x + w / 2} y={bT + (BH - bT - bB) - hgt - 5} textAnchor="middle"
-                        style={{ fontSize: 12, fontWeight: 700, fill: b.kleur }}>{fmt(b.v)}</text>
+                        style={{ fontSize: 12, fontWeight: 700, fill: b.kleur }}>{b.v === undefined ? "—" : fmt(b.v)}</text>
                       <text x={x + w / 2} y={BH - bB + 13} textAnchor="middle" style={{ fontSize: 11, fill: "#374151" }}>{b.k}</text>
                       <text x={x + w / 2} y={BH - bB + 24} textAnchor="middle" style={{ fontSize: 9.5, fill: "#6b7280" }}>{b.uitleg}</text>
                     </g>
@@ -295,15 +296,19 @@ export default function KruipfactorDesigner() {
                 <line x1={cL} y1={cT} x2={cL} y2={cT + ch} stroke="#6b7280" strokeWidth={1} />
                 <line x1={cL} y1={cT + ch} x2={cL + cw} y2={cT + ch} stroke="#6b7280" strokeWidth={1} />
                 {/* eindwaarde φ₀ als asymptoot */}
-                <line x1={cL} y1={gy(r.phi0)} x2={cL + cw} y2={gy(r.phi0)} stroke="#dc2626" strokeWidth={1.2} strokeDasharray="6 4" />
-                <text x={cL + 6} y={gy(r.phi0) - 5} style={{ fontSize: 11, fontWeight: 700, fill: "#dc2626" }}>φ = {fmt(r.phi0)}</text>
-                {/* y-ticks */}
-                {[0.25, 0.5, 0.75].map((f) => (
-                  <g key={f}>
-                    <line x1={cL - 4} y1={gy(r.phi0 * f)} x2={cL + cw} y2={gy(r.phi0 * f)} stroke="#e5e7eb" strokeWidth={1} />
-                    <text x={cL - 7} y={gy(r.phi0 * f) + 3.5} textAnchor="end" style={{ fontSize: 9.5, fill: "#9ca3af" }}>{fmt(r.phi0 * f)}</text>
-                  </g>
-                ))}
+                {heeftKromme && (
+                  <>
+                    <line x1={cL} y1={gy(phi0)} x2={cL + cw} y2={gy(phi0)} stroke="#dc2626" strokeWidth={1.2} strokeDasharray="6 4" />
+                    <text x={cL + 6} y={gy(phi0) - 5} style={{ fontSize: 11, fontWeight: 700, fill: "#dc2626" }}>φ₀ = {fmt(phi0)}</text>
+                    {/* y-ticks */}
+                    {[0.25, 0.5, 0.75].map((f) => (
+                      <g key={f}>
+                        <line x1={cL - 4} y1={gy(phi0 * f)} x2={cL + cw} y2={gy(phi0 * f)} stroke="#e5e7eb" strokeWidth={1} />
+                        <text x={cL - 7} y={gy(phi0 * f) + 3.5} textAnchor="end" style={{ fontSize: 9.5, fill: "#9ca3af" }}>{fmt(phi0 * f)}</text>
+                      </g>
+                    ))}
+                  </>
+                )}
                 {/* x-ticks */}
                 {ticks.map((k) => (
                   <g key={k.d}>
@@ -312,14 +317,18 @@ export default function KruipfactorDesigner() {
                   </g>
                 ))}
                 {/* de kruipkromme */}
-                <path d={pad} fill="none" stroke="#2563eb" strokeWidth={2.2} />
-                {/* marker op het gekozen tijdstip */}
-                <line x1={gx(t)} y1={gy(phiT)} x2={gx(t)} y2={cT + ch} stroke="#2563eb" strokeWidth={1} strokeDasharray="4 3" />
-                <circle cx={gx(t)} cy={gy(phiT)} r={4.5} fill="#fff" stroke="#2563eb" strokeWidth={2} />
-                <text x={gx(t) - 8} y={gy(phiT) - 8} textAnchor="end" style={{ fontSize: 11, fontWeight: 700, fill: "#2563eb" }}>{fmt(phiT)}</text>
+                {heeftKromme && <path d={pad} fill="none" stroke="#2563eb" strokeWidth={2.2} />}
+                {/* marker op het gekozen tijdstip, met φ(t;t₀) van het blad */}
+                {phiT !== undefined && (
+                  <>
+                    <line x1={gx(t)} y1={gy(phiT)} x2={gx(t)} y2={cT + ch} stroke="#2563eb" strokeWidth={1} strokeDasharray="4 3" />
+                    <circle cx={gx(t)} cy={gy(phiT)} r={4.5} fill="#fff" stroke="#2563eb" strokeWidth={2} />
+                    <text x={gx(t) - 8} y={gy(phiT) - 8} textAnchor="end" style={{ fontSize: 11, fontWeight: 700, fill: "#2563eb" }}>{fmt(phiT)}</text>
+                  </>
+                )}
               </svg>
 
-              <Dim name="t" value={t} x={gx(t)} y={cT + ch + 26} step={365} label="t" />
+              <Dim name="t" value={tInvoer} x={gx(t)} y={cT + ch + 26} step={365} label="t" />
             </div>
           </div>
         </div>
@@ -330,10 +339,10 @@ export default function KruipfactorDesigner() {
           <br />De rode stippellijn is φ<sub>0</sub>; het gerapporteerde getal is de blauwe kromme op tijdstip t.</span>
         <span className="vd-live">
           C{fck} · cement {(CEMENT.find((o) => o.v === cem) ?? CEMENT[1]).label.charAt(0)} · RH = {fmt(RH, 0)} % ·
-          t<sub>0</sub> = {fmt(t0, 0)} d · h<sub>0</sub> = {fmt(h0, 0)} mm ·
-          φ<sub>RH</sub> = {fmt(r.phiRH)} · β(f<sub>cm</sub>) = {fmt(r.bfcm)} · β(t<sub>0</sub>) = {fmt(r.bt0)} ·
-          φ<sub>0</sub> = {fmt(r.phi0)} · β<sub>H</sub> = {fmt(r.bH, 0)} · β<sub>c</sub> = {fmt(bc, 3)} ·
-          <b> φ(t;t<sub>0</sub>) = {fmt(phiT)}</b> · E<sub>c,eff</sub> = {fmt(EcEff, 0)} N/mm²
+          t<sub>0</sub> = {fmt(t0Invoer, 0)} d · h<sub>0</sub> = {fmt(h0, 0)} mm ·
+          φ<sub>RH</sub> = {w("φ_RH")} · β(f<sub>cm</sub>) = {w("β_fcm")} · β(t<sub>0</sub>) = {w("β_t0")} ·
+          φ<sub>0</sub> = {w("φ_0")} · β<sub>H</sub> = {w("β_H", 0)} · β<sub>c</sub> = {w("β_c", 3)} ·
+          <b> φ(t;t<sub>0</sub>) = {w("φ_t")}</b> · E<sub>c,eff</sub> = {w("E_c_eff", 0)} N/mm²
         </span>
       </div>
     </div>

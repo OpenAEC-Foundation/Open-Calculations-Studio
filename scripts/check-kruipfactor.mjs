@@ -1,15 +1,16 @@
 /**
  * Controlescript voor de module Kruipfactor φ(t;t₀).
  *
- * Zes de referentie-uitwerking-referenties, alle bij t₀ = 28 d en h₀ = 300 mm. Het blad
+ * Zes referentieberekeningen, alle bij t₀ = 28 d en h₀ = 300 mm. Het blad
  * rapporteert φ(t;t₀) bij t = 100000 dagen — niet φ₀; dat scheelt 1,62 tegen
- * 1,61 en was in een eerdere sessie de grootste valkuil.
+ * 1,61.
  *
- * Twee gedocumenteerde afwijkingen (register §1 en §2) staan hier als
- * `afwijkend` en tellen niet als fout:
+ * Twee gedocumenteerde afwijkingen (register §1 en §2) zijn een splitspunt op
+ * β(t₀) en β_H. De referentiestand (`rekenwijze` = 1) hoort het referentieblad
+ * exact te geven; de norm-stand (`rekenwijze` = 0) de waarde van bijlage B:
  *   §1  De referentie-uitwerking rekent de cementcorrectie (B.9) uit maar vult in (B.5) toch
  *       de onbewerkte t₀ = 28 in. Cementklasse heeft daar dus géén effect:
- *       N, R en S geven alle drie 1,61. Dit blad volgt de norm: R → 1,57,
+ *       N, R en S geven alle drie 1,61. Volgens de norm: R → 1,57,
  *       S → 1,66.
  *   §2  Bij de referentie-uitwerking is β_H onafhankelijk van RH. Bij RH 70 staat er 653
  *       waar de norm 673 vraagt. Bij t = 100000 verandert dat het eindresultaat
@@ -18,6 +19,7 @@
  * Draaien:  node scripts/check-kruipfactor.mjs
  * Vereist een gebouwde core:  npm --prefix packages/core run build
  */
+import { readFileSync } from "node:fs";
 import { laadTemplate, reken, toets, afronden } from "./lib/refcheck.mjs";
 
 const tpl = laadTemplate("kruipfactor.ts");
@@ -50,23 +52,71 @@ const REFERENTIES = [
     invoer: { RH: "70" },
     // β_H is hier het strijdpunt: de norm rekent (0,012·RH)^18 mee, de referentie-uitwerking
     // niet. Op het eindresultaat maakt dat bij t = 100000 niets uit.
-    verwacht: { "φ_RH": "1.229", "φ_0": "1.385", "φ_t_nb": "1.382", "β_H_XC": "653" } },
+    verwacht: { "φ_RH": "1.229", "φ_0": "1.385", "β_H": "653", "φ_t": "1.382" },
+    // β_H = 1,5·(1 + 0,84^18)·300 + 250·0,8126 = 469,5 + 203,2 = 672,7
+    norm: { "β_H": "673", "φ_t": "1.382" } },
 
   { blad: "document2A — C45/55 · R · RH 50 (afwijking §1: cementcorrectie)",
     invoer: { cementklasse: R },
-    verwacht: { "φ_t_nb": { waarde: "1.57", tol: 0.005, waarom: "norm — cementklasse R werkt door via (B.5)" },
-                "φ_t": "1.61" } },
+    verwacht: { "φ_t": "1.61" },
+    norm: { "φ_t": { waarde: "1.57", tol: 0.005, waarom: "norm — cementklasse R werkt door via (B.5)" } } },
 
   { blad: "document4A — C45/55 · S · RH 50 (afwijking §1: cementcorrectie)",
     invoer: { cementklasse: S },
-    verwacht: { "φ_t_nb": { waarde: "1.66", tol: 0.005, waarom: "norm — cementklasse S werkt door via (B.5)" },
-                "φ_t": "1.61" } },
+    verwacht: { "φ_t": "1.61" },
+    norm: { "φ_t": { waarde: "1.66", tol: 0.005, waarom: "norm — cementklasse S werkt door via (B.5)" } },
+    // In de referentiestand meldt het blad dat bijlage B een hogere φ geeft.
+    melding: true },
 ];
 
 let fouten = 0;
 for (const ref of REFERENTIES) {
-  const got = reken(tpl, { ...BASIS, ...ref.invoer }, PROJECT);
+  const invoer = { ...BASIS, ...ref.invoer };
+  const got = reken(tpl, invoer, PROJECT);
   fouten += toets(ref.blad, got, ref.verwacht, {});
+
+  // Elke afgedrukte regel moet rekenkundig kloppen: φ_t = φ_0·β_c in beide standen.
+  for (const [stand, uit] of [["referentie", got], ["norm", reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 })]]) {
+    const v = uit.values;
+    const ok = Math.abs(v["φ_t"] - v["φ_0"] * v["β_c"]) < 1e-3 && Math.abs(v["φ_0"] - v["φ_RH"] * v["β_fcm"] * v["β_t0"]) < 1e-3;
+    if (!ok) fouten++;
+    console.log(`  ${ok ? "OK    " : "FOUT  "} ${stand}stand: φ_0 = φ_RH·β_fcm·β_t0 en φ_t = φ_0·β_c`);
+    if (stand === "norm" && ref.norm) fouten += toets(`${ref.blad} — norm-stand`, uit, ref.norm, {});
+  }
+
+  const meldt = /volgens bijlage B is/.test(got.text);
+  const meldingOk = meldt === (ref.melding === true);
+  if (!meldingOk) fouten++;
+  console.log(`  ${meldingOk ? "OK    " : "FOUT  "} melding 'volgens bijlage B hoger': ${meldt ? "ja" : "nee"}`);
+}
+
+// ── Het beeld ─────────────────────────────────────────────────────────────
+// KruipfactorDesigner.tsx rekent niet zelf maar leest zijn getallen uit dit
+// blad, met de tak die de projectinstelling kiest. Elke naam die het beeld
+// opvraagt, moet het blad dus zichtbaar uitrekenen; anders staat er in het
+// paneel een "—". t_0,cor toont het blad alleen in de norm-stand, en alleen
+// daar leest het beeld hem.
+{
+  const beeld = readFileSync(new URL("../packages/desktop/src/components/calc/KruipfactorDesigner.tsx", import.meta.url), "utf8");
+  const namen = [...new Set([...beeld.matchAll(/\b(?:w\(|g\[)"([^"]+)"/g)].map((m) => m[1]))];
+  const alleenNorm = ["t_0_cor"];
+  console.log(`\nKruipfactorDesigner leest ${namen.length} namen uit het blad`);
+  for (const [stand, rekenwijze] of [["referentie", 1], ["norm", 0]]) {
+    const uit = reken(tpl, { ...BASIS, cementklasse: S }, { ...PROJECT, rekenwijze });
+    const nodig = namen.filter((n) => rekenwijze === 0 || !alleenNorm.includes(n));
+    const mist = nodig.filter((n) => !Number.isFinite(uit.values[n]));
+    if (mist.length) fouten++;
+    console.log(`  ${mist.length ? "FOUT  " : "OK    "} ${stand}stand${mist.length ? `: ontbreekt ${mist.join(", ")}` : `: alle ${nodig.length} namen aanwezig`}`);
+    // Het getal in de kop van het beeld is φ(t;t₀) van de gekozen tak. In de
+    // referentiestand heeft de cementklasse geen effect (§1), dus bij klasse S
+    // gelijk aan document1A: 1,617 · 0,998 = 1,614. Het beeld rekende vroeger
+    // zelf en toonde hier de norm-waarde 1,66.
+    if (rekenwijze === 1) {
+      const ok = Math.abs(uit.values["φ_t"] - 1.614) < 5e-4;
+      if (!ok) fouten++;
+      console.log(`  ${ok ? "OK    " : "FOUT  "} klasse S, referentiestand: het beeld toont φ_t = ${uit.values["φ_t"]} (verwacht 1.614, niet 1.66)`);
+    }
+  }
 }
 
 afronden(fouten, "Kruipfactor");

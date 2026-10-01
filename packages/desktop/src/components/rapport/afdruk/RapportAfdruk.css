@@ -1,0 +1,521 @@
+/*
+ * Het constructierapport op papier.
+ *
+ * Alles staat op het raster van de referentie-spreadsheet: regels van 6,6 mm
+ * (18,7 pt) en kolommen van 18,98 mm (53,8 pt). Elke hoogte is een geheel
+ * aantal regels, en de bladspiegel (270,6 mm) is er precies 41. Zo valt een
+ * vel van het rapport op dezelfde regels als het vel van de referentie. Tekst
+ * van 10 pt met een regelhoogte van 6,6 mm komt met Segoe UI vanzelf op de
+ * basislijn van de referentie (13,5 pt onder de bovenkant van de regel).
+ *
+ * Deze regels gelden op drie plaatsen:
+ * - de echte afdruk: .print-root > .rpa-wortel > section;
+ * - de meetopstelling van het afdrukvoorbeeld: .av-meet > .rpa-wortel > section;
+ * - de vellen van het voorbeeld: .av-pagina.rpa-wortel > .av-pagina-inhoud.<sectieklassen>.
+ * Daarom hangt alles aan `.rpa-wortel` plus een eigen klasse op het element
+ * zelf, en nooit aan de nesting binnen een sectie: op een vel van het
+ * voorbeeld staat een regel los, zonder de wikkels waar hij uit kwam.
+ *
+ * Witruimte bóven een regel is padding, geen marge: het voorbeeld zet de
+ * bovenmarge van het eerste blok op een vel op nul, en de browser laat marges
+ * bij een paginaovergang vallen. De lege regel boven een kop moet op beide
+ * plaatsen blijven staan, net als in de referentie.
+ */
+
+@page rapport {
+  size: A4 portrait;
+  /*
+   * De marges van de referentie, gelijk aan MATEN.rapport in paginering.ts:
+   * de bladspiegel is precies 41 regels van 6,6 mm, in het voorbeeld en op
+   * papier. De voet vult de ondermarge van 19,8 mm (zie .rpa-voet).
+   */
+  margin: 6.6mm 9.9mm 19.8mm 9.85mm;
+
+  /* De algemene @page zet "Pagina x van y" in het midden; niet in het rapport. */
+  @bottom-center {
+    content: none;
+  }
+
+  /*
+   * Het paginanummer rechtsonder: 10 pt zwart, verticaal midden in de
+   * ondermarge — dat komt uit op de basislijn van de referentie (817,9 pt).
+   * Vaste lettertypen: een paginamarge erft geen CSS-variabelen van het
+   * document.
+   */
+  @bottom-right {
+    content: counter(page);
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 10pt;
+    color: #000;
+    text-align: right;
+    vertical-align: middle;
+  }
+}
+
+.rpa-wortel {
+  --rpa-rij: 6.6mm;
+  --rpa-kolom: 18.98mm;
+  /* Van een kolomgrens tot de tekst in de cel: 29,3 pt − 27,9 pt. */
+  --rpa-cel: 1.4pt;
+  --rpa-lijn: 0.75pt solid #000;
+  page: rapport;
+  color: #000;
+  /* Vullingen van kopregels ook zonder "achtergrondafbeeldingen" in de printdialoog. */
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.rpa-wortel > section {
+  page: rapport;
+}
+
+/*
+ * In de echte afdruk precies zo breed als de bladspiegel (MATEN.rapport).
+ * In de afdrukmodus is .print-root op het scherm zo breed als het venster;
+ * de parametrische beelden meten hun breedte met een ResizeObserver en zouden
+ * dan de vensterbreedte aannemen. Bij het printen is alles wat breder is dan
+ * de bladspiegel voor de browser reden om het hele document te verkleinen,
+ * en dan valt niets meer op het raster.
+ */
+.print-root > .rpa-wortel {
+  width: 190.25mm;
+  max-width: 190.25mm;
+}
+
+.rpa-wortel .rpa-sectie {
+  font-family: var(--rpa-font);
+  font-size: 10pt;
+  line-height: var(--rpa-rij);
+  color: #000;
+}
+
+/* Elke sectie op een vers vel; de eerste (het voorblad) begint gewoon bovenaan. */
+.print-opmaak .rpa-wortel > section {
+  break-before: page;
+  page-break-before: always;
+}
+
+.print-opmaak .rpa-wortel > section:first-of-type {
+  break-before: auto;
+  page-break-before: auto;
+}
+
+/* ─── Het raster ──────────────────────────────────────────────── */
+
+.rpa-wortel .rpa-rij {
+  display: grid;
+  grid-template-columns: repeat(10, var(--rpa-kolom));
+  grid-auto-rows: minmax(var(--rpa-rij), auto);
+  box-sizing: border-box;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Een cel is één regel hoog; tekst mag, zoals in een spreadsheet, over de
+   lege cellen ernaast doorlopen. */
+.rpa-wortel .rpa-cel {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: var(--rpa-rij);
+  padding: 0 var(--rpa-cel);
+  line-height: var(--rpa-rij);
+  white-space: nowrap;
+}
+
+/* Lijnen liggen binnen de regel: de regelhoogte krimpt met de lijndikte,
+   zodat alles eronder op het raster blijft. */
+.rpa-wortel .rpa-o {
+  border-bottom: var(--rpa-lijn);
+  line-height: calc(var(--rpa-rij) - 0.75pt);
+}
+
+.rpa-wortel .rpa-b {
+  border-top: var(--rpa-lijn);
+  line-height: calc(var(--rpa-rij) - 0.75pt);
+}
+
+.rpa-wortel .rpa-o.rpa-b {
+  line-height: calc(var(--rpa-rij) - 1.5pt);
+}
+
+.rpa-wortel .rpa-l {
+  border-left: var(--rpa-lijn);
+}
+
+.rpa-wortel .rpa-r {
+  border-right: var(--rpa-lijn);
+}
+
+.rpa-wortel .rpa-leeg {
+  height: var(--rpa-rij);
+}
+
+/* Hoofdstuk 4 en 5: de inhoud springt één kolom in, de koppen niet. */
+.rpa-wortel .rpa-in {
+  padding-left: var(--rpa-kolom);
+}
+
+/* Een lege regel boven deze regel, die met de regel meegaat naar een nieuw vel. */
+.rpa-wortel .rpa-voor {
+  padding-top: var(--rpa-rij);
+}
+
+.rpa-wortel .rpa-cel sub,
+.rpa-wortel .rpa-cel sup {
+  font-size: 70%;
+  line-height: 0;
+}
+
+/* ─── Lopende tekst ───────────────────────────────────────────── */
+
+.rpa-wortel .rpa-tekst {
+  box-sizing: border-box;
+  /* Rechts geen celmarge: in de referentie loopt tekst tot de rand van de
+     bladspiegel door (567,2 pt), over lege cellen heen. */
+  margin: 0 -0.5mm 0 0;
+  padding: 0 0 0 var(--rpa-cel);
+  min-height: var(--rpa-rij);
+  line-height: var(--rpa-rij);
+  overflow-wrap: break-word;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Een opsommingsregel ("-…") springt één kolom in. */
+.rpa-wortel .rpa-streep {
+  padding-left: calc(var(--rpa-kolom) + var(--rpa-cel));
+}
+
+/* ─── Koppen ──────────────────────────────────────────────────── */
+
+/* De app geeft h1–h4 haar eigen koplettertype en een krappere letterafstand
+   (App.css). In het rapport gelden het lettertype van de huisstijl en de
+   gewone letterafstand, net als voor de rest van de tekst. */
+.rpa-wortel .rpa-h1,
+.rpa-wortel .rpa-h2,
+.rpa-wortel .rpa-h3,
+.rpa-wortel .rpa-h4,
+.rpa-wortel .rpa-hb,
+.rpa-wortel .rpa-io-kop,
+.rpa-wortel .rpa-vb-titel {
+  font-family: var(--rpa-font);
+  letter-spacing: normal;
+}
+
+/* Hoofdstuk: een blok van drie regels, de tekst onderaan (basislijn 8,6 pt
+   boven de onderkant), dan een lege regel. */
+.rpa-wortel .rpa-h1 {
+  margin: 0;
+  padding: var(--rpa-rij) 0 var(--rpa-rij) var(--rpa-cel);
+  font-size: 24pt;
+  font-weight: 700;
+  line-height: calc(2 * var(--rpa-rij));
+  color: var(--rpa-hoofd);
+}
+
+/* Een hoofdstuk dat binnen een sectie doorloopt: één lege regel extra erboven. */
+.rpa-wortel .rpa-h1.rpa-vervolg {
+  padding-top: calc(2 * var(--rpa-rij));
+}
+
+/* Paragraaf: lege regel, de kop, lege regel. */
+.rpa-wortel .rpa-h2 {
+  margin: 0;
+  padding: var(--rpa-rij) 0 var(--rpa-rij) var(--rpa-cel);
+  font-size: 12pt;
+  font-weight: 700;
+  line-height: var(--rpa-rij);
+  color: var(--rpa-accent);
+}
+
+/* Blok: lege regel, de kop met een lijn over de volle breedte, lege regel.
+   De lege regel eronder is marge, want de lijn hoort direct onder de tekst. */
+.rpa-wortel .rpa-h3 {
+  margin: 0 0 var(--rpa-rij);
+  padding: var(--rpa-rij) 0 0 var(--rpa-cel);
+  border-bottom: var(--rpa-lijn);
+  font-size: 11pt;
+  font-weight: 700;
+  line-height: calc(var(--rpa-rij) - 0.75pt);
+  color: #000;
+}
+
+/* Subblok: lege regel, de kop vet-cursief, de tekst er direct onder. */
+.rpa-wortel .rpa-h4 {
+  margin: 0;
+  padding: var(--rpa-rij) 0 0 var(--rpa-cel);
+  font-size: 10pt;
+  font-weight: 700;
+  font-style: italic;
+  line-height: var(--rpa-rij);
+}
+
+/* Een blad in hoofdstuk Berekeningen: normaal gewicht, accentkleur, lijn eronder. */
+.rpa-wortel .rpa-hb {
+  margin: 0 0 var(--rpa-rij);
+  padding: var(--rpa-rij) 0 0 var(--rpa-cel);
+  border-bottom: var(--rpa-lijn);
+  font-size: 12pt;
+  font-weight: 400;
+  line-height: calc(var(--rpa-rij) - 0.75pt);
+  color: var(--rpa-accent);
+}
+
+/* "Inhoudsopgave" in hoofdstuk Berekeningen: direct onder de hoofdstukkop. */
+.rpa-wortel .rpa-io-kop {
+  margin: 0;
+  padding: 0 var(--rpa-cel);
+  font-size: 12pt;
+  font-weight: 700;
+  line-height: var(--rpa-rij);
+  color: var(--rpa-accent);
+}
+
+/* De groepskop van 5.5: lege regel, een lijn over de volle breedte, de kop
+   met donkere vulling, lege regel. */
+.rpa-wortel .rpa-groep {
+  position: relative;
+  padding: var(--rpa-rij) 0;
+}
+
+.rpa-wortel .rpa-groep::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--rpa-rij);
+  border-top: var(--rpa-lijn);
+}
+
+.rpa-wortel .rpa-groep.rpa-direct::before {
+  top: 0;
+}
+
+/* Direct onder de kop van de ouder: geen lege regel erboven. Na de koppen
+   hierboven, zodat deze regel wint. */
+.rpa-wortel .rpa-direct {
+  padding-top: 0;
+}
+
+/* Een kop hoort niet los onderaan een vel. */
+.rpa-wortel .rpa-sectie h1,
+.rpa-wortel .rpa-sectie h2,
+.rpa-wortel .rpa-sectie h3,
+.rpa-wortel .rpa-sectie h4,
+.rpa-wortel .rpa-houd {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* ─── Tabellen ────────────────────────────────────────────────── */
+
+.rpa-wortel .rpa-vet {
+  font-weight: 700;
+}
+
+.rpa-wortel .rpa-cursief {
+  font-style: italic;
+}
+
+.rpa-wortel .rpa-midden {
+  text-align: center;
+}
+
+.rpa-wortel .rpa-tt {
+  color: var(--rpa-tabel);
+}
+
+.rpa-wortel .rpa-invoer {
+  color: var(--rpa-invoer);
+}
+
+.rpa-wortel .rpa-label {
+  font-weight: 700;
+  color: var(--rpa-accent);
+}
+
+/* Normverwijzingen: rechts, 8 pt cursief. */
+.rpa-wortel .rpa-norm {
+  font-size: 8pt;
+  font-style: italic;
+  text-align: right;
+  color: #000;
+}
+
+.rpa-wortel .rpa-kop-donker {
+  background: var(--rpa-hoofd);
+  color: var(--rpa-accent);
+  font-weight: 700;
+}
+
+.rpa-wortel .rpa-kop-licht {
+  background: var(--rpa-accent);
+  color: var(--rpa-hoofd);
+}
+
+/* Een verwijzing die boven zijn regel staat, in de lege regel onder de kop. */
+.rpa-wortel .rpa-draagt {
+  position: relative;
+}
+
+.rpa-wortel .rpa-boven {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  padding: 0 var(--rpa-cel);
+  line-height: var(--rpa-rij);
+  white-space: nowrap;
+}
+
+/* ─── Inhoud ──────────────────────────────────────────────────── */
+
+.rpa-wortel .rpa-io1 {
+  font-weight: 700;
+  color: var(--rpa-accent);
+}
+
+/* ─── Voorblad ────────────────────────────────────────────────── */
+
+/* De titel: 22 pt in de hoofdkleur, in kolom 2, basislijn 83,8 pt. */
+.rpa-wortel .rpa-vb-titel {
+  position: relative;
+  margin: 0;
+  padding: calc(2 * var(--rpa-rij)) 0 0 calc(var(--rpa-kolom) + var(--rpa-cel));
+  font-size: 22pt;
+  font-weight: 700;
+  line-height: calc(2 * var(--rpa-rij));
+  color: var(--rpa-hoofd);
+}
+
+.rpa-wortel .rpa-vb-logo {
+  position: absolute;
+  top: var(--rpa-rij);
+  right: 0;
+  max-width: 60mm;
+  max-height: calc(3 * var(--rpa-rij));
+}
+
+/* De projectnaam: 14 pt in de accentkleur, basislijn 108,5 pt. */
+.rpa-wortel .rpa-vb-ondertitel {
+  margin: 0;
+  padding-left: calc(var(--rpa-kolom) + var(--rpa-cel));
+  font-size: 14pt;
+  line-height: var(--rpa-rij);
+  white-space: nowrap;
+  color: var(--rpa-accent);
+}
+
+/* ─── Rekenbladen in het rapport ──────────────────────────────── */
+
+/* Een blad (bijlage A of in het hoofdstuk zelf) houdt de opmaak van een los
+   blad, niet het raster van het rapport. */
+.rpa-wortel .print-blad {
+  font-family: var(--font-body, "Inter", system-ui, sans-serif);
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: #000;
+}
+
+/* In het hoofdstuk zelf geen paginasprong zoals bij een los blad. */
+.print-opmaak .rpa-wortel .print-blad.rpa-inline {
+  break-before: auto;
+  page-break-before: auto;
+}
+
+/* Het vakje met het nummer groeit mee: "A.12" past niet in een vierkant. */
+.rpa-wortel .print-blad .print-blad-nr {
+  width: auto;
+  min-width: 18pt;
+  padding: 0 4pt;
+}
+
+/* ─── Voet in de echte afdruk ─────────────────────────────────── */
+
+/* Op het scherm onzichtbaar: het afdrukvoorbeeld tekent zijn eigen voet. */
+.rpa-wortel .rpa-voet {
+  display: none;
+}
+
+/* Een vast element herhaalt de browser op elke pagina. De negatieve offset
+   zet hem in de ondermarge: over de volle breedte van het papier, de onderste
+   19,8 mm. */
+html.afdrukmodus .rpa-wortel .rpa-voet {
+  display: block;
+  position: fixed;
+  left: -9.85mm;
+  bottom: -19.8mm;
+  width: 210mm;
+  height: 19.8mm;
+}
+
+.rpa-wortel .rpa-voet-beeld {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+/* Zonder voetafbeelding: een dunne lijn met de bureaunaam links. */
+.rpa-wortel .rpa-voet-lijn {
+  position: absolute;
+  left: 9.85mm;
+  right: 9.9mm;
+  bottom: 11mm;
+  padding-top: 3pt;
+  border-top: 0.5pt solid #9ca3af;
+  font-family: var(--rpa-font);
+  font-size: 8pt;
+  line-height: 1.2;
+  color: #6b6b73;
+}
+
+/* ─── Afdrukken via de vellen van het voorbeeld (drukvellen.ts) ─────────── */
+
+.rpa-drukvellen {
+  display: none;
+}
+
+html.rapportdruk,
+html.rapportdruk body {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
+html.rapportdruk body > *:not(.rpa-drukvellen) {
+  display: none !important;
+}
+
+html.rapportdruk .rpa-drukvellen {
+  display: block;
+}
+
+html.rapportdruk .rpa-drukvellen .av-pagina {
+  page: rapportvel;
+  margin: 0;
+  box-shadow: none;
+  break-after: page;
+  page-break-after: always;
+}
+
+html.rapportdruk .rpa-drukvellen .av-pagina:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+/* De vellen dragen hun eigen voet en paginanummer: geen marges, geen nummer van de browser. */
+@page rapportvel {
+  size: A4 portrait;
+  margin: 0;
+  @bottom-center {
+    content: none;
+  }
+  @bottom-right {
+    content: none;
+  }
+}

@@ -4,41 +4,38 @@ Punten die bewust naar later zijn geschoven, met de reden erbij. Geen
 wensenlijst: alles hier is een besluit dat al genomen is, alleen nog niet
 uitgevoerd.
 
+Open punten in de rekenmodules zelf staan als issues met label `berekeningen`
+(#14 t/m #17); de stand van zaken staat in [overdracht.md](overdracht.md).
+
 ---
 
-## 1. Stalen gevelkolom moet zijn eigen q_p berekenen
+## 1. Gording en stalen gevelkolom rekenen hun eigen q_p — afgerond
 
 | | |
 |---|---|
-| Module | Stalen gevelkolom (`templates/stalenGevelkolom.ts`) |
-| Norm | NEN-EN 1991-1-4 + NB, §4 (Tabel NB.1 windgebied, Tabel NB.3-4.1 terreincategorie) |
-| Vastgelegd | 25-08-2026 · **gording afgerond 26-08-2026** |
+| Modules | Gording (`templates/gording.ts`), stalen gevelkolom (`templates/stalenGevelkolom.ts`) |
+| Norm | NEN-EN 1991-1-4 + NB, §4 (Tabel NB.1 windgebied, Tabel NB.3-4.1 terreincategorie) en §7.2.2 (Tabel NB.6 – 7.1) |
+| Vastgelegd | 25-08-2026 · **gording afgerond 26-08-2026** · **gevelkolom afgerond 25-09-2026** |
 
-**Gording is klaar.** Het rekenblad rekent de hele keten nu zelf —
-windgebied → v_b → c_r(z) → v_m → I_v → q_p(z) — met windgebied en
-terreincategorie uit de projectgegevens en de referentiehoogte `z_wind` als
-bladinvoer, want die hoort bij het constructiedeel en niet bij het project.
-Gecalibreerd op zeven de referentie-uitwerking-bladen die alleen in de windvelden verschillen
-(`scripts/check-gording.mjs`, sets wind1 t/m wind7), inclusief de ondergrens
-z_min en alle drie de windgebieden en terreincategorieën. Er is een keuzelijst
-*Zelf invullen* voor het geval je q_p van elders haalt.
+Beide bladen rekenen de keten windgebied → v_b → c_r(z) → v_m → I_v → q_p(z)
+zelf, met windgebied en terreincategorie uit de projectgegevens en de
+referentiehoogte als bladinvoer, want die hoort bij het constructiedeel en niet
+bij het project. De gording is gekalibreerd op zeven referentiebladen die alleen
+in de windvelden verschillen (`scripts/check-gording.mjs`, sets wind1 t/m
+wind7), inclusief de ondergrens z_min en alle drie de windgebieden en
+terreincategorieën.
 
-**Wat er nog staat: de gevelkolom.** Die is een grotere klus dan de gording,
-want hij vraagt geen q_p maar een **rekenwaarde**:
+De gevelkolom vroeg een rekenwaarde van de wind. Hij vraagt nu niets meer over
+wind dan de hoogte en diepte van het gebouw en de afstand van de kolom tot de
+hoek, en past γ_Q bij de gevolgklasse zelf toe. De drukcoëfficiënten komen uit
+tabel NB.6 – 7.1: zone D bij druk, bij zuiging de ongunstigste van zone E en de
+zijgevelzone A, B of C; c_pi is +0,2 of −0,3. Voor dit blad bestaan geen
+referentiebladen; `scripts/check-gevelkolom.mjs` rekent het na met een
+onafhankelijke uitwerking en handberekeningen.
 
-```
-q_wind = ?*(kN/m^2)', wind-rekenwaarde uit project-uitgangspunten'
-...
-q_wind,kar = q_wind/1.5', terug naar karakteristieke wind (γ_Q,wind = 1.5)'
-```
-
-Daar de keten inbouwen betekent ook de γ eruit halen én de
-gevel-drukcoëfficiënten kiezen — zones A t/m E uit §7.2.2, niet de F-G-H van het
-dak. Dat is een inhoudelijke keuze die referentiebladen vraagt.
-
-**Waarom later:** de module is nog niet tegen referentiebladen gecalibreerd. Dit
-hoort in diezelfde ronde thuis, niet ervoor — precies de reden waarom dit punt
-oorspronkelijk is uitgesteld.
+Beide bladen hebben een keuze om q_p zelf in te vullen; de gevelkolom ook om de
+netto winddruk en -zuiging zelf in te vullen, bijvoorbeeld bij een dominante
+opening in de gevel.
 
 ---
 
@@ -67,30 +64,18 @@ uitleg in [ifc-export.md](ifc-export.md):
    is nog geen manier om het te vullen. Vraagt een viewer-component.
 5. **Geometrie.** Bestaat niet in dit programma en zou nieuwe invoer vragen.
 
-## 3. Balklaag en Gording rekenen het eigen gewicht verschillend
+## 3. Balklaag en Gording rekenen het eigen gewicht verschillend — opgelost
 
 | | |
 |---|---|
 | Modules | `templates/balklaag.ts`, `templates/gording.ts` |
 | Vastgelegd | 26-08-2026 |
+| Opgelost | 26-09-2026 |
 
-Beide zijn gecalibreerd op de referentie-uitwerking, maar met een andere uitkomst van
-dezelfde discussie:
-
-```
-balklaag:  A · ρ_mean(EN 338) · 9,81      (keuzelijst biedt 550 kg/m³ aan)
-gording:   A · 5,5 kN/m³                   (= 550 kg/m³ · g = 10, hardcoded)
-```
-
-In één en hetzelfde project krijgt de vloer dus de normconforme dichtheid en
-het dak die van de referentie-uitwerking. Dat is niet uit te leggen op een rapport waar beide
-bladen in staan.
-
-**Waarom later:** de keuze zelf is niet vrij — zie punt 8 van
-[afwijkingen-referentie.md](afwijkingen-referentie.md), waar vastligt dat de
-norm voorgaat. Wat wél werk is: gording dezelfde keuzelijst geven, de
-controlescripts op de de referentie-uitwerking-stand zetten, en nagaan of de andere
-houtmodules (kolom, schijfwerking) hetzelfde probleem hebben.
+Beide bladen kiezen het eigen gewicht nu via de projectinstelling
+`rekenwijze` (register punt 8): de referentiestand rekent A · 550 kg/m³ ·
+10 m/s², de norm-stand A · ρ_mean(EN 338) · 9,81 m/s². In één project rekenen
+vloer en dak dus met dezelfde dichtheid.
 
 ---
 

@@ -33,6 +33,10 @@ export function parseGef(content: string): GefData {
   let columnCount = 0;
   const columnInfos: ColumnInfo[] = [];
   let eohIndex = -1;
+  /** Waarde die per kolom "geen meting" betekent (#COLUMNVOID). */
+  const voids = new Map<number, number>();
+  /** Maaiveld uit #ZID; gaat voor op de variant via #MEASUREMENTVAR. */
+  let zidLevel: number | null = null;
 
   // ── Parse header ──────────────────────────────────────────────────
   for (let i = 0; i < lines.length; i++) {
@@ -95,6 +99,20 @@ export function parseGef(content: string): GefData {
       continue;
     }
 
+    // #ZID= 31000, niveau, nauwkeurigheid — het maaiveld t.o.v. NAP (code 31000)
+    const zidMatch = line.match(/^#ZID\s*=\s*\d+\s*,\s*([+-]?\d*\.?\d+)/i);
+    if (zidMatch) {
+      zidLevel = parseFloat(zidMatch[1]);
+      continue;
+    }
+
+    // #COLUMNVOID= kolom, waarde — meetpunten met die waarde tellen niet
+    const voidMatch = line.match(/^#COLUMNVOID\s*=\s*(\d+)\s*,\s*([+-]?\d*\.?\d+(?:e[+-]?\d+)?)/i);
+    if (voidMatch) {
+      voids.set(parseInt(voidMatch[1], 10) - 1, parseFloat(voidMatch[2]));
+      continue;
+    }
+
     // #MEASUREMENTVAR= 1, value, m, description  (NAP level)
     const measMatch = line.match(
       /^#MEASUREMENTVAR\s*=\s*\d+\s*,\s*([+-]?\d+\.?\d*)\s*,\s*m\s*,.*NAP/i
@@ -114,11 +132,18 @@ export function parseGef(content: string): GefData {
   let qcCol = -1;
   let fsCol = -1;
 
+  // De gecorrigeerde diepte (type 11) houdt rekening met de scheefstand van de
+  // conus en gaat voor op de sondeertrajectlengte (type 1).
+  let gecorrigeerd = false;
   for (const ci of columnInfos) {
     const idx = ci.index - 1; // convert to 0-based
     switch (ci.typeNumber) {
       case 1:
+        if (!gecorrigeerd) depthCol = idx;
+        break;
+      case 11:
         depthCol = idx;
+        gecorrigeerd = true;
         break;
       case 2:
         qcCol = idx;
@@ -153,13 +178,16 @@ export function parseGef(content: string): GefData {
     const trimmed = record.trim();
     if (trimmed === '') continue;
 
-    // Split by column separator
-    const fields = trimmed.split(columnSeparator).map(f => f.trim());
+    // Split by column separator; zonder scheidingsteken in de regel op witruimte.
+    const fields = (trimmed.includes(columnSeparator) ? trimmed.split(columnSeparator) : trimmed.split(/\s+/))
+      .map(f => f.trim())
+      .filter((f, i, lijst) => f !== '' || i < lijst.length - 1);
 
     const depthVal = parseFloat(fields[depthCol]);
     const qcVal = parseFloat(fields[qcCol]);
 
     if (isNaN(depthVal) || isNaN(qcVal)) continue;
+    if (voids.get(depthCol) === depthVal || voids.get(qcCol) === qcVal) continue;
 
     depths.push(depthVal);
     qc.push(qcVal);
@@ -180,7 +208,7 @@ export function parseGef(content: string): GefData {
     depths,
     qc,
     fs,
-    nafLevel,
+    nafLevel: zidLevel ?? nafLevel,
     columnSeparator,
   };
 }

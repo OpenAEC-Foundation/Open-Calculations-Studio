@@ -1,163 +1,136 @@
 /**
- * Permanente vuurlast — bepaling conform NEN 6090.
+ * Permanente vuurlast — bepaling van de permanente vuurbelasting van een
+ * brandcompartiment, zoals NEN 6090 die voor het Besluit bouwwerken
+ * leefomgeving (Bbl) vraagt.
  *
  * Permanente vuurlast = energie-inhoud van vaste, niet-verwijderbare
- * bouwdelen (constructiehout, dakbedekking, brandbare isolatie, etc.).
- * Onderscheid met variabele vuurlast die wordt veroorzaakt door
- * inventaris / gebruiksinhoud.
+ * bouwdelen (constructiehout, dakbedekking, brandbare isolatie, leidingen).
+ * De inventaris (variabele vuurlast) hoort er niet bij.
  *
- * Formule:
- *   q_{f,k} = Σ (m_i · H_{u,i} · ψ_i) / A_v        [MJ/m²]
+ * Opbouw, gelijk aan NEN-EN 1991-1-2 bijlage E (E.2) en (E.3):
+ *   q = Σ (m_i · H_u,i) / A_f                       [MJ/m²]
  *
- *   m_i   = massa brandbaar materiaal i             [kg]
- *   H_u,i = onderste calorische waarde van i        [MJ/kg]
- *   ψ_i   = verbrandingsfactor (≤ 1, typisch 1.0)
- *   A_v   = gebruiksoppervlak brandcompartiment     [m²]
+ *   m_i   = massa brandbaar materiaal i              [kg]
+ *   H_u,i = nettoverbrandingswaarde van i            [MJ/kg]
+ *   A_f   = vloeroppervlakte van het brandcompartiment [m²]
  *
- * Calorische waarden (NEN 6090 Tabel A.1 / EN 1991-1-2 Tabel E.3):
- *   Hout & cellulose            17.5 MJ/kg
- *   PUR / PIR-isolatie          26    MJ/kg
- *   EPS / XPS-isolatie          40    MJ/kg
- *   Bitumen dakbedekking        38    MJ/kg
- *   PVC                         17    MJ/kg
- *   Polyethyleen / polypropyleen 43   MJ/kg
- *   Steenwol / glaswol           0    MJ/kg (niet brandbaar — ψ=0)
- *   Beton, staal, gips           0    MJ/kg (niet brandbaar)
+ * Verbrandingswaarden uit tabel NB.6 van NEN-EN 1991-1-2+NB:2019, de
+ * Nederlandse tabel bij bijlage E. Eerder stonden er waarden zonder
+ * controleerbare bron, met onder meer bitumen op 38 in plaats van 42 MJ/kg.
+ * Of NEN 6090 eigen waarden voorschrijft, is niet nagegaan.
+ *
+ * De vergelijking gebruikt alleen de grens van 500 MJ/m² die het Bbl kent.
+ * Eerder stonden er grenswaarden per gebouwfunctie (800, 1200, 3000 MJ/m²)
+ * die in de regelgeving niet voorkomen.
  */
 
 export const permanenteVuurlast = `"Permanente vuurlast — bepaling NEN 6090
 
-'<i>De permanente vuurlast q<sub>f,k</sub> drukt de energie-inhoud uit
-'van vaste brandbare bouwdelen per m² gebruiksoppervlak. Inventaris
-'en gebruikersbelasting (variabele vuurlast) wordt apart bepaald.</i>
+# 1. Vloeroppervlakte brandcompartiment
 
-# 1. Gebruiksoppervlak brandcompartiment
-
-A_v = ?*(m^2)', gebruiksoppervlak A_v (m²) van het brandcompartiment'
+A_f = ?*(m^2)', vloeroppervlakte A_f van het brandcompartiment (m²)'
 
 # 2. Brandbare materialen — massa's
 
-'<i>Vul per materiaalcategorie de totale massa in (kg) die zich
-'permanent in het brandcompartiment bevindt. Een ruwe schatting via
-'volume × dichtheid is veelal voldoende — zie sectie 5.</i>
+'<i>Materiaal in een brandwerende omhulling telt niet mee (NEN-EN 1991-1-2 E.2.3(1)).</i>
 
-m_hout = ?*(kg)', constructiehout + houten finishes + plaatmateriaal (kg)'
-m_pir = ?*(kg)', PUR / PIR-isolatie (kg)'
-m_eps = ?*(kg)', EPS / XPS-isolatie (kg)'
-m_bitumen = ?*(kg)', bitumen dakbedekking (kg)'
-m_pvc = ?*(kg)', PVC-houdende leidingen + kunststof afwerking (kg)'
-m_pe = ?*(kg)', PE / PP-leidingen + kunststof folie (kg)'
+m_hout = ?*(kg)', constructiehout, houten afwerking en plaatmateriaal (kg)'
+m_pir = ?*(kg)', PUR- of PIR-schuim (kg)'
+m_eps = ?*(kg)', EPS of XPS, polystyreen (kg)'
+m_bitumen = ?*(kg)', bitumineuze dakbedekking (kg)'
+m_pvc = ?*(kg)', PVC-leidingen en kunststof afwerking (kg)'
+m_pe = ?*(kg)', PE- of PP-leidingen en folie (kg)'
 
 m_overig = ?*(kg)', overige brandbare materialen (kg)'
-H_u_overig = ?*(MJ/kg)', calorische waarde overige (MJ/kg)'
+H_u_overig = ?*(MJ/kg)', verbrandingswaarde van het overige materiaal (MJ/kg)'
 
-# 3. Calorische waarden (NEN 6090 Tabel A.1)
+# 3. Verbrandingswaarden (tabel NB.6 van NEN-EN 1991-1-2)
 
 #hide
-H_u_hout = 17.5 MJ/kg
+H_u_hout = 18 MJ/kg
 H_u_pir = 26 MJ/kg
 H_u_eps = 40 MJ/kg
-H_u_bitumen = 38 MJ/kg
+H_u_bitumen = 42 MJ/kg
 H_u_pvc = 17 MJ/kg
-H_u_pe = 43 MJ/kg
+H_u_pe = 44 MJ/kg
 #show
 
 '<table style="width:auto; border-collapse:collapse; font-size:0.9em;">
 '<tr><td style="padding:2px 12px;"><b>Materiaal</b></td><td style="padding:2px 12px;"><b>H<sub>u</sub> [MJ/kg]</b></td></tr>
-'<tr><td>Hout & cellulose</td><td>17,5</td></tr>
-'<tr><td>PUR / PIR</td><td>26</td></tr>
-'<tr><td>EPS / XPS</td><td>40</td></tr>
-'<tr><td>Bitumen</td><td>38</td></tr>
+'<tr><td>Hout, spaanplaat</td><td>18</td></tr>
+'<tr><td>PUR-schuim (PIR-schuim 24)</td><td>26</td></tr>
+'<tr><td>Polystyreen (EPS, XPS)</td><td>40</td></tr>
+'<tr><td>Bitumen</td><td>42</td></tr>
 '<tr><td>PVC</td><td>17</td></tr>
-'<tr><td>PE / PP</td><td>43</td></tr>
-'<tr><td>Steen-/glaswol, beton, staal, gips</td><td>0 (niet brandbaar)</td></tr>
+'<tr><td>Polyethyleen (polypropyleen 43)</td><td>44</td></tr>
+'<tr><td>Steen- en glaswol, beton, staal, gips</td><td>0 (niet brandbaar)</td></tr>
 '</table>
 
-# 4. Verbrandingsfactor ψ
-
-'<i>De verbrandingsfactor ψ corrigeert voor onvolledige verbranding
-'(typisch ψ = 1.0 voor cellulose-houdende materialen). NEN 6090 staat
-'ψ = 0.8 toe voor matig brandbare materialen, maar voor permanente
-'vuurlast geldt veelal ψ = 1.0 conservatief.</i>
+# 4. Energie-inhoud per materiaal
 
 #hide
-ψ = 1.0
+Q_hout = m_hout*H_u_hout
+Q_pir = m_pir*H_u_pir
+Q_eps = m_eps*H_u_eps
+Q_bitumen = m_bitumen*H_u_bitumen
+Q_pvc = m_pvc*H_u_pvc
+Q_pe = m_pe*H_u_pe
+Q_overig = m_overig*H_u_overig
 #show
+#if m_hout > 0 kg
+    Q_hout = m_hout*H_u_hout
+#end if
+#if m_pir > 0 kg
+    Q_pir = m_pir*H_u_pir
+#end if
+#if m_eps > 0 kg
+    Q_eps = m_eps*H_u_eps
+#end if
+#if m_bitumen > 0 kg
+    Q_bitumen = m_bitumen*H_u_bitumen
+#end if
+#if m_pvc > 0 kg
+    Q_pvc = m_pvc*H_u_pvc
+#end if
+#if m_pe > 0 kg
+    Q_pe = m_pe*H_u_pe
+#end if
+#if m_overig > 0 kg
+    Q_overig = m_overig*H_u_overig
+#end if
+Q_totaal = Q_hout + Q_pir + Q_eps + Q_bitumen + Q_pvc + Q_pe + Q_overig', totale energie-inhoud (E.2)'
 
-# 5. Energie-inhoud per categorie
+# 5. Permanente vuurbelasting
 
-Q_hout = m_hout*H_u_hout*ψ
-Q_pir = m_pir*H_u_pir*ψ
-Q_eps = m_eps*H_u_eps*ψ
-Q_bitumen = m_bitumen*H_u_bitumen*ψ
-Q_pvc = m_pvc*H_u_pvc*ψ
-Q_pe = m_pe*H_u_pe*ψ
-Q_overig = m_overig*H_u_overig*ψ
-
-Q_totaal = Q_hout + Q_pir + Q_eps + Q_bitumen + Q_pvc + Q_pe + Q_overig
-
-# 6. Permanente vuurlast
-
-'<b>Specifieke permanente vuurlast (formule §6.2 NEN 6090):</b>
-
-q_f,k = Q_totaal/A_v
-
-# 7. Toetsing aan grenswaarde
-
-'<i>De grenswaarde van q<sub>f,k</sub> volgt uit de
-'compartimenteringsgrootte en de vereiste brandwerendheid van de
-'scheidingsconstructies (Bouwbesluit / Bbl). Een veelgebruikte
-'praktijkdrempel voor lichte gebouwfuncties (wonen, kantoor): ca. 500
-'MJ/m². Voor industrie/opslag kunnen waarden tot 1000-3000 MJ/m²
-'voorkomen waarbij hogere brandwerendheidseisen nodig zijn.</i>
-
-@select gebouwfunctie "Gebouwfunctie (typische grenswaarde)"
-  Wonen (≤ 500 MJ/m²) = 500
-  Kantoor / onderwijs (≤ 500 MJ/m²) = 500
-  Logies / gezondheidszorg (≤ 500 MJ/m²) = 500
-  Bijeenkomst / winkel (≤ 800 MJ/m²) = 800
-  Lichte industrie (≤ 1200 MJ/m²) = 1200
-  Zware industrie / opslag (≤ 3000 MJ/m²) = 3000
-@end
-
-q_grens = gebouwfunctie*MJ/m^2
-
-UC_vuurlast = q_f,k/q_grens
-
-#if UC_vuurlast ≤ 1.0
-    'UC = q<sub>f,k</sub>/q<sub>grens</sub> = 'UC_vuurlast'<span style="color:green"> ≤ 1.0 → <b>Voldoet</b></span>
+#if A_f > 0 m^2
+    q_f,k = Q_totaal/A_f to MJ/m^2', permanente vuurbelasting (E.3)'
 #else
-    'UC = q<sub>f,k</sub>/q<sub>grens</sub> = 'UC_vuurlast'<span style="color:red"> > 1.0 → <b>Voldoet NIET</b></span>
+    '<span style="color: red">Vul de vloeroppervlakte A<sub>f</sub> in.</span>
+    #hide
+    q_f,k = 1/0*MJ/m^2
+    #show
 #end if
 
-# 8. Schatting van massa's (hulp)
+# 6. Vergelijking met de grens uit het Bbl
 
-'<i>Vereenvoudigde schattingsregels voor gangbare bouwdelen:</i>
-'<ul>
-'<li><b>Hout</b> — dichtheid ρ ≈ 450 kg/m³. Een HSB-stijl 95×45 h.o.h.
-'600 mm in een wand van 2,5 m hoog: ca. 7 kg/m² wandoppervlak. Een
-'houten balklaag 50×200 h.o.h. 600 mm: ca. 7,5 kg/m² vloeroppervlak.
-'Triplex 18 mm: ca. 8 kg/m². Parket eiken 14 mm: ca. 10 kg/m².</li>
-'<li><b>PUR/PIR</b> — ρ ≈ 35 kg/m³. Per 100 mm isolatie: 3,5 kg/m².</li>
-'<li><b>EPS</b> — ρ ≈ 20 kg/m³. Per 100 mm: 2,0 kg/m².</li>
-'<li><b>Bitumen dakbedekking</b> — 2-laags APP: ca. 5-8 kg/m² dak.</li>
-'<li><b>PVC</b> — riolering Ø110 mm wanddikte 3,2 mm: ca. 1,7 kg/m¹.</li>
-'</ul>
+q_grens = 500*MJ/m^2', grens uit het Bbl'
+UC_max = q_f,k/q_grens
+#if UC_max ≤ 1.0
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: green"> ≤ 1,0 → <b>voldoet</b>: de permanente vuurbelasting is niet groter dan 500 MJ/m²</span>
+#else
+    '<b>Maatgevende UC = 'UC_max'</b><span style="color: red"> > 1,0 → <b>voldoet niet</b>: de permanente vuurbelasting is groter dan 500 MJ/m²</span>
+#end if
 
-'<hr/>
-'<i>Aandachtspunten:
-'<ul>
-'<li>Niet-brandbare materialen (beton, staal, steen-/glaswol, gips,
-'aluminium) leveren geen bijdrage aan de vuurlast — neem ze niet op
-'in m_hout etc.</li>
-'<li>Brandwerend gips (Promat, Knauf Brand) wordt formeel als
-'niet-brandbaar gerekend; de kartonlaag kan worden meegenomen onder
-'m_hout maar is veelal verwaarloosbaar (&lt; 0,5 kg/m²).</li>
-'<li>De gebruiksbelasting (inventaris, opslag) is de <i>variabele</i>
-'vuurlast — die wordt in NEN 6090 separaat behandeld (Tabel A.2).
-'Voor totale vuurlast: q<sub>f,k,tot</sub> = q<sub>f,k,perm</sub> + q<sub>f,k,var</sub>.</li>
-'<li>Voor formele BIO-rapportage (Bouwbesluit-equivalentie) altijd
-'NEN 6090 §6 raadplegen en correctiefactor δ<sub>q1</sub>/δ<sub>q2</sub>
-'voor compartimentgrootte + activeringsgevaar toepassen.</li>
-'</ul></i>
+#hide
+'Invoerhulp, niet op de afdruk. Schatting van de massa van gangbare bouwdelen:
+'hout, ρ ≈ 450 kg/m³: HSB-wand met stijlen 45×95 h.o.h. 600 mm en een boven- en onderregel,
+'2,5 m hoog, ca. 5 kg/m² wand; houten balklaag 50×200 h.o.h. 600 mm ca. 7,5 kg/m² vloer;
+'multiplex 18 mm ca. 8 kg/m²; eiken parket 14 mm ca. 10 kg/m².
+'PUR/PIR, ρ ≈ 35 kg/m³: 3,5 kg/m² per 100 mm. EPS, ρ ≈ 20 kg/m³: 2,0 kg/m² per 100 mm.
+'Bitumineuze dakbedekking, twee lagen: ca. 5 tot 8 kg/m² dak.
+'PVC-rioolbuis Ø110 × 3,2 mm: ca. 1,6 kg per strekkende meter.
+'Niet-brandbaar (beton, staal, steen- en glaswol, gips, aluminium) telt niet mee; de kartonlaag
+'van gipsplaat is veelal verwaarloosbaar (minder dan 0,5 kg/m²). De variabele vuurlast
+'(inventaris) en de rekenwaarde q_f,d van bijlage E horen niet bij dit blad.
+#show
 `;

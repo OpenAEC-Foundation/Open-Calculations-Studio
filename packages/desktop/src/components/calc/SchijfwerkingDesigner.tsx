@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
 import { useActiefExemplaar, useAlleenLezen } from "../../store/actiefBlad";
+import { useBladUitkomst } from "./bladResultaat";
+import { UitkomstKop } from "./designerKit";
 import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
 
 /**
@@ -10,7 +12,9 @@ import "./VoetplaatDesigner.css"; // hergebruik vd-* stijlen
  * en de stijlen. In dezelfde stijl als de andere designers (transparant,
  * scheidingslijn, streepjes-maatlijnen, responsief, gecentreerd, uniforme schaal).
  *
- * NB: dit is (voorlopig) alleen het visueel — de rekenregels volgen nog.
+ * Het beeld rekent zelf niets: de kop toont de maatgevende UC en het oordeel
+ * van het blad (templates/schijfwerking.ts), de voetregel de afzonderlijke
+ * toetsen uit dezelfde uitwerking. Eerder rekende het beeld de toetsing na.
  */
 const MARKER = "Schijfwerking";
 
@@ -28,12 +32,6 @@ const DETAIL: { v: number; label: string }[] = [
 const STERKTE: { v: number; label: string }[] = [
   { v: 1, label: "C18" }, { v: 2, label: "C24" }, { v: 3, label: "C30" },
 ];
-// C-klasse materiaal (EN 338) — karakteristieke waarden voor de toetsingen
-const MAT: Record<number, { name: string; fc0k: number; fc90k: number; fvk: number; E005: number }> = {
-  1: { name: "C18", fc0k: 18, fc90k: 2.2, fvk: 3.4, E005: 6000 },
-  2: { name: "C24", fc0k: 21, fc90k: 2.5, fvk: 4.0, E005: 7400 },
-  3: { name: "C30", fc0k: 23, fc90k: 2.7, fvk: 4.0, E005: 8000 },
-};
 const KLIMAAT: { v: number; label: string }[] = [
   { v: 1, label: "1" }, { v: 2, label: "2" }, { v: 3, label: "3" },
 ];
@@ -66,6 +64,8 @@ export default function SchijfwerkingDesigner() {
     [activeId, seedWaarden],
   );
   const [editing, setEditing] = useState<string | null>(null);
+  // De uitkomst en de toetsen van het blad zelf.
+  const uitkomst = useBladUitkomst();
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 760, h: 540 });
@@ -117,52 +117,13 @@ export default function SchijfwerkingDesigner() {
   const b = d("b"), h = d("h"), bi = d("bi"), hoh = d("hoh");
   const F1 = d("F1"), F2 = d("F2"), F_ivEd = d("F_ivEd");
 
-  // ── toetsing — Methode A (EN 1995-1-1 §9.2.4.2) + stijl-knik (§6.3.2) ────────
-  // Gecalibreerd op de de referentie-uitwerking-referentie (document1, Set 1). Wind → duurklasse
-  // Kort (kmod = 0,90; klimaat 3 lager). γ_M = 1,30 (gezaagd hout).
-  const mat = MAT[sterkte] ?? MAT[2];
-  const gammaM = 1.30;
-  const kmod = klim === 3 ? 0.70 : 0.90;               // Kort — klimaat 1/2 → 0,90, klimaat 3 → 0,70 (de referentie-uitwerking bevestigd)
-  const kc90 = 1.25, betaC = 0.2;
-  const fc0d = (mat.fc0k * kmod) / gammaM;
-  const fc90d = (mat.fc90k * kc90 * kmod) / gammaM;
-
-  const b0 = h / 2;                                     // b_o = h/2
-  const ci = Math.min(1, bi / b0);                      // plaatbreedte-factor
-  const F_ivRd = s_verb > 0 ? (F_f_Rd * b * ci * nZij) / s_verb : 0;   // (9.21) [kN]
-  const UC_sterkte = F_ivRd > 0 ? F_ivEd / F_ivRd : 0;
-
-  const F_itEd = b > 0 ? (F_ivEd * h) / b : 0;          // (9.23) verankeringskracht [kN]
-  const F_tot = F_itEd + F1;                            // verticale last op stijl A-C
-
-  // Druk⊥ op de regel geldt alléén bij detailaansluiting A-C Type 1 (stijl draagt via de
-  // regel af → druk haaks op de vezel). Bij Type 2 draagt de stijl direct af (hold-down),
-  // dan vervalt de druk⊥-toets. Set 2 (Type 1) toont hem, Set 3 (Type 2) niet — beide exact.
-  const druk90Actief = detail === 1;
-  const A_rail = tRegel * bRegel;                       // regel-doorsnede [mm²]
-  const sigma_c90 = A_rail > 0 ? (F_tot * 1e3) / A_rail : 0;
-  const UC_druk90 = druk90Actief && fc90d > 0 ? sigma_c90 / fc90d : 0;
-
-  const p_opn = 100;                                   // plooi-limiet p_opn (Set 2 bevestigd: de referentie-uitwerking 600/12/100 = 0,50)
-  const UC_plooi = tBepl > 0 ? (hoh / tBepl) / p_opn : 0;
-  const sMax = 150;                                     // vaste max h.o.h. verbindingsmiddel [mm] (Set 2 bevestigd: s=100 → 0,67)
-  const UC_hoh = s_verb / sMax;
-
-  const A_stud = tStijl * bStijl;                       // stijl-doorsnede [mm²]
-  const iy = bStijl / Math.sqrt(12), iz = tStijl / Math.sqrt(12);
-  const Lcr_y = Math.max(1, h - tStijl - tRegel), Lcr_z = s_verb;
-  const relY = (Lcr_y / iy / Math.PI) * Math.sqrt(mat.fc0k / mat.E005);
-  const relZ = (Lcr_z / iz / Math.PI) * Math.sqrt(mat.fc0k / mat.E005);
-  const kcFac = (rel: number) => {
-    if (rel <= 0.3) return 1.0;
-    const k = 0.5 * (1 + betaC * (rel - 0.3) + rel * rel);
-    return 1 / (k + Math.sqrt(Math.max(0, k * k - rel * rel)));
-  };
-  const sigma_c0 = A_stud > 0 ? (F_tot * 1e3) / A_stud : 0;
-  const UC_stud = fc0d > 0 ? Math.max(sigma_c0 / (kcFac(relY) * fc0d), sigma_c0 / (kcFac(relZ) * fc0d)) : 0;
-
-  const UC_max = Math.max(UC_sterkte, UC_druk90, UC_plooi, UC_hoh, UC_stud);
-  const ok = UC_max <= 1.0;
+  // Toetsen uit de uitwerking; "—" zolang het blad ze niet toont.
+  const fmt = (v: number, dec: number) => v.toFixed(dec).replace(".", ",");
+  const g = uitkomst?.getallen ?? {};
+  const w = (naam: string, dec: number) => (g[naam] === undefined ? "—" : fmt(g[naam], dec));
+  // Anker, glijden en plaat toont het blad alleen als hun capaciteit is
+  // ingevuld; anders zijn ze niet getoetst (en zegt de slotzin dat ook).
+  const open = (naam: string) => (g[naam] !== undefined ? fmt(g[naam], 2) : uitkomst ? "niet getoetst" : "—");
 
   // ── klikbare maat/kracht-chips ────────────────────────────────────────────
   function Dim(props: { name: string; value: number; x: number; y: number; step?: number; factor?: number; unit?: string; label?: string }) {
@@ -187,8 +148,8 @@ export default function SchijfwerkingDesigner() {
       </div>
     );
   }
-  function Force(props: { name: string; value: number; x: number; y: number; label: string; step?: number; id?: string }) {
-    const { name, value, x, y, label, step = 1 } = props;
+  function Force(props: { name: string; value: number; x: number; y: number; label: string; step?: number; id?: string; title?: string }) {
+    const { name, value, x, y, label, step = 1, title } = props;
     const editId = props.id ?? name;                     // los van `name`: zo kunnen twee chips
     const isEd = editing === editId;                     // dezelfde waarde tonen zonder elkaars focus te stelen
     return (
@@ -202,7 +163,7 @@ export default function SchijfwerkingDesigner() {
               if (e.key === "Escape") setEditing(null);
             }} />
         ) : (
-          <button className="vd-force-num" title={`${label} — klik om te wijzigen`} onClick={() => setEditing(editId)}>
+          <button className="vd-force-num" title={`${title ?? label} — klik om te wijzigen`} onClick={() => setEditing(editId)}>
             {label}={Number.isInteger(value) ? value : value.toFixed(1)}<small>kN</small>
           </button>
         )}
@@ -224,18 +185,24 @@ export default function SchijfwerkingDesigner() {
   // ── layout: vult het gemeten tekengebied, gecentreerd, uniforme schaal ─────
   const capH = 26;
   const W = box.w, H = box.h - capH;
-  const mL = 66, mR = 84, mT = 46, mB = 40;
+  // Ruimte voor de krachten F_i,v,Ed links onder en rechts boven; met 66 en 84
+  // vielen die chips half buiten het tekenvlak.
+  const mL = 104, mR = 118, mT = 46, mB = 40;
   const gapMid = 46;                                   // ruimte tussen aanzicht en doorsnede
   const secDepth = bStijl + 2 * tBepl;                 // doorsnede-dikte (wanddiepte)
-  const availW = W - mL - mR;
-  const s = Math.min(availW / b, (H - mT - mB - gapMid) / (h + secDepth));  // uniforme fit-schaal
+  // In een smal paneel wordt de ruimte naast de marges negatief; dan krimpt de
+  // tekening tot een ondergrens in plaats van met negatieve maten om te klappen.
+  const availW = Math.max(20, W - mL - mR);
+  const s = Math.min(availW / b, Math.max(20, H - mT - mB - gapMid) / (h + secDepth));  // uniforme fit-schaal
   const Wpx = b * s, Hpx = h * s;
   const xW0 = mL + Math.max(0, (availW - Wpx) / 2), xW1 = xW0 + Wpx;
   const contentH = Hpx + gapMid + secDepth * s;
   const yE0 = mT + Math.max(0, (H - mT - mB - contentH) / 2), yE1 = yE0 + Hpx;
   const ySec0 = yE1 + gapMid, ySec1 = ySec0 + secDepth * s;
 
-  const regelPx = Math.max(4, bRegel * s);             // regel-hoogte in aanzicht
+  // In het aanzicht zie je van een regel zijn dikte; de breedte loopt de wand in.
+  // Met b_regel (184) werd een regel van 76 mm ruim twee keer te dik getekend.
+  const regelPx = Math.max(3, tRegel * s);             // regel-hoogte in aanzicht
   const stijlPx = Math.max(2, tStijl * s);             // stijl-breedte
   const beplPx = Math.max(2, tBepl * s);               // beplatingsdikte in doorsnede
   // detail A-C: regel doorlopend (regel over de volle breedte) of stijl doorlopend
@@ -243,24 +210,43 @@ export default function SchijfwerkingDesigner() {
   const railX0 = detail === 2 ? xW0 + stijlPx : xW0;
   const railW = detail === 2 ? Math.max(0, Wpx - 2 * stijlPx) : Wpx;
 
-  // stijl- en board-posities (mm vanaf links)
-  const nGap = Math.max(1, Math.round(b / hoh));
-  const studXs = Array.from({ length: nGap + 1 }, (_, i) => (i * b) / nGap);
-  const nBoard = Math.max(1, Math.round(b / bi));
-  const boardXs = Array.from({ length: nBoard - 1 }, (_, i) => ((i + 1) * b) / nBoard);
+  // Stijl- en plaatnaadposities (mm vanaf links). De tussenstijlen staan op
+  // hart-op-hartafstand hoh vanaf de linkerrand, de naden op veelvouden van de
+  // plaatbreedte b_i: met b_i = 2·hoh valt elke naad op het hart van een stijl,
+  // zoals in de uitvoering. Eerder werden stijlen en naden elk gelijkmatig over
+  // de wandlengte verdeeld; een naad viel dan naast een stijl en de maat b_i
+  // klopte niet met de getekende naad. De kopstijlen staan aan beide randen.
+  const studXs: number[] = [0];
+  if (hoh > 0) for (let x = hoh; x < b - tStijl && studXs.length < 400; x += hoh) studXs.push(x);
+  studXs.push(b);
+  const boardXs: number[] = [];
+  if (bi > 0) for (let x = bi; x < b - 1 && boardXs.length < 200; x += bi) boardXs.push(x);
+  // De hoh-maat loopt van hart tot hart van twee opeenvolgende tussenstijlen;
+  // vanaf de wandrand gemeten kwam hij uit op de buitenkant van de kopstijl.
+  const hohA = studXs.length > 3 ? studXs[1] : 0;
+  const hohB = studXs.length > 3 ? studXs[2] : Math.min(hoh, b);
+  // Een restpaneel smaller dan h/4 telt in het blad niet mee (9.2.4.2(2)); het
+  // beeld toont het grijs, zoals het beeld van de HSB-stabiliteit. Een blad uit
+  // een oudere versie (eigen kopie van de rekentekst) rekende met de hele
+  // wandlengte; dan tekent het beeld het restpaneel gewoon mee.
+  const perPaneel = source.includes("b_rest");
+  const nPlaat = bi > 0 ? Math.floor(b / bi) : 0;
+  const restPaneel = b - nPlaat * bi;
+  const restTeltNiet = perPaneel && bi > 0 && restPaneel > 1 && restPaneel < h / 4;
   const px = (mm: number) => xW0 + mm * s;
+  // Linkerkant van een stijl. De tussenstijlen staan op hun hartlijn; de
+  // kopstijlen liggen met hun buitenkant gelijk met de wandrand. Op de rand
+  // gecentreerd stonden ze half buiten de wand.
+  const laatsteStijl = studXs.length - 1;
+  const stijlX = (mm: number, i: number) =>
+    i === 0 ? xW0 : i === laatsteStijl ? xW1 - stijlPx : px(mm) - stijlPx / 2;
 
   return (
     <div className="vd-panel">
-      <div className="vd-head">
-        <strong>Parametrisch beeld — schijfwerking</strong>
-        <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
-          UC<sub>max</sub> = {UC_max.toFixed(2)} {ok ? "✓ voldoet" : "✗ voldoet niet"}
-        </span>
-      </div>
+      <UitkomstKop titel="Parametrisch beeld — schijfwerking" uitkomst={uitkomst} />
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
-        <div className="vd-controls vd-compact" style={{ alignSelf: "flex-start" }}>
+        <div className="vd-controls vd-compact" style={{ alignSelf: "stretch", overflowY: "auto", minHeight: 0 }}>
           <span className="vd-ctrl-h">Verbinding</span>
           <label>Verbindingsmiddel
             <select value={verb} onChange={(e) => setVal("verbindingsmiddel", parseInt(e.target.value))}>
@@ -314,7 +300,7 @@ export default function SchijfwerkingDesigner() {
           </label>
         </div>
 
-        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, justifyContent: "center", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
+        <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, justifyContent: "safe center", borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
           <div className="vd-canvas">
             <div className="vd-caption">Vooraanzicht &amp; doorsnede</div>
             <div className="vd-stage" style={{ width: W, height: H, background: "transparent", border: "none", borderRadius: 0 }}>
@@ -322,12 +308,11 @@ export default function SchijfwerkingDesigner() {
                 {defs}
 
                 {/* ── VOORAANZICHT ─────────────────────────────────────────── */}
-                {/* beplating-vlak (sheathing) */}
-                <rect x={xW0} y={yE0} width={Wpx} height={Hpx} fill="#eef2fb" stroke="#1d4ed8" strokeWidth={1.5} />
-                {/* stijlen + regels — bij "Stijl doorlopend" lopen alleen de KOPSTIJLEN door */}
+                {/* stijlen + regels eerst — bij "Stijl doorlopend" lopen alleen de
+                    KOPSTIJLEN door. De beplating komt er daarna overheen. */}
                 {(() => {
                   const stud = (mm: number, i: number, full: boolean) => (
-                    <rect key={i} x={px(mm) - stijlPx / 2} y={full ? yE0 : yE0 + regelPx}
+                    <rect key={i} x={stijlX(mm, i)} y={full ? yE0 : yE0 + regelPx}
                       width={stijlPx} height={full ? Hpx : Math.max(0, Hpx - 2 * regelPx)}
                       fill="#E3C08A" stroke="#8B6F47" strokeWidth={0.8} />
                   );
@@ -342,6 +327,18 @@ export default function SchijfwerkingDesigner() {
                   // stijl doorlopend: alleen de kopstijlen full-height, regels ertussen
                   return <>{mids}{railTop}{railBot}{stud(studXs[0], 0, true)}{stud(studXs[last], last, true)}</>;
                 })()}
+                {/* beplating tot de rand: de platen dekken de hele wand, ook de
+                    regels en de kopstijlen. Doorschijnend, zodat het raamwerk
+                    erachter zichtbaar blijft. */}
+                <rect x={xW0} y={yE0} width={Wpx} height={Hpx} fill="#dbe4f5" fillOpacity={0.55} />
+                {restTeltNiet && (
+                  <>
+                    <rect x={px(nPlaat * bi)} y={yE0} width={Math.max(0, xW1 - px(nPlaat * bi))} height={Hpx} fill="#9ca3af" fillOpacity={0.45} />
+                    <text x={(px(nPlaat * bi) + xW1) / 2} y={(yE0 + yE1) / 2} textAnchor="middle" dominantBaseline="middle"
+                      transform={`rotate(-90 ${(px(nPlaat * bi) + xW1) / 2} ${(yE0 + yE1) / 2})`}
+                      style={{ fontSize: 10, fill: "#374151" }}>telt niet mee (&lt; h/4)</text>
+                  </>
+                )}
                 {/* beplatingsvoegen (dashed) */}
                 {boardXs.map((mm, i) => (
                   <line key={i} x1={px(mm)} y1={yE0} x2={px(mm)} y2={yE1} stroke="#1d4ed8" strokeWidth={1} strokeDasharray="6 4" />
@@ -371,9 +368,9 @@ export default function SchijfwerkingDesigner() {
                 </g>
                 {/* hoh-maat (onder-links) */}
                 <g className="vd-dimline">
-                  <line x1={xW0} y1={yE1 - regelPx - 26} x2={xW0} y2={yE1 - regelPx - 8} className="vd-dimext" />
-                  <line x1={px(hoh)} y1={yE1 - regelPx - 26} x2={px(hoh)} y2={yE1 - regelPx - 8} className="vd-dimext" />
-                  <line x1={xW0} y1={yE1 - regelPx - 20} x2={px(hoh)} y2={yE1 - regelPx - 20} className="vd-dimmeasure" markerStart="url(#swDim)" markerEnd="url(#swDim)" />
+                  <line x1={px(hohA)} y1={yE1 - regelPx - 26} x2={px(hohA)} y2={yE1 - regelPx - 8} className="vd-dimext" />
+                  <line x1={px(hohB)} y1={yE1 - regelPx - 26} x2={px(hohB)} y2={yE1 - regelPx - 8} className="vd-dimext" />
+                  <line x1={px(hohA)} y1={yE1 - regelPx - 20} x2={px(hohB)} y2={yE1 - regelPx - 20} className="vd-dimmeasure" markerStart="url(#swDim)" markerEnd="url(#swDim)" />
                 </g>
                 {/* h-maat (rechts) — schone verticale maatlijn, zonder extensielijnen */}
                 <line x1={xW1 + 42} y1={yE0} x2={xW1 + 42} y2={yE1} className="vd-dimmeasure" markerStart="url(#swDim)" markerEnd="url(#swDim)" />
@@ -392,18 +389,21 @@ export default function SchijfwerkingDesigner() {
                 )}
                 {/* stijlen in doorsnede (oranje) */}
                 {studXs.map((mm, i) => (
-                  <rect key={i} x={px(mm) - stijlPx / 2} y={ySec0 + beplPx} width={stijlPx} height={bStijl * s} fill="#E3C08A" stroke="#8B6F47" strokeWidth={0.8} />
+                  <rect key={i} x={stijlX(mm, i)} y={ySec0 + beplPx} width={stijlPx} height={bStijl * s} fill="#E3C08A" stroke="#8B6F47" strokeWidth={0.8} />
                 ))}
                 <text x={xW1} y={ySec0 - 6} textAnchor="end" style={{ fontSize: 10, fontWeight: 600, fill: "#6b7280" }}>doorsnede ({nZij}-zijdig)</text>
               </svg>
 
               {/* klikbare chips */}
               <Dim name="bi" value={bi} x={(xW0 + px(bi)) / 2} y={yE0 + regelPx + 20} step={10} label="bi" unit=" mm" />
-              <Dim name="hoh" value={hoh} x={(xW0 + px(hoh)) / 2} y={yE1 - regelPx - 20} step={10} label="hoh" unit=" mm" />
+              <Dim name="hoh" value={hoh} x={(px(hohA) + px(hohB)) / 2} y={yE1 - regelPx - 20} step={10} label="hoh" unit=" mm" />
               <Dim name="h" value={h} x={xW1 + 42} y={(yE0 + yE1) / 2} step={0.1} factor={0.001} label="h" unit=" m" />
               <Dim name="b" value={b} x={(xW0 + xW1) / 2} y={ySec1 + 20} step={0.1} factor={0.001} label="b" unit=" m" />
-              <Force name="F1" value={F1} x={xW0 + 12} y={yE0 - 40} label="F1" />
-              <Force name="F2" value={F2} x={xW1 - 12} y={yE0 - 40} label="F2" />
+              {/* F1 en F2 zijn rekenwaarden (6.10b): het blad telt ze op bij F_i,t,Ed. */}
+              <Force name="F1" value={F1} x={xW0 + 12} y={yE0 - 40} label="F1,Ed"
+                title="rekenwaarde (6.10b) van de verticale last op eindstijl A" />
+              <Force name="F2" value={F2} x={xW1 - 12} y={yE0 - 40} label="F2,Ed"
+                title="rekenwaarde (6.10b) van de verticale last op eindstijl B" />
               <Force name="F_ivEd" id="F_ivEd@top" value={F_ivEd} x={xW1 + 66} y={yE0 - 8} label="Fi,v,Ed" />
               <Force name="F_ivEd" id="F_ivEd@bot" value={F_ivEd} x={xW0 - 52} y={yE1 - 18} label="Fi,v,Ed" />
             </div>
@@ -414,7 +414,9 @@ export default function SchijfwerkingDesigner() {
       <div className="vd-foot">
         <span>Klik op een blauwe maat of rode kracht om die te wijzigen — stroomt direct terug in de rekensheet.</span>
         <span className="vd-live">
-          c<sub>i</sub> = {ci.toFixed(2)} · F<sub>i,v,Rd</sub> = {F_ivRd.toFixed(1)} kN · sterkte {UC_sterkte.toFixed(2)} · h.o.h. {UC_hoh.toFixed(2)} · druk⊥ {druk90Actief ? UC_druk90.toFixed(2) : "n.v.t. (Type 2)"} · plooi {UC_plooi.toFixed(2)} · stijl {UC_stud.toFixed(2)}
+          c<sub>i</sub> = {w("c_i", 2)} · F<sub>i,v,Rd</sub> = {w("F_ivRd", 1)} kN · sterkte {g.UC_sterkte !== undefined ? fmt(g.UC_sterkte, 2) : uitkomst ? "∞" : "—"} ·
+          h.o.h. {w("UC_hoh", 2)} · druk⊥ {detail === 1 ? w("UC_druk90", 2) : "n.v.t. (stijl doorlopend)"} · plooi {w("UC_plooi", 2)} · stijl {w("UC_stijl", 2)} ·
+          anker {open("UC_anker")} · glijden {open("UC_glijden")} · plaat {open("UC_plaat")}
         </span>
       </div>
     </div>

@@ -104,6 +104,9 @@
   overflow: hidden;
 }
 
+/* Plaats en maat van de bladspiegel zet de weergave per vel uit
+   paginering.MATEN (bladen en rapport verschillen); deze waarden zijn die
+   van de bladen. */
 .av-pagina-inhoud {
   position: absolute;
   top: 24mm;
@@ -116,6 +119,8 @@
   line-height: 1.45;
 }
 
+/* Dezelfde loopkop en -voet als de echte afdruk; het paginanummer staat daar
+   in de paginamarge, hier in het midden van de voet. */
 .av-loopkop,
 .av-loopvoet {
   position: absolute;
@@ -123,20 +128,38 @@
   right: 16mm;
   display: flex;
   justify-content: space-between;
+  font-family: var(--font-body, "Inter", system-ui, sans-serif);
   font-size: 8pt;
-  color: #555;
+  color: #6b6b73;
 }
 
 .av-loopkop {
   top: 13mm;
   padding-bottom: 3pt;
-  border-bottom: 0.5pt solid #bbb;
+  border-bottom: 0.75pt solid #D97706;
+  font-weight: 500;
 }
 
 .av-loopvoet {
   bottom: 11mm;
   padding-top: 3pt;
-  border-top: 0.5pt solid #bbb;
+  border-top: 0.5pt solid #d4d4d8;
+}
+
+.av-bereik {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.av-bereik select {
+  max-width: 260px;
+  padding: 2px 4px;
+  font: inherit;
+  border: 1px solid var(--theme-border-subtle, #d5d9de);
+  border-radius: 4px;
+  background: var(--theme-bg-surface, #fff);
+  color: inherit;
 }
 
 /* Vel plus bijschrift. Het nummer staat bewust búiten het papier: het hoort
@@ -167,10 +190,51 @@
   position: absolute;
   left: -20000px;
   top: 0;
+  /* De breedte van de bladspiegel; per soort inline gezet uit paginering.MATEN. */
   width: 178mm;
   font-family: var(--font-body, "Inter", system-ui, sans-serif);
   font-size: 10.5pt;
   line-height: 1.45;
   color: #000;
   background: #fff;
+}
+
+/* ─── Vellen van het rapport ──────────────────────────────────── */
+
+/*
+ * Het rapport heeft geen loopkop, alleen een voet: de voetafbeelding van het
+ * bureau over de volle breedte in de ondermarge, en rechts het paginanummer
+ * midden in die marge. Hoogte, marges en afbeelding zet de weergave per vel
+ * (uit paginering.MATEN en het bureauprofiel), gelijk aan @page rapport.
+ */
+.av-rapport-voet {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+/* Zonder voetafbeelding: een dunne lijn met de bureaunaam, zoals in de echte afdruk. */
+.av-rapport-lijn {
+  position: absolute;
+  bottom: 11mm;
+  padding-top: 3pt;
+  border-top: 0.5pt solid #9ca3af;
+  font-family: var(--rpa-font);
+  font-size: 8pt;
+  line-height: 1.2;
+  color: #6b6b73;
+}
+
+.av-rapport-nummer {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 10pt;
+  line-height: normal;
+  color: #000;
 }

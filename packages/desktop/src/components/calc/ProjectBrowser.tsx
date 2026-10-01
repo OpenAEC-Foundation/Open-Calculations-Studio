@@ -1,91 +1,13 @@
 import { useState } from "react";
-import {
-  moduleCatalogus,
-  bibliotheek,
-  modulesPerTemplate,
-  STATUS_UITLEG,
-  PUBLICATIE_UITLEG,
-  type TreeNode,
-} from "./projectTree";
+import { useTranslation } from "react-i18next";
+import { modulesPerTemplate } from "./projectTree";
+import { useProjectStore, PROJECT_ID, RAPPORT_ID, type Exemplaar } from "../../store/projectStore";
+import { useModuleKiezer } from "../../store/moduleKiezer";
+import { useBladBijwerken } from "../../store/bladBijwerken";
 import { templates } from "../../templates";
-import { useProjectStore, PROJECT_ID, type Exemplaar } from "../../store/projectStore";
+import { heeftEigenCode, huidigeModuletekst, isVerouderd, rekenversie } from "./bladVersie";
 import "./ProjectBrowser.css";
-
-interface TreeProps {
-  node: TreeNode;
-  level: number;
-  onInsert: (templateId: string, label: string) => void;
-}
-
-/** Catalogus-tak: klikken voegt een exemplaar toe aan het project. */
-function CatalogusNode({ node, level, onInsert }: TreeProps) {
-  const [expanded, setExpanded] = useState(
-    node.kind === "category" ? !!node.defaultExpanded : true,
-  );
-
-  if (node.kind === "section") {
-    return (
-      <div className="tree-section-children">
-        {node.children.map((child) => (
-          <CatalogusNode key={child.id} node={child} level={level} onInsert={onInsert} />
-        ))}
-      </div>
-    );
-  }
-
-  if (node.kind === "category") {
-    return (
-      <div className={`tree-category${level > 0 ? " tree-subcategory" : ""}`}>
-        <button
-          className="tree-category-header"
-          style={{ paddingLeft: 8 + level * 12 }}
-          onClick={() => setExpanded((e) => !e)}
-        >
-          <span className={`tree-chevron${expanded ? " expanded" : ""}`}>▶</span>
-          <span className="tree-category-label">{node.label}</span>
-          {node.count != null && <span className="tree-category-count">{node.count}</span>}
-        </button>
-        {expanded && (
-          <div className="tree-children">
-            {node.children.map((child) => (
-              <CatalogusNode key={child.id} node={child} level={level + 1} onInsert={onInsert} />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const heeftSjabloon = !!node.templateId && !!templates[node.templateId];
-  const status = node.status;
-  const bolletje = status === "concept" ? "○" : status ? "●" : heeftSjabloon ? "○" : "□";
-  // Alleen rekenmodules dragen een status; naslagwerk uit de bibliotheek niet.
-  // Voor die laatste zegt "niet gepubliceerd" niets, dus daar blijft het weg.
-  const isModule = !!status;
-  const publicatie = node.gepubliceerd
-    ? PUBLICATIE_UITLEG.gepubliceerd
-    : PUBLICATIE_UITLEG.onuitgegeven;
-  const uitleg = status
-    ? `${node.label} — ${STATUS_UITLEG[status]}\n${publicatie}\nKlik om toe te voegen aan het project`
-    : heeftSjabloon
-      ? `${node.label} — klik om toe te voegen aan het project`
-      : `${node.label} (nog niet beschikbaar)`;
-
-  return (
-    <button
-      className={`tree-item${heeftSjabloon ? "" : " tree-item-disabled"}` +
-        (isModule && !node.gepubliceerd ? " tree-item-onuitgegeven" : "")}
-      style={{ paddingLeft: 16 + level * 12 }}
-      onClick={() => heeftSjabloon && node.templateId && onInsert(node.templateId, node.label)}
-      title={uitleg}
-    >
-      <span className={`tree-item-icon${status ? ` tree-status-${status}` : ""}`}>{bolletje}</span>
-      <span className="tree-item-label">{node.label}</span>
-      {node.gepubliceerd && <span className="tree-vlag">gepubliceerd</span>}
-      {heeftSjabloon && <span className="tree-item-plus">+</span>}
-    </button>
-  );
-}
+import "./BladVersie.css";
 
 /** Eén rekenblad in het project, met hernoemen en de knopjes ernaast. */
 function ExemplaarRij({
@@ -100,6 +22,7 @@ function ExemplaarRij({
   metNaamInvoer: boolean;
   onNaamKlaar: () => void;
 }) {
+  const { t } = useTranslation();
   const selecteer = useProjectStore((s) => s.selecteer);
   const hernoem = useProjectStore((s) => s.hernoem);
   const dupliceer = useProjectStore((s) => s.dupliceer);
@@ -115,6 +38,16 @@ function ExemplaarRij({
   const info = modulesPerTemplate[ex.templateId];
   const status = info?.status;
   const bolletje = status === "concept" ? "○" : status ? "●" : "○";
+  // Modulestatus en rekenversie in de tooltip, en een eigen aanpassing van de
+  // rekentekst; een blad met een nieuwere rekenversie krijgt daarnaast een
+  // teken achter zijn naam.
+  const verouderd = isVerouderd(ex, templates);
+  const eigen = heeftEigenCode(ex);
+  const nieuweVersie = verouderd ? rekenversie(huidigeModuletekst(ex, templates) ?? "") : "";
+  const versieRegel = [
+    status ? t(`bladVersie.status.${status}`) : "",
+    `${t("bladVersie.rekenversie")} ${rekenversie(ex.source)}`,
+  ].filter(Boolean).join(" · ");
 
   if (bewerken) {
     return (
@@ -147,10 +80,16 @@ function ExemplaarRij({
         className="exemplaar-open"
         onClick={() => selecteer(ex.id)}
         onDoubleClick={() => setZelfBewerken(true)}
-        title={`${ex.naam}${info ? ` — ${info.label}` : ""}\nDubbelklik om te hernoemen`}
+        title={
+          `${ex.naam}${info ? ` — ${info.label}` : ""}\n${versieRegel}` +
+          (eigen ? `\n${t("bladVersie.eigenUitleg", { bron: ex.bronVersie })}` : "") +
+          (verouderd ? `\n${t("bladVersie.rijVerouderd", { nieuw: nieuweVersie })}` : "") +
+          "\nDubbelklik om te hernoemen"
+        }
       >
         <span className={`tree-item-icon${status ? ` tree-status-${status}` : ""}`}>{bolletje}</span>
         <span className="tree-item-label">{ex.naam}</span>
+        {verouderd && <span className="bv-rij-vlag" aria-label={t("bladVersie.melding")}>↻</span>}
       </button>
       <span className="exemplaar-acties">
         <button title="Omhoog" onClick={() => verplaats(ex.id, -1)}>↑</button>
@@ -170,53 +109,22 @@ function ExemplaarRij({
   );
 }
 
-/** Verklaring van de bolletjes en de publicatievlag, onder aan de boom. */
-function StatusLegenda() {
-  return (
-    <div className="tree-legend">
-      {(["gereed", "controleren", "concept"] as const).map((s) => (
-        <span key={s} className="tree-legend-row" title={STATUS_UITLEG[s]}>
-          <span className={`tree-item-icon tree-status-${s}`}>{s === "concept" ? "○" : "●"}</span>
-          {s === "gereed" ? "gecalibreerd" : s === "controleren" ? "nog controleren" : "nog uit te werken"}
-        </span>
-      ))}
-      <span className="tree-legend-row" title={PUBLICATIE_UITLEG.gepubliceerd}>
-        <span className="tree-vlag">gepubliceerd</span>
-        nagekeken en vrijgegeven
-      </span>
-      <span className="tree-legend-row tree-item-onuitgegeven" title={PUBLICATIE_UITLEG.onuitgegeven}>
-        <span className="tree-item-icon">·</span>
-        gedimd = nog niet nagekeken
-      </span>
-    </div>
-  );
-}
-
 export default function ProjectBrowser() {
   const [collapsed, setCollapsed] = useState(false);
-  const [toonCatalogus, setToonCatalogus] = useState(true);
-  // Een vers ingevoegd blad opent meteen met de naam in bewerkstand: in een
-  // project heet een balklaag eerder "Dak" of "Verdiepingsvloer" dan
-  // "Balklaag 1". Typ je niets, dan blijft de voorgestelde naam staan.
-  const [nieuwId, setNieuwId] = useState<string | null>(null);
-  const [toonBibliotheek, setToonBibliotheek] = useState(false);
+  // Een vers ingevoegd blad opent meteen met de naam in bewerkstand; zie
+  // store/moduleKiezer.ts.
+  const nieuwId = useModuleKiezer((s) => s.nieuwId);
+  const naamKlaar = useModuleKiezer((s) => s.naamKlaar);
+  const openModuleKiezer = useModuleKiezer((s) => s.openen);
 
   const exemplaren = useProjectStore((s) => s.exemplaren);
   const activeId = useProjectStore((s) => s.activeId);
   const selecteer = useProjectStore((s) => s.selecteer);
-  const voegToe = useProjectStore((s) => s.voegToe);
   const projectNaam = useProjectStore((s) => s.projectNaam);
-
-  const onInsert = (templateId: string, label: string) => {
-    const bron = templates[templateId];
-    if (!bron) return;
-    // De catalogus draagt een toelichting in het label ("Balklaag (houten
-    // vloerbalken)"); als naam van een blad is dat te lang. De korte vorm is
-    // toch maar een voorstel — je typt er meteen "Dak" of "Verdiepingsvloer"
-    // overheen.
-    const kort = label.replace(/\s*\([^)]*\)\s*$/, "").trim() || label;
-    setNieuwId(voegToe(templateId, kort, bron));
-  };
+  const { t } = useTranslation();
+  const openBijwerken = useBladBijwerken((s) => s.openen);
+  // De bladen waarvan de module intussen een nieuwere rekenversie heeft.
+  const verouderd = exemplaren.filter((ex) => isVerouderd(ex, templates));
 
   return (
     <aside className={`project-browser${collapsed ? " collapsed" : ""}`}>
@@ -247,9 +155,19 @@ export default function ProjectBrowser() {
                 <span className="tree-item-label">Projectgegevens</span>
               </button>
 
+              {/* Het rapport hoort, net als de projectgegevens, bij het hele
+                  project en niet bij één blad: daarom een vaste knoop erboven. */}
+              <button
+                className={`tree-item tree-item-emphasis${activeId === RAPPORT_ID ? " selected" : ""}`}
+                onClick={() => selecteer(RAPPORT_ID)}
+                title="Rapport — het constructierapport van dit project, met de rekenbladen als bijlage"
+              >
+                <span className="tree-item-label">Rapport</span>
+              </button>
+
               {exemplaren.length === 0 && (
                 <p className="project-leeg">
-                  Nog geen rekenbladen. Kies hieronder een module om er een toe te voegen.
+                  Nog geen rekenbladen. Voeg er een toe met <b>Module</b> in het lint.
                 </p>
               )}
 
@@ -259,48 +177,28 @@ export default function ProjectBrowser() {
                   ex={ex}
                   geselecteerd={ex.id === activeId}
                   metNaamInvoer={ex.id === nieuwId}
-                  onNaamKlaar={() => setNieuwId(null)}
+                  onNaamKlaar={naamKlaar}
                 />
               ))}
             </div>
           </div>
 
-          {/* De catalogus: klikken voegt een nieuw exemplaar toe. */}
-          <div className="tree-section">
-            <button
-              className="tree-section-header tree-section-toggle"
-              onClick={() => setToonCatalogus((v) => !v)}
-            >
-              <span className={`tree-chevron${toonCatalogus ? " expanded" : ""}`}>▶</span>
-              <span className="tree-section-label">Modules toevoegen</span>
-            </button>
-            {toonCatalogus && (
-              <div className="tree-section-children">
-                {moduleCatalogus.map((node) => (
-                  <CatalogusNode key={node.id} node={node} level={0} onInsert={onInsert} />
-                ))}
-                <StatusLegenda />
-              </div>
-            )}
-          </div>
+          <button className="tree-item tree-item-toevoegen" onClick={openModuleKiezer}
+            title="Een module of een naslagblad aan dit project toevoegen">
+            <span className="tree-item-icon">+</span>
+            <span className="tree-item-label">Module toevoegen…</span>
+          </button>
 
-          {/* Naslag — ook invoegbaar, bijvoorbeeld een normuitwerking als bijlage. */}
-          <div className="tree-section">
-            <button
-              className="tree-section-header tree-section-toggle"
-              onClick={() => setToonBibliotheek((v) => !v)}
-            >
-              <span className={`tree-chevron${toonBibliotheek ? " expanded" : ""}`}>▶</span>
-              <span className="tree-section-label">Bibliotheek</span>
+          {/* Alleen als er iets bij te werken is; bijwerken gaat altijd via de vergelijking. */}
+          {verouderd.length > 0 && (
+            <button className="tree-item tree-item-toevoegen"
+              onClick={() => openBijwerken(verouderd.map((ex) => ex.id))}
+              title={t("bladVersie.alleUitleg")}>
+              <span className="tree-item-icon">↻</span>
+              <span className="tree-item-label">{t("bladVersie.alle")}</span>
+              <span className="tree-category-count">{verouderd.length}</span>
             </button>
-            {toonBibliotheek && (
-              <div className="tree-section-children">
-                {bibliotheek.map((node) => (
-                  <CatalogusNode key={node.id} node={node} level={0} onInsert={onInsert} />
-                ))}
-              </div>
-            )}
-          </div>
+          )}
         </div>
       )}
     </aside>

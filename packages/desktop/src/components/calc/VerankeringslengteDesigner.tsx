@@ -4,7 +4,7 @@ import "./VoetplaatDesigner.css";
 /**
  * Parametrisch beeld van de verankeringslengte (NEN-EN 1992-1-1 §8.4).
  *
- * De de referentie-uitwerking-module heeft geen tekening; in plaats daarvan toont dit paneel
+ * De module in de referentie-uitwerking heeft geen tekening; in plaats daarvan toont dit paneel
  * twee dingen die het getal verklaren:
  *   • Boven — de staaf in het beton op ware verhouding: de dekking c, de
  *     staafdiameter en de lengte l_bd naast de ondergrens l_b,min. Bij een
@@ -16,6 +16,9 @@ import "./VoetplaatDesigner.css";
  *
  * Rekenregels identiek aan templates/verankeringslengte.ts, gecalibreerd op
  * document1B (C45/55 · B500B · Ø16 · c 30 · goed · recht → l_bd = 379 mm).
+ * Het beeld volgt de rekenwijze van het project (ctx.ref), net als het blad:
+ * in de referentiestand de l_bd van de referentie-uitwerking, met de
+ * normwaarde in oranje ernaast waar die afwijkt.
  */
 const MARKER = "Verankeringslengte";
 
@@ -32,36 +35,43 @@ const DIAM_GRAFIEK = [6, 8, 10, 12, 16, 20];
 
 const DEFAULTS: Record<string, number> = {
   betonklasse: 45, betonstaal: 501, diameter: 16, c_dek: 30,
-  aanhechting: 1, staaftype: 1, A_req: 0, A_prov: 0,
+  aanhechting: 1, staaftype: 1, staafkracht: 1, A_req: 0, A_prov: 0,
 };
 
-/** §8.4 — dezelfde volgorde als het rekenblad. */
-function verankering(fck: number, ds: number, cd: number, goed: boolean, type: number, sig: number) {
+/**
+ * §8.4 — dezelfde volgorde als het rekenblad. `ref` kiest dezelfde tak als het
+ * blad: a1, ber en lbd zijn de gehanteerde waarden, lbdNb die van de norm.
+ */
+function verankering(fck: number, ds: number, cd: number, goed: boolean, type: number, sig: number,
+                     druk: boolean, ref: boolean) {
   const fctm = fck <= 50 ? 0.3 * fck ** (2 / 3) : 2.12 * Math.log(1 + (fck + 8) / 10);
   const fctd = (0.7 * fctm) / 1.5;
   const eta1 = goed ? 1.0 : 0.7;
   const eta2 = ds <= 32 ? 1.0 : (132 - ds) / 100;
   const fbd = 2.25 * eta1 * eta2 * fctd;                       // (8.2)
   const lbrqd = (ds / 4) * (sig / fbd);                        // (8.3)
-  // Tabel 8.2: α₁ = 0,7 alleen bij "anders dan recht" én c_d > 3Ø.
-  const a1 = type !== 1 && cd > 3 * ds ? 0.7 : 1.0;
+  // Tabel 8.2: α₁ = 0,7 alleen bij "anders dan recht" én c_d > 3Ø; op druk α₁ = α₂ = 1.
+  const a1Nb = !druk && type !== 1 && cd > 3 * ds ? 0.7 : 1.0;
   // Wat de referentie-uitwerking doet: de staafvorm buiten beschouwing laten.
-  const a1xc = cd > 3 * ds ? 0.7 : 1.0;
+  const a1Ref = !druk && cd > 3 * ds ? 0.7 : 1.0;
   const ruw = type === 1 ? 1 - (0.15 * (cd - ds)) / ds : 1 - (0.15 * (cd - 3 * ds)) / ds;
-  const a2 = Math.min(Math.max(ruw, 0.7), 1.0);
+  const a2 = druk ? 1.0 : Math.min(Math.max(ruw, 0.7), 1.0);
   const a3 = 1.0, a4 = 1.0, a5 = 1.0;
-  const lbmin = Math.max(0.3 * lbrqd, 10 * ds, 100);           // (8.6)
-  const ber = a1 * a2 * a3 * a4 * a5 * lbrqd;
-  const lbdXc = Math.max(a1xc * a2 * a3 * a4 * a5 * lbrqd, lbmin);
-  return { fctm, fctd, eta1, eta2, fbd, lbrqd, a1, a1xc, a2, a3, a4, a5,
-           lbmin, ber, lbd: Math.max(ber, lbmin), minMaatgevend: ber < lbmin,
-           lbdXc, afwijkt: Math.abs(Math.max(ber, lbmin) - lbdXc) > 0.5 };
+  const lbmin = Math.max((druk ? 0.6 : 0.3) * lbrqd, 10 * ds, 100);   // (8.6) trek, (8.7) druk
+  const berNb = a1Nb * a2 * a3 * a4 * a5 * lbrqd;
+  const berRef = a1Ref * a2 * a3 * a4 * a5 * lbrqd;
+  const lbdNb = Math.max(berNb, lbmin);
+  const lbdRef = Math.max(berRef, lbmin);
+  const a1 = ref ? a1Ref : a1Nb, ber = ref ? berRef : berNb, lbd = ref ? lbdRef : lbdNb;
+  return { fctm, fctd, eta1, eta2, fbd, lbrqd, a1, a2, a3, a4, a5,
+           lbmin, ber, lbd, minMaatgevend: ber < lbmin,
+           lbdNb, afwijkt: Math.abs(lbd - lbdNb) > 0.5 };
 }
 
 export default function VerankeringslengteDesigner() {
   const ctx = useDesigner(MARKER, DEFAULTS);
   if (!ctx.actief) return null;
-  const { d, set, box, wrapRef } = ctx;
+  const { d, set, box, wrapRef, ref } = ctx;
 
   const fck = Math.round(d("betonklasse"));
   const staal = Math.round(d("betonstaal"));
@@ -69,11 +79,12 @@ export default function VerankeringslengteDesigner() {
   const cd = Math.max(5, d("c_dek"));
   const goed = Math.round(d("aanhechting")) === 1;
   const type = Math.round(d("staaftype"));
+  const druk = Math.round(d("staafkracht")) === 2;
   const Areq = Math.max(0, d("A_req")), Aprov = Math.max(0, d("A_prov"));
 
   const fyd = 500 / 1.15;
   const sig = Areq > 0 && Aprov > 0 ? (fyd * Areq) / Aprov : fyd;
-  const r = verankering(fck, ds, cd, goed, type, sig);
+  const r = verankering(fck, ds, cd, goed, type, sig, druk, ref);
   const benut = Areq > 0 && Aprov > 0;
 
   // ── layout ────────────────────────────────────────────────────────────────
@@ -95,7 +106,7 @@ export default function VerankeringslengteDesigner() {
   const haak = type === 2 ? Math.max(10, 5 * dsPx) : 0;
 
   // grafiek: l_bd per diameter
-  const perDiam = DIAM_GRAFIEK.map((dd) => ({ dd, ...verankering(fck, dd, cd, goed, type, sig) }));
+  const perDiam = DIAM_GRAFIEK.map((dd) => ({ dd, ...verankering(fck, dd, cd, goed, type, sig, druk, ref) }));
   const gMax = Math.max(...perDiam.map((p) => p.lbd)) * 1.16;
   const gL = 52, gR = 14, gT = 14, gB = 30;
   const gw = Math.max(40, W - gL - gR), gh = Math.max(40, GH - gT - gB);
@@ -105,7 +116,8 @@ export default function VerankeringslengteDesigner() {
     <div className="vd-panel">
       <div className="vd-head">
         <strong>Parametrisch beeld — verankeringslengte</strong>
-        <span className="vd-uc info">l<sub>bd</sub> = {fmt(r.lbd)} mm</span>
+        <span className="vd-uc info">l<sub>bd</sub> = {fmt(r.lbd)} mm
+          {r.afwijkt && <span style={{ color: "#b45309" }}> · norm: {fmt(r.lbdNb)} mm</span>}</span>
       </div>
 
       <div className="vd-body" style={{ flex: 1, minHeight: 0, alignItems: "stretch" }}>
@@ -144,6 +156,13 @@ export default function VerankeringslengteDesigner() {
               <option value={2}>Anders dan recht</option>
             </select>
           </label>
+          <label style={{ flexDirection: "column", alignItems: "stretch" }}
+            title="Op druk: α₁ = α₂ = 1 en de ondergrens (8.7) met 0,6·l_b,rqd">Staaf op
+            <select style={{ width: "100%" }} value={druk ? 2 : 1} onChange={(e) => set("staafkracht", parseInt(e.target.value))}>
+              <option value={1}>Trek</option>
+              <option value={2}>Druk</option>
+            </select>
+          </label>
 
           <span className="vd-ctrl-h">Benutting</span>
           <label title="Beide op 0 laten betekent: rekenen met de volle f_yd">Benodigd A<sub>s</sub> (mm²)
@@ -163,7 +182,8 @@ export default function VerankeringslengteDesigner() {
             α<sub>1</sub>…α<sub>5</sub> = {fmt(r.a1, 2)} · {fmt(r.a2, 2)} · {fmt(r.a3, 2)} · {fmt(r.a4, 2)} · {fmt(r.a5, 2)}</span>
           <span className="gd-note" style={{ color: r.minMaatgevend ? "#b45309" : undefined }}>
             l<sub>b,min</sub> = {fmt(r.lbmin)} mm · berekend {fmt(r.ber)} mm →
-            <b> l<sub>bd</sub> = {fmt(r.lbd)} mm</b>{r.minMaatgevend ? " (ondergrens maatgevend)" : ""}</span>
+            <b> l<sub>bd</sub> = {fmt(r.lbd)} mm</b>{r.minMaatgevend ? " (ondergrens maatgevend)" : ""}
+            {r.afwijkt && <span style={{ color: "#b45309" }}> · norm (tabel 8.2): {fmt(r.lbdNb)} mm</span>}</span>
         </div>
 
         <div ref={wrapRef} className="vd-canvases" style={{ flex: 1, minWidth: 0, gap, borderLeft: "1px solid var(--theme-border-subtle, #d1d5db)", paddingLeft: 18 }}>
@@ -255,11 +275,11 @@ export default function VerankeringslengteDesigner() {
 
       <div className="vd-foot">
         <span>Klik op de blauwe dekking om die te wijzigen — stroomt direct terug in de rekensheet.
-          <br />De staaflengte staat op schaal; de stippellijn is de ondergrens l<sub>b,min</sub> uit (8.6).</span>
+          <br />De staaflengte staat op schaal; de stippellijn is de ondergrens l<sub>b,min</sub> uit {druk ? "(8.7)" : "(8.6)"}.</span>
         <span className="vd-live">
           {BETON.find((o) => o.v === fck)?.label} · {STAALSOORT.find((o) => o.v === staal)?.label} · Ø{ds} ·
           c = {fmt(cd)} mm · {goed ? "goede" : "slechte"} aanhechting ·
-          {type === 1 ? " rechte staaf" : " anders dan recht"} ·
+          {type === 1 ? " rechte staaf" : " anders dan recht"} · {druk ? "druk" : "trek"} ·
           f<sub>bd</sub> = {fmt(r.fbd, 2)} N/mm² · σ<sub>sd</sub> = {fmt(sig)} N/mm² ·
           l<sub>b,rqd</sub> = {fmt(r.lbrqd)} · α<sub>2</sub> = {fmt(r.a2, 2)} · l<sub>b,min</sub> = {fmt(r.lbmin)} ·
           <b> l<sub>bd</sub> = {fmt(r.lbd)} mm</b>

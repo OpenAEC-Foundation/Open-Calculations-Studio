@@ -15,19 +15,20 @@
  * `templateId` matcht een sleutel in `src/templates/index.ts`.
  */
 
+/**
+ * Hoe ver de toetsing van een module is. De teksten die de gebruiker ziet
+ * (kort en met uitleg) staan in de vertalingen: `bladVersie.status` en
+ * `bladVersie.statusUitleg` in i18n/locales/{nl,en}/common.json.
+ */
 export type ModuleStatus =
   /** Toetsing uitgewerkt én nagerekend op referentiebladen. */
   | "gereed"
   /** Toetsing staat er, maar is nog niet tegen referentiebladen gecontroleerd. */
   | "controleren"
+  /** Hoeveelheden geraamd en nagerekend; geen constructieve toetsing. */
+  | "raming"
   /** Alleen invoer en parametrisch beeld — de toetsing moet nog worden gemaakt. */
   | "concept";
-
-export const STATUS_UITLEG: Record<ModuleStatus, string> = {
-  gereed: "Gecalibreerd — toetsing nagerekend op referentiebladen",
-  controleren: "Toetsing uitgewerkt, nog niet tegen referentiebladen gecontroleerd",
-  concept: "Nog uit te werken — alleen invoer en parametrisch beeld, geen toetsing",
-};
 
 /**
  * Publicatie staat los van de status hierboven.
@@ -44,7 +45,7 @@ export const PUBLICATIE_UITLEG = {
 
 export type TreeNode =
   | { kind: "section"; id: string; label: string; children: TreeNode[] }
-  | { kind: "category"; id: string; label: string; defaultExpanded?: boolean; children: TreeNode[]; count?: number }
+  | { kind: "category"; id: string; label: string; defaultExpanded?: boolean; children: TreeNode[]; count?: number; bronUrl?: string }
   | {
       kind: "item";
       id: string;
@@ -62,9 +63,8 @@ export type TreeNode =
  * Vijf categorieën — Algemeen, Staal, Beton, Hout, Metselwerk — elk met de
  * modules die erbij horen. Binnen een categorie eerst de constructiedelen
  * (kolom, ligger, wand), daarna de verbindingen en tot slot de losse toetsen.
- *
- * Een `▫` achter het label betekent: invoer en parametrisch beeld zijn er, de
- * toetsing moet nog worden uitgewerkt.
+ * Hoe ver een module is, staat in `status` (zie `ModuleStatus`), niet in de
+ * indeling.
  *
  * Voor nu hardcoded; later vervangen door dynamische projectstaat (persisted
  * per project file).
@@ -75,11 +75,17 @@ export const moduleCatalogus: TreeNode[] = [
     id: "cat-algemeen",
     label: "Algemeen",
     defaultExpanded: true,
-    count: 3,
+    count: 9,
     children: [
       { kind: "item", id: "sheet-spuwer", label: "Spuwer (noodoverlaat)", templateId: "spuwer", status: "gereed", gepubliceerd: true },
       { kind: "item", id: "sheet-paaldraagvermogen", label: "Paaldraagvermogen", templateId: "paaldraagvermogen", status: "controleren" },
       { kind: "item", id: "sheet-permanente-vuurlast", label: "Permanente vuurlast (NEN 6090)", templateId: "permanente-vuurlast", status: "controleren" },
+      { kind: "item", id: "sheet-opdrijven", label: "Opdrijven en drijvend lichaam", templateId: "opdrijven", status: "controleren" },
+      { kind: "item", id: "sheet-lastresultante", label: "Lastresultante en statisch moment", templateId: "lastresultante", status: "controleren" },
+      { kind: "item", id: "sheet-ligger", label: "Ligger (hout of staal)", templateId: "ligger", status: "controleren" },
+      { kind: "item", id: "sheet-portaal-spant", label: "Portaal en spant (hout of staal)", templateId: "portaal-spant", status: "controleren" },
+      { kind: "item", id: "sheet-mechanica", label: "Mechanica (doorsnede, vakwerk, vergeetmenietjes)", templateId: "mechanica", status: "controleren" },
+      { kind: "item", id: "sheet-hekwerk", label: "Hekwerk en balustrade (hout of staal)", templateId: "hekwerk", status: "controleren" },
     ],
   },
   {
@@ -87,32 +93,22 @@ export const moduleCatalogus: TreeNode[] = [
     id: "cat-staal",
     label: "Staal",
     defaultExpanded: true,
-    count: 12,
+    count: 10,
     children: [
       // "Stalen ligger IPE 300" stond hier als module, maar is een uitgewerkt
       // voorbeeld met de doorsnede hard ingetypt — geen profielkeuze, geen
       // parametrisch beeld. De echte toetsing staat als "Volledige toetsing
       // stalen ligger" in de bibliotheek hieronder.
+      { kind: "item", id: "sheet-stalen-kolom", label: "Stalen kolom", templateId: "stalen-kolom", status: "controleren" },
       { kind: "item", id: "sheet-stalen-gevelkolom", label: "Stalen gevelkolom (wind + N)", templateId: "stalen-gevelkolom", status: "controleren" },
       { kind: "item", id: "sheet-verticaal-windverband", label: "Verticaal windverband", templateId: "verticaal-windverband", status: "controleren" },
       { kind: "item", id: "sheet-voetplaatverbinding", label: "Voetplaatverbinding (kolomvoet)", templateId: "voetplaatverbinding", status: "controleren" },
+      { kind: "item", id: "sheet-momentverbinding", label: "Momentverbinding", templateId: "momentverbinding", status: "controleren" },
+      { kind: "item", id: "sheet-dwarskrachtverbinding", label: "Dwarskrachtverbinding", templateId: "dwarskrachtverbinding", status: "controleren" },
+      { kind: "item", id: "sheet-schoorverbinding", label: "Schoorverbinding", templateId: "schoorverbinding", status: "controleren" },
       { kind: "item", id: "sheet-boutberekening", label: "Boutberekening", templateId: "boutberekening", status: "gereed" },
-      {
-        kind: "category",
-        id: "cat-staal-concept",
-        label: "Nog uit te werken",
-        defaultExpanded: true,
-        count: 7,
-        children: [
-          { kind: "item", id: "sheet-stalen-kolom", label: "Stalen kolom", templateId: "stalen-kolom", status: "concept" },
-          { kind: "item", id: "sheet-momentverbinding", label: "Momentverbinding", templateId: "momentverbinding", status: "concept" },
-          { kind: "item", id: "sheet-dwarskrachtverbinding", label: "Dwarskrachtverbinding", templateId: "dwarskrachtverbinding", status: "concept" },
-          { kind: "item", id: "sheet-schoorverbinding", label: "Schoorverbinding", templateId: "schoorverbinding", status: "concept" },
-          { kind: "item", id: "sheet-penverbinding", label: "Penverbinding", templateId: "penverbinding", status: "concept" },
-          { kind: "item", id: "sheet-lasberekening", label: "Lasberekening", templateId: "lasberekening", status: "concept" },
-          { kind: "item", id: "sheet-brandwerendheid", label: "Brandwerendheid", templateId: "brandwerendheid", status: "concept" },
-        ],
-      },
+      { kind: "item", id: "sheet-lasberekening", label: "Lasberekening", templateId: "lasberekening", status: "controleren" },
+      { kind: "item", id: "sheet-brandwerendheid", label: "Brandwerendheid (staal, hout of beton)", templateId: "brandwerendheid", status: "controleren" },
     ],
   },
   {
@@ -120,23 +116,18 @@ export const moduleCatalogus: TreeNode[] = [
     id: "cat-beton",
     label: "Beton",
     defaultExpanded: true,
-    count: 6,
+    count: 10,
     children: [
-      { kind: "item", id: "sheet-kruipfactor", label: "Kruipfactor", templateId: "kruipfactor", status: "gereed" },
+      { kind: "item", id: "sheet-betonkolom", label: "Betonkolom", templateId: "betonkolom", status: "controleren" },
+      { kind: "item", id: "sheet-betonplaat", label: "Betonplaat en console", templateId: "betonplaat", status: "controleren" },
+      { kind: "item", id: "sheet-tweepaals-poer", label: "Poer (op palen of op staal)", templateId: "tweepaals-poer", status: "controleren" },
+      { kind: "item", id: "sheet-betondoorsnede", label: "Betondoorsnede", templateId: "betondoorsnede", status: "controleren" },
+      { kind: "item", id: "sheet-ponsberekening", label: "Pons", templateId: "ponsberekening", status: "controleren" },
       { kind: "item", id: "sheet-verankeringslengte", label: "Verankeringslengte", templateId: "verankeringslengte", status: "gereed" },
-      {
-        kind: "category",
-        id: "cat-beton-concept",
-        label: "Nog uit te werken",
-        defaultExpanded: true,
-        count: 4,
-        children: [
-          { kind: "item", id: "sheet-betondoorsnede", label: "Betondoorsnede", templateId: "betondoorsnede", status: "concept" },
-          { kind: "item", id: "sheet-betonkolom", label: "Betonkolom", templateId: "betonkolom", status: "concept" },
-          { kind: "item", id: "sheet-ponsberekening", label: "Pons", templateId: "ponsberekening", status: "concept" },
-          { kind: "item", id: "sheet-tweepaals-poer", label: "Tweepaals poer", templateId: "tweepaals-poer", status: "concept" },
-        ],
-      },
+      { kind: "item", id: "sheet-beton-detaillering", label: "Beton detaillering (dekking, wapening, wand)", templateId: "beton-detaillering", status: "controleren" },
+      { kind: "item", id: "sheet-wapeningshoeveelheid", label: "Beton- en wapeningshoeveelheid", templateId: "wapeningshoeveelheid", status: "raming" },
+      { kind: "item", id: "sheet-plaatwandhoeveelheid", label: "Plaat- en wandhoeveelheden", templateId: "plaatwandhoeveelheid", status: "raming" },
+      { kind: "item", id: "sheet-kruipfactor", label: "Kruipfactor", templateId: "kruipfactor", status: "gereed" },
     ],
   },
   {
@@ -144,12 +135,14 @@ export const moduleCatalogus: TreeNode[] = [
     id: "cat-hout",
     label: "Hout",
     defaultExpanded: true,
-    count: 4,
+    count: 6,
     children: [
       { kind: "item", id: "sheet-kolom", label: "Kolom (houten kolom)", templateId: "kolom", status: "gereed" },
       { kind: "item", id: "sheet-balklaag", label: "Balklaag (houten vloerbalken)", templateId: "balklaag", status: "gereed", gepubliceerd: true },
       { kind: "item", id: "sheet-gording", label: "Gording (dakgording)", templateId: "gording", status: "gereed" },
-      { kind: "item", id: "sheet-schijfwerking", label: "Schijfwerking (wandschijf)", templateId: "schijfwerking", status: "controleren" },
+      { kind: "item", id: "sheet-houten-kap", label: "Houten kap (sporen, spanten, hoekkeper)", templateId: "houten-kap", status: "controleren" },
+      { kind: "item", id: "sheet-hsb-stabiliteit", label: "Wandschijf en stabiliteitswanden", templateId: "hsb-stabiliteit", status: "controleren" },
+      { kind: "item", id: "sheet-nagel-schroef", label: "Nagel- en schroefverbinding, keep, pen-en-gat, zwaluwstaart", templateId: "nagel-schroef", status: "controleren" },
     ],
   },
   {
@@ -157,9 +150,10 @@ export const moduleCatalogus: TreeNode[] = [
     id: "cat-metselwerk",
     label: "Metselwerk",
     defaultExpanded: true,
-    count: 2,
+    count: 3,
     children: [
       { kind: "item", id: "sheet-metselwerkwand", label: "Dragende metselwerkwand", templateId: "metselwerkwand", status: "controleren" },
+      { kind: "item", id: "sheet-metselwerk-loodrecht", label: "Metselwerk loodrecht belast", templateId: "metselwerk-loodrecht", status: "controleren" },
       { kind: "item", id: "sheet-opleg-metselwerk", label: "Oplegging op metselwerk", templateId: "opleg-metselwerk", status: "controleren" },
     ],
   },
@@ -177,7 +171,7 @@ export const bibliotheek: TreeNode[] = [
       { kind: "item", id: "book-funderingsadvies", label: "Funderingsadvies" },
       { kind: "item", id: "vdp-schuifspanning", label: "Vandepitte: Schuifspanningen (Jourawsky)", templateId: "vdp-schuifspanning" },
       { kind: "item", id: "vdp-doorbuiging", label: "Vandepitte: Doorbuiging + dwarskracht", templateId: "vdp-doorbuiging" },
-      { kind: "item", id: "vdp-knikken", label: "Vandepitte: Knikken (Euler)", templateId: "vdp-knikken" },
+      { kind: "item", id: "vdp-knikken", label: "Vandepitte: Knikken (Euler en normtoets)", templateId: "vdp-knikken" },
       { kind: "item", id: "vdp-mohr", label: "Vandepitte: Doorbuiging (Mohr)", templateId: "vdp-mohr" },
       { kind: "item", id: "vdp-eigenfrequentie", label: "Vandepitte: Eigenfrequentie", templateId: "vdp-eigenfrequentie" },
       { kind: "item", id: "vdp-virtuele-arbeid", label: "Vandepitte: Virtuele Arbeid (vakwerk)", templateId: "vdp-virtuele-arbeid" },
@@ -186,8 +180,9 @@ export const bibliotheek: TreeNode[] = [
   {
     kind: "category",
     id: "standards",
-    label: "Standards",
+    label: "Normbibliotheek",
     defaultExpanded: true,
+    bronUrl: "https://www.nen.nl/bouw/constructieve-veiligheid/eurocodes/overzicht-eurocodes",
     children: [
       {
         kind: "category",
@@ -246,6 +241,7 @@ export const bibliotheek: TreeNode[] = [
           { kind: "item", id: "ec3-knik", label: "§6.3.1 Knik", templateId: "ec3-knik" },
           { kind: "item", id: "ec3-doorbuiging", label: "§7.2 Doorbuiging (SLS)", templateId: "ec3-doorbuiging" },
           { kind: "item", id: "ec3-stalen-ligger", label: "Volledige toetsing stalen ligger", templateId: "ec3-stalen-ligger" },
+          { kind: "item", id: "ec3-onderflens", label: "Onderflensbuiging (wiel- of hanglast)", templateId: "ec3-onderflens" },
         ],
       },
       {
@@ -257,8 +253,12 @@ export const bibliotheek: TreeNode[] = [
           { kind: "item", id: "ec5-afschuiving", label: "§6.1.7 Afschuiving", templateId: "ec5-afschuiving" },
           { kind: "item", id: "ec5-druk", label: "§6.1.4 Druk evenwijdig", templateId: "ec5-druk" },
           { kind: "item", id: "ec5-druk-loodrecht", label: "§6.1.5 Druk loodrecht", templateId: "ec5-druk-loodrecht" },
+          { kind: "item", id: "ec5-wringing", label: "§6.1.8 Wringing", templateId: "ec5-wringing" },
           { kind: "item", id: "ec5-knik", label: "§6.3.2 Knik", templateId: "ec5-knik" },
+          { kind: "item", id: "ec5-tapse-ligger", label: "§6.4.2 Tapse ligger", templateId: "ec5-tapse-ligger" },
+          { kind: "item", id: "ec5-uitkeping", label: "§6.5.2 Uitkeping bij de oplegging", templateId: "ec5-uitkeping" },
           { kind: "item", id: "ec5-doorbuiging", label: "§7.2 Doorbuiging", templateId: "ec5-doorbuiging" },
+          { kind: "item", id: "ec5-beschot", label: "Vloer- en dakbeschot", templateId: "ec5-beschot" },
           { kind: "item", id: "ec5-houten-balk", label: "Volledige toetsing houten balk", templateId: "ec5-houten-balk" },
         ],
       },
@@ -279,10 +279,24 @@ export const bibliotheek: TreeNode[] = [
         label: "NEN 9997-1 Geotechniek",
         children: [
           { kind: "item", id: "en1997-funderingsstrook", label: "§6 Funderingsstrook", templateId: "en1997-funderingsstrook" },
-          { kind: "item", id: "en1997-paaldraagvermogen", label: "§7 Paaldraagvermogen", templateId: "en1997-paaldraagvermogen" },
+          { kind: "item", id: "en1997-paaldraagvermogen", label: "§7 Paaldraagvermogen (zie module Paaldraagvermogen)", templateId: "en1997-paaldraagvermogen" },
           { kind: "item", id: "en1997-zetting", label: "§6.6 Zetting", templateId: "en1997-zetting" },
           { kind: "item", id: "en1997-glijding", label: "§6.5.3 Glijding", templateId: "en1997-glijding" },
         ],
+      },
+      {
+        kind: "category",
+        id: "std-nen8700",
+        label: "NEN 8700/8701 Bestaande bouw — nog geen rekenblad",
+        bronUrl: "https://www.nen.nl/bouw/constructieve-veiligheid/constructieve-veiligheid-bestaande-bouw",
+        children: [],
+      },
+      {
+        kind: "category",
+        id: "std-en1999",
+        label: "EN 1999 Aluminium — nog geen rekenblad",
+        bronUrl: "https://www.nen.nl/bouw/constructieve-veiligheid/eurocodes/overzicht-eurocodes",
+        children: [],
       },
     ],
   },
@@ -291,9 +305,8 @@ export const bibliotheek: TreeNode[] = [
     id: "calcpad-samples",
     label: "CalcPAD voorbeelden",
     defaultExpanded: false,
-    count: 12,
+    count: 11,
     children: [
-      { kind: "item", id: "cpd-2259-intertek", label: "2259 Intertek units (real-world)", templateId: "cpd-2259-intertek" },
       { kind: "item", id: "cpd-calcpad-demo", label: "CalcPAD syntax demo", templateId: "calcpad-demo" },
       { kind: "item", id: "cpd-quadratic", label: "Quadratic Equation", templateId: "cpd-quadratic" },
       { kind: "item", id: "cpd-cubic", label: "Cubic Equation", templateId: "cpd-cubic" },

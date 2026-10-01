@@ -1,7 +1,7 @@
 {
   "name": "@openaec/calculations-studio",
   "private": true,
-  "version": "0.1.5",
+  "version": "2026.39.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

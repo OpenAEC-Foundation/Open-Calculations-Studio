@@ -2,8 +2,8 @@
  * Draait alle controlescripts achter elkaar en vat het resultaat samen.
  *
  * Twee soorten controle, met een verschillend referentiepunt:
- *   • check-<module>.mjs  — klopt de module nog met het de referentie-uitwerking-referentie-
- *     blad? Referentiepunt is de externe waarheid.
+ *   • check-<module>.mjs  — klopt de module nog met het
+ *     referentieblad? Referentiepunt is de externe waarheid.
  *   • check-afkortingen   — houdt de parser de rekentaal-tekst heel?
  *
  * Voor de vraag "is er iets veránderd" is er een ander gereedschap:

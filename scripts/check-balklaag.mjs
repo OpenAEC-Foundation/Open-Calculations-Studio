@@ -1,7 +1,7 @@
 /**
  * Controlescript voor de module Balklaag (houten vloerbalken).
  *
- * Negen de referentie-uitwerking-referenties (document1 t/m document9), alle afgeleid van één
+ * Negen referentieberekeningen (document1 t/m document9), alle afgeleid van één
  * basisgeval: 71×221 C24, klimaatklasse 1, dagmaat 5000, hoh 600, vloerhout 18,
  * g_k 1,00 kN/m², q_k 1,75 kN/m², Q_k 2 kN, CC2. Elk blad wijzigt precies één
  * ding, zodat een verschil altijd aan één oorzaak toe te wijzen is:
@@ -28,14 +28,23 @@ const tpl = laadTemplate("balklaag.ts");
  * In die stand hoort élke waarde exact te kloppen; er blijft dus geen enkele
  * `afwijkend`-melding over. De norm-stand wordt onderaan apart gedraaid.
  */
-const PROJECT = { K_FI: 1, rekenwijze: 1 };
+const PROJECT = { CC: 2, K_FI: 1, rekenwijze: 1 };
 
+/**
+ * De referentiebladen kennen één permanente vloerlast (1,00), een verdeelde
+ * veranderlijke (1,75) en een puntlast (2 kN). In het blad heten die G_k, Q_k
+ * en F_k. Het beschot rekent in de referentie met E = 7000 N/mm², en
+ * belastingcategorie B geeft dezelfde ψ_0 = 0,5 en ψ_2 = 0,3 als het
+ * referentiegeval. Trilling en de overige statische schema's staan uit: die
+ * komen in geen enkel referentieblad voor.
+ */
 const BASIS = {
-  profiel: "12", sterkteklasse: "2", klimaat: "1", duurklasse: "2",
-  L_d: "5000", a_opl: "50", hoh: "600", t_vloer: "18",
-  g_vloerplaat: "1.0", g_wanden: "0", g_plafond: "0", g_overig: "0",
-  q_k: "1.75", Q_k: "2", belastingcat: "2", verplaatsbaar: "0",
+  profiel: "12", sterkteklasse: "2", klimaat: "1", duurklasse: "2", schema: "1",
+  L_d: "5000", a_opl: "50", hoh: "600", t_vloer: "18", E_beschot: "7000", b_vloer: "5",
+  a_over: "0", L_veld2: "0", b_sparing: "0", l_staart: "0",
+  G_k: "1.0", Q_k: "1.75", F_k: "2", belastingcat: "2",
   "ψ_0_zelf": "0", "ψ_2_zelf": "0", controleer: "1", grensfactor: "0.004",
+  controleer_trilling: "0", "ζ": "0.01", a_tril: "1", b_tril: "120",
 };
 
 const REFERENTIES = [
@@ -116,22 +125,27 @@ for (const ref of REFERENTIES) {
 // ── Norm-stand ────────────────────────────────────────────────────────────
 // Dezelfde bladen nog eens met `rekenwijze` = 0. Twee splitspunten zijn actief:
 // het eigen gewicht (EN 338 ρ_mean × 9,81 in plaats van 550 × 10) en de vraag
-// welke veranderlijke doorbuiging in w_fin meetelt.
+// welke veranderlijke doorbuiging in w_fin meetelt. De afschuiving is geen
+// splitspunt: beide standen rekenen met de volle breedte, k_cr = 1,0 (NB art.
+// 6.1.7(2)), zoals de referentie-uitwerking.
 for (const ref of REFERENTIES) {
   const invoer = { ...BASIS, ...ref.invoer };
-  const xc = reken(tpl, invoer, PROJECT);
+  const refStand = reken(tpl, invoer, PROJECT);
   const nb = reken(tpl, invoer, { ...PROJECT, rekenwijze: 0 });
-  fouten += toetsNormStand(ref.blad, xc, nb, {
+  fouten += toetsNormStand(ref.blad, refStand, nb, {
     // EN 338 geeft voor elke sterkteklasse in dit blad een ρ_mean onder de 550,
     // en 9,81 < 10 — het eigen gewicht is dus altijd lager, en daarmee ook de
     // doorbuiging. u_var kan alleen gelijk blijven of dalen, nooit stijgen.
     g_balk: "lager", u_g_k: "lager", w_fin: "lager",
     u_q_k: "gelijk", k_r: "gelijk", f_m_d: "gelijk",
+    // V_z,Ed daalt een paar procent met het lichtere eigen gewicht; met dezelfde
+    // breedte (k_cr = 1,0 in beide standen) daalt τ_d evenveel.
+    "τ_d": "lager",
   });
 }
 
 console.log(`
-De de referentie-uitwerking-stand is op alle negen bladen exact — er blijft geen enkele
+De referentiestand is op alle negen bladen exact — er blijft geen enkele
 afwijking over, ook niet op het eigen gewicht. De norm-stand heeft geen
 referentieblad en is daarom alleen getoetst op eindigheid en op de richting van
 het verschil; zie punt 8 en 9 in docs/afwijkingen-referentie.md.`);

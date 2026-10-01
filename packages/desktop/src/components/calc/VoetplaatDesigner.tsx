@@ -7,7 +7,7 @@ import "./VoetplaatDesigner.css";
  * Parametrisch beeld van een voetplaatverbinding (kolomvoet), opgezet volgens
  * dezelfde structuur als de overige modules: één DEFAULTS-bron die de gedeelde
  * store seedt, een ResizeObserver zodat het beeld met het paneel meegroeit,
- * klikbare maten en krachten, en een live UC in de kop.
+ * klikbare maten en krachten.
  *
  * Twee aanzichten onder elkaar met één gedeelde horizontale schaal en
  * x-uitlijning, zodat de ankers in het vooraanzicht recht boven die in het
@@ -17,9 +17,9 @@ import "./VoetplaatDesigner.css";
  *   • Bovenaanzicht — voetplaat d_p × b_p met het profiel en de ankerposities,
  *     die volgen uit de randafstanden e_d en e_b.
  *
- * NB: dit is de visuele herbouw. De rekensheet (voetplaatverbinding.ts) hangt
- * nog aan het oude geometriemodel (c_rand / d_extra / layout); die wordt
- * hierna gelijkgetrokken zodra het invoermodel vaststaat.
+ * Het rekenblad (voetplaatverbinding.ts) gebruikt precies deze invoer. Het beeld
+ * rekent zelf niets: de toetsen en de UC staan in het blad, zodat er nooit twee
+ * verschillende uitkomsten in beeld zijn.
  */
 const MARKER = "Voetplaatverbinding";
 
@@ -135,8 +135,9 @@ const ANKEROPZET: Opzet[] = [
 ];
 
 /**
- * Ligging van de voetplaat op het fundatieblok. Bepaalt welke betonranden
- * dichtbij liggen en dus meetellen bij de kegelbreuk-toetsen.
+ * Ligging van de voetplaat op het fundatieblok. Bij een rand dichtbij rekent
+ * het blad zonder spreiding (k_j = 1), en bij getrokken ankers is de
+ * kegelbreuk dan niet volledig getoetst: die moet apart met de randafstanden.
  */
 const POSITIE: { v: number; label: string; randen: number }[] = [
   { v: 1, label: "Midden — geen rand", randen: 0 },
@@ -146,24 +147,18 @@ const POSITIE: { v: number; label: string; randen: number }[] = [
   { v: 5, label: "3 randen", randen: 3 },
   { v: 6, label: "4 randen — alzijdig", randen: 4 },
 ];
-const VERANKERING: { v: number; label: string }[] = [
-  { v: 1, label: "vloeigrens" }, { v: 2, label: "trekspanning" },
-];
-const STATISCH: { v: number; label: string }[] = [
-  { v: 1, label: "statisch bepaald" }, { v: 2, label: "statisch onbepaald" },
-];
 
 /** Eén bron van waarheid voor de invoer — voedt de controls én de gedeelde store. */
-// Defaults spiegelen het de referentie-uitwerking-invoerscherm: HEB300 S235, hoeklas 6,
+// Defaults spiegelen het invoerscherm van de referentie-uitwerking: HEB300 S235, hoeklas 6,
 // 4× M24-8.8, plaat 460 × 380 × 25, ondersabeling 30, fundatie 300, h_ef 200,
 // C25/30, N_Ed = 300 kN.
 const DEFAULTS: Record<string, number> = {
   profile: 11, staalsoort: 235, hoeklas: 6,
   t_p: 25, d_p: 460, b_p: 380,
   ank_opzet: 2, d_anker: 24, kwaliteit: 8.8, e_d: 40, e_b: 40, h_ef: 200,
-  gatspeling: 1, n_afschuiving: 2, wrijving: 1, verankering: 1,
-  t_g: 30, betonklasse: 25, h_b: 300, c_min: 30, positie: 1, gescheurd: 1,
-  N_Ed: 300, V_Ed: 0, M_Ed: 0, statisch: 1,
+  gatspeling: 1, wrijving: 1,
+  t_g: 30, betonklasse: 25, h_b: 300, positie: 1, gescheurd: 1,
+  N_Ed: 300, V_Ed: 0, M_Ed: 0,
 };
 
 // Maten die alleen het beeld opzetten — geen invoer.
@@ -237,11 +232,8 @@ export default function VoetplaatDesigner() {
   // Bij een flush-opzet steekt de plaat niet buiten het profiel uit.
   const d_p = opzet.flush ? Math.min(d("d_p"), prof.h) : Math.max(prof.h, d("d_p"));
   const gatspeling = Math.round(d("gatspeling"));
-  const n_afsch = Math.round(d("n_afschuiving"));
   const wrijving = Math.round(d("wrijving"));
-  const verankering = Math.round(d("verankering"));
   const gescheurd = Math.round(d("gescheurd"));
-  const statisch = Math.round(d("statisch"));
   const d_anker = d("d_anker");
   const kwal = d("kwaliteit");
   const e_d = Math.max(1, d("e_d"));
@@ -250,7 +242,6 @@ export default function VoetplaatDesigner() {
   const t_g = Math.max(0, d("t_g"));
   const fck = Math.round(d("betonklasse"));
   const h_b = Math.max(1, d("h_b"));
-  const c_min = d("c_min");
   const positie = Math.round(d("positie"));
   const N_Ed = d("N_Ed"), V_Ed = d("V_Ed"), M_Ed = d("M_Ed");
 
@@ -265,21 +256,6 @@ export default function VoetplaatDesigner() {
   const colsX = [...new Set(anchors.map((a) => a[0]))].sort((a, b) => a - b);
   const rijenY = [...new Set(anchors.map((a) => a[1]))].sort((a, b) => b - a);
 
-  // ── live drukweerstand (spiegelt voetplaatverbinding.ts §8) ───────────────
-  const A_c0 = b_p * d_p;
-  const A_c1 = Math.min(b_p + h_b, 3 * b_p) * Math.min(d_p + h_b, 3 * d_p);
-  const k_j = Math.min(3, Math.sqrt(A_c1 / A_c0));
-  const f_cd = fck / 1.5;
-  const f_jd = (2 / 3) * k_j * f_cd;
-  const cc = t_p * Math.sqrt(fy / (3 * f_jd));
-  // Naar buiten kan de drukprent niet verder dan het plaatoverstek c_p reiken.
-  const c_p = (d_p - prof.h) / 2;
-  const A_pr_f = (prof.tf + cc + Math.min(cc, c_p)) * Math.min(prof.b + 2 * cc, b_p);
-  const A_pr_w = (prof.tw + 2 * cc) * Math.max(0, prof.h - 2 * prof.tf - 2 * cc);
-  const A_prent = 2 * A_pr_f + A_pr_w;
-  const N_Rd = (f_jd * A_prent) / 1000; // kN
-  const UC_druk = N_Rd > 0 ? N_Ed / N_Rd : 0;
-  const ok = UC_druk <= 1.0;
   const fmt = (v: number, dec = 0) => v.toFixed(dec).replace(".", ",");
 
   // ── klikbare chips ────────────────────────────────────────────────────────
@@ -448,8 +424,8 @@ export default function VoetplaatDesigner() {
     <div className="vd-panel">
       <div className="vd-head">
         <strong>Parametrisch beeld — voetplaatverbinding</strong>
-        <span className={`vd-uc ${ok ? "ok" : "bad"}`}>
-          UC<sub>druk</sub> = {fmt(UC_druk, 2)} {ok ? "✓ voldoet" : "✗ voldoet niet"}
+        <span className="vd-uc info">
+          {prof.name} · plaat {fmt(d_p)} × {fmt(b_p)} × {fmt(t_p)} · {nAnk}× M{fmt(d_anker)}
         </span>
       </div>
 
@@ -519,25 +495,13 @@ export default function VoetplaatDesigner() {
           <label>Verankeringsdiepte h<sub>ef</sub>
             <input type="number" step={10} value={h_ef} onChange={(e) => setVal("h_ef", parseFloat(e.target.value))} />
           </label>
-          <label className="gd-chk" title="Normale gatspeling volgens EN 1090-2; anders vergrote gaten">
+          <label className="gd-chk" title="Normale gatspeling volgens EN 1090-2 tabel 11; anders vergrote gaten: de ankers nemen dan geen dwarskracht op, en de randafstand wordt getoetst met de grotere d_0">
             <input type="checkbox" checked={gatspeling === 1} onChange={(e) => setVal("gatspeling", e.target.checked ? 1 : 0)} />
             normale gatspeling
-          </label>
-          <label>Bouten op afschuiving
-            <input type="number" step={1} min={0} value={n_afsch} onChange={(e) => setVal("n_afschuiving", parseFloat(e.target.value))} />
           </label>
           <label className="gd-chk" title="Wrijving tussen voetplaat en ondersabeling meerekenen bij de afschuifweerstand">
             <input type="checkbox" checked={wrijving === 1} onChange={(e) => setVal("wrijving", e.target.checked ? 1 : 0)} />
             wrijvingsweerstand
-          </label>
-          <label style={{ flexDirection: "column", alignItems: "stretch" }}>Verankeringslengte baseren op
-            <span className="mw-radios">
-              {VERANKERING.map((o) => (
-                <label key={o.v}>
-                  <input type="radio" name="vp_verankering" checked={verankering === o.v} onChange={() => setVal("verankering", o.v)} />{o.label}
-                </label>
-              ))}
-            </span>
           </label>
 
           <span className="vd-ctrl-h">Beton</span>
@@ -552,11 +516,8 @@ export default function VoetplaatDesigner() {
           <label>Fundatiehoogte h<sub>b</sub>
             <input type="number" step={25} value={h_b} onChange={(e) => setVal("h_b", parseFloat(e.target.value))} />
           </label>
-          <label>Dekking c<sub>min</sub>
-            <input type="number" step={5} value={c_min} onChange={(e) => setVal("c_min", parseFloat(e.target.value))} />
-          </label>
           <label style={{ flexDirection: "column", alignItems: "stretch" }}
-            title="Welke betonranden liggen dicht bij de ankers — bepaalt de kegelbreuk-toetsen">Positie op het fundatieblok
+            title="Bij een rand dichtbij: geen spreiding (k_j = 1) en de kegelbreuk apart toetsen">Ligging op het fundatieblok
             <select style={{ width: "100%" }} value={positie} onChange={(e) => setVal("positie", parseInt(e.target.value))}>
               {POSITIE.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
             </select>
@@ -575,12 +536,6 @@ export default function VoetplaatDesigner() {
           </label>
           <label>M<sub>Ed</sub> (kNm)
             <input type="number" step={5} value={M_Ed} onChange={(e) => setVal("M_Ed", parseFloat(e.target.value))} />
-          </label>
-          <label style={{ flexDirection: "column", alignItems: "stretch" }}
-            title="Bij een statisch onbepaalde constructie mag herverdeling worden meegenomen">Constructie
-            <select style={{ width: "100%" }} value={statisch} onChange={(e) => setVal("statisch", parseInt(e.target.value))}>
-              {STATISCH.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-            </select>
           </label>
         </div>
 
@@ -728,9 +683,9 @@ export default function VoetplaatDesigner() {
         <span className="vd-live">
           {prof.name} S{fy} · a = {fmt(a_las)} · plaat {fmt(d_p)}×{fmt(b_p)}×{fmt(t_p)} · {nAnk}× M{fmt(d_anker)}–{kwal} ·
           h.o.h. {fmt(2 * xEnd)}×{fmt(2 * yEnd)} · {POSITIE.find((o) => o.v === positie)?.randen}× rand ·
-          {gescheurd === 1 ? " gescheurd ·" : " ongescheurd ·"}{wrijving === 1 ? " met wrijving ·" : ""} {n_afsch} op afschuiving ·
-          C{fck} · k<sub>j</sub> = {fmt(k_j, 2)} ·
-          f<sub>jd</sub> = {fmt(f_jd, 2)} N/mm² · A<sub>prent</sub> = {fmt(A_prent)} mm² · N<sub>Rd</sub> = {fmt(N_Rd)} kN
+          {gescheurd === 1 ? " gescheurd ·" : " ongescheurd ·"}{wrijving === 1 ? " met wrijving ·" : ""}
+          {gatspeling === 1 ? " normale gaten" : " vergrote gaten"} · C{fck} · h<sub>b</sub> = {fmt(h_b)} mm ·
+          N<sub>Ed</sub> = {fmt(N_Ed)} kN · M<sub>Ed</sub> = {fmt(M_Ed)} kNm · V<sub>Ed</sub> = {fmt(V_Ed)} kN
         </span>
       </div>
     </div>

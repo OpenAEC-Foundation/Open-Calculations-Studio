@@ -20,7 +20,12 @@
     "undo": "Undo",
     "redo": "Redo",
     "pdf": "PDF",
-    "ifcExport": "IFC"
+    "preview": "Preview",
+    "pdfSheet": "PDF sheet",
+    "pdfSave": "Report (PDF)",
+    "ifcExport": "IFC",
+    "insert": "Insert",
+    "module": "Module"
   },
   "insert": {
     "elements": "Elements",

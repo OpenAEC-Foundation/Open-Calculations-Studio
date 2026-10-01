@@ -7,17 +7,21 @@ import { voetplaatverbinding } from "./voetplaatverbinding";
 import { balklaag } from "./balklaag";
 import { oplegMetselwerk } from "./oplegMetselwerk";
 import { schijfwerking } from "./schijfwerking";
+import { hsbStabiliteit } from "./hsbStabiliteit";
+import { nagelSchroefverbinding } from "./nagelSchroefverbinding";
+import { paaldraagvermogen } from "./paaldraagvermogen";
 import { gording } from "./gording";
 import { kolom } from "./kolom";
 import { metselwerkwand } from "./metselwerkwand";
+import { metselwerkLoodrecht } from "./metselwerkLoodrecht";
 import { spuwer } from "./spuwer";
 import { kruipfactor } from "./kruipfactor";
 import { boutberekening } from "./boutberekening";
 import { permanenteVuurlast } from "./permanenteVuurlast";
-// Visuele modules — invoer en parametrisch beeld, toetsing volgt nog.
+// Modules met parametrisch beeld en toetsing, nog tegen referentiebladen te
+// controleren (status in components/calc/projectTree.ts).
 import { lasberekening } from "./lasberekening";
 import { schoorverbinding } from "./schoorverbinding";
-import { penverbinding } from "./penverbinding";
 import { stalenKolom } from "./stalenKolom";
 import { brandwerendheid } from "./brandwerendheid";
 import { momentverbinding } from "./momentverbinding";
@@ -26,10 +30,22 @@ import { betondoorsnede } from "./betondoorsnede";
 import { betonkolom } from "./betonkolom";
 import { ponsberekening } from "./ponsberekening";
 import { tweepaalsPoer } from "./tweepaalsPoer";
+import { betonplaat } from "./betonplaat";
 import { verankeringslengte } from "./verankeringslengte";
+import { betonDetaillering } from "./betonDetaillering";
+import { opdrijven } from "./opdrijven";
+import { lastresultante } from "./lastresultante";
+import { wapeningshoeveelheid } from "./wapeningshoeveelheid";
+import { plaatwandhoeveelheid } from "./plaatwandhoeveelheid";
+import { houtenKap } from "./houtenKap";
+import { ligger } from "./ligger";
+import { portaalSpant } from "./portaalSpant";
+import { hekwerk } from "./hekwerk";
+import { mechanica } from "./mechanica";
 import {
   ec5Buiging, ec5Afschuiving, ec5Druk, ec5DrukLoodrecht,
   ec5Knik, ec5Doorbuiging, ec5HoutenBalk,
+  ec5Wringing, ec5TapseLigger, ec5Uitkeping, ec5Beschot,
 } from "./eurocode5";
 import {
   vandepitteSchuifspanning, vandepitteDoorbuiging, vandepitteKnikken,
@@ -45,6 +61,7 @@ import {
 import {
   ec3Materiaal, ec3Classificatie, ec3Trek, ec3Druk, ec3Buiging,
   ec3Dwarskracht, ec3BuigingNormaalkracht, ec3Kip, ec3Knik, ec3Doorbuiging, ec3StalenLigger,
+  ec3Onderflens,
 } from "./en1993";
 import {
   en1996Druksterkte, en1996Drukwand, en1996Afschuiving, en1996Slankheid,
@@ -64,16 +81,18 @@ export const templates: Record<string, string> = {
   "balklaag": balklaag,
   "opleg-metselwerk": oplegMetselwerk,
   "schijfwerking": schijfwerking,
+  "hsb-stabiliteit": hsbStabiliteit,
+  "nagel-schroef": nagelSchroefverbinding,
   "gording": gording,
   "kolom": kolom,
   "metselwerkwand": metselwerkwand,
+  "metselwerk-loodrecht": metselwerkLoodrecht,
   "spuwer": spuwer,
   "kruipfactor": kruipfactor,
   "boutberekening": boutberekening,
   "permanente-vuurlast": permanenteVuurlast,
   "lasberekening": lasberekening,
   "schoorverbinding": schoorverbinding,
-  "penverbinding": penverbinding,
   "stalen-kolom": stalenKolom,
   "brandwerendheid": brandwerendheid,
   "momentverbinding": momentverbinding,
@@ -82,10 +101,21 @@ export const templates: Record<string, string> = {
   "betonkolom": betonkolom,
   "ponsberekening": ponsberekening,
   "tweepaals-poer": tweepaalsPoer,
+  "betonplaat": betonplaat,
   "verankeringslengte": verankeringslengte,
+  "beton-detaillering": betonDetaillering,
+  "opdrijven": opdrijven,
+  "lastresultante": lastresultante,
+  "wapeningshoeveelheid": wapeningshoeveelheid,
+  "plaatwandhoeveelheid": plaatwandhoeveelheid,
+  "houten-kap": houtenKap,
+  "ligger": ligger,
+  "portaal-spant": portaalSpant,
+  "hekwerk": hekwerk,
+  "mechanica": mechanica,
   "calcpad-demo": calcpadDemo,
   ...calcpadSamples,
-  "paaldraagvermogen": paalExample,
+  "paaldraagvermogen": paaldraagvermogen,
   "stalen-ligger": exampleDoc,
   "ec5-buiging": ec5Buiging,
   "ec5-afschuiving": ec5Afschuiving,
@@ -94,6 +124,10 @@ export const templates: Record<string, string> = {
   "ec5-knik": ec5Knik,
   "ec5-doorbuiging": ec5Doorbuiging,
   "ec5-houten-balk": ec5HoutenBalk,
+  "ec5-wringing": ec5Wringing,
+  "ec5-tapse-ligger": ec5TapseLigger,
+  "ec5-uitkeping": ec5Uitkeping,
+  "ec5-beschot": ec5Beschot,
   "vdp-schuifspanning": vandepitteSchuifspanning,
   "vdp-doorbuiging": vandepitteDoorbuiging,
   "vdp-knikken": vandepitteKnikken,
@@ -123,6 +157,7 @@ export const templates: Record<string, string> = {
   "ec3-knik": ec3Knik,
   "ec3-doorbuiging": ec3Doorbuiging,
   "ec3-stalen-ligger": ec3StalenLigger,
+  "ec3-onderflens": ec3Onderflens,
   "en1996-druksterkte": en1996Druksterkte,
   "en1996-drukwand": en1996Drukwand,
   "en1996-afschuiving": en1996Afschuiving,

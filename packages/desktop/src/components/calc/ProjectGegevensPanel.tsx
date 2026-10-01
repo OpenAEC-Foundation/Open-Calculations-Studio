@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { useProjectStore } from "../../store/projectStore";
-import { PROJECT_VELDEN, kFiVoor, type VeldDef } from "../../store/projectGegevens";
+import { PROJECT_VELDEN, kFiVoor, keuzesVoor, vervallenKeuze, type VeldDef } from "../../store/projectGegevens";
 import WindAreaMap from "./WindAreaMap";
 import "./ProjectGegevensPanel.css";
 
@@ -74,11 +74,13 @@ export default function ProjectGegevensPanel() {
                 <code className="pg-var">{veld.naam}</code>
               </span>
               {veld.type === "keuze" ? (
+                // Een waarde die niet (meer) tussen de keuzes staat, komt er als
+                // extra keuze bij; anders toont de lijst stil de eerste keuze.
                 <select
                   value={gegevens[veld.naam] ?? veld.standaard}
                   onChange={(e) => zetGegeven(veld.naam, e.target.value)}
                 >
-                  {veld.opties?.map((o) => (
+                  {keuzesVoor(veld, gegevens[veld.naam] ?? veld.standaard).map((o) => (
                     <option key={o.waarde} value={o.waarde}>
                       {o.label}
                     </option>
@@ -92,6 +94,12 @@ export default function ProjectGegevensPanel() {
                 />
               )}
               {veld.hint && <span className="pg-hint">{veld.hint}</span>}
+              {vervallenKeuze(veld, gegevens[veld.naam] ?? "") && (
+                <span className="pg-afgeleid">
+                  Deze keuze bestaat niet meer; de bladen rekenen met de waarde die erachter staat.
+                  Kies er een uit de lijst om dat vast te leggen.
+                </span>
+              )}
               {veld.naam === "CC" && (
                 <span className="pg-afgeleid">
                   Afgeleid: K<sub>FI</sub> = {kFi.toFixed(2).replace(".", ",")}
