@@ -36,6 +36,13 @@
  * kleurt zo'n rij rood. Het blad toetst M_Ed ≥ 0 (trek bovenin) en V_Ed ≥ 0
  * (omlaag); een negatieve waarde keurt af.
  *
+ * Een flenslas aan de buitenkant van een flens telt alleen waar de kopplaat
+ * buiten die flens uitsteekt: bij een korte kopplaat alleen de binnenzijde van
+ * de trekflens (laslengte, zones) en één lasbeen aan de drukflens in (6.11).
+ * Een schuine consoleflens is op het plaatvlak t_fb/cos θ dik (drukpunt en
+ * botszone). Bij een gelaste verbinding mag de liggerflens niet breder zijn dan
+ * de kolomflens. De classificatie vraagt L_b > 0.
+ *
  * Aannames aan de veilige kant: β = 1 (enkelzijdig, tabel 5.4); kolommoment
  * gelijk aan M_Ed voor k_wc; A_vc met η = 1; bij een console met flens alleen
  * die flens op druk; een console zonder flens telt niet mee; bouten in
@@ -231,16 +238,18 @@ L_b = ?*(mm)', overspanning ligger, voor de classificatie<span class="kolom-3"><
 
 #hide
 ok_a = if(a_flens ≥ 3 mm and a_lijf ≥ 3 mm; 1; 0)
-ok_cs = if(console ≡ 2; if(h_cs ≤ l_cs; 1; 0); 1)
+ok_cs = if(console > 0; if(h_cs > 0 mm and l_cs > 0 mm and (console ≡ 1 or h_cs ≤ l_cs); 1; 0); 1)
 ε = sqrt(235 N/mm^2/f_y)
 d_wc = h_c - 2*(t_fc + r_c)
 ok_dc = if(d_wc/t_wc ≤ 69*ε; 1; 0)
-'Drukpunt (figuur 6.15): midden van de flens van de console, anders van de onderflens van de ligger.
-y_c = if(console ≡ 2; h_b + h_cs - t_fb/2; h_b - t_fb/2)
+'Drukpunt (figuur 6.15): de hartlijn van de flens van de console waar die het plaatvlak snijdt, anders het midden van de onderflens van de ligger. De consoleflens loopt schuin (tan θ = h/l): op het plaatvlak is hij t<sub>fb</sub>/cos θ dik.
+t_v = if(console ≡ 2; t_fb*sqrt(1 + (h_cs/max(l_cs; 1 mm))^2); t_fb)
+y_c = if(console ≡ 2; h_b + h_cs - t_v/2; h_b - t_fb/2)
 z_f = y_c - t_fb/2
 ok_last = if(M_Ed ≥ 0 kN*m and V_Ed ≥ 0 kN; 1; 0)
 ok_geo = 1
 ok_bfc = 1
+ok_bb = 1
 ok_volsterk = 1
 n_t = 1
 #show
@@ -251,7 +260,11 @@ n_t = 1
     '<b style="color:#b91c1c">Een keeldikte is kleiner dan 3 mm (§4.5.2(2)).</b>
 #end if
 #if ok_cs ≡ 0
-    '<b style="color:#b91c1c">De flens van de console staat steiler dan 45° op de liggerflens: h<sub>console</sub> > l<sub>console</sub> (§6.2.6.7(2)).</b>
+    #if h_cs ≤ 0 mm or l_cs ≤ 0 mm
+        '<b style="color:#b91c1c">De hoogte en de lengte van de console moeten groter zijn dan 0.</b>
+    #else
+        '<b style="color:#b91c1c">De flens van de console staat steiler dan 45° op de liggerflens: h<sub>console</sub> > l<sub>console</sub> (§6.2.6.7(2)).</b>
+    #end if
 #end if
 #if ok_dc ≡ 0
     '<b style="color:#b91c1c">Het kolomlijf is te slank voor §6.2.6.1: d<sub>c</sub>/t<sub>w</sub> > 69ε.</b>
@@ -287,12 +300,15 @@ n_t = 1
     h_8 = y_c - y_8
     n_t = if(n_r ≥ 1 and h_1 > 0 mm; 1; 0) + if(n_r ≥ 2 and h_2 > 0 mm; 1; 0) + if(n_r ≥ 3 and h_3 > 0 mm; 1; 0) + if(n_r ≥ 4 and h_4 > 0 mm; 1; 0) + if(n_r ≥ 5 and h_5 > 0 mm; 1; 0) + if(n_r ≥ 6 and h_6 > 0 mm; 1; 0) + if(n_r ≥ 7 and h_7 > 0 mm; 1; 0) + if(n_r ≥ 8 and h_8 > 0 mm; 1; 0)
     'Zones van flens en flenslas in de diepte vanaf de bovenkant van de ligger, verbreed met de straal van de sluitring.
-    z_1o = -sqrt(2)*a_flens
+    'Een flenslas aan de buitenkant van een flens kan alleen waar de kopplaat buiten die flens uitsteekt: boven de trekflens bij een overstekende of doorlopende plaat, onder de drukflens alleen bij een doorlopende plaat.
+    las_b = if(ext ≡ 1; 1; 0)
+    las_o = if(kopplaattype ≡ 2; 1; 0)
+    z_1o = -las_b*sqrt(2)*a_flens
     z_1u = t_fb + sqrt(2)*a_flens
     z_2o = h_b - t_fb - sqrt(2)*a_flens
-    z_2u = h_b + sqrt(2)*a_flens
-    z_3o = h_b + h_cs - t_fb - sqrt(2)*a_flens
-    z_3u = h_b + h_cs + sqrt(2)*a_flens
+    z_2u = h_b + if(console ≡ 2; 1; las_o)*sqrt(2)*a_flens
+    z_3o = h_b + h_cs - t_v - sqrt(2)*a_flens
+    z_3u = h_b + h_cs + las_o*sqrt(2)*a_flens
     inzone(y; o; u) = if(y > o - r_w and y < u + r_w; 1; 0)
     bots(y) = max(inzone(y; z_1o; z_1u); inzone(y; z_2o; z_2u); if(console ≡ 2; inzone(y; z_3o; z_3u); 0))
     bots_1 = if(n_r ≥ 1; bots(y_1); 0)
@@ -309,7 +325,7 @@ n_t = 1
     ok_33 = if(e_kp ≥ 1.2*d_0 and e_p ≥ 1.2*d_0 and e_c ≥ 1.2*d_0 and w_kp ≥ 2.4*d_0 and (n_r ≡ 1 or p_12 ≥ 2.2*d_0) and (n_r ≤ 2 or p_kp ≥ 2.2*d_0); 1; 0)
     ok_hor = if((w_kp - t_wb)/2 - sqrt(2)*a_lijf ≥ r_w and (w_kp - t_wc)/2 - r_c ≥ r_w; 1; 0)
     ok_ext = if(ext ≡ 1; if(y_1 < 0 mm and (n_r ≡ 1 or y_2 > 0 mm); 1; 0); 1)
-    ok_tkp = if(t_kp ≤ 40 mm; 1; 0)
+    ok_tkp = if(t_kp > 0 mm and t_kp ≤ 40 mm; 1; 0)
     ok_geo = if(n_bots ≡ 0 and ok_33 ≡ 1 and ok_hor ≡ 1 and ok_ext ≡ 1 and ok_tkp ≡ 1; 1; 0)
     #show
     #if n_r ≡ 1
@@ -358,20 +374,28 @@ n_t = 1
         #end if
     #end if
     #if ok_tkp ≡ 0
-        '<b style="color:#b91c1c">De kopplaat is dikker dan 40 mm: f<sub>y</sub> en f<sub>u</sub> hierboven gelden alleen tot 40 mm (tabel 3.1 van EN 1993-1-1).</b>
+        #if t_kp ≤ 0 mm
+            '<b style="color:#b91c1c">De dikte van de kopplaat moet groter zijn dan 0.</b>
+        #else
+            '<b style="color:#b91c1c">De kopplaat is dikker dan 40 mm: f<sub>y</sub> en f<sub>u</sub> hierboven gelden alleen tot 40 mm (tabel 3.1 van EN 1993-1-1).</b>
+        #end if
     #end if
 #else
     #hide
     k_fc = min(t_fc/t_fb; 1)
     b_eff,b,fc = min(t_wc + 2*r_c + 7*k_fc*t_fc; b_b)
     ok_bfc = if(b_eff,b,fc ≥ f_y/f_u*b_b; 1; 0)
+    ok_bb = if(b_b ≤ b_c; 1; 0)
     #show
+    #if ok_bb ≡ 0
+        '<b style="color:#b91c1c">De liggerflens (b = 'b_b' mm) is breder dan de kolomflens (b = 'b_c' mm): de flens ligt niet over de volle breedte op de kolom en de flenslas past niet rondom (§4.10). Kies een bredere kolom of een kopplaat.</b>
+    #end if
     #if ok_bfc ≡ 0
         '<b style="color:#b91c1c">De kolomflens is te slap voor een gelaste flens: b<sub>eff</sub> = 'b_eff,b,fc' mm < (f<sub>y</sub>/f<sub>u</sub>)·b = 'f_y/f_u*b_b' mm; verstijf de kolom (§4.10).</b>
     #end if
 #end if
 #hide
-ok_all = if(ok_last ≡ 1 and ok_a ≡ 1 and ok_cs ≡ 1 and ok_dc ≡ 1 and ok_geo ≡ 1 and ok_bfc ≡ 1; 1; 0)
+ok_all = if(ok_last ≡ 1 and ok_a ≡ 1 and ok_cs ≡ 1 and ok_dc ≡ 1 and ok_geo ≡ 1 and ok_bfc ≡ 1 and ok_bb ≡ 1; 1; 0)
 M_j,Rd = 0 kN*m
 UC_lt = 0
 #show
@@ -390,7 +414,10 @@ UC_lt = 0
         s_p = 0 mm
         #show
     #end if
-    b_eff,c,wc = t_fb + 2*sqrt(2)*a_flens + 5*(t_fc + r_c) + s_p', (6.10) en (6.11)<span class="alleen-scherm"></span>'
+    #hide
+    n_las,c = if(verbindingstype ≡ 2 or kopplaattype ≡ 2; 2; 1)
+    #show
+    b_eff,c,wc = t_fb + n_las,c*sqrt(2)*a_flens + 5*(t_fc + r_c) + s_p', (6.10) en (6.11), met de lasbenen die er aan de drukflens zijn<span class="alleen-scherm"></span>'
     b_eff,c,wc', (6.10) en (6.11)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     ω_c = 1/sqrt(1 + 1.3*(b_eff,c,wc*t_wc/A_vc)^2)', tabel 6.3<span class="alleen-scherm"></span>'
     ω_c', tabel 6.3<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
@@ -767,8 +794,13 @@ UC_lt = 0
         F_f,Ed = max(M_j,Rd/z_f; b_b*t_fb*f_y/γ_M0) to kN', flenskracht, ten minste de volle liggerflens (§4.10(5))<span class="alleen-scherm"></span>'
         F_f,Ed', ten minste de volle liggerflens (§4.10(5))<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
     #end if
-    L_w,f = 2*b_b - t_wb - 2*r_b', flenslassen, boven- en onderzijde<span class="alleen-scherm"></span>'
-    L_w,f', flenslassen, boven- en onderzijde<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+    #if verbindingstype ≡ 1 and kopplaattype ≡ 1
+        L_w,f = b_b - t_wb - 2*r_b', flenslas trekflens, alleen de binnenzijde: de korte kopplaat steekt niet boven de flens uit<span class="alleen-scherm"></span>'
+        L_w,f', flenslas trekflens, alleen binnenzijde (korte kopplaat)<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+    #else
+        L_w,f = 2*b_b - t_wb - 2*r_b', flenslassen trekflens, buiten- en binnenzijde<span class="alleen-scherm"></span>'
+        L_w,f', flenslassen trekflens, buiten- en binnenzijde<span class="alleen-afdruk"></span><span class="kolom-3"></span>'
+    #end if
     F_w,f,Rd = a_flens*L_w,f*f_u/(sqrt(2)*β_w*γ_M2) to kN', dwars belast (4.1)'
     UC_lf = F_f,Ed/F_w,f,Rd', flenslassen'
     L_w,w = 2*(h_b - 2*t_fb - 2*r_b)', lijflassen, beide zijden<span class="alleen-scherm"></span>'
@@ -895,6 +927,9 @@ UC_lt = 0
         #hide
         k_b = if(stabiliteit ≡ 2; 8; 25)
         #show
+        #if L_b ≤ 0 mm
+            '<b style="color:#b45309">Classificatie naar stijfheid niet bepaald: vul de overspanning L<sub>b</sub> van de ligger in.</b>
+        #else
         S_j,st = k_b*E*I_b/L_b to kN*m', grens stijf, k_b = 8 geschoord, 25 ongeschoord (§5.2.2.5)<span class="alleen-scherm"></span>'
         S_j,st', grens stijf, k_b = 8 geschoord, 25 ongeschoord (§5.2.2.5)<span class="alleen-afdruk"></span><span class="kolom-2"></span>'
         S_j,sch = 0.5*E*I_b/L_b to kN*m', grens nominaal scharnierend (§5.2.2.5)<span class="alleen-scherm"></span>'
@@ -909,6 +944,7 @@ UC_lt = 0
             'Classificatie naar stijfheid: <b>nominaal scharnierend</b>.
         #else
             'Classificatie naar stijfheid: <b>semi-stijf</b>; reken het raamwerk met de stijfheid van de verbinding (§5.1.2).
+        #end if
         #end if
     #end if
 #end if

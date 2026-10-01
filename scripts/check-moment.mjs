@@ -21,10 +21,11 @@
  *      precies rond 1, een sluitring precies tegen de flenslas, α op de
  *      verticale tak van figuur 6.11 en de driehoeksverdeling.
  *   3. De voorwaarden die de toetsing blokkeren (botsing, tabel 3.3, keel
- *      < 3 mm, console steiler dan 45°, kopplaat > 40 mm, slappe kolomflens
- *      bij een gelaste flens, een tweede rij boven de ligger, een negatief
- *      moment of een negatieve dwarskracht): melding in het blad en
- *      "voldoet niet". Ook de opmerking in de NB bij §6.2.7.2(9): een rij
+ *      < 3 mm, console steiler dan 45° of zonder hoogte of lengte, kopplaat
+ *      zonder dikte of > 40 mm, slappe kolomflens of een liggerflens breder
+ *      dan de kolomflens bij een gelaste flens, een tweede rij boven de
+ *      ligger, een negatief moment of een negatieve dwarskracht): melding in
+ *      het blad en "voldoet niet". Zonder overspanning L_b geen classificatie. Ook de opmerking in de NB bij §6.2.7.2(9): een rij
  *      boven 1,8·F_t,Rd keurt af, tenzij de verbinding volledig sterk is.
  *
  * Elk blad moet vrij zijn van NaN, ook als geen enkele rij boven het drukpunt
@@ -88,7 +89,9 @@ function uitwerking(v) {
   const fy = v.staalsoort, fu = FU[fy], bw = BW[fy], gM2 = 1.25, E = 210000;
   const geb = v.verbindingstype === 1;
   const hcs = v.console > 0 ? v.h_console : 0;
-  const yc = v.console === 2 ? L.h + hcs - L.tf / 2 : L.h - L.tf / 2;
+  // Schuine consoleflens (tan θ = h/l): op het plaatvlak t_f/cos θ dik.
+  const tV = v.console === 2 ? L.tf * Math.sqrt(1 + (hcs / Math.max(v.l_console, 1)) ** 2) : L.tf;
+  const yc = v.console === 2 ? L.h + hcs - tV / 2 : L.h - L.tf / 2;
   const zf = yc - L.tf / 2;
   const M = v.M_Ed * 1e6, V = v.V_Ed * 1e3;
   const r = { geldig: true, bots: [] };
@@ -96,6 +99,7 @@ function uitwerking(v) {
 
   if (v.M_Ed < 0 || v.V_Ed < 0) blok("negatieve belasting");
   if (v.a_flens < 3 || v.a_lijf < 3) blok("keel");
+  if (v.console > 0 && !(v.h_console > 0 && v.l_console > 0)) blok("console zonder maat");
   if (v.console === 2 && v.h_console > v.l_console) blok("console");
   const dwc = K.h - 2 * (K.tf + K.r);
   if (dwc / K.tw > 69 * Math.sqrt(235 / fy)) blok("lijf");
@@ -109,9 +113,11 @@ function uitwerking(v) {
     y = [...Array(n)].map((_, i) => (i === 0 ? yKp + v.e_kp : yKp + v.e_kp + p12 + (i - 1) * v.p_kp));
     bp = Math.max(v.b_kp, L.b); ep = (bp - v.w_kp) / 2; ec = (K.b - v.w_kp) / 2;
     d0 = D0[v.boutmaat]; rw = RING[v.boutmaat][0] / 2;
+    // Een buitenlas alleen waar de plaat buiten de flens uitsteekt.
     const leg = Math.SQRT2 * v.a_flens;
-    const zones = [[-leg, L.tf + leg], [L.h - L.tf - leg, L.h + leg]];
-    if (v.console === 2) zones.push([L.h + hcs - L.tf - leg, L.h + hcs + leg]);
+    const boven = ext ? 1 : 0, onder = v.kopplaattype === 2 ? 1 : 0;
+    const zones = [[-boven * leg, L.tf + leg], [L.h - L.tf - leg, L.h + (v.console === 2 ? 1 : onder) * leg]];
+    if (v.console === 2) zones.push([L.h + hcs - tV - leg, L.h + hcs + onder * leg]);
     r.bots = y.map((yi) => zones.some(([o, u]) => yi > o - rw && yi < u + rw));
     if (r.bots.some(Boolean)) blok("botsing");
     const pOk = (n === 1 || p12 >= 2.2 * d0) && (n <= 2 || v.p_kp >= 2.2 * d0);
@@ -119,11 +125,13 @@ function uitwerking(v) {
     if (!((v.w_kp - L.tw) / 2 - Math.SQRT2 * v.a_lijf >= rw && (v.w_kp - K.tw) / 2 - K.r >= rw)) blok("lijf te dichtbij");
     if (ext && !(y[0] < 0)) blok("rij 1 niet boven de ligger");
     if (ext && n >= 2 && !(y[1] > 0)) blok("rij 2 ook boven de ligger");
+    if (!(v.t_kp > 0)) blok("kopplaat zonder dikte");
     if (v.t_kp > 40) blok("kopplaat > 40 mm");
     r.y = y;
   } else {
     const bfc = Math.min(K.tw + 2 * K.r + 7 * Math.min(K.tf / L.tf, 1) * K.tf, L.b);
     if (bfc < (fy / fu) * L.b) blok("kolomflens");
+    if (L.b > K.b) blok("liggerflens breder dan de kolomflens");
     r.bfc = bfc;
   }
   if (!r.geldig) return r;
@@ -132,7 +140,10 @@ function uitwerking(v) {
   const Avc = Math.max(K.Avz, (K.h - 2 * K.tf) * K.tw);
   const Vwp = (0.9 * fy * Avc) / Math.sqrt(3);
   const sp = geb ? Math.min(2 * v.t_kp, v.t_kp + (v.kopplaattype === 2 ? v.u_kp : 0)) : 0;
-  const bc = L.tf + 2 * Math.SQRT2 * v.a_flens + 5 * (K.tf + K.r) + sp;
+  // (6.10)/(6.11): een lasbeen aan de buitenkant van de drukflens alleen bij een gelaste flens
+  // of een doorlopende plaat.
+  const nLas = !geb || v.kopplaattype === 2 ? 2 : 1;
+  const bc = L.tf + nLas * Math.SQRT2 * v.a_flens + 5 * (K.tf + K.r) + sp;
   const omega = (b) => 1 / Math.sqrt(1 + 1.3 * ((b * K.tw) / Avc) ** 2);
   const sigma = (v.N_c_Ed * 1e3) / K.A + (M * (K.h / 2 - K.tf - K.r)) / K.Iy;
   const kwc = sigma <= 0.7 * fy ? 1 : Math.max(1.7 - sigma / fy, 0);
@@ -283,7 +294,9 @@ function uitwerking(v) {
   }
 
   // Lassen van de ligger
-  const Fw_f = (v.a_flens * (2 * L.b - L.tw - 2 * L.r) * fu) / (Math.SQRT2 * bw * gM2);
+  // Korte kopplaat: de trekflens alleen aan de binnenzijde gelast.
+  const Lwf = geb && v.kopplaattype === 1 ? L.b - L.tw - 2 * L.r : 2 * L.b - L.tw - 2 * L.r;
+  const Fw_f = (v.a_flens * Lwf * fu) / (Math.SQRT2 * bw * gM2);
   const Fw_w = (v.a_lijf * 2 * (L.h - 2 * L.tf - 2 * L.r) * fu) / (Math.sqrt(3) * bw * gM2);
   // §6.2.3(4): de flenslas draagt de flenskracht bij M_j,Rd; een gelaste flens ten minste de
   // volle flens (§4.10(5)). De lijflas in de trekzone van een kopplaat moet per mm minstens zo
@@ -294,9 +307,10 @@ function uitwerking(v) {
   const UCM = M / Mj, UCVb = V / Vplb;
   const kb = v.stabiliteit === 2 ? 8 : 25;
   const EIL = (E * L.Iy) / v.L_b;
-  const klasse = Sj >= kb * EIL ? "stijf" : Sj <= 0.5 * EIL ? "nominaal scharnierend" : "semi-stijf";
+  const klasse = !(v.L_b > 0) ? "niet bepaald"
+    : Sj >= kb * EIL ? "stijf" : Sj <= 0.5 * EIL ? "nominaal scharnierend" : "semi-stijf";
   const UCmax = Math.max(UCM, r.UCV, UCVb, UClf, UClw, UClt);
-  return Object.assign(r, { Mj, Sj, UCM, UCVb, UClf, UClw, UClt, UCmax, klasse, zf, yc, Ff });
+  return Object.assign(r, { Mj, Sj, UCM, UCVb, UClf, UClw, UClt, UCmax, klasse, zf, yc, Ff, Fw_f, tV });
 }
 
 // ── Vergelijken ──────────────────────────────────────────────────────────────
@@ -379,13 +393,15 @@ const SETS = [
     // (e = 30, p_fl = 70, p = 60, w = 70), console met flens 120 × 240, a = 5/3 mm,
     // M_Ed = 60 kNm, V_Ed = 80 kN, N_c,Ed = 100 kN, L_b = 6000 mm, ongeschoord.
     //
-    // Rijen: y = −30, 40, 100, 160 mm; drukpunt y_c = 240 + 120 − 4,9 = 355,1 mm
-    //   → h_r = 385,1 / 315,1 / 255,1 / 195,1 mm. Sluitring Ø30: rij 1 ligt 22,9 mm
+    // Rijen: y = −30, 40, 100, 160 mm. De consoleflens loopt onder tan θ = 120/240 en is op het
+    //   plaatvlak 9,8·√(1 + 0,5²) = 10,96 mm dik → drukpunt y_c = 240 + 120 − 10,96/2 = 354,52 mm
+    //   → h_r = 384,5 / 314,5 / 254,5 / 194,5 mm. Sluitring Ø30: rij 1 ligt 22,9 mm
     //   boven de las (≥ 15), rij 2 23,1 mm onder de las (≥ 15): geen botsing.
     // Kolomlijf: A_vc = 17,59 cm² → V_wp,Rd = 0,9·235·1759/√3 = 214,8 kN.
-    //   b_eff,c,wc = 9,8 + 2√2·5 + 5·(13 + 15) + 15 = 178,9 mm; ω = 1/√(1 + 1,3·(178,9·8/1759)²)
-    //   = 0,733; σ = 100 000/5425 + 60·10⁶·52/2492·10⁴ = 143,6 ≤ 164,5 → k_wc = 1;
-    //   λ_p = 0,532 → ρ = 1; F_c,wc,Rd = 0,733·178,9·8·235 = 246,6 kN.
+    //   b_eff,c,wc = 9,8 + √2·5 + 5·(13 + 15) + 15 = 171,9 mm: één lasbeen, de overstekende plaat
+    //   loopt niet onder de consoleflens door. ω = 1/√(1 + 1,3·(171,9·8/1759)²) = 0,7465;
+    //   σ = 100 000/5425 + 60·10⁶·52/2492·10⁴ = 143,6 ≤ 164,5 → k_wc = 1;
+    //   λ_p = 0,932·√(171,9·104·235/(210 000·8²)) = 0,521 → ρ = 1; F_c,wc,Rd = 0,7465·171,9·8·235 = 241,2 kN.
     //   Consoleflens: 120·9,8·235 = 276,4 kN. F_lim = 214,8 kN (afschuiving).
     // Bout: F_t,Rd = 0,9·800·157/1,25 = 90,43 kN; L_b = 13 + 15 + 2·3 + (10 + 14,8)/2 = 46,4 mm.
     //   m_c = 31 − 12 = 19, e_c = 45; m_p = 31,9 − 3,39 = 28,51, e_p = 35; n_c = 23,75, n_p = 35.
@@ -400,35 +416,35 @@ const SETS = [
     //   min rij 1 = 86,6 kN; rest F_lim = 214,8 − 124,8 = 90,0 → F_t2,Rd = 86,6 kN.
     // Rij 3: groep 1–3 kolomlijf: b = 262,3, ω = 0,592 → 292,1 − 211,4 = 80,7 kN; rest
     //   F_lim = 214,8 − 211,4 = 3,4 → F_t3,Rd = 3,4 kN. Rij 4: rest 0.
-    // M_j,Rd = 0,3851·124,8 + 0,3151·86,6 + 0,2551·3,4 = 76,2 kNm → UC = 60/76,2 = 0,787.
+    // M_j,Rd = 0,3845·124,8 + 0,3145·86,6 + 0,2545·3,4 = 76,09 kNm → UC = 60/76,09 = 0,789.
     // Dwarskracht: F_v,Rd = 60,29 kN; F_b,Rd = 2,5·0,556·360·16·13/1,25 = 83,2 kN;
     //   6 getrokken bouten: V_Rd = 2·60,29 + 6·0,2857·60,29 = 223,9 kN → UC 0,357.
-    // Lassen (§6.2.3(4)): z_f = 350,2 mm → F_f = M_j,Rd/z_f = 76,22/0,3502 = 217,6 kN (bij M_Ed
-    //   zou het 171,3 kN zijn); flens 5·203,8·360/(√2·0,8·1,25) = 259,4 kN → UC 0,839; lijf op
+    // Lassen (§6.2.3(4)): z_f = 354,52 − 4,9 = 349,6 mm → F_f = M_j,Rd/z_f = 76,09/0,3496 = 217,6 kN
+    //   (bij M_Ed zou het 171,6 kN zijn); flens 5·203,8·360/(√2·0,8·1,25) = 259,4 kN → UC 0,839; lijf op
     //   afschuiving 3·380,8·360/(√3·1,0) = 237,4 kN → UC 0,337. Lijflas in de trekzone: √2·3·360/(0,8·1,25)
     //   = 1527 N/mm tegen het lijf 6,2·235 = 1457 N/mm → UC 0,954, maatgevend. Het liggerlijf van rij 2
-    //   (240,8 kN) was al zonder las maatgevend in die component, dus M_j,Rd blijft 76,2 kNm.
-    // Stijfheid: z_eq = 308,7 mm, k_eq = 6,91 mm, k_1 = 0,38·1759/308,7 = 2,165, k_2 = 9,635
-    //   → S_j,ini = 210 000·308,7²/(1/2,165 + 1/9,635 + 1/6,906) = 28 170 kNm/rad;
+    //   (240,8 kN) was al zonder las maatgevend in die component, dus M_j,Rd blijft 76,09 kNm.
+    // Stijfheid: z_eq = 308,2 mm, k_eq = 6,904 mm, k_1 = 0,38·1759/308,2 = 2,169, k_2 = 0,7·171,9·8/104
+    //   = 9,255 → S_j,ini = 210 000·308,2²/(1/2,169 + 1/9,255 + 1/6,904) = 27 930 kNm/rad;
     //   stijf vanaf 25·E·I_b/L_b = 34 055 → semi-stijf.
     handwerk: {
-      y_1: "-30", h_1: "385.1", V_wp_Rd: "214.8", b_eff_c_wc: "178.9", ω_c: "0.733", σ_com_Ed: "143.6",
-      F_c_wc_Rd: "246.6", F_c_fb_Rd: "276.4", F_lim: "214.8", F_t_Rd: "90.43", L_bout: "46.4", m_c: "19",
+      y_1: "-30", h_1: "384.5", V_wp_Rd: "214.8", b_eff_c_wc: "171.9", ω_c: "0.7465", σ_com_Ed: "143.6",
+      F_c_wc_Rd: "241.2", F_c_fb_Rd: "276.4", F_lim: "214.8", F_t_Rd: "90.43", L_bout: "46.4", m_c: "19",
       m_p: "28.51", m_x: "24.34", m_2: "24.54", "α": "5.80", Fc_1: "124.8", Fw_1: "190.8", Fp_1: "133.9",
       Fp_2: "168.5", Fb_2: "240.8", F_t1_Rd: "124.8", F_t2_Rd: "86.6", F_t3_Rd: "3.4", F_t4_Rd: "0",
-      M_j_Rd: "76.2", UC_M: "0.787", F_b_Rd: "83.2", V_Rd: "223.9", UC_V: "0.357", F_w_f_Rd: "259.4",
-      F_f_Ed: "217.6", UC_lf: "0.839", F_w_w_Rd: "237.4", UC_lw: "0.337", UC_lt: "0.954", z_eq: "308.7", S_j_ini: "28170",
+      M_j_Rd: "76.09", UC_M: "0.789", F_b_Rd: "83.2", V_Rd: "223.9", UC_V: "0.357", F_w_f_Rd: "259.4",
+      F_f_Ed: "217.6", UC_lf: "0.839", F_w_w_Rd: "237.4", UC_lw: "0.337", UC_lt: "0.954", z_eq: "308.2", S_j_ini: "27930",
       UC_max: "0.954",
     },
     klasse: "semi-stijf",
   },
   {
-    naam: "2 — grensgeval: M_Ed = 76,2 kNm, net onder M_j,Rd = 76,21",
-    invoer: { M_Ed: 76.2 },
+    naam: "2 — grensgeval: M_Ed = 76,05 kNm, net onder M_j,Rd = 76,09",
+    invoer: { M_Ed: 76.05 },
   },
   {
-    naam: "3 — grensgeval: M_Ed = 76,3 kNm, net boven M_j,Rd",
-    invoer: { M_Ed: 76.3 },
+    naam: "3 — grensgeval: M_Ed = 76,15 kNm, net boven M_j,Rd",
+    invoer: { M_Ed: 76.15 },
   },
   {
     naam: "4 — korte kopplaat, HEB 200 / IPE 300, S355, 3 rijen M20 10.9, geen console",
@@ -611,6 +627,56 @@ const SETS = [
     geenMelding: /niet volledig sterk/,
     driehoek: true,
   },
+  {
+    naam: "27 — gelaste verbinding, IPE 400 op HEB 160: liggerflens breder dan de kolomflens",
+    invoer: { verbindingstype: 2, kolomprofiel: 14, liggerprofiel: 27, console: 0, a_flens: 7, a_lijf: 4, M_Ed: 40 },
+    // b_b = 180 > b_c = 160 mm: de flens ligt niet over de volle breedte op de kolom. De toets van
+    // b_eff,b,fc haalt dat niet: min(8 + 2·15 + 7·(13/13,5)·13; 180) = 125,6 ≥ 235/360·180 = 117,5 mm.
+    melding: /De liggerflens [(]b = 180 mm[)] is breder dan de kolomflens [(]b = 160 mm[)]/,
+  },
+  {
+    naam: "28 — korte kopplaat: de trekflens alleen aan de binnenzijde gelast",
+    invoer: {
+      kopplaattype: 1, kolomprofiel: 20, liggerprofiel: 22, console: 0, n_boutrijen: 3, t_kp: 15, b_kp: 150,
+      w_kp: 100, e_kp: 40, p_kp: 60, a_flens: 5, a_lijf: 3, M_Ed: 40, V_Ed: 80,
+    },
+    // De plaat steekt niet boven de flens uit: L_w,f = 120 − 6,2 − 2·15 = 83,8 mm (niet 2·120 − 6,2 − 30
+    // = 203,8) → F_w,f,Rd = 5·83,8·360/(√2·0,8·1,25) = 106,7 kN. Bovenaan geen buitenlas: rij 1 op 40 mm
+    // ligt vrij van 9,8 + √2·5 + 15 = 31,9 mm.
+    handwerk: { F_w_f_Rd: "106.7" },
+    geenMelding: /botst/,
+  },
+  {
+    naam: "29 — console onder 45° (h = l = 240): drukpunt in de schuine flens",
+    invoer: { h_console: 240, l_console: 240 },
+    // Op het plaatvlak is de consoleflens 9,8·√2 = 13,86 mm dik → y_c = 240 + 240 − 6,93 = 473,07 mm
+    // (met t_f/2 zou het 475,1 zijn) → h_1 = 503,1 mm. σ_com,Ed = 143,6 → k_wc = 1, F_lim = 214,8 kN
+    // en de rijkrachten blijven 124,8 / 86,6 / 3,4 kN (set 1):
+    // M_j,Rd = 0,5031·124,8 + 0,4331·86,6 + 0,3731·3,4 = 101,5 kNm (met 475,1 mm: 102,0) → UC 0,591.
+    handwerk: { h_1: "503.1", M_j_Rd: "101.5", UC_M: "0.591" },
+  },
+  {
+    naam: "30 — console onder 45°: rij 5 op 446,5 mm raakt de las aan de schuine flens",
+    invoer: { h_console: 240, l_console: 240, n_boutrijen: 5, p_kp: 135.5 },
+    // Rijen −30, 40, 175,5, 311, 446,5 mm. Botszone van de consoleflens vanaf 480 − 13,86 − √2·5 − 15
+    // = 444,1 mm: rij 5 botst (met de flens op t_f zou de zone pas bij 448,1 mm beginnen).
+    melding: /Rij 5 [(]y = 446\.5 mm[)] botst/,
+  },
+  {
+    naam: "31 — kopplaat met dikte 0: afgekeurd, geen NaN",
+    invoer: { t_kp: 0 },
+    melding: /De dikte van de kopplaat moet groter zijn dan 0/,
+  },
+  {
+    naam: "32 — console met negatieve hoogte: afgekeurd",
+    invoer: { h_console: -50 },
+    melding: /De hoogte en de lengte van de console moeten groter zijn dan 0/,
+  },
+  {
+    naam: "33 — geen overspanning L_b: geen classificatie naar stijfheid",
+    invoer: { L_b: 0 },
+    klasse: "niet bepaald",
+  },
 ];
 
 let fouten = 0;
@@ -644,7 +710,8 @@ for (const set of SETS) {
   console.log(`  ${okO ? "OK    " : "FOUT  "} oordeel    blad ${voldoet ? "voldoet" : "voldoet niet"}   narekening ${wil ? "voldoet" : "voldoet niet"}${u.geldig ? "" : ` (${u.reden})`}`);
 
   if (set.klasse) {
-    const gezien = new RegExp(`Classificatie naar stijfheid: ${set.klasse}`).test(got.text) && u.klasse === set.klasse;
+    const zin = set.klasse === "niet bepaald" ? /Classificatie naar stijfheid niet bepaald/ : new RegExp(`Classificatie naar stijfheid: ${set.klasse}`);
+    const gezien = zin.test(got.text) && u.klasse === set.klasse;
     if (!gezien) fouten++;
     console.log(`  ${gezien ? "OK    " : "FOUT  "} klasse     ${set.klasse} (narekening ${u.klasse})`);
   }

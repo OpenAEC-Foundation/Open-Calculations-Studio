@@ -68,14 +68,16 @@ export default function MomentverbindingDesigner() {
   const M = Math.round(d("boutmaat"));
   const cons = Math.round(d("console"));
   const nRij = clamp(Math.round(d("n_boutrijen")), 1, 8);
-  const tKp = geb ? Math.max(4, d("t_kp")) : 0;
+  const tKpIn = d("t_kp");
+  const tKp = geb ? Math.max(4, tKpIn) : 0;              // getekend; het blad keurt t ≤ 0 af
   const bKp = Math.max(lig.b, d("b_kp"));
   const eKp = Math.max(1, d("e_kp")), pKp = Math.max(1, d("p_kp")), wKp = Math.max(1, d("w_kp"));
   const uKp = ext ? Math.max(1, d("u_kp")) : 0;
   const pFl = Math.max(1, d("p_fl"));
-  const hCons = cons > 0 ? Math.max(0, d("h_console")) : 0, lCons = Math.max(0, d("l_console"));
+  const hConsIn = d("h_console"), lConsIn = d("l_console");
+  const hCons = cons > 0 ? Math.max(0, hConsIn) : 0, lCons = Math.max(0, lConsIn);  // getekend; het blad keurt h, l ≤ 0 af
   const aFl = Math.max(1, d("a_flens")), aLf = Math.max(1, d("a_lijf"));
-  const Lb = Math.max(500, d("L_b")), MEd = d("M_Ed"), VEd = d("V_Ed"), NcEd = d("N_c_Ed");
+  const Lb = d("L_b"), MEd = d("M_Ed"), VEd = d("V_Ed"), NcEd = d("N_c_Ed");
   const d0 = GAT[M] ?? M + 2;
 
   // Diepte vanaf de bovenkant van de ligger, naar beneden positief (als het blad).
@@ -87,11 +89,14 @@ export default function MomentverbindingDesigner() {
   const hKp = onder - yPlaat;                                  // kopplaathoogte
   const rest = onder - rijY[nRij - 1];
   // Drukpunt (figuur 6.15): de flens van de console, anders de onderflens.
-  const yDruk = cons === 2 ? lig.h + hCons - lig.tf / 2 : lig.h - lig.tf / 2;
+  const tfV = cons === 2 ? lig.tf * Math.sqrt(1 + (hCons / Math.max(lCons, 1)) ** 2) : lig.tf;  // schuine flens op het plaatvlak
+  const yDruk = cons === 2 ? lig.h + hCons - tfV / 2 : lig.h - lig.tf / 2;
   // Zones van flens en flenslas (diepte), verbreed met de straal van de sluitring.
   const been = Math.SQRT2 * aFl, rw = (RING[M] ?? 2 * M) / 2;
-  const zones: [number, number][] = [[-been, lig.tf + been], [lig.h - lig.tf - been, lig.h + been]];
-  if (cons === 2) zones.push([lig.h + hCons - lig.tf - been, lig.h + hCons + been]);
+  // Een buitenlas kan alleen waar de kopplaat buiten de flens uitsteekt (als het blad).
+  const lasBoven = ext ? 1 : 0, lasOnder = geb && kpType === 2 ? 1 : 0;
+  const zones: [number, number][] = [[-lasBoven * been, lig.tf + been], [lig.h - lig.tf - been, lig.h + (cons === 2 ? 1 : lasOnder) * been]];
+  if (cons === 2) zones.push([lig.h + hCons - tfV - been, lig.h + hCons + lasOnder * been]);
   const botst = rijY.map((y) => zones.some(([o, u]) => y > o - rw && y < u + rw));
   // Bij een uitstekende kopplaat hoort rij 1 boven de ligger en rij 2 eronder;
   // anders keurt het blad af (ok_ext).
@@ -222,7 +227,7 @@ export default function MomentverbindingDesigner() {
           {geb && (
             <>
               <label>Dikte kopplaat (mm)
-                <input type="number" step={2} value={tKp} onChange={(e) => set("t_kp", parseFloat(e.target.value))} />
+                <input type="number" step={2} value={tKpIn} onChange={(e) => set("t_kp", parseFloat(e.target.value))} />
               </label>
               <label>Breedte kopplaat (mm)
                 <input type="number" step={10} value={bKp} onChange={(e) => set("b_kp", parseFloat(e.target.value))} />
@@ -239,10 +244,10 @@ export default function MomentverbindingDesigner() {
           {cons > 0 && (
             <>
               <label>Hoogte console (mm)
-                <input type="number" step={10} value={hCons} onChange={(e) => set("h_console", parseFloat(e.target.value))} />
+                <input type="number" step={10} value={hConsIn} onChange={(e) => set("h_console", parseFloat(e.target.value))} />
               </label>
               <label>Lengte console (mm)
-                <input type="number" step={10} value={lCons} onChange={(e) => set("l_console", parseFloat(e.target.value))} />
+                <input type="number" step={10} value={lConsIn} onChange={(e) => set("l_console", parseFloat(e.target.value))} />
               </label>
             </>
           )}
