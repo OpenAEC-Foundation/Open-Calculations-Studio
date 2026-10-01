@@ -27,7 +27,7 @@ en de hoofdstukindeling. Elke module wordt eerst in `scripts/check-rapport.mjs`
 getoetst en daarna geschreven. De latere delen (opslag, paneel, afdruk) lezen
 alleen uit deze modules.
 
-**Werkmap:** `C:/Users/rickd/Documents/GitHub/Ifc-Calc/.claude/worktrees/practical-mcclintock-34d234`.
+**Werkmap:** `<worktree>`.
 Alle commando's draaien vanuit die map.
 
 **Geldt voor elke taak in dit deel**
@@ -2571,7 +2571,7 @@ git commit -m "feat(rapport): standaardteksten en hoofdstukindeling met nummerin
 Dit deel bouwt op Task 1–4 (`packages/desktop/src/rapport/model.ts`, `pad.ts`,
 `revisies.ts`, `standaardteksten.ts` en `scripts/check-rapport.mjs`). Alle paden zijn
 relatief aan de worktree
-`C:/Users/rickd/Documents/GitHub/Ifc-Calc/.claude/worktrees/practical-mcclintock-34d234`;
+`<worktree>`;
 alle commando's draaien vanuit die map.
 
 > **Live-app.** Elke opslag van `store/projectStore.ts` of `store/projectBestand.ts` laat
@@ -3887,7 +3887,7 @@ op een concept: **Opslaan** geeft het profiel aan `useBureauStore.zetProfiel`, e
 **Annuleren**/Escape gooit het concept weg.
 
 Alle commando's draaien vanuit de worktree-root
-`C:/Users/rickd/Documents/GitHub/Ifc-Calc/.claude/worktrees/practical-mcclintock-34d234`
+`<worktree>`
 in Git Bash. Stage nooit `packages/desktop/.gitignore`.
 
 **Afhankelijkheden van andere delen**
@@ -5428,7 +5428,7 @@ de projectboom krijgt een vaste knoop **Rapport**, de werkruimte toont daarvoor 
 op `window.__ocs` voor `scripts/rapport-pdf.mjs`.
 
 Alle commando's draaien vanuit de worktree-root
-`C:/Users/rickd/Documents/GitHub/Ifc-Calc/.claude/worktrees/practical-mcclintock-34d234`
+`<worktree>`
 in Git Bash. Stage nooit `packages/desktop/.gitignore`.
 
 **Afhankelijkheden van andere delen**
@@ -14121,11 +14121,11 @@ documentatie. Het bouwt voort op alle eerdere taken: de rapportmodules in
 in `main.tsx` (Task 21) en de afdruk met de wortel `.rpa-wortel` binnen `.print-root`.
 
 Alle commando's draaien in Git Bash vanuit de repo-root
-(`C:/Users/rickd/Documents/GitHub/Ifc-Calc/.claude/worktrees/practical-mcclintock-34d234`).
+(`<worktree>`).
 Twee variabelen worden in meerdere taken gebruikt (zet ze opnieuw in elke nieuwe shell):
 
 ```bash
-RR="C:/Users/rickd/AppData/Local/Temp/claude/C--Users-rickd-Documents-GitHub-Ifc-Calc--claude-worktrees-practical-mcclintock-34d234/aa700bf5-9015-452a-8266-296043cdadd1/scratchpad/rapport-ref"
+RR="<tijdelijke map>/rapport-ref"
 TMP="$(node -p "require('os').tmpdir()")"
 ```
 
@@ -15088,7 +15088,7 @@ from pathlib import Path
 import fitz  # PyMuPDF
 
 HIER = Path(__file__).resolve().parent
-STANDAARD_REPO = Path("C:/Users/rickd/Documents/GitHub/Ifc-Calc/.claude/worktrees/practical-mcclintock-34d234")
+STANDAARD_REPO = Path("<worktree>")
 CELLEN = HIER / "cellen-C1-C3.json"
 REF_PDF = HIER / "referentie-C1-C3.pdf"
 VOET = HIER / "voet.jpeg"
